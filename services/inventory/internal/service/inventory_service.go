@@ -7,18 +7,31 @@ import (
 	"github.com/google/uuid"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/repository"
 )
 
 // InventoryService implements business logic for inventory operations.
 type InventoryService struct {
-	repo *repository.InventoryRepository
+	repo      *repository.InventoryRepository
+	publisher pubsub.Publisher
 }
 
 // NewInventoryService creates a new InventoryService.
-func NewInventoryService(repo *repository.InventoryRepository) *InventoryService {
-	return &InventoryService{repo: repo}
+func NewInventoryService(repo *repository.InventoryRepository, publisher pubsub.Publisher) *InventoryService {
+	return &InventoryService{repo: repo, publisher: publisher}
+}
+
+// publishEvent publishes an event if the publisher is configured.
+func (s *InventoryService) publishEvent(ctx context.Context, tenantID uuid.UUID, eventType, topic string, data any) {
+	if s.publisher == nil {
+		return
+	}
+	event := pubsub.NewEvent(eventType, tenantID, data)
+	if err := s.publisher.Publish(ctx, topic, event); err != nil {
+		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
+	}
 }
 
 // GetInventory retrieves inventory for a specific SKU.
@@ -59,6 +72,14 @@ func (s *InventoryService) UpdateStock(ctx context.Context, tenantID uuid.UUID, 
 	}
 
 	slog.Info("stock updated", "tenant_id", tenantID, "sku_id", inv.SKUID)
+
+	s.publishEvent(ctx, tenantID, "inventory.updated", "inventory-events", map[string]any{
+		"sku_id":             inv.SKUID.String(),
+		"seller_id":         inv.SellerID.String(),
+		"quantity_available": inv.QuantityAvailable,
+		"quantity_reserved":  inv.QuantityReserved,
+	})
+
 	return nil
 }
 
@@ -83,6 +104,21 @@ func (s *InventoryService) ReserveStock(ctx context.Context, tenantID, skuID uui
 	}
 
 	slog.Info("stock reserved", "tenant_id", tenantID, "sku_id", skuID, "quantity", quantity)
+
+	// Check for low stock after reservation.
+	inv, invErr := s.repo.GetBySKUID(ctx, tenantID, skuID)
+	if invErr == nil && inv != nil {
+		eventData := map[string]any{
+			"sku_id":             inv.SKUID.String(),
+			"seller_id":         inv.SellerID.String(),
+			"quantity_available": inv.QuantityAvailable,
+			"quantity_reserved":  inv.QuantityReserved,
+		}
+		if inv.QuantityAvailable <= inv.LowStockThreshold {
+			s.publishEvent(ctx, tenantID, "inventory.low_stock", "inventory-events", eventData)
+		}
+	}
+
 	return nil
 }
 

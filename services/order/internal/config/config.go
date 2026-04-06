@@ -4,23 +4,21 @@ import (
 	"os"
 )
 
-// Config holds all configuration for the inventory service.
+// Config holds all configuration for the order service.
 type Config struct {
 	DatabaseURL        string
 	HTTPPort           string
-	GRPCPort           string
-	PubSubEmulatorHost string
-	PubSubProjectID    string
+	StripeSecretKey    string
+	StripeWebhookSecret string
 }
 
 // Load reads configuration from environment variables.
 func Load() Config {
 	return Config{
 		DatabaseURL:        getEnv("DATABASE_URL", "postgres://ecmarket:ecmarket@localhost:5432/ecmarket?sslmode=disable"),
-		HTTPPort:           getEnv("HTTP_PORT", "8084"),
-		GRPCPort:           getEnv("GRPC_PORT", "50054"),
-		PubSubEmulatorHost: getEnv("PUBSUB_EMULATOR_HOST", ""),
-		PubSubProjectID:    getEnv("PUBSUB_PROJECT_ID", ""),
+		HTTPPort:           getEnv("HTTP_PORT", "8083"),
+		StripeSecretKey:    getEnv("STRIPE_SECRET_KEY", ""),
+		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 	}
 }
 

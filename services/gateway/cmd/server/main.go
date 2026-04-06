@@ -11,6 +11,7 @@ import (
 
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/handler"
+	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
 
 func main() {
@@ -18,7 +19,9 @@ func main() {
 
 	cfg := config.Load()
 
-	router := handler.NewRouter(cfg)
+	svc := proxy.NewServices(cfg)
+
+	router := handler.NewRouter(cfg, svc)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.HTTPPort,

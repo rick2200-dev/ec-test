@@ -14,6 +14,7 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/config"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/handler"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/repository"
@@ -41,13 +42,28 @@ func main() {
 
 	slog.Info("connected to database")
 
+	// Pub/Sub publisher
+	var publisher pubsub.Publisher
+	if cfg.PubSubProjectID != "" {
+		pub, pubErr := pubsub.NewGCPPublisher(ctx, cfg.PubSubProjectID)
+		if pubErr != nil {
+			slog.Warn("failed to create pubsub publisher, events will not be published", "error", pubErr)
+		} else {
+			publisher = pub
+			defer pub.Close()
+			slog.Info("pubsub publisher created", "project_id", cfg.PubSubProjectID)
+		}
+	} else {
+		slog.Info("PUBSUB_PROJECT_ID not set, event publishing disabled")
+	}
+
 	// Repositories
 	categoryRepo := repository.NewCategoryRepository(pool)
 	productRepo := repository.NewProductRepository(pool)
 	skuRepo := repository.NewSKURepository(pool)
 
 	// Service
-	catalogSvc := service.NewCatalogService(categoryRepo, productRepo, skuRepo)
+	catalogSvc := service.NewCatalogService(categoryRepo, productRepo, skuRepo, publisher)
 
 	// Handlers
 	productHandler := handler.NewProductHandler(catalogSvc)

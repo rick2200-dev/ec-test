@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/repository"
@@ -17,6 +18,7 @@ type CatalogService struct {
 	categories *repository.CategoryRepository
 	products   *repository.ProductRepository
 	skus       *repository.SKURepository
+	publisher  pubsub.Publisher
 }
 
 // NewCatalogService creates a new CatalogService.
@@ -24,11 +26,24 @@ func NewCatalogService(
 	categories *repository.CategoryRepository,
 	products *repository.ProductRepository,
 	skus *repository.SKURepository,
+	publisher pubsub.Publisher,
 ) *CatalogService {
 	return &CatalogService{
 		categories: categories,
 		products:   products,
 		skus:       skus,
+		publisher:  publisher,
+	}
+}
+
+// publishEvent publishes an event if the publisher is configured.
+func (s *CatalogService) publishEvent(ctx context.Context, tenantID uuid.UUID, eventType, topic string, data any) {
+	if s.publisher == nil {
+		return
+	}
+	event := pubsub.NewEvent(eventType, tenantID, data)
+	if err := s.publisher.Publish(ctx, topic, event); err != nil {
+		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
 	}
 }
 
@@ -119,6 +134,15 @@ func (s *CatalogService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 	}
 
 	slog.Info("product created", "id", p.ID, "tenant_id", tenantID, "slug", p.Slug, "sku_count", len(skus))
+
+	s.publishEvent(ctx, tenantID, "product.created", "product-events", map[string]any{
+		"product_id": p.ID.String(),
+		"seller_id":  p.SellerID.String(),
+		"name":       p.Name,
+		"status":     string(p.Status),
+		"slug":       p.Slug,
+	})
+
 	return nil
 }
 
@@ -187,6 +211,15 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, tenantID uuid.UUID, 
 	}
 
 	slog.Info("product updated", "id", p.ID, "tenant_id", tenantID)
+
+	s.publishEvent(ctx, tenantID, "product.updated", "product-events", map[string]any{
+		"product_id": p.ID.String(),
+		"seller_id":  p.SellerID.String(),
+		"name":       p.Name,
+		"status":     string(p.Status),
+		"slug":       p.Slug,
+	})
+
 	return nil
 }
 
@@ -211,6 +244,15 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, tenantID, id u
 	}
 
 	slog.Info("product status updated", "id", id, "tenant_id", tenantID, "status", status)
+
+	s.publishEvent(ctx, tenantID, "product.updated", "product-events", map[string]any{
+		"product_id": id.String(),
+		"seller_id":  existing.SellerID.String(),
+		"name":       existing.Name,
+		"status":     string(status),
+		"slug":       existing.Slug,
+	})
+
 	return nil
 }
 

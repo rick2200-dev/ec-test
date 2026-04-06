@@ -6,11 +6,12 @@ import (
 	pkgmw "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 	gwmw "github.com/Riku-KANO/ec-test/services/gateway/internal/middleware"
+	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
 
 // NewRouter builds and returns the top-level chi router with all middleware
 // and route groups registered.
-func NewRouter(cfg config.Config) *chi.Mux {
+func NewRouter(cfg config.Config, svc *proxy.Services) *chi.Mux {
 	r := chi.NewRouter()
 
 	// --- Global middleware ---
@@ -36,7 +37,7 @@ func NewRouter(cfg config.Config) *chi.Mux {
 		api.Use(jwtMW.VerifyJWT)
 
 		// Buyer routes (any authenticated user)
-		buyer := NewBuyerHandler()
+		buyer := NewBuyerHandler(svc)
 		api.Route("/buyer", func(br chi.Router) {
 			br.Get("/products", buyer.ListProducts)
 			br.Get("/products/{slug}", buyer.GetProduct)
@@ -46,7 +47,7 @@ func NewRouter(cfg config.Config) *chi.Mux {
 		})
 
 		// Seller routes (requires seller role)
-		seller := NewSellerHandler()
+		seller := NewSellerHandler(svc)
 		api.Route("/seller", func(sr chi.Router) {
 			sr.Use(pkgmw.RequireRole("seller"))
 			sr.Get("/products", seller.ListProducts)
@@ -59,7 +60,7 @@ func NewRouter(cfg config.Config) *chi.Mux {
 		})
 
 		// Admin routes (requires platform_admin role)
-		admin := NewAdminHandler()
+		admin := NewAdminHandler(svc)
 		api.Route("/admin", func(ar chi.Router) {
 			ar.Use(pkgmw.RequireRole("platform_admin"))
 			ar.Get("/tenants", admin.ListTenants)

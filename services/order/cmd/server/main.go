@@ -14,11 +14,11 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
-	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/config"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/service"
+	"github.com/Riku-KANO/ec-test/services/order/internal/config"
+	"github.com/Riku-KANO/ec-test/services/order/internal/handler"
+	"github.com/Riku-KANO/ec-test/services/order/internal/repository"
+	"github.com/Riku-KANO/ec-test/services/order/internal/service"
+	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/stripe"
 )
 
 func main() {
@@ -42,29 +42,22 @@ func main() {
 
 	slog.Info("connected to database")
 
-	// Pub/Sub publisher
-	var publisher pubsub.Publisher
-	if cfg.PubSubProjectID != "" {
-		pub, pubErr := pubsub.NewGCPPublisher(ctx, cfg.PubSubProjectID)
-		if pubErr != nil {
-			slog.Warn("failed to create pubsub publisher, events will not be published", "error", pubErr)
-		} else {
-			publisher = pub
-			defer pub.Close()
-			slog.Info("pubsub publisher created", "project_id", cfg.PubSubProjectID)
-		}
-	} else {
-		slog.Info("PUBSUB_PROJECT_ID not set, event publishing disabled")
-	}
+	// Stripe client
+	sc := stripeClient.NewClient(cfg.StripeSecretKey)
 
-	// Repository
-	inventoryRepo := repository.NewInventoryRepository(pool)
+	// Repositories
+	orderRepo := repository.NewOrderRepository(pool)
+	commissionRepo := repository.NewCommissionRepository(pool)
+	payoutRepo := repository.NewPayoutRepository(pool)
 
 	// Service
-	inventorySvc := service.NewInventoryService(inventoryRepo, publisher)
+	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc)
 
 	// Handlers
-	inventoryHandler := handler.NewInventoryHandler(inventorySvc)
+	orderHandler := handler.NewOrderHandler(orderSvc)
+	commissionHandler := handler.NewCommissionHandler(orderSvc)
+	payoutHandler := handler.NewPayoutHandler(orderSvc)
+	webhookHandler := handler.NewWebhookHandler(orderSvc, cfg.StripeWebhookSecret)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -78,8 +71,17 @@ func main() {
 	r.Get("/healthz", healthHandler.Liveness)
 	r.Get("/readyz", healthHandler.Readiness)
 
-	// Inventory endpoints (tenant-scoped)
-	r.Mount("/inventory", inventoryHandler.Routes())
+	// Stripe webhooks (no auth required, validated by signature)
+	r.Post("/webhooks/stripe", webhookHandler.HandleStripeWebhook)
+
+	// Order endpoints (tenant-scoped)
+	r.Mount("/orders", orderHandler.Routes())
+
+	// Commission endpoints (tenant-scoped)
+	r.Mount("/commissions", commissionHandler.Routes())
+
+	// Payout endpoints (tenant-scoped)
+	r.Mount("/payouts", payoutHandler.Routes())
 
 	// HTTP server
 	addr := ":" + cfg.HTTPPort
@@ -93,7 +95,7 @@ func main() {
 
 	// Start server in a goroutine.
 	go func() {
-		slog.Info("starting inventory service", "addr", addr)
+		slog.Info("starting order service", "addr", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "error", err)
 			os.Exit(1)
@@ -114,5 +116,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("inventory service stopped")
+	slog.Info("order service stopped")
 }
