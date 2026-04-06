@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
+import { Recommendations } from "@/components/Recommendations";
 import { products, categories } from "@/lib/mock-data";
 
 const categoryIcons: Record<string, string> = {
@@ -88,6 +89,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* Recommendations */}
+      <Recommendations type="popular" title="あなたへのおすすめ" />
     </div>
   );
 }

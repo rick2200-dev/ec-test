@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getProductWithSKUs, formatPrice } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
 import { use } from "react";
+import { ProductViewTracker } from "@/components/ProductViewTracker";
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -65,6 +66,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <ProductViewTracker productId={product.id} />
       {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-gray-500">
         <Link href="/" className="hover:text-gray-700">

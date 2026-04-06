@@ -44,6 +44,8 @@ func NewRouter(cfg config.Config, svc *proxy.Services) *chi.Mux {
 			br.Get("/search", buyer.SearchProducts)
 			br.Post("/orders", buyer.CreateOrder)
 			br.Get("/orders", buyer.ListOrders)
+			br.Post("/events", buyer.TrackEvent)
+			br.Get("/recommendations", buyer.GetRecommendations)
 		})
 
 		// Seller routes (requires seller role)

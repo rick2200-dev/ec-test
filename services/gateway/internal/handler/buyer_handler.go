@@ -11,15 +11,17 @@ import (
 
 // BuyerHandler handles buyer-facing routes.
 type BuyerHandler struct {
-	catalog *proxy.ServiceClient
-	order   *proxy.ServiceClient
+	catalog   *proxy.ServiceClient
+	order     *proxy.ServiceClient
+	recommend *proxy.ServiceClient
 }
 
 // NewBuyerHandler creates a new BuyerHandler.
 func NewBuyerHandler(svc *proxy.Services) *BuyerHandler {
 	return &BuyerHandler{
-		catalog: svc.Catalog,
-		order:   svc.Order,
+		catalog:   svc.Catalog,
+		order:     svc.Order,
+		recommend: svc.Recommend,
 	}
 }
 
@@ -81,6 +83,30 @@ func (h *BuyerHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("proxy to order failed", "error", err)
 		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// TrackEvent proxies to the recommend service to record user behavior events.
+// POST /events
+func (h *BuyerHandler) TrackEvent(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.recommend.Post(r.Context(), "/events", r.Body)
+	if err != nil {
+		slog.Error("proxy to recommend failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "recommend service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// GetRecommendations proxies to the recommend service to fetch recommendations.
+// GET /recommendations
+func (h *BuyerHandler) GetRecommendations(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.recommend.Get(r.Context(), "/recommendations", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to recommend failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "recommend service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)
