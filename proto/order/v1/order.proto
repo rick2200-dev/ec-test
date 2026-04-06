@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package order.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/gen/go/order/v1;orderv1";
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// OrderService manages orders and payments.
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc ListBuyerOrders(ListBuyerOrdersRequest) returns (ListOrdersResponse);
+  rpc ListSellerOrders(ListSellerOrdersRequest) returns (ListOrdersResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+  rpc ListPayouts(ListPayoutsRequest) returns (ListPayoutsResponse);
+}
+
+// ─── Domain Messages ─────────────────────────────────────────
+
+message Order {
+  string id = 1;
+  string tenant_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string status = 5;
+  common.v1.Money subtotal = 6;
+  common.v1.Money commission = 7;
+  common.v1.Money total = 8;
+  string shipping_address_json = 9;
+  string stripe_payment_intent_id = 10;
+  repeated OrderLine lines = 11;
+  google.protobuf.Timestamp paid_at = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+message OrderLine {
+  string id = 1;
+  string order_id = 2;
+  string sku_id = 3;
+  string product_name = 4;
+  string sku_code = 5;
+  int32 quantity = 6;
+  common.v1.Money unit_price = 7;
+  common.v1.Money line_total = 8;
+}
+
+message Payout {
+  string id = 1;
+  string tenant_id = 2;
+  string seller_id = 3;
+  string order_id = 4;
+  common.v1.Money amount = 5;
+  string stripe_transfer_id = 6;
+  string status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp completed_at = 9;
+}
+
+// ─── CreateOrder ─────────────────────────────────────────────
+
+message CreateOrderRequest {
+  string tenant_id = 1;
+  string seller_id = 2;
+  string buyer_auth0_id = 3;
+  repeated OrderLineInput lines = 4;
+  string shipping_address_json = 5;
+}
+
+message OrderLineInput {
+  string sku_id = 1;
+  int32 quantity = 2;
+}
+
+message CreateOrderResponse {
+  Order order = 1;
+  string stripe_client_secret = 2;  // For frontend Stripe payment
+}
+
+// ─── GetOrder ────────────────────────────────────────────────
+
+message GetOrderRequest {
+  string tenant_id = 1;
+  string id = 2;
+}
+
+message GetOrderResponse {
+  Order order = 1;
+}
+
+// ─── ListOrders ──────────────────────────────────────────────
+
+message ListBuyerOrdersRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListSellerOrdersRequest {
+  string tenant_id = 1;
+  string seller_id = 2;
+  string status = 3;  // Optional filter
+  common.v1.PaginationRequest pagination = 4;
+}
+
+message ListOrdersResponse {
+  repeated Order orders = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+// ─── UpdateOrderStatus ───────────────────────────────────────
+
+message UpdateOrderStatusRequest {
+  string tenant_id = 1;
+  string id = 2;
+  string status = 3;  // paid, processing, shipped, delivered, completed, cancelled
+}
+
+message UpdateOrderStatusResponse {
+  Order order = 1;
+}
+
+// ─── ListPayouts ─────────────────────────────────────────────
+
+message ListPayoutsRequest {
+  string tenant_id = 1;
+  string seller_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListPayoutsResponse {
+  repeated Payout payouts = 1;
+  common.v1.PaginationResponse pagination = 2;
+}

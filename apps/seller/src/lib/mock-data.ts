@@ -1,0 +1,184 @@
+import type {
+  Product,
+  Order,
+  InventoryItem,
+  SalesStats,
+  Category,
+} from "./types";
+
+export const categories: Category[] = [
+  { id: "cat-1", name: "トップス", slug: "tops", parentId: null },
+  { id: "cat-2", name: "ボトムス", slug: "bottoms", parentId: null },
+  { id: "cat-3", name: "アウター", slug: "outerwear", parentId: null },
+  { id: "cat-4", name: "アクセサリー", slug: "accessories", parentId: null },
+  { id: "cat-5", name: "シューズ", slug: "shoes", parentId: null },
+];
+
+export const products: Product[] = [
+  {
+    id: "prod-1",
+    sellerId: "seller-1",
+    categoryId: "cat-1",
+    name: "オーガニックコットンTシャツ",
+    slug: "organic-cotton-tshirt",
+    description: "上質なオーガニックコットン100%のベーシックTシャツ。肌触りが良く、日常使いに最適です。",
+    status: "active",
+    skus: [
+      { id: "sku-1", productId: "prod-1", code: "OCT-WHT-M", price: 3980, attributes: { color: "ホワイト", size: "M" }, stockQuantity: 45, reservedQuantity: 3 },
+      { id: "sku-2", productId: "prod-1", code: "OCT-WHT-L", price: 3980, attributes: { color: "ホワイト", size: "L" }, stockQuantity: 32, reservedQuantity: 1 },
+      { id: "sku-3", productId: "prod-1", code: "OCT-BLK-M", price: 3980, attributes: { color: "ブラック", size: "M" }, stockQuantity: 28, reservedQuantity: 5 },
+      { id: "sku-4", productId: "prod-1", code: "OCT-BLK-L", price: 3980, attributes: { color: "ブラック", size: "L" }, stockQuantity: 15, reservedQuantity: 2 },
+    ],
+    createdAt: "2026-03-01T10:00:00Z",
+    updatedAt: "2026-04-01T08:30:00Z",
+  },
+  {
+    id: "prod-2",
+    sellerId: "seller-1",
+    categoryId: "cat-2",
+    name: "ストレッチデニムパンツ",
+    slug: "stretch-denim-pants",
+    description: "動きやすいストレッチ素材のデニムパンツ。シルエットがきれいで、カジュアルからきれいめまで対応。",
+    status: "active",
+    skus: [
+      { id: "sku-5", productId: "prod-2", code: "SDP-BLU-30", price: 7980, attributes: { color: "インディゴ", size: "30" }, stockQuantity: 20, reservedQuantity: 2 },
+      { id: "sku-6", productId: "prod-2", code: "SDP-BLU-32", price: 7980, attributes: { color: "インディゴ", size: "32" }, stockQuantity: 18, reservedQuantity: 0 },
+      { id: "sku-7", productId: "prod-2", code: "SDP-BLK-30", price: 7980, attributes: { color: "ブラック", size: "30" }, stockQuantity: 5, reservedQuantity: 1 },
+    ],
+    createdAt: "2026-03-05T14:00:00Z",
+    updatedAt: "2026-03-28T11:00:00Z",
+  },
+  {
+    id: "prod-3",
+    sellerId: "seller-1",
+    categoryId: "cat-3",
+    name: "軽量ダウンジャケット",
+    slug: "lightweight-down-jacket",
+    description: "薄くて軽いのに暖かい、高品質ダウンジャケット。コンパクトに収納可能。",
+    status: "active",
+    skus: [
+      { id: "sku-8", productId: "prod-3", code: "LDJ-NVY-M", price: 15800, attributes: { color: "ネイビー", size: "M" }, stockQuantity: 12, reservedQuantity: 1 },
+      { id: "sku-9", productId: "prod-3", code: "LDJ-NVY-L", price: 15800, attributes: { color: "ネイビー", size: "L" }, stockQuantity: 8, reservedQuantity: 0 },
+      { id: "sku-10", productId: "prod-3", code: "LDJ-BLK-M", price: 15800, attributes: { color: "ブラック", size: "M" }, stockQuantity: 3, reservedQuantity: 1 },
+    ],
+    createdAt: "2026-02-15T09:00:00Z",
+    updatedAt: "2026-04-02T16:00:00Z",
+  },
+  {
+    id: "prod-4",
+    sellerId: "seller-1",
+    categoryId: "cat-4",
+    name: "レザーミニウォレット",
+    slug: "leather-mini-wallet",
+    description: "上質な本革を使用したコンパクトウォレット。カード収納も充実。",
+    status: "active",
+    skus: [
+      { id: "sku-11", productId: "prod-4", code: "LMW-BRN", price: 12800, attributes: { color: "ブラウン" }, stockQuantity: 25, reservedQuantity: 3 },
+      { id: "sku-12", productId: "prod-4", code: "LMW-BLK", price: 12800, attributes: { color: "ブラック" }, stockQuantity: 30, reservedQuantity: 2 },
+    ],
+    createdAt: "2026-03-10T12:00:00Z",
+    updatedAt: "2026-04-03T10:00:00Z",
+  },
+  {
+    id: "prod-5",
+    sellerId: "seller-1",
+    categoryId: "cat-1",
+    name: "リネンブレンドシャツ",
+    slug: "linen-blend-shirt",
+    description: "リネン混紡の涼しげなシャツ。春夏シーズンにぴったり。",
+    status: "draft",
+    skus: [
+      { id: "sku-13", productId: "prod-5", code: "LBS-WHT-M", price: 6480, attributes: { color: "ホワイト", size: "M" }, stockQuantity: 0, reservedQuantity: 0 },
+      { id: "sku-14", productId: "prod-5", code: "LBS-BEG-M", price: 6480, attributes: { color: "ベージュ", size: "M" }, stockQuantity: 0, reservedQuantity: 0 },
+    ],
+    createdAt: "2026-04-05T08:00:00Z",
+    updatedAt: "2026-04-05T08:00:00Z",
+  },
+];
+
+export const orders: Order[] = [
+  {
+    id: "ORD-20260406-001",
+    buyerName: "田中 太郎",
+    items: [
+      { productName: "オーガニックコットンTシャツ", skuCode: "OCT-WHT-M", quantity: 2, unitPrice: 3980 },
+      { productName: "レザーミニウォレット", skuCode: "LMW-BRN", quantity: 1, unitPrice: 12800 },
+    ],
+    totalAmount: 20760,
+    status: "pending",
+    createdAt: "2026-04-06T09:30:00Z",
+  },
+  {
+    id: "ORD-20260406-002",
+    buyerName: "佐藤 花子",
+    items: [
+      { productName: "ストレッチデニムパンツ", skuCode: "SDP-BLU-30", quantity: 1, unitPrice: 7980 },
+    ],
+    totalAmount: 7980,
+    status: "pending",
+    createdAt: "2026-04-06T10:15:00Z",
+  },
+  {
+    id: "ORD-20260405-003",
+    buyerName: "鈴木 一郎",
+    items: [
+      { productName: "軽量ダウンジャケット", skuCode: "LDJ-NVY-M", quantity: 1, unitPrice: 15800 },
+    ],
+    totalAmount: 15800,
+    status: "processing",
+    createdAt: "2026-04-05T14:00:00Z",
+  },
+  {
+    id: "ORD-20260404-004",
+    buyerName: "山田 美咲",
+    items: [
+      { productName: "オーガニックコットンTシャツ", skuCode: "OCT-BLK-M", quantity: 1, unitPrice: 3980 },
+      { productName: "オーガニックコットンTシャツ", skuCode: "OCT-BLK-L", quantity: 1, unitPrice: 3980 },
+    ],
+    totalAmount: 7960,
+    status: "shipped",
+    createdAt: "2026-04-04T11:20:00Z",
+  },
+  {
+    id: "ORD-20260403-005",
+    buyerName: "高橋 健太",
+    items: [
+      { productName: "レザーミニウォレット", skuCode: "LMW-BLK", quantity: 1, unitPrice: 12800 },
+    ],
+    totalAmount: 12800,
+    status: "completed",
+    createdAt: "2026-04-03T16:45:00Z",
+  },
+  {
+    id: "ORD-20260402-006",
+    buyerName: "伊藤 さくら",
+    items: [
+      { productName: "ストレッチデニムパンツ", skuCode: "SDP-BLU-32", quantity: 1, unitPrice: 7980 },
+      { productName: "オーガニックコットンTシャツ", skuCode: "OCT-WHT-L", quantity: 1, unitPrice: 3980 },
+    ],
+    totalAmount: 11960,
+    status: "completed",
+    createdAt: "2026-04-02T09:00:00Z",
+  },
+];
+
+export const inventoryItems: InventoryItem[] = products.flatMap((product) =>
+  product.skus.map((sku) => ({
+    skuId: sku.id,
+    skuCode: sku.code,
+    productName: product.name,
+    stockQuantity: sku.stockQuantity,
+    reservedQuantity: sku.reservedQuantity,
+    availableQuantity: sku.stockQuantity - sku.reservedQuantity,
+    lowStockThreshold: 10,
+  }))
+);
+
+export const salesStats: SalesStats = {
+  todaySales: 28740,
+  monthlySales: 487600,
+  pendingOrders: 2,
+  stockAlerts: inventoryItems.filter(
+    (item) => item.availableQuantity <= item.lowStockThreshold
+  ).length,
+};

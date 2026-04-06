@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/gen/go/inventory/v1;inventoryv1";
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// InventoryService manages stock levels and reservations.
+service InventoryService {
+  rpc GetInventory(GetInventoryRequest) returns (GetInventoryResponse);
+  rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
+  rpc UpdateStock(UpdateStockRequest) returns (UpdateStockResponse);
+  rpc ReserveStock(ReserveStockRequest) returns (ReserveStockResponse);
+  rpc ReleaseStock(ReleaseStockRequest) returns (ReleaseStockResponse);
+  rpc ConfirmSold(ConfirmSoldRequest) returns (ConfirmSoldResponse);
+}
+
+// ─── Domain Messages ─────────────────────────────────────────
+
+message InventoryItem {
+  string id = 1;
+  string tenant_id = 2;
+  string sku_id = 3;
+  string seller_id = 4;
+  int32 quantity_available = 5;
+  int32 quantity_reserved = 6;
+  int32 low_stock_threshold = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// ─── GetInventory ────────────────────────────────────────────
+
+message GetInventoryRequest {
+  string tenant_id = 1;
+  string sku_id = 2;
+}
+
+message GetInventoryResponse {
+  InventoryItem item = 1;
+}
+
+// ─── ListInventory ───────────────────────────────────────────
+
+message ListInventoryRequest {
+  string tenant_id = 1;
+  string seller_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListInventoryResponse {
+  repeated InventoryItem items = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+// ─── UpdateStock ─────────────────────────────────────────────
+
+message UpdateStockRequest {
+  string tenant_id = 1;
+  string sku_id = 2;
+  string seller_id = 3;
+  int32 quantity = 4;
+  int32 low_stock_threshold = 5;
+}
+
+message UpdateStockResponse {
+  InventoryItem item = 1;
+}
+
+// ─── ReserveStock ────────────────────────────────────────────
+
+message ReserveStockRequest {
+  string tenant_id = 1;
+  string sku_id = 2;
+  int32 quantity = 3;
+}
+
+message ReserveStockResponse {
+  bool success = 1;
+  InventoryItem item = 2;
+}
+
+// ─── ReleaseStock ────────────────────────────────────────────
+
+message ReleaseStockRequest {
+  string tenant_id = 1;
+  string sku_id = 2;
+  int32 quantity = 3;
+}
+
+message ReleaseStockResponse {
+  InventoryItem item = 1;
+}
+
+// ─── ConfirmSold ─────────────────────────────────────────────
+
+message ConfirmSoldRequest {
+  string tenant_id = 1;
+  string sku_id = 2;
+  int32 quantity = 3;
+}
+
+message ConfirmSoldResponse {
+  InventoryItem item = 1;
+}
