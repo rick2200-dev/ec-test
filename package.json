@@ -1,0 +1,20 @@
+{
+  "name": "ec-marketplace",
+  "private": true,
+  "scripts": {
+    "dev:buyer": "pnpm --filter buyer dev",
+    "dev:seller": "pnpm --filter seller dev",
+    "dev:admin": "pnpm --filter admin dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=20"
+  }
+}
