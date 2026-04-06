@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ec-marketplace
+  namespace: argocd
+spec:
+  description: EC Marketplace multi-tenant platform
+
+  sourceRepos:
+    - 'https://github.com/*/ec-marketplace.git'
+
+  destinations:
+    - namespace: ec-marketplace
+      server: https://kubernetes.default.svc
+      name: in-cluster
+
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: '*'
+    - group: apps
+      kind: '*'
+    - group: autoscaling
+      kind: '*'
+    - group: batch
+      kind: '*'
+    - group: networking.k8s.io
+      kind: '*'
+    - group: policy
+      kind: '*'
+
+  roles:
+    - name: admin
+      description: Full access to ec-marketplace project
+      policies:
+        - p, proj:ec-marketplace:admin, applications, *, ec-marketplace/*, allow
+      groups:
+        - ec-marketplace-admins
+
+    - name: readonly
+      description: Read-only access
+      policies:
+        - p, proj:ec-marketplace:readonly, applications, get, ec-marketplace/*, allow
+      groups:
+        - ec-marketplace-viewers

@@ -1,0 +1,172 @@
+import type { Tenant, Seller, CommissionRule, PlatformStats } from "./types";
+
+export const platformStats: PlatformStats = {
+  totalTenants: 12,
+  totalSellers: 156,
+  monthlyTransactionAmount: 48750000,
+  monthlyCommissionIncome: 4875000,
+};
+
+export const tenants: Tenant[] = [
+  {
+    id: "t-001",
+    name: "東京マーケット",
+    slug: "tokyo-market",
+    status: "active",
+    sellerCount: 45,
+    createdAt: "2025-01-15",
+  },
+  {
+    id: "t-002",
+    name: "大阪ショッピング",
+    slug: "osaka-shopping",
+    status: "active",
+    sellerCount: 32,
+    createdAt: "2025-02-20",
+  },
+  {
+    id: "t-003",
+    name: "北海道マルシェ",
+    slug: "hokkaido-marche",
+    status: "active",
+    sellerCount: 28,
+    createdAt: "2025-03-10",
+  },
+  {
+    id: "t-004",
+    name: "九州ストア",
+    slug: "kyushu-store",
+    status: "pending",
+    sellerCount: 0,
+    createdAt: "2026-04-01",
+  },
+  {
+    id: "t-005",
+    name: "沖縄マーケットプレイス",
+    slug: "okinawa-marketplace",
+    status: "suspended",
+    sellerCount: 12,
+    createdAt: "2025-06-05",
+  },
+];
+
+export const sellers: Seller[] = [
+  {
+    id: "s-001",
+    name: "山田電機",
+    tenantName: "東京マーケット",
+    status: "approved",
+    commissionRate: 10,
+    stripeConnected: true,
+    createdAt: "2025-02-01",
+  },
+  {
+    id: "s-002",
+    name: "佐藤ファッション",
+    tenantName: "東京マーケット",
+    status: "approved",
+    commissionRate: 12,
+    stripeConnected: true,
+    createdAt: "2025-02-15",
+  },
+  {
+    id: "s-003",
+    name: "田中オーガニック",
+    tenantName: "大阪ショッピング",
+    status: "pending",
+    commissionRate: 8,
+    stripeConnected: false,
+    createdAt: "2026-03-28",
+  },
+  {
+    id: "s-004",
+    name: "鈴木スポーツ",
+    tenantName: "大阪ショッピング",
+    status: "approved",
+    commissionRate: 10,
+    stripeConnected: true,
+    createdAt: "2025-04-10",
+  },
+  {
+    id: "s-005",
+    name: "高橋ベーカリー",
+    tenantName: "北海道マルシェ",
+    status: "pending",
+    commissionRate: 8,
+    stripeConnected: false,
+    createdAt: "2026-04-02",
+  },
+  {
+    id: "s-006",
+    name: "伊藤家具",
+    tenantName: "東京マーケット",
+    status: "suspended",
+    commissionRate: 10,
+    stripeConnected: true,
+    createdAt: "2025-03-01",
+  },
+];
+
+export const commissionRules: CommissionRule[] = [
+  {
+    id: "cr-001",
+    tenantName: "東京マーケット",
+    sellerName: null,
+    category: null,
+    rate: 10,
+    priority: 1,
+    validFrom: "2025-01-01",
+    validUntil: null,
+  },
+  {
+    id: "cr-002",
+    tenantName: "東京マーケット",
+    sellerName: null,
+    category: "家電",
+    rate: 8,
+    priority: 2,
+    validFrom: "2025-01-01",
+    validUntil: null,
+  },
+  {
+    id: "cr-003",
+    tenantName: "大阪ショッピング",
+    sellerName: null,
+    category: null,
+    rate: 12,
+    priority: 1,
+    validFrom: "2025-02-01",
+    validUntil: null,
+  },
+  {
+    id: "cr-004",
+    tenantName: "北海道マルシェ",
+    sellerName: null,
+    category: "食品",
+    rate: 6,
+    priority: 2,
+    validFrom: "2025-03-01",
+    validUntil: "2026-12-31",
+  },
+  {
+    id: "cr-005",
+    tenantName: "東京マーケット",
+    sellerName: "山田電機",
+    category: null,
+    rate: 7,
+    priority: 3,
+    validFrom: "2025-04-01",
+    validUntil: "2026-06-30",
+  },
+];
+
+export const pendingApplications = sellers.filter((s) => s.status === "pending");
+
+export const serviceHealth = [
+  { name: "API Gateway", status: "operational" as const },
+  { name: "認証サービス", status: "operational" as const },
+  { name: "決済サービス", status: "operational" as const },
+  { name: "検索サービス", status: "degraded" as const },
+  { name: "通知サービス", status: "operational" as const },
+  { name: "画像処理", status: "operational" as const },
+];

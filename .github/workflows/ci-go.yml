@@ -1,0 +1,64 @@
+name: Go CI
+
+on:
+  pull_request:
+    paths:
+      - 'services/**'
+      - 'pkg/**'
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            gateway: ['services/gateway/**', 'pkg/**']
+            auth: ['services/auth/**', 'pkg/**']
+            catalog: ['services/catalog/**', 'pkg/**']
+            inventory: ['services/inventory/**', 'pkg/**']
+            order: ['services/order/**', 'pkg/**']
+            search: ['services/search/**', 'pkg/**']
+            recommend: ['services/recommend/**', 'pkg/**']
+            notification: ['services/notification/**', 'pkg/**']
+
+  lint-and-test:
+    needs: changes
+    if: ${{ needs.changes.outputs.services != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: services/${{ matrix.service }}
+          args: --timeout=5m
+
+      - name: Test
+        run: |
+          cd services/${{ matrix.service }}
+          go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.service }}
+          path: services/${{ matrix.service }}/coverage.out
+          retention-days: 7

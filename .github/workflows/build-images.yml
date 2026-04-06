@@ -1,0 +1,112 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'pkg/**'
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  REGISTRY: asia-northeast1-docker.pkg.dev
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REPOSITORY: ec-marketplace
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            gateway: ['services/gateway/**', 'pkg/**']
+            auth: ['services/auth/**', 'pkg/**']
+            catalog: ['services/catalog/**', 'pkg/**']
+            inventory: ['services/inventory/**', 'pkg/**']
+            order: ['services/order/**', 'pkg/**']
+            search: ['services/search/**', 'pkg/**']
+            recommend: ['services/recommend/**', 'pkg/**']
+            notification: ['services/notification/**', 'pkg/**']
+
+  build-push:
+    needs: changes
+    if: ${{ needs.changes.outputs.services != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.changes.outputs.services) }}
+    outputs:
+      sha: ${{ steps.meta.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${SHA}" >> "$GITHUB_OUTPUT"
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-manifests:
+    needs: [changes, build-push]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update dev overlay image tags
+        run: |
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          SERVICES='${{ needs.changes.outputs.services }}'
+          KUSTOMIZATION="deploy/overlays/dev/kustomization.yaml"
+
+          for service in $(echo "${SERVICES}" | jq -r '.[]'); do
+            IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${service}"
+
+            # Use yq to update the image tag in kustomization.yaml
+            yq eval "(.images[] | select(.name == \"${service}\")).newTag = \"${SHA}\"" -i "${KUSTOMIZATION}"
+            yq eval "(.images[] | select(.name == \"${service}\")).newName = \"${IMAGE}\"" -i "${KUSTOMIZATION}"
+          done
+
+      - name: Commit and push manifest changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy/overlays/dev/kustomization.yaml
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore: update dev image tags [skip ci]"
+          git push

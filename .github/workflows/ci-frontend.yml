@@ -1,0 +1,41 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
+
+permissions:
+  contents: read
+
+jobs:
+  lint-typecheck-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo lint --filter='...[origin/main]'
+
+      - name: Type check
+        run: pnpm turbo typecheck --filter='...[origin/main]'
+
+      - name: Build
+        run: pnpm turbo build --filter='...[origin/main]'

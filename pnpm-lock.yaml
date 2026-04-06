@@ -12,6 +12,34 @@ importers:
         specifier: ^2
         version: 2.9.4
 
+  apps/admin:
+    dependencies:
+      next:
+        specifier: ^15.3.1
+        version: 15.5.14(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4
+        version: 4.2.2
+      '@types/node':
+        specifier: ^22
+        version: 22.19.17
+      '@types/react':
+        specifier: ^19
+        version: 19.2.14
+      tailwindcss:
+        specifier: ^4
+        version: 4.2.2
+      typescript:
+        specifier: ^5.8
+        version: 5.9.3
+
   apps/buyer:
     dependencies:
       next:

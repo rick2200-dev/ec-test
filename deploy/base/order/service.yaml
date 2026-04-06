@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order
+  labels:
+    app.kubernetes.io/name: order
+    app.kubernetes.io/component: service
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: order

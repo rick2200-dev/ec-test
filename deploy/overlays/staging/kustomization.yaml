@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ec-marketplace
+
+resources:
+  - ../../base
+
+patches:
+  - path: patches/resources.yaml
+
+images:
+  - name: gateway
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/gateway
+    newTag: latest
+  - name: auth
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/auth
+    newTag: latest
+  - name: catalog
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/catalog
+    newTag: latest
+  - name: order
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/order
+    newTag: latest
+  - name: inventory
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/inventory
+    newTag: latest
+  - name: search
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/search
+    newTag: latest
+  - name: recommend
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/recommend
+    newTag: latest
+  - name: notification
+    newName: asia-northeast1-docker.pkg.dev/PROJECT_ID/ec-marketplace/notification
+    newTag: latest
+
+configMapGenerator:
+  - name: common-config
+    behavior: create
+    literals:
+      - ENV=staging
+      - LOG_LEVEL=info
