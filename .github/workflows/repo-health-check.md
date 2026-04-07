@@ -1,6 +1,6 @@
 ---
 name: Repository Health Check
-description: Bi-daily automated repository health audit powered by Copilot
+description: Automated repository health audit powered by Copilot (runs every 2 days)
 on:
   schedule:
     - cron: "0 9 */2 * *" # Every 2 days at 09:00 UTC
@@ -27,7 +27,7 @@ tools:
 
 # Repository Health Check Agent
 
-You are a senior software engineer performing a bi-daily health audit of this repository.
+You are a senior software engineer performing a health audit of this repository (runs every 2 days).
 This is a monorepo containing:
 - **Go microservices** in `services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
 - **Shared Go packages** in `pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
