@@ -4,8 +4,6 @@ package common.v1;
 
 option go_package = "github.com/Riku-KANO/ec-test/gen/go/common/v1;commonv1";
 
-import "google/protobuf/timestamp.proto";
-
 // Money represents a monetary amount.
 message Money {
   int64 amount = 1;   // Amount in smallest currency unit (e.g., cents/yen)

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,10 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"google.golang.org/grpc"
 
+	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/services/order/internal/config"
+	grpcserver "github.com/Riku-KANO/ec-test/services/order/internal/grpcserver"
 	"github.com/Riku-KANO/ec-test/services/order/internal/handler"
 	"github.com/Riku-KANO/ec-test/services/order/internal/repository"
 	"github.com/Riku-KANO/ec-test/services/order/internal/service"
@@ -83,6 +87,24 @@ func main() {
 	// Payout endpoints (tenant-scoped)
 	r.Mount("/payouts", payoutHandler.Routes())
 
+	// gRPC server
+	grpcAddr := ":" + cfg.GRPCPort
+	grpcSrv := grpc.NewServer()
+	orderv1.RegisterOrderServiceServer(grpcSrv, grpcserver.NewServer(orderSvc))
+
+	go func() {
+		lis, err := net.Listen("tcp", grpcAddr)
+		if err != nil {
+			slog.Error("failed to listen for gRPC", "addr", grpcAddr, "error", err)
+			os.Exit(1)
+		}
+		slog.Info("starting order gRPC server", "addr", grpcAddr)
+		if err := grpcSrv.Serve(lis); err != nil {
+			slog.Error("gRPC server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
 	// HTTP server
 	addr := ":" + cfg.HTTPPort
 	srv := &http.Server{
@@ -107,6 +129,8 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-quit
 	slog.Info("shutting down", "signal", sig.String())
+
+	grpcSrv.GracefulStop()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()

@@ -11,8 +11,8 @@ import "common/v1/common.proto";
 service OrderService {
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
   rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
-  rpc ListBuyerOrders(ListBuyerOrdersRequest) returns (ListOrdersResponse);
-  rpc ListSellerOrders(ListSellerOrdersRequest) returns (ListOrdersResponse);
+  rpc ListBuyerOrders(ListBuyerOrdersRequest) returns (ListBuyerOrdersResponse);
+  rpc ListSellerOrders(ListSellerOrdersRequest) returns (ListSellerOrdersResponse);
   rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
   rpc ListPayouts(ListPayoutsRequest) returns (ListPayoutsResponse);
 }
@@ -105,7 +105,12 @@ message ListSellerOrdersRequest {
   common.v1.PaginationRequest pagination = 4;
 }
 
-message ListOrdersResponse {
+message ListBuyerOrdersResponse {
+  repeated Order orders = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message ListSellerOrdersResponse {
   repeated Order orders = 1;
   common.v1.PaginationResponse pagination = 2;
 }

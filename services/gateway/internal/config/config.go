@@ -22,6 +22,11 @@ type Config struct {
 	JWTAudience string
 	JWKSURL     string
 
+	// gRPC service addresses (host:port)
+	CatalogGRPCAddr   string
+	InventoryGRPCAddr string
+	OrderGRPCAddr     string
+
 	// CORS
 	AllowedOrigins string
 }
@@ -42,6 +47,10 @@ func Load() Config {
 		JWTIssuer:   getEnv("JWT_ISSUER", "https://ecmarket.example.com/"),
 		JWTAudience: getEnv("JWT_AUDIENCE", "https://api.ecmarket.example.com"),
 		JWKSURL:     getEnv("JWKS_URL", "https://ecmarket.example.com/.well-known/jwks.json"),
+
+		CatalogGRPCAddr:   getEnv("CATALOG_GRPC_ADDR", "localhost:50051"),
+		InventoryGRPCAddr: getEnv("INVENTORY_GRPC_ADDR", "localhost:50052"),
+		OrderGRPCAddr:     getEnv("ORDER_GRPC_ADDR", "localhost:50053"),
 
 		AllowedOrigins: getEnv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"),
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
+	"github.com/Riku-KANO/ec-test/services/gateway/internal/grpcclient"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/handler"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
@@ -20,6 +21,16 @@ func main() {
 	cfg := config.Load()
 
 	svc := proxy.NewServices(cfg)
+
+	// Create gRPC clients for downstream services.
+	grpcClients, err := grpcclient.NewGRPCClients(cfg)
+	if err != nil {
+		slog.Error("failed to create gRPC clients", "error", err)
+		os.Exit(1)
+	}
+	defer grpcClients.Close()
+	// gRPC clients are available for future handler migration.
+	_ = grpcClients
 
 	router := handler.NewRouter(cfg, svc)
 
