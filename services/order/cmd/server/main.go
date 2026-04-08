@@ -65,7 +65,9 @@ func main() {
 	}
 	defer func() {
 		if publisher != nil {
-			publisher.Close()
+			if err := publisher.Close(); err != nil {
+				slog.Error("failed to close pubsub publisher", "error", err)
+			}
 		}
 	}()
 

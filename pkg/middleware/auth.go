@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -39,8 +40,8 @@ func NewJWTMiddleware(ctx context.Context, cfg JWTConfig) *JWTMiddleware {
 	if cfg.JWKSURL != "" {
 		// Register the JWKS URL with a 15-minute refresh interval.
 		if err := cache.Register(cfg.JWKSURL, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
-			// Non-fatal: the cache will retry on first use.
-			_ = err
+			slog.Error("failed to register JWKS URL; JWT verification will fail at runtime",
+				"jwks_url", cfg.JWKSURL, "error", err)
 		}
 	}
 	return &JWTMiddleware{config: cfg, keyCache: cache}
