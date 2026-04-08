@@ -1,13 +1,15 @@
 package middleware
 
 import (
-	"encoding/base64"
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 )
@@ -24,14 +26,22 @@ type JWTConfig struct {
 }
 
 // JWTMiddleware validates Auth0 JWT tokens and extracts tenant context.
-// TODO: Replace payload-only decode with proper JWKS signature verification for production.
 type JWTMiddleware struct {
-	config JWTConfig
+	config  JWTConfig
+	keyCache *jwk.Cache
 }
 
-// NewJWTMiddleware creates a new JWT middleware.
+// NewJWTMiddleware creates a new JWT middleware and initializes the JWKS key cache.
 func NewJWTMiddleware(cfg JWTConfig) *JWTMiddleware {
-	return &JWTMiddleware{config: cfg}
+	cache := jwk.NewCache(context.Background())
+	if cfg.JWKSURL != "" {
+		// Register the JWKS URL with a 15-minute refresh interval.
+		if err := cache.Register(cfg.JWKSURL, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {
+			// Non-fatal: the cache will retry on first use.
+			_ = err
+		}
+	}
+	return &JWTMiddleware{config: cfg, keyCache: cache}
 }
 
 // VerifyJWT is the HTTP middleware that validates the JWT and injects tenant context.
@@ -54,7 +64,7 @@ func (m *JWTMiddleware) VerifyJWT(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := extractClaims(parts[1])
+		claims, err := m.verifyAndExtractClaims(r.Context(), parts[1])
 		if err != nil {
 			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
 			return
@@ -84,23 +94,38 @@ func RequireRole(role string) func(http.Handler) http.Handler {
 	}
 }
 
-// extractClaims decodes the JWT payload without signature verification.
-func extractClaims(token string) (map[string]any, error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid token format")
+// verifyAndExtractClaims verifies the JWT signature using JWKS and returns the claims.
+func (m *JWTMiddleware) verifyAndExtractClaims(ctx context.Context, rawToken string) (map[string]any, error) {
+	if m.config.JWKSURL == "" {
+		return nil, fmt.Errorf("JWKS URL not configured")
 	}
 
-	decoded, err := base64.RawURLEncoding.DecodeString(parts[1])
+	keySet, err := m.keyCache.Get(ctx, m.config.JWKSURL)
 	if err != nil {
-		return nil, fmt.Errorf("decode payload: %w", err)
+		return nil, fmt.Errorf("fetch JWKS: %w", err)
 	}
 
-	var claims map[string]any
-	if err := json.Unmarshal(decoded, &claims); err != nil {
-		return nil, fmt.Errorf("parse claims: %w", err)
+	parseOpts := []jwt.ParseOption{
+		jwt.WithKeySet(keySet),
+		jwt.WithValidate(true),
+	}
+	if m.config.Issuer != "" {
+		parseOpts = append(parseOpts, jwt.WithIssuer(m.config.Issuer))
+	}
+	if m.config.Audience != "" {
+		parseOpts = append(parseOpts, jwt.WithAudience(m.config.Audience))
 	}
 
+	token, err := jwt.ParseString(rawToken, parseOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("verify token: %w", err)
+	}
+
+	// Convert jwt.Token to map[string]any for downstream processing.
+	claims, err := token.AsMap(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("extract claims: %w", err)
+	}
 	return claims, nil
 }
 

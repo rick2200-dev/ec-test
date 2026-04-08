@@ -17,6 +17,7 @@ import (
 	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/order/internal/config"
 	grpcserver "github.com/Riku-KANO/ec-test/services/order/internal/grpcserver"
 	"github.com/Riku-KANO/ec-test/services/order/internal/handler"
@@ -49,13 +50,28 @@ func main() {
 	// Stripe client
 	sc := stripeClient.NewClient(cfg.StripeSecretKey)
 
+	// Pub/Sub publisher
+	var publisher pubsub.Publisher
+	if cfg.PubSubProjectID != "" {
+		pub, pubErr := pubsub.NewGCPPublisher(ctx, cfg.PubSubProjectID)
+		if pubErr != nil {
+			slog.Warn("failed to create pubsub publisher, events will not be published", "error", pubErr)
+		} else {
+			publisher = pub
+			defer pub.Close()
+			slog.Info("pubsub publisher created", "project_id", cfg.PubSubProjectID)
+		}
+	} else {
+		slog.Info("PUBSUB_PROJECT_ID not set, event publishing disabled")
+	}
+
 	// Repositories
 	orderRepo := repository.NewOrderRepository(pool)
 	commissionRepo := repository.NewCommissionRepository(pool)
 	payoutRepo := repository.NewPayoutRepository(pool)
 
 	// Service
-	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc)
+	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher)
 
 	// Handlers
 	orderHandler := handler.NewOrderHandler(orderSvc)

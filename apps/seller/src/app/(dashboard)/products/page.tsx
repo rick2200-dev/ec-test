@@ -1,21 +1,6 @@
 import Link from "next/link";
 import { products } from "@/lib/mock-data";
-
-function formatCurrency(amount: number): string {
-  return `¥${amount.toLocaleString()}`;
-}
-
-const statusLabels: Record<string, string> = {
-  draft: "下書き",
-  active: "公開中",
-  archived: "非公開",
-};
-
-const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-800",
-  active: "bg-green-100 text-green-800",
-  archived: "bg-red-100 text-red-800",
-};
+import { formatCurrency, STATUS_LABELS, STATUS_COLORS } from "@/lib/utils";
 
 export default function ProductsPage() {
   return (
@@ -122,9 +107,9 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[product.status]}`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[product.status]}`}
                       >
-                        {statusLabels[product.status]}
+                        {STATUS_LABELS[product.status]}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-text-primary">
