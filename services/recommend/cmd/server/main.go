@@ -91,7 +91,7 @@ func main() {
 	r.Get("/readyz", healthHandler.Readiness)
 
 	// Recommendation endpoints (require JWT / tenant context)
-	jwtMW := pkgmiddleware.NewJWTMiddleware(pkgmiddleware.JWTConfig{})
+	jwtMW := pkgmiddleware.NewJWTMiddleware(context.Background(), pkgmiddleware.JWTConfig{})
 	r.Group(func(r chi.Router) {
 		r.Use(jwtMW.VerifyJWT)
 		r.Mount("/recommendations", recommendHandler.Routes())

@@ -32,8 +32,10 @@ type JWTMiddleware struct {
 }
 
 // NewJWTMiddleware creates a new JWT middleware and initializes the JWKS key cache.
-func NewJWTMiddleware(cfg JWTConfig) *JWTMiddleware {
-	cache := jwk.NewCache(context.Background())
+// The provided ctx controls the lifetime of the cache's background refresh goroutines;
+// cancel it during service shutdown to stop background JWKS fetches.
+func NewJWTMiddleware(ctx context.Context, cfg JWTConfig) *JWTMiddleware {
+	cache := jwk.NewCache(ctx)
 	if cfg.JWKSURL != "" {
 		// Register the JWKS URL with a 15-minute refresh interval.
 		if err := cache.Register(cfg.JWKSURL, jwk.WithMinRefreshInterval(15*time.Minute)); err != nil {

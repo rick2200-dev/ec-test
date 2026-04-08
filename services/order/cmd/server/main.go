@@ -58,12 +58,16 @@ func main() {
 			slog.Warn("failed to create pubsub publisher, events will not be published", "error", pubErr)
 		} else {
 			publisher = pub
-			defer pub.Close()
 			slog.Info("pubsub publisher created", "project_id", cfg.PubSubProjectID)
 		}
 	} else {
 		slog.Info("PUBSUB_PROJECT_ID not set, event publishing disabled")
 	}
+	defer func() {
+		if publisher != nil {
+			publisher.Close()
+		}
+	}()
 
 	// Repositories
 	orderRepo := repository.NewOrderRepository(pool)
