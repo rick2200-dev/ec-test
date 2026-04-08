@@ -7,11 +7,14 @@ import (
 
 // Config holds all configuration for the recommend service.
 type Config struct {
-	DatabaseURL      string
-	HTTPPort         string
-	VertexAIEnabled  bool
-	GCPProjectID     string
-	PubSubProjectID  string
+	DatabaseURL     string
+	HTTPPort        string
+	VertexAIEnabled bool
+	GCPProjectID    string
+	PubSubProjectID string
+	JWTIssuer       string
+	JWTAudience     string
+	JWKSURL         string
 }
 
 // Load reads configuration from environment variables.
@@ -22,6 +25,9 @@ func Load() Config {
 		VertexAIEnabled: strings.ToLower(getEnv("VERTEX_AI_ENABLED", "false")) == "true",
 		GCPProjectID:    getEnv("GCP_PROJECT_ID", ""),
 		PubSubProjectID: getEnv("PUBSUB_PROJECT_ID", ""),
+		JWTIssuer:       getEnv("JWT_ISSUER", ""),
+		JWTAudience:     getEnv("JWT_AUDIENCE", ""),
+		JWKSURL:         getEnv("JWKS_URL", ""),
 	}
 }
 

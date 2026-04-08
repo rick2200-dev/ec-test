@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -60,4 +61,17 @@ func Decode(data []byte) (Event, error) {
 		return Event{}, fmt.Errorf("unmarshal event: %w", err)
 	}
 	return event, nil
+}
+
+// PublishEvent publishes an event, logging a warning on failure.
+// It is a no-op if publisher is nil, making it safe for services
+// that run without a Pub/Sub backend (e.g., in tests).
+func PublishEvent(ctx context.Context, publisher Publisher, tenantID uuid.UUID, eventType, topic string, data any) {
+	if publisher == nil {
+		return
+	}
+	event := NewEvent(eventType, tenantID, data)
+	if err := publisher.Publish(ctx, topic, event); err != nil {
+		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
+	}
 }

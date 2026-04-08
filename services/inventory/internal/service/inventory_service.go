@@ -25,13 +25,7 @@ func NewInventoryService(repo *repository.InventoryRepository, publisher pubsub.
 
 // publishEvent publishes an event if the publisher is configured.
 func (s *InventoryService) publishEvent(ctx context.Context, tenantID uuid.UUID, eventType, topic string, data any) {
-	if s.publisher == nil {
-		return
-	}
-	event := pubsub.NewEvent(eventType, tenantID, data)
-	if err := s.publisher.Publish(ctx, topic, event); err != nil {
-		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
-	}
+	pubsub.PublishEvent(ctx, s.publisher, tenantID, eventType, topic, data)
 }
 
 // GetInventory retrieves inventory for a specific SKU.

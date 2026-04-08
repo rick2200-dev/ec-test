@@ -27,10 +27,15 @@ func main() {
 
 	cfg := config.Load()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	// Background context for long-lived tasks (JWKS refresh, etc.).
+	// Cancelled during graceful shutdown to stop background goroutines.
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
 
-	pool, err := database.NewPool(ctx, database.Config{
+	initCtx, initCancel := context.WithTimeout(bgCtx, 10*time.Second)
+	defer initCancel()
+
+	pool, err := database.NewPool(initCtx, database.Config{
 		URL:      cfg.DatabaseURL,
 		MaxConns: 20,
 		MinConns: 5,
@@ -62,7 +67,7 @@ func main() {
 
 	// Pub/Sub subscriber (optional, only if PUBSUB_PROJECT_ID is set).
 	if cfg.PubSubProjectID != "" {
-		sub, err := newGCPSubscriber(ctx, cfg.PubSubProjectID)
+		sub, err := newGCPSubscriber(initCtx, cfg.PubSubProjectID)
 		if err != nil {
 			slog.Error("failed to create pubsub subscriber", "error", err)
 			os.Exit(1)
@@ -70,7 +75,7 @@ func main() {
 		defer sub.Close()
 
 		eventSub := subscriber.NewEventSubscriber(recommendSvc, sub)
-		if err := eventSub.Start(ctx); err != nil {
+		if err := eventSub.Start(initCtx); err != nil {
 			slog.Error("failed to start event subscribers", "error", err)
 			os.Exit(1)
 		}
@@ -90,8 +95,13 @@ func main() {
 	r.Get("/healthz", healthHandler.Liveness)
 	r.Get("/readyz", healthHandler.Readiness)
 
-	// Recommendation endpoints (require JWT / tenant context)
-	jwtMW := pkgmiddleware.NewJWTMiddleware(pkgmiddleware.JWTConfig{})
+	// Recommendation endpoints (require JWT / tenant context).
+	// JWT config is read from JWT_ISSUER, JWT_AUDIENCE, and JWKS_URL env vars.
+	jwtMW := pkgmiddleware.NewJWTMiddleware(bgCtx, pkgmiddleware.JWTConfig{
+		Issuer:   cfg.JWTIssuer,
+		Audience: cfg.JWTAudience,
+		JWKSURL:  cfg.JWKSURL,
+	})
 	r.Group(func(r chi.Router) {
 		r.Use(jwtMW.VerifyJWT)
 		r.Mount("/recommendations", recommendHandler.Routes())
@@ -121,6 +131,9 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-quit
 	slog.Info("shutting down", "signal", sig.String())
+
+	// Cancel background context to stop JWKS refresh and other background tasks.
+	bgCancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()

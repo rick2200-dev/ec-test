@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+
 	"github.com/go-chi/chi/v5"
 
 	pkgmw "github.com/Riku-KANO/ec-test/pkg/middleware"
@@ -10,8 +12,9 @@ import (
 )
 
 // NewRouter builds and returns the top-level chi router with all middleware
-// and route groups registered.
-func NewRouter(cfg config.Config, svc *proxy.Services) *chi.Mux {
+// and route groups registered. ctx controls the lifetime of background tasks
+// such as JWKS key refresh; cancel it during service shutdown.
+func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi.Mux {
 	r := chi.NewRouter()
 
 	// --- Global middleware ---
@@ -26,7 +29,7 @@ func NewRouter(cfg config.Config, svc *proxy.Services) *chi.Mux {
 	r.Get("/readyz", health.Readiness)
 
 	// --- JWT middleware for authenticated routes ---
-	jwtMW := pkgmw.NewJWTMiddleware(pkgmw.JWTConfig{
+	jwtMW := pkgmw.NewJWTMiddleware(ctx, pkgmw.JWTConfig{
 		Issuer:   cfg.JWTIssuer,
 		Audience: cfg.JWTAudience,
 		JWKSURL:  cfg.JWKSURL,

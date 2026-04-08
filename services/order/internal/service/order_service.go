@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/repository"
 	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/stripe"
@@ -20,6 +21,7 @@ type OrderService struct {
 	commissionRepo *repository.CommissionRepository
 	payoutRepo     *repository.PayoutRepository
 	stripe         *stripeClient.Client
+	publisher      pubsub.Publisher
 }
 
 // NewOrderService creates a new OrderService.
@@ -28,12 +30,14 @@ func NewOrderService(
 	commissionRepo *repository.CommissionRepository,
 	payoutRepo *repository.PayoutRepository,
 	stripe *stripeClient.Client,
+	publisher pubsub.Publisher,
 ) *OrderService {
 	return &OrderService{
 		orderRepo:      orderRepo,
 		commissionRepo: commissionRepo,
 		payoutRepo:     payoutRepo,
 		stripe:         stripe,
+		publisher:      publisher,
 	}
 }
 
@@ -122,6 +126,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 
 	slog.Info("order created", "order_id", order.ID, "tenant_id", tenantID, "total", totalAmount)
 
+	pubsub.PublishEvent(ctx, s.publisher, tenantID, "order.created", "order-events", map[string]any{
+		"order_id":       order.ID.String(),
+		"seller_id":      order.SellerID.String(),
+		"buyer_auth0_id": order.BuyerAuth0ID,
+		"total_amount":   totalAmount,
+		"currency":       currency,
+	})
+
 	// 7. Return order + Stripe client secret.
 	return result, clientSecret, nil
 }
@@ -144,6 +156,14 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 	}
 
 	slog.Info("order marked as paid", "order_id", order.ID, "payment_intent", stripePaymentIntentID)
+
+	pubsub.PublishEvent(ctx, s.publisher, order.TenantID, "order.paid", "order-events", map[string]any{
+		"order_id":                order.ID.String(),
+		"seller_id":               order.SellerID.String(),
+		"buyer_auth0_id":          order.BuyerAuth0ID,
+		"total_amount":            order.TotalAmount,
+		"stripe_payment_intent_id": stripePaymentIntentID,
+	})
 
 	return nil
 }
@@ -191,6 +211,13 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, orderID 
 	if err := s.orderRepo.UpdateStatus(ctx, tenantID, orderID, status); err != nil {
 		return apperrors.Internal("failed to update order status", err)
 	}
+
+	if status == domain.StatusShipped {
+		pubsub.PublishEvent(ctx, s.publisher, tenantID, "order.shipped", "order-events", map[string]any{
+			"order_id": orderID.String(),
+		})
+	}
+
 	return nil
 }
 

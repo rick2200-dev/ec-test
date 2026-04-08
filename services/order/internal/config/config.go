@@ -11,6 +11,7 @@ type Config struct {
 	GRPCPort            string
 	StripeSecretKey     string
 	StripeWebhookSecret string
+	PubSubProjectID     string
 }
 
 // Load reads configuration from environment variables.
@@ -21,6 +22,7 @@ func Load() Config {
 		GRPCPort:            getEnv("GRPC_PORT", "50053"),
 		StripeSecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		PubSubProjectID:     getEnv("PUBSUB_PROJECT_ID", ""),
 	}
 }
 

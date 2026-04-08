@@ -20,6 +20,10 @@ func main() {
 
 	cfg := config.Load()
 
+	// Background context for long-lived background tasks (e.g., JWKS key refresh).
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
+
 	svc := proxy.NewServices(cfg)
 
 	// Create gRPC clients for downstream services.
@@ -32,7 +36,7 @@ func main() {
 	// gRPC clients are available for future handler migration.
 	_ = grpcClients
 
-	router := handler.NewRouter(cfg, svc)
+	router := handler.NewRouter(bgCtx, cfg, svc)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.HTTPPort,
