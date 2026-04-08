@@ -1,0 +1,10 @@
+{
+  "extends": "@ec-marketplace/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../buyer/src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}

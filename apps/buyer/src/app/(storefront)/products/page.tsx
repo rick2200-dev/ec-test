@@ -1,16 +1,14 @@
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
-import {
-  products,
-  categories,
-  getCategoryById,
-} from "@/lib/mock-data";
+import { products, categories } from "@/lib/mock-data";
+import { getTranslations } from "next-intl/server";
 
 interface ProductsPageProps {
   searchParams: Promise<{ category?: string; sort?: string; page?: string }>;
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const t = await getTranslations();
   const params = await searchParams;
   const categorySlug = params.category;
   const currentPage = Number(params.page) || 1;
@@ -31,13 +29,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold text-gray-900">商品一覧</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t("product.productList")}</h1>
 
       <div className="mt-6 flex flex-col gap-8 lg:flex-row">
         {/* Sidebar - Category filters */}
         <aside className="w-full shrink-0 lg:w-56">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="font-semibold text-gray-900">カテゴリ</h2>
+            <h2 className="font-semibold text-gray-900">{t("nav.categories")}</h2>
             <ul className="mt-3 space-y-2">
               <li>
                 <Link
@@ -47,8 +45,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                       ? "font-semibold text-blue-600"
                       : "text-gray-600 hover:text-gray-900"
                   }`}
+                  {...(!categorySlug ? { "aria-current": "page" as const } : {})}
                 >
-                  すべて
+                  {t("common.all")}
                 </Link>
               </li>
               {categories.map((cat) => (
@@ -60,6 +59,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                         ? "font-semibold text-blue-600"
                         : "text-gray-600 hover:text-gray-900"
                     }`}
+                    {...(categorySlug === cat.slug ? { "aria-current": "page" as const } : {})}
                   >
                     {cat.name}
                   </Link>
@@ -70,12 +70,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
           {/* Sort placeholder */}
           <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="font-semibold text-gray-900">並び替え</h2>
-            <select className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-              <option>おすすめ順</option>
-              <option>価格が安い順</option>
-              <option>価格が高い順</option>
-              <option>新着順</option>
+            <h2 className="font-semibold text-gray-900">{t("common.sort")}</h2>
+            <select
+              aria-label={t("common.sort")}
+              className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option>{t("product.sortRecommended")}</option>
+              <option>{t("product.sortPriceLow")}</option>
+              <option>{t("product.sortPriceHigh")}</option>
+              <option>{t("product.sortNewest")}</option>
             </select>
           </div>
         </aside>
@@ -85,6 +88,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           {paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-500">
               <svg
+                aria-hidden="true"
                 className="h-12 w-12 text-gray-300"
                 fill="none"
                 stroke="currentColor"
@@ -97,12 +101,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
                 />
               </svg>
-              <p className="mt-4 text-sm">該当する商品が見つかりませんでした</p>
+              <p className="mt-4 text-sm">{t("product.noProductsFound")}</p>
             </div>
           ) : (
             <>
               <p className="mb-4 text-sm text-gray-500">
-                {filtered.length}件の商品
+                {t("product.productsCount", { count: filtered.length })}
               </p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {paged.map((product) => (
@@ -114,23 +118,25 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <Link
-                    key={page}
-                    href={`/products?${categorySlug ? `category=${categorySlug}&` : ""}page=${page}`}
-                    className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm ${
-                      page === currentPage
-                        ? "bg-blue-600 text-white"
-                        : "border border-gray-300 text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {page}
-                  </Link>
-                )
-              )}
-            </div>
+            <nav
+              aria-label={t("a11y.pagination")}
+              className="mt-8 flex items-center justify-center gap-2"
+            >
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Link
+                  key={page}
+                  href={`/products?${categorySlug ? `category=${categorySlug}&` : ""}page=${page}`}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm ${
+                    page === currentPage
+                      ? "bg-blue-600 text-white"
+                      : "border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  }`}
+                  {...(page === currentPage ? { "aria-current": "page" as const } : {})}
+                >
+                  {page}
+                </Link>
+              ))}
+            </nav>
           )}
         </div>
       </div>

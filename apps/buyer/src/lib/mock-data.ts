@@ -292,9 +292,7 @@ export function getProductWithSKUs(slug: string): ProductWithSKUs | undefined {
     product,
     skus: skus.filter((s) => s.product_id === product.id),
     seller: getSellerById(product.seller_id),
-    category: product.category_id
-      ? getCategoryById(product.category_id)
-      : undefined,
+    category: product.category_id ? getCategoryById(product.category_id) : undefined,
   };
 }
 

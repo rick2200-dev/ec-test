@@ -1,0 +1,56 @@
+{
+  "common": {
+    "search": "Search",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "viewAll": "View All",
+    "showAll": "Show All",
+    "noResults": "No results found",
+    "sort": "Sort",
+    "all": "All",
+    "settings": "Settings",
+    "back": "Back"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "categories": "Categories",
+    "support": "Support",
+    "helpCenter": "Help Center",
+    "contact": "Contact Us",
+    "terms": "Terms of Service"
+  },
+  "status": {
+    "active": "Active",
+    "approved": "Approved",
+    "pending": "Pending",
+    "suspended": "Suspended",
+    "operational": "Operational",
+    "degraded": "Degraded",
+    "down": "Down",
+    "draft": "Draft",
+    "archived": "Archived",
+    "published": "Published"
+  },
+  "order": {
+    "pending": "Pending",
+    "processing": "Processing",
+    "shipped": "Shipped",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  },
+  "a11y": {
+    "skipToContent": "Skip to content",
+    "mainNav": "Main navigation",
+    "pagination": "Pagination",
+    "breadcrumb": "Breadcrumb",
+    "searchProducts": "Search products",
+    "cart": "Cart",
+    "notifications": "Notifications",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
+  }
+}

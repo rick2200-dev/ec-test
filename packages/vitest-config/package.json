@@ -1,0 +1,13 @@
+{
+  "name": "@ec-marketplace/vitest-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.5.0",
+    "vitest": "^3.2.0"
+  }
+}

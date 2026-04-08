@@ -18,6 +18,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       {/* Image placeholder */}
       <div className="aspect-square bg-gray-100 flex items-center justify-center">
         <svg
+          aria-hidden="true"
           className="w-16 h-16 text-gray-300"
           fill="none"
           stroke="currentColor"
@@ -37,12 +38,8 @@ export default function ProductCard({ product }: ProductCardProps) {
         <h3 className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
           {product.name}
         </h3>
-        {seller && (
-          <p className="mt-1 text-xs text-gray-500">{seller.name}</p>
-        )}
-        <p className="mt-2 text-lg font-bold text-gray-900">
-          {formatPrice(price)}
-        </p>
+        {seller && <p className="mt-1 text-xs text-gray-500">{seller.name}</p>}
+        <p className="mt-2 text-lg font-bold text-gray-900">{formatPrice(price)}</p>
       </div>
     </Link>
   );

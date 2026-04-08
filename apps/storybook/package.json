@@ -1,0 +1,28 @@
+{
+  "name": "storybook",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "storybook dev -p 6006",
+    "build": "storybook build -o dist",
+    "clean": "rm -rf dist .turbo node_modules"
+  },
+  "devDependencies": {
+    "storybook": "^8.6",
+    "@storybook/react-vite": "^8.6",
+    "@storybook/react": "^8.6",
+    "@storybook/addon-essentials": "^8.6",
+    "@storybook/addon-a11y": "^8.6",
+    "@storybook/addon-interactions": "^8.6",
+    "@storybook/test": "^8.6",
+    "@vitejs/plugin-react": "^4.5",
+    "react": "^19",
+    "react-dom": "^19",
+    "next-intl": "^4",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/vite": "^4",
+    "typescript": "^5.8",
+    "@types/react": "^19"
+  }
+}

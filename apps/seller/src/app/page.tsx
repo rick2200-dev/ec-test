@@ -1,41 +1,51 @@
 import StatsCard from "@/components/StatsCard";
 import { salesStats, orders } from "@/lib/mock-data";
-import { formatCurrency, STATUS_LABELS, STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, STATUS_COLORS } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const t = await getTranslations();
   const recentOrders = orders.slice(0, 5);
+
+  const statusLabels: Record<string, string> = {
+    pending: t("order.pending"),
+    processing: t("order.processing"),
+    shipped: t("order.shipped"),
+    completed: t("order.completed"),
+    cancelled: t("order.cancelled"),
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">ダッシュボード</h2>
-        <p className="text-text-secondary mt-1">ストアの概要を確認できます</p>
+        <h2 className="text-2xl font-bold text-text-primary">{t("dashboard.title")}</h2>
+        <p className="text-text-secondary mt-1">{t("dashboard.description")}</p>
       </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="今日の売上"
+          title={t("dashboard.todaySales")}
           value={formatCurrency(salesStats.todaySales)}
-          subtitle="前日比 +12.5%"
+          subtitle={t("dashboard.subtitleTodaySales")}
           accent="success"
         />
         <StatsCard
-          title="今月の売上"
+          title={t("dashboard.monthlySales")}
           value={formatCurrency(salesStats.monthlySales)}
-          subtitle="先月比 +8.3%"
+          subtitle={t("dashboard.subtitleMonthlySales")}
           accent="default"
         />
         <StatsCard
-          title="未処理注文"
+          title={t("dashboard.pendingOrders")}
           value={`${salesStats.pendingOrders}件`}
-          subtitle="早めに対応してください"
+          subtitle={t("dashboard.subtitlePendingOrders")}
           accent="warning"
         />
         <StatsCard
-          title="在庫アラート"
+          title={t("dashboard.stockAlerts")}
           value={`${salesStats.stockAlerts}件`}
-          subtitle="在庫が少ない商品があります"
+          subtitle={t("dashboard.subtitleStockAlerts")}
           accent="danger"
         />
       </div>
@@ -43,12 +53,9 @@ export default function DashboardPage() {
       {/* Recent orders */}
       <div className="bg-white rounded-lg border border-border shadow-sm">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-text-primary">最近の注文</h3>
-          <a
-            href="/orders"
-            className="text-sm text-accent hover:text-accent-hover font-medium"
-          >
-            すべて表示 &rarr;
+          <h3 className="text-lg font-semibold text-text-primary">{t("dashboard.recentOrders")}</h3>
+          <a href="/orders" className="text-sm text-accent hover:text-accent-hover font-medium">
+            {t("common.viewAll")} &rarr;
           </a>
         </div>
         <div className="overflow-x-auto">
@@ -56,31 +63,27 @@ export default function DashboardPage() {
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  注文ID
+                  {t("table.orderId")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  購入者
+                  {t("table.buyer")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  金額
+                  {t("table.amount")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  ステータス
+                  {t("table.status")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  日時
+                  {t("table.date")}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 text-sm font-mono text-text-primary">
-                    {order.id}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-primary">
-                    {order.buyerName}
-                  </td>
+                  <td className="px-6 py-4 text-sm font-mono text-text-primary">{order.id}</td>
+                  <td className="px-6 py-4 text-sm text-text-primary">{order.buyerName}</td>
                   <td className="px-6 py-4 text-sm font-medium text-text-primary">
                     {formatCurrency(order.totalAmount)}
                   </td>
@@ -88,7 +91,7 @@ export default function DashboardPage() {
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}
                     >
-                      {STATUS_LABELS[order.status]}
+                      {statusLabels[order.status]}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-text-secondary">

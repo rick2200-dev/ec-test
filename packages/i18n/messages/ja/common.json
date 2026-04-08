@@ -1,0 +1,56 @@
+{
+  "common": {
+    "search": "検索",
+    "edit": "編集",
+    "delete": "削除",
+    "cancel": "キャンセル",
+    "save": "保存する",
+    "create": "作成する",
+    "viewAll": "すべて表示",
+    "showAll": "すべて見る",
+    "noResults": "該当する結果がありません",
+    "sort": "並び替え",
+    "all": "すべて",
+    "settings": "設定",
+    "back": "戻る"
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "products": "商品一覧",
+    "categories": "カテゴリ",
+    "support": "サポート",
+    "helpCenter": "ヘルプセンター",
+    "contact": "お問い合わせ",
+    "terms": "利用規約"
+  },
+  "status": {
+    "active": "有効",
+    "approved": "承認済み",
+    "pending": "承認待ち",
+    "suspended": "停止中",
+    "operational": "正常",
+    "degraded": "低下",
+    "down": "停止",
+    "draft": "下書き",
+    "archived": "非公開",
+    "published": "公開中"
+  },
+  "order": {
+    "pending": "未処理",
+    "processing": "処理中",
+    "shipped": "発送済み",
+    "completed": "完了",
+    "cancelled": "キャンセル"
+  },
+  "a11y": {
+    "skipToContent": "コンテンツへスキップ",
+    "mainNav": "メインナビゲーション",
+    "pagination": "ページネーション",
+    "breadcrumb": "パンくずリスト",
+    "searchProducts": "商品を検索",
+    "cart": "カート",
+    "notifications": "通知",
+    "expandSidebar": "サイドバーを展開",
+    "collapseSidebar": "サイドバーを折りたたむ"
+  }
+}

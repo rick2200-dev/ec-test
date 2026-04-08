@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "title": "EC Marketplace",
+    "description": "あなたの欲しいものが見つかるマーケットプレイス"
+  },
+  "header": {
+    "searchPlaceholder": "商品を検索..."
+  },
+  "hero": {
+    "title": "あなたの欲しいものが\nここにある",
+    "subtitle": "厳選されたセラーが届ける、高品質な商品をお楽しみください",
+    "cta": "商品を探す"
+  },
+  "product": {
+    "addToCart": "カートに追加",
+    "sellerInfo": "販売者情報",
+    "verifiedSeller": "認証済みセラー",
+    "seller": "セラー",
+    "sortRecommended": "おすすめ順",
+    "sortPriceLow": "価格が安い順",
+    "sortPriceHigh": "価格が高い順",
+    "sortNewest": "新着順",
+    "breadcrumbTop": "トップ",
+    "productsCount": "{count}件の商品",
+    "viewProducts": "商品を見る",
+    "popularProducts": "人気の商品",
+    "recommendations": "あなたへのおすすめ",
+    "noProductsFound": "該当する商品が見つかりませんでした",
+    "productList": "商品一覧"
+  },
+  "attr": {
+    "color": "カラー",
+    "size": "サイズ",
+    "material": "素材"
+  },
+  "footer": {
+    "description": "あなたの欲しいものが見つかるマーケットプレイス",
+    "categories": "カテゴリ",
+    "support": "サポート",
+    "helpCenter": "ヘルプセンター",
+    "contact": "お問い合わせ",
+    "terms": "利用規約",
+    "copyright": "© 2025 EC Marketplace. All rights reserved."
+  }
+}

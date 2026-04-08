@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "title": "Seller Admin - EC Marketplace",
+    "description": "EC Marketplace Seller Management Console"
+  },
+  "sidebar": {
+    "title": "Seller Admin",
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "orders": "Orders",
+    "inventory": "Inventory",
+    "sales": "Sales & Payouts",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "View an overview of your store",
+    "todaySales": "Today's Sales",
+    "monthlySales": "Monthly Sales",
+    "pendingOrders": "Pending Orders",
+    "stockAlerts": "Stock Alerts",
+    "recentOrders": "Recent Orders",
+    "subtitleTodaySales": "vs. previous day +12.5%",
+    "subtitleMonthlySales": "vs. last month +8.3%",
+    "subtitlePendingOrders": "Please handle promptly",
+    "subtitleStockAlerts": "Some products are running low"
+  },
+  "table": {
+    "orderId": "Order ID",
+    "buyer": "Buyer",
+    "amount": "Amount",
+    "status": "Status",
+    "date": "Date",
+    "productName": "Product Name",
+    "skuCount": "SKU Count",
+    "price": "Price",
+    "inventory": "Inventory",
+    "actions": "Actions"
+  },
+  "products": {
+    "title": "Products",
+    "description": "Add, edit, and manage your products",
+    "newProduct": "New Product",
+    "searchPlaceholder": "Search by product name or SKU...",
+    "allStatuses": "All Statuses",
+    "published": "Published",
+    "draft": "Draft",
+    "archived": "Archived",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "newProduct": {
+    "title": "New Product",
+    "description": "Enter product details to register",
+    "basicInfo": "Basic Information",
+    "productName": "Product Name",
+    "slug": "Slug",
+    "slugHint": "Auto-generated from the product name. You can also edit it manually.",
+    "productDescription": "Description",
+    "descriptionPlaceholder": "Enter a product description...",
+    "category": "Category",
+    "selectCategory": "Select a category",
+    "status": "Status",
+    "skuVariations": "SKU (Variations)",
+    "addSku": "Add SKU",
+    "skuNumber": "SKU #{number}",
+    "remove": "Remove",
+    "skuCode": "SKU Code",
+    "price": "Price (tax included)",
+    "color": "Color",
+    "size": "Size",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "savedMessage": "Product saved (demo)"
+  },
+  "orders": {
+    "title": "Orders",
+    "description": "Review orders and manage their statuses",
+    "all": "All",
+    "pending": "Pending",
+    "processing": "Processing",
+    "shipped": "Shipped",
+    "completed": "Completed",
+    "noOrders": "No matching orders found"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "description": "View and manage stock levels by SKU",
+    "lowStockAlert": "Low stock items found ({count})",
+    "lowStockMessage": "Some SKUs are below the low stock threshold (10 or fewer). We recommend restocking soon.",
+    "sku": "SKU",
+    "productName": "Product Name",
+    "stockQuantity": "Stock Quantity",
+    "reservedQuantity": "Reserved Quantity",
+    "availableQuantity": "Available Quantity",
+    "stockAlert": "Stock Alert",
+    "actions": "Actions",
+    "outOfStock": "Out of Stock",
+    "lowStock": "Low Stock",
+    "normal": "Normal",
+    "editStock": "Edit Stock"
+  },
+  "store": {
+    "sampleStore": "Sample Store"
+  }
+}

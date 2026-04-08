@@ -6,6 +6,7 @@ import { getProductWithSKUs, formatPrice } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
 import { use } from "react";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
+import { useTranslations } from "next-intl";
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -20,6 +21,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   }
 
   const { product, skus, seller, category } = data;
+  const t = useTranslations();
 
   // Extract unique attribute keys from SKUs
   const attrKeys = new Set<string>();
@@ -40,49 +42,42 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     attrOptions[key] = Array.from(values);
   });
 
-  const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(
-    () => {
-      const defaults: Record<string, string> = {};
-      Object.entries(attrOptions).forEach(([key, values]) => {
-        if (values.length > 0) defaults[key] = values[0];
-      });
-      return defaults;
-    }
-  );
+  const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
+    const defaults: Record<string, string> = {};
+    Object.entries(attrOptions).forEach(([key, values]) => {
+      if (values.length > 0) defaults[key] = values[0];
+    });
+    return defaults;
+  });
 
   // Find matching SKU
   const selectedSku = skus.find((sku) => {
     if (!sku.attributes) return Object.keys(selectedAttrs).length === 0;
-    return Object.entries(selectedAttrs).every(
-      ([key, val]) => sku.attributes?.[key] === val
-    );
+    return Object.entries(selectedAttrs).every(([key, val]) => sku.attributes?.[key] === val);
   });
 
   const attrLabels: Record<string, string> = {
-    color: "カラー",
-    size: "サイズ",
-    material: "素材",
+    color: t("attr.color"),
+    size: t("attr.size"),
+    material: t("attr.material"),
   };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <ProductViewTracker productId={product.id} />
       {/* Breadcrumb */}
-      <nav className="mb-6 text-sm text-gray-500">
+      <nav aria-label={t("a11y.breadcrumb")} className="mb-6 text-sm text-gray-500">
         <Link href="/" className="hover:text-gray-700">
-          トップ
+          {t("product.breadcrumbTop")}
         </Link>
         <span className="mx-2">/</span>
         <Link href="/products" className="hover:text-gray-700">
-          商品一覧
+          {t("product.productList")}
         </Link>
         {category && (
           <>
             <span className="mx-2">/</span>
-            <Link
-              href={`/products?category=${category.slug}`}
-              className="hover:text-gray-700"
-            >
+            <Link href={`/products?category=${category.slug}`} className="hover:text-gray-700">
               {category.name}
             </Link>
           </>
@@ -95,6 +90,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         {/* Product image placeholder */}
         <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center">
           <svg
+            aria-hidden="true"
             className="w-32 h-32 text-gray-300"
             fill="none"
             stroke="currentColor"
@@ -119,9 +115,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
               {category.name}
             </Link>
           )}
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">
-            {product.name}
-          </h1>
+          <h1 className="mt-1 text-3xl font-bold text-gray-900">{product.name}</h1>
 
           {/* Price */}
           <p className="mt-4 text-3xl font-bold text-gray-900">
@@ -130,16 +124,10 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
               : formatPrice(skus[0]?.price_amount ?? 0)}
           </p>
 
-          {selectedSku && (
-            <p className="mt-1 text-xs text-gray-500">
-              SKU: {selectedSku.sku_code}
-            </p>
-          )}
+          {selectedSku && <p className="mt-1 text-xs text-gray-500">SKU: {selectedSku.sku_code}</p>}
 
           {/* Description */}
-          <p className="mt-6 text-gray-600 leading-relaxed">
-            {product.description}
-          </p>
+          <p className="mt-6 text-gray-600 leading-relaxed">{product.description}</p>
 
           {/* Variant selectors */}
           {Object.entries(attrOptions).map(([key, values]) => (
@@ -151,9 +139,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 {values.map((val) => (
                   <button
                     key={val}
-                    onClick={() =>
-                      setSelectedAttrs((prev) => ({ ...prev, [key]: val }))
-                    }
+                    onClick={() => setSelectedAttrs((prev) => ({ ...prev, [key]: val }))}
+                    aria-pressed={selectedAttrs[key] === val}
                     className={`rounded-md border px-4 py-2 text-sm transition-colors ${
                       selectedAttrs[key] === val
                         ? "border-blue-600 bg-blue-50 text-blue-600 font-medium"
@@ -169,25 +156,23 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
           {/* Add to cart */}
           <button className="mt-8 w-full rounded-lg bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-            カートに追加
+            {t("product.addToCart")}
           </button>
 
           {/* Seller info */}
           {seller && (
             <div className="mt-8 rounded-lg border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">
-                販売者情報
-              </h2>
+              <h2 className="text-sm font-semibold text-gray-900">{t("product.sellerInfo")}</h2>
               <div className="mt-3 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-600">
                   {seller.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {seller.name}
-                  </p>
+                  <p className="text-sm font-medium text-gray-900">{seller.name}</p>
                   <p className="text-xs text-gray-500">
-                    {seller.status === "approved" ? "認証済みセラー" : "セラー"}
+                    {seller.status === "approved"
+                      ? t("product.verifiedSeller")
+                      : t("product.seller")}
                   </p>
                 </div>
               </div>

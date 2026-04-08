@@ -1,6 +1,9 @@
 import { inventoryItems } from "@/lib/mock-data";
+import { getTranslations } from "next-intl/server";
 
-export default function InventoryPage() {
+export default async function InventoryPage() {
+  const t = await getTranslations();
+
   const lowStockItems = inventoryItems.filter(
     (item) => item.availableQuantity <= item.lowStockThreshold
   );
@@ -8,20 +11,22 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">在庫管理</h2>
-        <p className="text-text-secondary mt-1">
-          SKUごとの在庫状況を確認・管理できます
-        </p>
+        <h2 className="text-2xl font-bold text-text-primary">{t("inventory.title")}</h2>
+        <p className="text-text-secondary mt-1">{t("inventory.description")}</p>
       </div>
 
       {/* Low stock alert */}
       {lowStockItems.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+        <div
+          className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3"
+          role="alert"
+        >
           <svg
             className="w-5 h-5 text-danger flex-shrink-0 mt-0.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -32,11 +37,9 @@ export default function InventoryPage() {
           </svg>
           <div>
             <p className="text-sm font-medium text-red-800">
-              在庫が少ない商品があります（{lowStockItems.length}件）
+              {t("inventory.lowStockAlert", { count: lowStockItems.length })}
             </p>
-            <p className="text-sm text-red-600 mt-1">
-              在庫しきい値（10個以下）を下回っているSKUがあります。早めの補充をおすすめします。
-            </p>
+            <p className="text-sm text-red-600 mt-1">{t("inventory.lowStockMessage")}</p>
           </div>
         </div>
       )}
@@ -48,49 +51,44 @@ export default function InventoryPage() {
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  SKU
+                  {t("inventory.sku")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  商品名
+                  {t("inventory.productName")}
                 </th>
                 <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  在庫数
+                  {t("inventory.stockQuantity")}
                 </th>
                 <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  予約数
+                  {t("inventory.reservedQuantity")}
                 </th>
                 <th className="text-right px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  利用可能数
+                  {t("inventory.availableQuantity")}
                 </th>
                 <th className="text-center px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  在庫アラート
+                  {t("inventory.stockAlert")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  操作
+                  {t("inventory.actions")}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {inventoryItems.map((item) => {
-                const isLowStock =
-                  item.availableQuantity <= item.lowStockThreshold;
+                const isLowStock = item.availableQuantity <= item.lowStockThreshold;
                 const isOutOfStock = item.availableQuantity <= 0;
 
                 return (
                   <tr
                     key={item.skuId}
                     className={`transition-colors ${
-                      isLowStock
-                        ? "bg-red-50 hover:bg-red-100"
-                        : "hover:bg-surface-hover"
+                      isLowStock ? "bg-red-50 hover:bg-red-100" : "hover:bg-surface-hover"
                     }`}
                   >
                     <td className="px-6 py-4 text-sm font-mono text-text-primary">
                       {item.skuCode}
                     </td>
-                    <td className="px-6 py-4 text-sm text-text-primary">
-                      {item.productName}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-text-primary">{item.productName}</td>
                     <td className="px-6 py-4 text-sm text-text-primary text-right">
                       {item.stockQuantity}
                     </td>
@@ -113,21 +111,21 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 text-center">
                       {isOutOfStock ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          在庫切れ
+                          {t("inventory.outOfStock")}
                         </span>
                       ) : isLowStock ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          残りわずか
+                          {t("inventory.lowStock")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          正常
+                          {t("inventory.normal")}
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <button className="text-sm text-accent hover:text-accent-hover font-medium">
-                        在庫編集
+                        {t("inventory.editStock")}
                       </button>
                     </td>
                   </tr>

@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "title": "EC Marketplace",
+    "description": "A marketplace where you can find everything you want"
+  },
+  "header": {
+    "searchPlaceholder": "Search products..."
+  },
+  "hero": {
+    "title": "Everything You Want\nIs Right Here",
+    "subtitle": "Enjoy high-quality products delivered by carefully selected sellers",
+    "cta": "Browse Products"
+  },
+  "product": {
+    "addToCart": "Add to Cart",
+    "sellerInfo": "Seller Information",
+    "verifiedSeller": "Verified Seller",
+    "seller": "Seller",
+    "sortRecommended": "Recommended",
+    "sortPriceLow": "Price: Low to High",
+    "sortPriceHigh": "Price: High to Low",
+    "sortNewest": "Newest",
+    "breadcrumbTop": "Home",
+    "productsCount": "{count} products",
+    "viewProducts": "View Products",
+    "popularProducts": "Popular Products",
+    "recommendations": "Recommended for You",
+    "noProductsFound": "No matching products found",
+    "productList": "Product List"
+  },
+  "attr": {
+    "color": "Color",
+    "size": "Size",
+    "material": "Material"
+  },
+  "footer": {
+    "description": "A marketplace where you can find everything you want",
+    "categories": "Categories",
+    "support": "Support",
+    "helpCenter": "Help Center",
+    "contact": "Contact Us",
+    "terms": "Terms of Service",
+    "copyright": "\u00a9 2025 EC Marketplace. All rights reserved."
+  }
+}

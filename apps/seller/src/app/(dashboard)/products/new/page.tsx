@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { categories } from "@/lib/mock-data";
 import { ProductForm } from "@/components/ProductForm";
 import { SKUManager, SKUInput } from "@/components/SKUManager";
+import { useTranslations } from "next-intl";
 
 export default function NewProductPage() {
+  const t = useTranslations();
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -78,7 +80,7 @@ export default function NewProductPage() {
 
       router.push("/products");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "商品の保存に失敗しました");
+      setError(err instanceof Error ? err.message : t("newProduct.savedMessage"));
     } finally {
       setIsSubmitting(false);
     }
@@ -87,10 +89,8 @@ export default function NewProductPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">新規商品登録</h2>
-        <p className="text-text-secondary mt-1">
-          商品情報を入力して登録してください
-        </p>
+        <h2 className="text-2xl font-bold text-text-primary">{t("newProduct.title")}</h2>
+        <p className="text-text-secondary mt-1">{t("newProduct.description")}</p>
       </div>
 
       {error && (
@@ -127,14 +127,14 @@ export default function NewProductPage() {
             href="/products"
             className="px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors"
           >
-            キャンセル
+            {t("newProduct.cancel")}
           </a>
           <button
             type="submit"
             disabled={isSubmitting}
             className="px-6 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "保存中..." : "保存する"}
+            {isSubmitting ? t("newProduct.saving") : t("newProduct.save")}
           </button>
         </div>
       </form>

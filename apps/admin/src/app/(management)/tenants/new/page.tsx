@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function NewTenantPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const t = useTranslations();
 
   const generateSlug = (value: string) => {
     return value
@@ -22,20 +24,23 @@ export default function NewTenantPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: API call
-    alert("テナントを作成しました（モック）");
+    alert(t("newTenant.createdMessage"));
   };
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">新規テナント作成</h2>
-        <p className="text-text-secondary mt-1">新しいテナントを作成します</p>
+        <h2 className="text-2xl font-bold text-text-primary">{t("newTenant.title")}</h2>
+        <p className="text-text-secondary mt-1">{t("newTenant.description")}</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-border shadow-sm p-6 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-lg border border-border shadow-sm p-6 space-y-6"
+      >
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-text-primary mb-1">
-            テナント名
+            {t("newTenant.tenantName")}
           </label>
           <input
             id="name"
@@ -43,14 +48,14 @@ export default function NewTenantPage() {
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-            placeholder="例: 東京マーケット"
             required
+            aria-required="true"
           />
         </div>
 
         <div>
           <label htmlFor="slug" className="block text-sm font-medium text-text-primary mb-1">
-            スラッグ
+            {t("newTenant.slug")}
           </label>
           <input
             id="slug"
@@ -58,15 +63,15 @@ export default function NewTenantPage() {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm font-mono"
-            placeholder="例: tokyo-market"
             required
+            aria-required="true"
           />
-          <p className="text-xs text-text-secondary mt-1">テナント名から自動生成されます</p>
+          <p className="text-xs text-text-secondary mt-1">{t("newTenant.slugHint")}</p>
         </div>
 
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-text-primary mb-1">
-            説明
+            {t("newTenant.tenantDescription")}
           </label>
           <textarea
             id="description"
@@ -74,7 +79,7 @@ export default function NewTenantPage() {
             onChange={(e) => setDescription(e.target.value)}
             className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
             rows={3}
-            placeholder="テナントの説明を入力"
+            placeholder={t("newTenant.descriptionPlaceholder")}
           />
         </div>
 
@@ -83,13 +88,13 @@ export default function NewTenantPage() {
             type="submit"
             className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
           >
-            作成する
+            {t("newTenant.create")}
           </button>
           <a
             href="/tenants"
             className="px-4 py-2 bg-surface text-text-primary rounded-lg hover:bg-surface-hover transition-colors text-sm font-medium border border-border"
           >
-            キャンセル
+            {t("newTenant.cancel")}
           </a>
         </div>
       </form>

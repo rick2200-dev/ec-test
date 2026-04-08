@@ -2,48 +2,56 @@
 
 import { useState } from "react";
 import { orders } from "@/lib/mock-data";
-import { formatCurrency, STATUS_LABELS, STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, STATUS_COLORS } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 type StatusFilter = "all" | "pending" | "processing" | "shipped" | "completed";
 
-const tabs: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "全て" },
-  { key: "pending", label: "未処理" },
-  { key: "processing", label: "処理中" },
-  { key: "shipped", label: "発送済み" },
-  { key: "completed", label: "完了" },
-];
-
 export default function OrdersPage() {
+  const t = useTranslations();
   const [filter, setFilter] = useState<StatusFilter>("all");
 
+  const statusLabels: Record<string, string> = {
+    pending: t("order.pending"),
+    processing: t("order.processing"),
+    shipped: t("order.shipped"),
+    completed: t("order.completed"),
+    cancelled: t("order.cancelled"),
+  };
+
+  const tabs: { key: StatusFilter; labelKey: string }[] = [
+    { key: "all", labelKey: "orders.all" },
+    { key: "pending", labelKey: "orders.pending" },
+    { key: "processing", labelKey: "orders.processing" },
+    { key: "shipped", labelKey: "orders.shipped" },
+    { key: "completed", labelKey: "orders.completed" },
+  ];
+
   const filteredOrders =
-    filter === "all"
-      ? orders
-      : orders.filter((order) => order.status === filter);
+    filter === "all" ? orders : orders.filter((order) => order.status === filter);
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">注文管理</h2>
-        <p className="text-text-secondary mt-1">
-          注文の確認・ステータス管理ができます
-        </p>
+        <h2 className="text-2xl font-bold text-text-primary">{t("orders.title")}</h2>
+        <p className="text-text-secondary mt-1">{t("orders.description")}</p>
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex items-center gap-1 border-b border-border">
+      <div className="flex items-center gap-1 border-b border-border" role="tablist">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
+            role="tab"
+            aria-selected={filter === tab.key}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               filter === tab.key
                 ? "border-accent text-accent"
                 : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
-            {tab.label}
+            {t(tab.labelKey)}
             {tab.key !== "all" && (
               <span className="ml-1.5 text-xs">
                 ({orders.filter((o) => o.status === tab.key).length})
@@ -60,34 +68,29 @@ export default function OrdersPage() {
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  注文ID
+                  {t("table.orderId")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  日時
+                  {t("table.date")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  購入者
+                  {t("table.buyer")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  商品
+                  {t("table.productName")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  金額
+                  {t("table.amount")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  ステータス
+                  {t("table.status")}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredOrders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="hover:bg-surface-hover transition-colors"
-                >
-                  <td className="px-6 py-4 text-sm font-mono text-text-primary">
-                    {order.id}
-                  </td>
+                <tr key={order.id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-6 py-4 text-sm font-mono text-text-primary">{order.id}</td>
                   <td className="px-6 py-4 text-sm text-text-secondary">
                     {new Date(order.createdAt).toLocaleString("ja-JP", {
                       year: "numeric",
@@ -97,18 +100,13 @@ export default function OrdersPage() {
                       minute: "2-digit",
                     })}
                   </td>
-                  <td className="px-6 py-4 text-sm text-text-primary">
-                    {order.buyerName}
-                  </td>
+                  <td className="px-6 py-4 text-sm text-text-primary">{order.buyerName}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-text-primary">
                       {order.items.map((item, i) => (
                         <div key={i}>
                           {item.productName}
-                          <span className="text-text-secondary">
-                            {" "}
-                            x{item.quantity}
-                          </span>
+                          <span className="text-text-secondary"> x{item.quantity}</span>
                         </div>
                       ))}
                     </div>
@@ -120,7 +118,7 @@ export default function OrdersPage() {
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}
                     >
-                      {STATUS_LABELS[order.status]}
+                      {statusLabels[order.status]}
                     </span>
                   </td>
                 </tr>
@@ -130,8 +128,8 @@ export default function OrdersPage() {
         </div>
 
         {filteredOrders.length === 0 && (
-          <div className="px-6 py-12 text-center text-text-secondary">
-            該当する注文はありません
+          <div className="px-6 py-12 text-center text-text-secondary" role="status">
+            {t("orders.noOrders")}
           </div>
         )}
       </div>

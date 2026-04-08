@@ -1,18 +1,21 @@
 import { commissionRules } from "@/lib/mock-data";
+import { getTranslations } from "next-intl/server";
 
-export default function CommissionsPage() {
+export default async function CommissionsPage() {
+  const t = await getTranslations();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">手数料設定</h2>
-          <p className="text-text-secondary mt-1">手数料ルールを管理します</p>
+          <h2 className="text-2xl font-bold text-text-primary">{t("commissions.title")}</h2>
+          <p className="text-text-secondary mt-1">{t("commissions.description")}</p>
         </div>
         <a
           href="/commissions/new"
           className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
         >
-          新規ルール作成
+          {t("commissions.createNew")}
         </a>
       </div>
 
@@ -22,22 +25,22 @@ export default function CommissionsPage() {
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  テナント
+                  {t("commissions.tenant")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  セラー
+                  {t("commissions.seller")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  カテゴリ
+                  {t("commissions.category")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  手数料率(%)
+                  {t("commissions.rate")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  優先度
+                  {t("commissions.priority")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  有効期間
+                  {t("commissions.validPeriod")}
                 </th>
               </tr>
             </thead>
@@ -48,19 +51,15 @@ export default function CommissionsPage() {
                     {rule.tenantName}
                   </td>
                   <td className="px-6 py-4 text-sm text-text-secondary">
-                    {rule.sellerName ?? "全セラー"}
+                    {rule.sellerName ?? t("commissions.allSellers")}
                   </td>
                   <td className="px-6 py-4 text-sm text-text-secondary">
-                    {rule.category ?? "全カテゴリ"}
+                    {rule.category ?? t("commissions.allCategories")}
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                    {rule.rate}%
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-primary">
-                    {rule.priority}
-                  </td>
+                  <td className="px-6 py-4 text-sm font-medium text-text-primary">{rule.rate}%</td>
+                  <td className="px-6 py-4 text-sm text-text-primary">{rule.priority}</td>
                   <td className="px-6 py-4 text-sm text-text-secondary">
-                    {rule.validFrom} ~ {rule.validUntil ?? "無期限"}
+                    {rule.validFrom} ~ {rule.validUntil ?? t("commissions.unlimited")}
                   </td>
                 </tr>
               ))}

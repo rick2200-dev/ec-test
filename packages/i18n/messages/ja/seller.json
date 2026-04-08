@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "title": "Seller Admin - EC Marketplace",
+    "description": "EC Marketplace 出品者管理画面"
+  },
+  "sidebar": {
+    "title": "Seller Admin",
+    "dashboard": "ダッシュボード",
+    "products": "商品管理",
+    "orders": "注文管理",
+    "inventory": "在庫管理",
+    "sales": "売上・入金",
+    "settings": "設定"
+  },
+  "dashboard": {
+    "title": "ダッシュボード",
+    "description": "ストアの概要を確認できます",
+    "todaySales": "今日の売上",
+    "monthlySales": "今月の売上",
+    "pendingOrders": "未処理注文",
+    "stockAlerts": "在庫アラート",
+    "recentOrders": "最近の注文",
+    "subtitleTodaySales": "前日比 +12.5%",
+    "subtitleMonthlySales": "先月比 +8.3%",
+    "subtitlePendingOrders": "早めに対応してください",
+    "subtitleStockAlerts": "在庫が少ない商品があります"
+  },
+  "table": {
+    "orderId": "注文ID",
+    "buyer": "購入者",
+    "amount": "金額",
+    "status": "ステータス",
+    "date": "日時",
+    "productName": "商品名",
+    "skuCount": "SKU数",
+    "price": "価格",
+    "inventory": "在庫",
+    "actions": "操作"
+  },
+  "products": {
+    "title": "商品管理",
+    "description": "商品の追加・編集・管理ができます",
+    "newProduct": "新規商品",
+    "searchPlaceholder": "商品名・SKUで検索...",
+    "allStatuses": "すべてのステータス",
+    "published": "公開中",
+    "draft": "下書き",
+    "archived": "非公開",
+    "edit": "編集",
+    "delete": "削除"
+  },
+  "newProduct": {
+    "title": "新規商品登録",
+    "description": "商品情報を入力して登録してください",
+    "basicInfo": "基本情報",
+    "productName": "商品名",
+    "slug": "スラッグ",
+    "slugHint": "商品名から自動生成されます。変更も可能です。",
+    "productDescription": "説明",
+    "descriptionPlaceholder": "商品の説明を入力してください...",
+    "category": "カテゴリ",
+    "selectCategory": "カテゴリを選択",
+    "status": "ステータス",
+    "skuVariations": "SKU（バリエーション）",
+    "addSku": "SKUを追加",
+    "skuNumber": "SKU #{number}",
+    "remove": "削除",
+    "skuCode": "SKUコード",
+    "price": "価格（税込）",
+    "color": "カラー",
+    "size": "サイズ",
+    "cancel": "キャンセル",
+    "save": "保存する",
+    "saving": "保存中...",
+    "savedMessage": "商品を保存しました（デモ）"
+  },
+  "orders": {
+    "title": "注文管理",
+    "description": "注文の確認・ステータス管理ができます",
+    "all": "全て",
+    "pending": "未処理",
+    "processing": "処理中",
+    "shipped": "発送済み",
+    "completed": "完了",
+    "noOrders": "該当する注文はありません"
+  },
+  "inventory": {
+    "title": "在庫管理",
+    "description": "SKUごとの在庫状況を確認・管理できます",
+    "lowStockAlert": "在庫が少ない商品があります（{count}件）",
+    "lowStockMessage": "在庫しきい値（10個以下）を下回っているSKUがあります。早めの補充をおすすめします。",
+    "sku": "SKU",
+    "productName": "商品名",
+    "stockQuantity": "在庫数",
+    "reservedQuantity": "予約数",
+    "availableQuantity": "利用可能数",
+    "stockAlert": "在庫アラート",
+    "actions": "操作",
+    "outOfStock": "在庫切れ",
+    "lowStock": "残りわずか",
+    "normal": "正常",
+    "editStock": "在庫編集"
+  },
+  "store": {
+    "sampleStore": "サンプルストア"
+  }
+}
