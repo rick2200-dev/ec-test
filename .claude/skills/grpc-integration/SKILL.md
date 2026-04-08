@@ -14,19 +14,19 @@ This skill captures the end-to-end workflow for adding or extending gRPC in a Go
 The monorepo has this relevant structure:
 
 ```
-proto/                          # Proto definitions (buf-managed)
+backend/proto/                   # Proto definitions (buf-managed)
   buf.yaml                     # Lint: STANDARD, Breaking: FILE
   buf.gen.yaml                 # Local plugins → ../gen/go
   common/v1/common.proto       # Shared types (Money, Pagination, TenantContext)
   {service}/v1/{service}.proto # Per-service definitions
-gen/go/                        # Generated Go code (its own module)
+backend/gen/go/                  # Generated Go code (its own module)
   {service}/v1/*.pb.go, *_grpc.pb.go
-services/{service}/
+backend/services/{service}/
   cmd/server/main.go
   internal/grpcserver/         # gRPC server implementation
     server.go                  # RPC handlers wrapping service layer
     convert.go                 # Domain <-> Proto conversions
-services/gateway/
+backend/services/gateway/
   internal/grpcclient/         # gRPC client wrappers
     clients.go                 # Connection management
     {service}.go               # Per-service helper methods
@@ -38,7 +38,7 @@ When the user asks to add gRPC for a service, follow these steps in order. Do NO
 
 ### Step 1: Define or Update Proto
 
-Create/edit `proto/{service}/v1/{service}.proto`. Follow these conventions:
+Create/edit `backend/proto/{service}/v1/{service}.proto`. Follow these conventions:
 
 - `syntax = "proto3";`
 - `package {service}.v1;`
@@ -51,10 +51,10 @@ Create/edit `proto/{service}/v1/{service}.proto`. Follow these conventions:
 
 ### Step 2: Lint Protos
 
-Run `buf lint` from the `proto/` directory. Fix any issues before proceeding:
+Run `buf lint` from the `backend/proto/` directory. Fix any issues before proceeding:
 
 ```bash
-cd proto && buf lint
+cd backend/proto && buf lint
 ```
 
 Common fixes:
@@ -66,18 +66,18 @@ Common fixes:
 ### Step 3: Generate Go Code
 
 ```bash
-cd proto && buf generate
+cd backend/proto && buf generate
 ```
 
-This produces `gen/go/{service}/v1/{service}.pb.go` and `{service}_grpc.pb.go`.
+This produces `backend/gen/go/{service}/v1/{service}.pb.go` and `{service}_grpc.pb.go`.
 
-After generation, ensure `gen/go/go.mod` exists. If this is the first time generating for a new service, run:
+After generation, ensure `backend/gen/go/go.mod` exists. If this is the first time generating for a new service, run:
 
 ```bash
-cd gen/go && go mod tidy
+cd backend/gen/go && go mod tidy
 ```
 
-Also verify `gen/go` is listed in `go.work`. If not, add it.
+Also verify `backend/gen/go` is listed in `go.work`. If not, add it.
 
 ### Step 4: Update Service go.mod
 
@@ -92,7 +92,7 @@ Then run `go mod tidy` in the service directory. Also run `go mod tidy` in the g
 
 ### Step 5: Implement gRPC Server
 
-Create `services/{service}/internal/grpcserver/server.go`:
+Create `backend/services/{service}/internal/grpcserver/server.go`:
 
 ```go
 package grpcserver
@@ -122,7 +122,7 @@ func New{Service}Server(svc *service.{Service}Service) *{Service}Server {
 // 4. Return proto response or toGRPCError(err)
 ```
 
-Create `services/{service}/internal/grpcserver/convert.go` for domain-to-proto and proto-to-domain conversions:
+Create `backend/services/{service}/internal/grpcserver/convert.go` for domain-to-proto and proto-to-domain conversions:
 
 - Use `timestamppb.New(t)` for `time.Time` -> `google.protobuf.Timestamp`
 - Use `common.v1.Money{Amount: m.Amount, Currency: m.Currency}` for money fields
@@ -153,7 +153,7 @@ func toGRPCError(err error) error {
 
 ### Step 6: Wire gRPC Server into main.go
 
-Add to `services/{service}/cmd/server/main.go`:
+Add to `backend/services/{service}/cmd/server/main.go`:
 
 ```go
 import (
@@ -190,7 +190,7 @@ Ensure `GRPCPort` is added to the service's config struct if it doesn't exist.
 
 ### Step 7: Implement gRPC Client in Gateway (if needed)
 
-If the gateway needs to call this service, update `services/gateway/internal/grpcclient/`:
+If the gateway needs to call this service, update `backend/services/gateway/internal/grpcclient/`:
 
 1. **clients.go** — add connection and typed client fields to `GRPCClients`:
 
@@ -212,8 +212,8 @@ If the gateway needs to call this service, update `services/gateway/internal/grp
 ### Step 8: Verify Build
 
 ```bash
-go build ./services/{service}/...
-go build ./services/gateway/...
+go build ./backend/services/{service}/...
+go build ./backend/services/gateway/...
 ```
 
 If using Go workspaces, you can also run from the repo root:
@@ -243,7 +243,7 @@ Before marking gRPC integration complete, verify:
 
 - [ ] Proto file lints cleanly (`buf lint`)
 - [ ] Code generates without errors (`buf generate`)
-- [ ] `gen/go/go.mod` is tidy
+- [ ] `backend/gen/go/go.mod` is tidy
 - [ ] Service `go.mod` has replace directives for gen/go and pkg
 - [ ] gRPC server embeds `Unimplemented*Server` for forward compatibility
 - [ ] Error mapping covers all AppError codes

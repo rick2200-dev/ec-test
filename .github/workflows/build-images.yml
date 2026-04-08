@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "services/**"
-      - "pkg/**"
+      - "backend/services/**"
+      - "backend/pkg/**"
 
 permissions:
   contents: write
@@ -27,14 +27,14 @@ jobs:
         id: filter
         with:
           filters: |
-            gateway: ['services/gateway/**', 'pkg/**']
-            auth: ['services/auth/**', 'pkg/**']
-            catalog: ['services/catalog/**', 'pkg/**']
-            inventory: ['services/inventory/**', 'pkg/**']
-            order: ['services/order/**', 'pkg/**']
-            search: ['services/search/**', 'pkg/**']
-            recommend: ['services/recommend/**', 'pkg/**']
-            notification: ['services/notification/**', 'pkg/**']
+            gateway: ['backend/services/gateway/**', 'backend/pkg/**']
+            auth: ['backend/services/auth/**', 'backend/pkg/**']
+            catalog: ['backend/services/catalog/**', 'backend/pkg/**']
+            inventory: ['backend/services/inventory/**', 'backend/pkg/**']
+            order: ['backend/services/order/**', 'backend/pkg/**']
+            search: ['backend/services/search/**', 'backend/pkg/**']
+            recommend: ['backend/services/recommend/**', 'backend/pkg/**']
+            notification: ['backend/services/notification/**', 'backend/pkg/**']
 
   build-push:
     needs: changes
@@ -71,7 +71,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: services/${{ matrix.service }}/Dockerfile
+          file: backend/services/${{ matrix.service }}/Dockerfile
           push: true
           tags: |
             ${{ steps.meta.outputs.image }}
@@ -92,7 +92,7 @@ jobs:
         run: |
           SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           SERVICES='${{ needs.changes.outputs.services }}'
-          KUSTOMIZATION="deploy/overlays/dev/kustomization.yaml"
+          KUSTOMIZATION="infra/deploy/overlays/dev/kustomization.yaml"
 
           for service in $(echo "${SERVICES}" | jq -r '.[]'); do
             IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${service}"
@@ -106,7 +106,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add deploy/overlays/dev/kustomization.yaml
+          git add infra/deploy/overlays/dev/kustomization.yaml
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore: update dev image tags [skip ci]"
           git push

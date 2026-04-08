@@ -132,7 +132,7 @@ BREAKING CHANGE: 全 API エンドポイントのパスが /api/v1 から /api/v
 各サービスは以下の標準構成に従います:
 
 ```
-services/<service>/
+backend/services/<service>/
 ├── cmd/
 │   └── server/
 │       └── main.go          # エントリーポイント
@@ -153,7 +153,7 @@ services/<service>/
 ### エラーハンドリング
 
 ```go
-// pkg/errors の共通エラー型を使用
+// backend/pkg/errors の共通エラー型を使用
 import pkgerr "github.com/Riku-KANO/ec-test/pkg/errors"
 
 // サービス層でドメインエラーを返す
@@ -162,7 +162,7 @@ if product == nil {
 }
 
 // ハンドラー層で HTTP レスポンスに変換
-// pkg/httputil がエラー型に応じた適切なステータスコードを返す
+// backend/pkg/httputil がエラー型に応じた適切なステータスコードを返す
 ```
 
 ### 命名規約
@@ -176,7 +176,7 @@ if product == nil {
 
 ### テナントコンテキスト
 
-全てのテナントスコープ操作で `pkg/tenant` パッケージを使用します:
+全てのテナントスコープ操作で `backend/pkg/tenant` パッケージを使用します:
 
 ```go
 import "github.com/Riku-KANO/ec-test/pkg/tenant"
@@ -232,7 +232,7 @@ slog.Info("order created",
 ### Next.js App Router パターン
 
 ```
-apps/<app>/
+frontend/apps/<app>/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx            # ルートレイアウト
@@ -258,7 +258,7 @@ apps/<app>/
 - **Server Components をデフォルトとする**: `"use client"` は必要な場合のみ
 - **データ取得は Server Component で**: `fetch()` を直接呼び出す (React Server Components)
 - **状態管理は最小限に**: URL パラメータ、Server Component での取得を優先
-- **共有コンポーネントは `packages/` に**: 複数アプリで使う UI は共通パッケージ化
+- **共有コンポーネントは `frontend/packages/` に**: 複数アプリで使う UI は共通パッケージ化
 - **型安全**: OpenAPI 仕様から生成した型定義を使用
 
 ---
@@ -296,14 +296,14 @@ apps/<app>/
 ### 1. ディレクトリ作成
 
 ```bash
-mkdir -p services/<service-name>/cmd/server
-mkdir -p services/<service-name>/internal/{config,handler,service,repository}
+mkdir -p backend/services/<service-name>/cmd/server
+mkdir -p backend/services/<service-name>/internal/{config,handler,service,repository}
 ```
 
 ### 2. Go モジュール初期化
 
 ```bash
-cd services/<service-name>
+cd backend/services/<service-name>
 go mod init github.com/Riku-KANO/ec-test/services/<service-name>
 ```
 
@@ -312,15 +312,15 @@ go mod init github.com/Riku-KANO/ec-test/services/<service-name>
 ```go
 // go.work
 use (
-    ./pkg
-    ./services/<service-name>  // 追加
+    ./backend/pkg
+    ./backend/services/<service-name>  // 追加
     // ... 既存サービス
 )
 ```
 
 ### 4. エントリーポイント作成
 
-`cmd/server/main.go` を既存サービス (例: `services/auth/cmd/server/main.go`) をテンプレートとして作成:
+`cmd/server/main.go` を既存サービス (例: `backend/services/auth/cmd/server/main.go`) をテンプレートとして作成:
 
 - 構造化ログ設定 (`slog` + JSON)
 - DB 接続プール初期化
@@ -365,14 +365,14 @@ func getEnv(key, fallback string) string {
 
 ```makefile
 dev-<service-name>:
-	cd services/<service-name> && air
+	cd backend/services/<service-name> && air
 ```
 
 `build-all`, `lint-go`, `test-go` のサービスリストにも追加。
 
 ### 8. Kubernetes マニフェスト作成
 
-`deploy/base/<service-name>/` に Deployment, Service, ConfigMap を作成。
+`infra/deploy/base/<service-name>/` に Deployment, Service, ConfigMap を作成。
 
 ### 9. DB スキーマが必要な場合
 
@@ -389,12 +389,12 @@ make migrate-create
 # プロンプトに名前を入力: create_<table_name>
 ```
 
-これで `db/migrations/` に `NNNNNN_create_<table_name>.up.sql` と `.down.sql` が作成されます。
+これで `infra/db/migrations/` に `NNNNNN_create_<table_name>.up.sql` と `.down.sql` が作成されます。
 
 ### 2. UP マイグレーション記述
 
 ```sql
--- db/migrations/NNNNNN_create_<table_name>.up.sql
+-- infra/db/migrations/NNNNNN_create_<table_name>.up.sql
 
 CREATE TABLE <schema>_svc.<table_name> (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -425,7 +425,7 @@ CREATE POLICY tenant_isolation ON <schema>_svc.<table_name>
 ### 3. DOWN マイグレーション記述
 
 ```sql
--- db/migrations/NNNNNN_create_<table_name>.down.sql
+-- infra/db/migrations/NNNNNN_create_<table_name>.down.sql
 DROP TABLE IF EXISTS <schema>_svc.<table_name>;
 ```
 

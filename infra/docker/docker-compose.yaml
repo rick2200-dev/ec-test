@@ -1,0 +1,247 @@
+services:
+  gateway:
+    build:
+      context: ../..
+      dockerfile: backend/services/gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      AUTH_SERVICE_URL: http://auth:8081
+      CATALOG_SERVICE_URL: http://catalog:8082
+      ORDER_SERVICE_URL: http://order:8083
+      INVENTORY_SERVICE_URL: http://inventory:8084
+      SEARCH_SERVICE_URL: http://search:8085
+      RECOMMEND_SERVICE_URL: http://recommend:8086
+      NOTIFICATION_SERVICE_URL: http://notification:8087
+    depends_on:
+      auth:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+    networks:
+      - backend
+
+  auth:
+    build:
+      context: ../..
+      dockerfile: backend/services/auth/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: "8081"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: local-dev-secret-do-not-use-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  catalog:
+    build:
+      context: ../..
+      dockerfile: backend/services/catalog/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: "8082"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/1
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  order:
+    build:
+      context: ../..
+      dockerfile: backend/services/order/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: "8083"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/2
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      INVENTORY_SERVICE_URL: http://inventory:8084
+      CATALOG_SERVICE_URL: http://catalog:8082
+      NOTIFICATION_SERVICE_URL: http://notification:8087
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  inventory:
+    build:
+      context: ../..
+      dockerfile: backend/services/inventory/Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      PORT: "8084"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/3
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  search:
+    build:
+      context: ../..
+      dockerfile: backend/services/search/Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      PORT: "8085"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/4
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  recommend:
+    build:
+      context: ../..
+      dockerfile: backend/services/recommend/Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      PORT: "8086"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/5
+      CATALOG_SERVICE_URL: http://catalog:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  notification:
+    build:
+      context: ../..
+      dockerfile: backend/services/notification/Dockerfile
+    ports:
+      - "8087:8087"
+    environment:
+      PORT: "8087"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379/6
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8087/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  postgres:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres
+    networks:
+      - backend
+
+  redis:
+    extends:
+      file: docker-compose.deps.yaml
+      service: redis
+    networks:
+      - backend
+
+  pubsub-emulator:
+    extends:
+      file: docker-compose.deps.yaml
+      service: pubsub-emulator
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pgdata:

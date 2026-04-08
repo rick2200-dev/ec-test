@@ -1,14 +1,14 @@
 go 1.25.3
 
 use (
-	./gen/go
-	./pkg
-	./services/gateway
-	./services/auth
-	./services/catalog
-	./services/inventory
-	./services/order
-	./services/search
-	./services/recommend
-	./services/notification
+	./backend/gen/go
+	./backend/pkg
+	./backend/services/auth
+	./backend/services/catalog
+	./backend/services/gateway
+	./backend/services/inventory
+	./backend/services/notification
+	./backend/services/order
+	./backend/services/recommend
+	./backend/services/search
 )

@@ -3,8 +3,8 @@ name: Frontend CI
 on:
   pull_request:
     paths:
-      - "apps/**"
-      - "packages/**"
+      - "frontend/apps/**"
+      - "frontend/packages/**"
       - "pnpm-lock.yaml"
       - "turbo.json"
 

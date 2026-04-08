@@ -22,49 +22,49 @@ help:
 DATABASE_URL ?= postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=disable
 
 deps-up:
-	docker compose -f docker/docker-compose.deps.yaml up -d
+	docker compose -f infra/docker/docker-compose.deps.yaml up -d
 
 deps-down:
-	docker compose -f docker/docker-compose.deps.yaml down
+	docker compose -f infra/docker/docker-compose.deps.yaml down
 
 # ─── Database ──────────────────────────────────────────────────
 migrate:
-	migrate -path db/migrations -database "$(DATABASE_URL)" up
+	migrate -path infra/db/migrations -database "$(DATABASE_URL)" up
 
 migrate-down:
-	migrate -path db/migrations -database "$(DATABASE_URL)" down 1
+	migrate -path infra/db/migrations -database "$(DATABASE_URL)" down 1
 
 migrate-create:
 	@read -p "Migration name: " name; \
-	migrate create -ext sql -dir db/migrations -seq $$name
+	migrate create -ext sql -dir infra/db/migrations -seq $$name
 
 seed:
-	psql "$(DATABASE_URL)" -f db/seeds/dev_tenants.sql
+	psql "$(DATABASE_URL)" -f infra/db/seeds/dev_tenants.sql
 
 # ─── Go Services (with air hot-reload) ────────────────────────
 dev-gateway:
-	cd services/gateway && air
+	cd backend/services/gateway && air
 
 dev-auth:
-	cd services/auth && air
+	cd backend/services/auth && air
 
 dev-catalog:
-	cd services/catalog && air
+	cd backend/services/catalog && air
 
 dev-inventory:
-	cd services/inventory && air
+	cd backend/services/inventory && air
 
 dev-order:
-	cd services/order && air
+	cd backend/services/order && air
 
 dev-search:
-	cd services/search && air
+	cd backend/services/search && air
 
 dev-recommend:
-	cd services/recommend && air
+	cd backend/services/recommend && air
 
 dev-notification:
-	cd services/notification && air
+	cd backend/services/notification && air
 
 # ─── Frontend ──────────────────────────────────────────────────
 dev-buyer:
@@ -80,26 +80,26 @@ dev-admin:
 build-all:
 	@for svc in gateway auth catalog inventory order search recommend notification; do \
 		echo "Building $$svc..."; \
-		cd services/$$svc && go build -o ../../bin/$$svc ./cmd/server && cd ../..; \
+		cd backend/services/$$svc && go build -o ../../../bin/$$svc ./cmd/server && cd ../../..; \
 	done
 
 lint-go:
 	@for svc in gateway auth catalog inventory order search recommend notification; do \
 		echo "Linting $$svc..."; \
-		cd services/$$svc && golangci-lint run ./... && cd ../..; \
+		cd backend/services/$$svc && golangci-lint run ./... && cd ../../..; \
 	done
-	cd pkg && golangci-lint run ./...
+	cd backend/pkg && golangci-lint run ./...
 
 test-go:
 	@for svc in gateway auth catalog inventory order search recommend notification; do \
 		echo "Testing $$svc..."; \
-		cd services/$$svc && go test ./... && cd ../..; \
+		cd backend/services/$$svc && go test ./... && cd ../../..; \
 	done
-	cd pkg && go test ./...
+	cd backend/pkg && go test ./...
 
 # ─── Proto & OpenAPI ──────────────────────────────────────────
 proto-gen:
-	buf generate proto
+	buf generate backend/proto
 
 openapi-gen:
 	pnpm --filter api-client generate

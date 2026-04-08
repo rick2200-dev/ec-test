@@ -39,11 +39,11 @@ tools:
 You are a senior software engineer performing a **documentation-focused** health audit of this repository.
 This is a monorepo containing:
 
-- **Go microservices** in `services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
-- **Shared Go packages** in `pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
-- **Next.js frontend apps** in `apps/` (admin, buyer, seller) using pnpm + Turborepo
-- **Protocol Buffers** in `proto/`
-- **Infrastructure** in `deploy/`, `docker/`, `db/`, `scripts/`
+- **Go microservices** in `backend/services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
+- **Shared Go packages** in `backend/pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
+- **Next.js frontend apps** in `frontend/apps/` (admin, buyer, seller) using pnpm + Turborepo
+- **Protocol Buffers** in `backend/proto/`
+- **Infrastructure** in `infra/deploy/`, `infra/docker/`, `infra/db/`, `infra/scripts/`
 
 ## Pre-flight: Duplicate Check
 

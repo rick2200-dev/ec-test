@@ -18,7 +18,7 @@ importers:
         specifier: ^2
         version: 2.9.4
 
-  apps/admin:
+  frontend/apps/admin:
     dependencies:
       '@ec-marketplace/i18n':
         specifier: workspace:*
@@ -79,7 +79,7 @@ importers:
         specifier: ^3.2
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)
 
-  apps/buyer:
+  frontend/apps/buyer:
     dependencies:
       '@ec-marketplace/i18n':
         specifier: workspace:*
@@ -143,7 +143,7 @@ importers:
         specifier: ^3.2
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)
 
-  apps/seller:
+  frontend/apps/seller:
     dependencies:
       '@ec-marketplace/i18n':
         specifier: workspace:*
@@ -204,7 +204,7 @@ importers:
         specifier: ^3.2
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)
 
-  apps/storybook:
+  frontend/apps/storybook:
     devDependencies:
       '@storybook/addon-a11y':
         specifier: ^8.6
@@ -255,7 +255,7 @@ importers:
         specifier: ^5.8
         version: 5.9.3
 
-  packages/eslint-config:
+  frontend/packages/eslint-config:
     dependencies:
       '@eslint/js':
         specifier: ^9
@@ -285,7 +285,7 @@ importers:
         specifier: ^8
         version: 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
 
-  packages/i18n:
+  frontend/packages/i18n:
     dependencies:
       next:
         specifier: ^15
@@ -297,9 +297,9 @@ importers:
         specifier: ^19
         version: 19.2.4
 
-  packages/tsconfig: {}
+  frontend/packages/tsconfig: {}
 
-  packages/vitest-config:
+  frontend/packages/vitest-config:
     dependencies:
       '@vitejs/plugin-react':
         specifier: ^4.5.0

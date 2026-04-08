@@ -114,7 +114,7 @@ Order Service  ──gRPC──▶  Catalog Service (商品情報取得)
 Order Service  ──gRPC──▶  Inventory Service (在庫引当)
 ```
 
-- Proto 定義: `proto/` ディレクトリ
+- Proto 定義: `backend/proto/` ディレクトリ
 - コード生成: `make proto-gen` (`buf generate`)
 
 ### 3. Cloud Pub/Sub (非同期イベント)
@@ -332,7 +332,7 @@ PostgreSQL のスキーマ機能を利用し、サービスごとにスキーマ
 ### RLS ポリシーの仕組み
 
 1. **リクエスト受信**: Gateway が JWT からテナント ID を抽出
-2. **コンテキスト伝播**: `pkg/tenant` パッケージで Go context にテナント ID を格納
+2. **コンテキスト伝播**: `backend/pkg/tenant` パッケージで Go context にテナント ID を格納
 3. **DB セッション設定**: クエリ実行前に `SET app.current_tenant_id = '<uuid>'` を実行
 4. **自動フィルタリング**: PostgreSQL の RLS が全クエリに `WHERE tenant_id = ...` を自動付与
 
@@ -528,7 +528,7 @@ sequenceDiagram
 ### デプロイ構成
 
 ```
-deploy/
+infra/deploy/
 ├── base/                    # Kustomize base (全環境共通)
 │   ├── gateway/
 │   │   ├── deployment.yaml
@@ -551,7 +551,7 @@ deploy/
 
 1. `main` ブランチへのマージで GitHub Actions が起動
 2. CI: lint → test → Docker イメージビルド → GCR にプッシュ
-3. CI が `deploy/overlays/<env>/kustomization.yaml` のイメージタグを更新
+3. CI が `infra/deploy/overlays/<env>/kustomization.yaml` のイメージタグを更新
 4. ArgoCD がマニフェスト変更を検知し、GKE クラスタに自動同期
 
 ---

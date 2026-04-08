@@ -3,8 +3,8 @@ name: Go CI
 on:
   pull_request:
     paths:
-      - "services/**"
-      - "pkg/**"
+      - "backend/services/**"
+      - "backend/pkg/**"
 
 permissions:
   contents: read
@@ -20,14 +20,14 @@ jobs:
         id: filter
         with:
           filters: |
-            gateway: ['services/gateway/**', 'pkg/**']
-            auth: ['services/auth/**', 'pkg/**']
-            catalog: ['services/catalog/**', 'pkg/**']
-            inventory: ['services/inventory/**', 'pkg/**']
-            order: ['services/order/**', 'pkg/**']
-            search: ['services/search/**', 'pkg/**']
-            recommend: ['services/recommend/**', 'pkg/**']
-            notification: ['services/notification/**', 'pkg/**']
+            gateway: ['backend/services/gateway/**', 'backend/pkg/**']
+            auth: ['backend/services/auth/**', 'backend/pkg/**']
+            catalog: ['backend/services/catalog/**', 'backend/pkg/**']
+            inventory: ['backend/services/inventory/**', 'backend/pkg/**']
+            order: ['backend/services/order/**', 'backend/pkg/**']
+            search: ['backend/services/search/**', 'backend/pkg/**']
+            recommend: ['backend/services/recommend/**', 'backend/pkg/**']
+            notification: ['backend/services/notification/**', 'backend/pkg/**']
 
   lint-and-test:
     needs: changes
@@ -43,22 +43,22 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.3"
-          cache-dependency-path: services/${{ matrix.service }}/go.sum
+          cache-dependency-path: backend/services/${{ matrix.service }}/go.sum
 
       - name: Lint
         uses: golangci/golangci-lint-action@v7
         with:
-          working-directory: services/${{ matrix.service }}
+          working-directory: backend/services/${{ matrix.service }}
           args: --timeout=5m
 
       - name: Test
         run: |
-          cd services/${{ matrix.service }}
+          cd backend/services/${{ matrix.service }}
           go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.service }}
-          path: services/${{ matrix.service }}/coverage.out
+          path: backend/services/${{ matrix.service }}/coverage.out
           retention-days: 7

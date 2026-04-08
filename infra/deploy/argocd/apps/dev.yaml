@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ec-marketplace-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ec-marketplace
+    environment: dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ec-marketplace
+
+  source:
+    repoURL: https://github.com/YOUR_ORG/ec-marketplace.git
+    targetRevision: main
+    path: infra/deploy/overlays/dev
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ec-marketplace
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

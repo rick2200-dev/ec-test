@@ -42,8 +42,8 @@
 | ---------------------------- | -------------------------- | --------------------------------- |
 | バックエンド                 | Go                         | 1.25                              |
 | フロントエンド               | Next.js (App Router)       | latest                            |
-| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                         |
-| モノレポ管理 (Backend)       | Go Workspaces              | go.work                           |
+| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                        |
+| モノレポ管理 (Backend)       | Go Workspaces              | go.work                          |
 | データベース                 | PostgreSQL                 | 16 (RLS によるマルチテナント分離) |
 | キャッシュ                   | Redis                      | 7                                 |
 | メッセージング               | Cloud Pub/Sub              | GCP                               |
@@ -103,44 +103,52 @@ make dev-admin        # Admin App     → :3002
 
 ```
 ec-test/
-├── services/              # Go マイクロサービス群
-│   ├── gateway/           #   API Gateway (認証・ルーティング)
-│   ├── auth/              #   テナント・セラー・ユーザー管理
-│   ├── catalog/           #   商品・SKU・カテゴリ管理
-│   ├── inventory/         #   在庫管理・在庫移動
-│   ├── order/             #   注文・決済・コミッション
-│   ├── search/            #   商品検索 (Vertex AI Search)
-│   ├── recommend/         #   レコメンデーション
-│   └── notification/      #   通知 (メール・プッシュ)
-├── pkg/                   # Go 共有パッケージ
-│   ├── tenant/            #   テナントコンテキスト管理
-│   ├── database/          #   DB 接続プール・RLS 設定
-│   ├── middleware/         #   共通ミドルウェア (ログ等)
-│   ├── errors/            #   共通エラー型
-│   ├── httputil/          #   HTTP レスポンスヘルパー
-│   ├── pagination/        #   ページネーション
-│   └── pubsub/            #   Pub/Sub クライアント
-├── apps/                  # Next.js フロントエンドアプリ
-│   ├── buyer/             #   購入者向け画面 (:3000) — 商品一覧・詳細・レコメンデーション
-│   ├── seller/            #   セラー管理画面 (:3001) — 商品・注文・在庫管理
-│   └── admin/             #   プラットフォーム管理画面 (:3002) — テナント・セラー・コミッション管理
-├── api/                   # OpenAPI 仕様・生成クライアント
-├── proto/                 # Protocol Buffers 定義
-├── db/
-│   ├── migrations/        #   DB マイグレーション (golang-migrate)
-│   └── seeds/             #   開発用シードデータ
-├── docker/                # Docker Compose 設定
-├── deploy/                # Kubernetes / ArgoCD マニフェスト
-│   ├── base/              #   Kustomize base
-│   ├── overlays/          #   環境別オーバーレイ
-│   └── argocd/            #   ArgoCD Application 定義
-├── scripts/               # ユーティリティスクリプト
-├── .github/               # GitHub Actions ワークフロー
-├── go.work                # Go Workspace 設定
-├── package.json           # pnpm / Turborepo ルート設定
-├── pnpm-workspace.yaml    # pnpm ワークスペース定義
-├── turbo.json             # Turborepo パイプライン設定
-└── Makefile               # 開発用コマンド
+├── frontend/                # フロントエンド (TypeScript / Next.js)
+│   ├── apps/                #   Next.js アプリケーション群
+│   │   ├── buyer/           #     購入者向け画面 (:3000)
+│   │   ├── seller/          #     セラー管理画面 (:3001)
+│   │   ├── admin/           #     プラットフォーム管理画面 (:3002)
+│   │   └── storybook/       #     Storybook コンポーネントカタログ
+│   └── packages/            #   共有 Node.js パッケージ
+│       ├── eslint-config/   #     ESLint 共通設定
+│       ├── tsconfig/        #     TypeScript 共通設定
+│       ├── vitest-config/   #     Vitest 共通設定
+│       └── i18n/            #     多言語対応 (next-intl)
+├── backend/                 # バックエンド (Go)
+│   ├── services/            #   Go マイクロサービス群
+│   │   ├── gateway/         #     API Gateway (認証・ルーティング)
+│   │   ├── auth/            #     テナント・セラー・ユーザー管理
+│   │   ├── catalog/         #     商品・SKU・カテゴリ管理
+│   │   ├── inventory/       #     在庫管理・在庫移動
+│   │   ├── order/           #     注文・決済・コミッション
+│   │   ├── search/          #     商品検索 (Vertex AI Search)
+│   │   ├── recommend/       #     レコメンデーション
+│   │   └── notification/    #     通知 (メール・プッシュ)
+│   ├── pkg/                 #   Go 共有パッケージ
+│   │   ├── tenant/          #     テナントコンテキスト管理
+│   │   ├── database/        #     DB 接続プール・RLS 設定
+│   │   ├── middleware/      #     共通ミドルウェア (ログ等)
+│   │   ├── errors/          #     共通エラー型
+│   │   ├── httputil/        #     HTTP レスポンスヘルパー
+│   │   ├── pagination/      #     ページネーション
+│   │   └── pubsub/          #     Pub/Sub クライアント
+│   ├── proto/               #   Protocol Buffers 定義
+│   └── gen/                 #   生成コード (gRPC スタブ)
+├── infra/                   # インフラ・運用
+│   ├── db/                  #   DB マイグレーション / シード
+│   ├── deploy/              #   Kubernetes / ArgoCD マニフェスト
+│   │   ├── base/            #     Kustomize base
+│   │   ├── overlays/        #     環境別オーバーレイ
+│   │   └── argocd/          #     ArgoCD Application 定義
+│   ├── docker/              #   Docker Compose 設定
+│   └── scripts/             #   ユーティリティスクリプト
+├── docs/                    # ドキュメント
+├── .github/                 # GitHub Actions ワークフロー
+├── go.work                  # Go Workspace 設定
+├── package.json             # pnpm / Turborepo ルート設定
+├── pnpm-workspace.yaml      # pnpm ワークスペース定義
+├── turbo.json               # Turborepo パイプライン設定
+└── Makefile                 # 開発用コマンド
 ```
 
 ## Make コマンド一覧
@@ -197,7 +205,7 @@ make migrate-down
 make test-go
 
 # 特定サービスのみ
-cd services/catalog && go test ./...
+cd backend/services/catalog && go test ./...
 ```
 
 ### Lint
@@ -214,7 +222,7 @@ make lint-go
 DATABASE_URL=postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=disable
 ```
 
-各サービスの環境変数は `services/<service>/internal/config/` を参照してください。
+各サービスの環境変数は `backend/services/<service>/internal/config/` を参照してください。
 
 ## ドキュメント
 

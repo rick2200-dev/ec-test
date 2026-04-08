@@ -34,8 +34,8 @@ jobs:
             exit 0
           fi
 
-          SOURCE_KUSTOMIZATION="deploy/overlays/dev/kustomization.yaml"
-          TARGET_KUSTOMIZATION="deploy/overlays/${ENV}/kustomization.yaml"
+          SOURCE_KUSTOMIZATION="infra/deploy/overlays/dev/kustomization.yaml"
+          TARGET_KUSTOMIZATION="infra/deploy/overlays/${ENV}/kustomization.yaml"
 
           # Extract images block from dev and apply to target
           IMAGES=$(yq eval '.images' "${SOURCE_KUSTOMIZATION}")
@@ -48,7 +48,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "deploy/overlays/${ENV}/kustomization.yaml"
+          git add "infra/deploy/overlays/${ENV}/kustomization.yaml"
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "chore: promote image tags to ${ENV} [skip ci]"
           git push
