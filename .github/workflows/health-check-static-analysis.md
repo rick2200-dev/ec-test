@@ -2,8 +2,7 @@
 name: "Health Check: Static Analysis"
 description: Weekly static analysis audit — linter issues, deprecated APIs, dead code (Friday)
 on:
-  schedule:
-    - cron: "0 9 * * 5" # Every Friday at 09:00 UTC
+  schedule: "weekly on friday"
   workflow_dispatch:
 concurrency:
   group: health-check-static-analysis
@@ -13,13 +12,13 @@ permissions:
   contents: read
   issues: read
 safe-outputs:
-  - type: create-issue
+  create-issue:
     max: 5
     title-prefix: "[Health Check] Static Analysis: "
     labels: ["health-check"]
-  - type: add-labels
+  add-labels:
     max: 5
-  - type: add-comment
+  add-comment:
     max: 3
 tools:
   github:

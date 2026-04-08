@@ -11,13 +11,13 @@ permissions:
   contents: read
   issues: read
 safe-outputs:
-  - type: create-issue
+  create-issue:
     max: 10
     title-prefix: "[Health Check] "
     labels: ["health-check"]
-  - type: add-labels
+  add-labels:
     max: 10
-  - type: add-comment
+  add-comment:
     max: 5
 tools:
   github:

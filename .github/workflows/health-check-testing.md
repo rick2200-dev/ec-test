@@ -2,8 +2,7 @@
 name: "Health Check: Test Hygiene"
 description: Weekly test hygiene audit — coverage gaps, flaky patterns, naming (Wednesday)
 on:
-  schedule:
-    - cron: "0 9 * * 3" # Every Wednesday at 09:00 UTC
+  schedule: "weekly on wednesday"
   workflow_dispatch:
 concurrency:
   group: health-check-testing
@@ -13,13 +12,13 @@ permissions:
   contents: read
   issues: read
 safe-outputs:
-  - type: create-issue
+  create-issue:
     max: 5
     title-prefix: "[Health Check] Test Hygiene: "
     labels: ["health-check"]
-  - type: add-labels
+  add-labels:
     max: 5
-  - type: add-comment
+  add-comment:
     max: 3
 tools:
   github:

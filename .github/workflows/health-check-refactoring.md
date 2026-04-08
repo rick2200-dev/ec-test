@@ -2,8 +2,7 @@
 name: "Health Check: Refactoring"
 description: Weekly refactoring audit — naming, long functions, code clarity (Monday)
 on:
-  schedule:
-    - cron: "0 9 * * 1" # Every Monday at 09:00 UTC
+  schedule: "weekly on monday"
   workflow_dispatch:
 concurrency:
   group: health-check-refactoring
@@ -13,13 +12,13 @@ permissions:
   contents: read
   issues: read
 safe-outputs:
-  - type: create-issue
+  create-issue:
     max: 5
     title-prefix: "[Health Check] Refactoring: "
     labels: ["health-check"]
-  - type: add-labels
+  add-labels:
     max: 5
-  - type: add-comment
+  add-comment:
     max: 3
 tools:
   github:

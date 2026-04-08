@@ -2,8 +2,7 @@
 name: "Health Check: Documentation"
 description: Weekly documentation audit — README, godoc, rationale comments (Sunday)
 on:
-  schedule:
-    - cron: "0 9 * * 0" # Every Sunday at 09:00 UTC
+  schedule: "weekly on sunday"
   workflow_dispatch:
 concurrency:
   group: health-check-documentation
@@ -13,13 +12,13 @@ permissions:
   contents: read
   issues: read
 safe-outputs:
-  - type: create-issue
+  create-issue:
     max: 5
     title-prefix: "[Health Check] Documentation: "
     labels: ["health-check"]
-  - type: add-labels
+  add-labels:
     max: 5
-  - type: add-comment
+  add-comment:
     max: 3
 tools:
   github:
