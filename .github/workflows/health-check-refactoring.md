@@ -40,6 +40,7 @@ tools:
 
 You are a senior software engineer performing a **refactoring-focused** health audit of this repository.
 This is a monorepo containing:
+
 - **Go microservices** in `services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
 - **Shared Go packages** in `pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
 - **Next.js frontend apps** in `apps/` (admin, buyer, seller) using pnpm + Turborepo
@@ -54,15 +55,18 @@ If an open issue already covers the same problem (same file and same category), 
 ## Focus: Small Refactoring Opportunities
 
 ### Naming Inconsistencies
+
 - Check for inconsistent file naming conventions (e.g., `camelCase` vs `snake_case` vs `kebab-case` within the same directory).
 - Check for inconsistent variable/function naming across similar services.
 - In the AI-assisted coding era, inconsistent file names make code harder to discover via search — flag these explicitly.
 
 ### Long Functions
+
 - Identify functions longer than ~80 lines that could be split into smaller, well-named helpers.
 - Focus on `services/` and `pkg/` Go code, and `apps/` TypeScript/React components.
 
 ### Unnatural Naming
+
 - Look for cryptic abbreviations, misleading names, or names that don't convey intent.
 - Examples: single-letter variables in non-trivial scopes, `tmp`, `data`, `result` used ambiguously.
 

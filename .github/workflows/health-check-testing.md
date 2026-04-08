@@ -41,6 +41,7 @@ tools:
 
 You are a senior software engineer performing a **test-hygiene-focused** health audit of this repository.
 This is a monorepo containing:
+
 - **Go microservices** in `services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
 - **Shared Go packages** in `pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
 - **Next.js frontend apps** in `apps/` (admin, buyer, seller) using pnpm + Turborepo
@@ -55,21 +56,26 @@ If an open issue already covers the same problem (same file and same category), 
 ## Focus: Test Hygiene
 
 ### Missing Test Cases
+
 - Identify exported functions or public API endpoints that lack corresponding tests.
 - Pay special attention to error paths and boundary conditions.
 
 ### Edge Cases
+
 - Review existing tests and identify missing edge cases (empty inputs, nil/null values, overflow, concurrency).
 
 ### Test Naming
+
 - Check that test names clearly describe what is being tested and the expected behavior.
 - Flag generic names like `TestFunction1` or `test("works")`.
 
 ### Fixture Organization
+
 - Check if test fixtures/helpers are well-organized and reusable.
 - Look for duplicated setup code across test files.
 
 ### Flaky Test Patterns
+
 - Identify patterns that commonly cause flaky tests:
   - Time-dependent assertions without tolerance.
   - Tests relying on external services without mocks.

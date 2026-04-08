@@ -38,6 +38,7 @@ tools:
 
 You are a senior software engineer performing a **documentation-focused** health audit of this repository.
 This is a monorepo containing:
+
 - **Go microservices** in `services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
 - **Shared Go packages** in `pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
 - **Next.js frontend apps** in `apps/` (admin, buyer, seller) using pnpm + Turborepo
@@ -52,15 +53,18 @@ If an open issue already covers the same problem (same file and same category), 
 ## Focus: Documentation Hygiene
 
 ### README Updates
+
 - Check if `README.md` accurately reflects the current project structure and setup instructions.
 - Verify that documented commands still work and are up to date.
 
 ### Function Comments
+
 - In Go: Check that exported functions have proper godoc comments.
 - In TypeScript: Check that complex or public utility functions have JSDoc or inline comments.
 
 ### Change Rationale Documentation
-- Look for complex business logic that lacks explanatory comments about *why* a decision was made.
+
+- Look for complex business logic that lacks explanatory comments about _why_ a decision was made.
 - Check for domain-specific code (e.g., pricing, inventory rules, auth flows) that would benefit from rationale documentation.
 
 ---

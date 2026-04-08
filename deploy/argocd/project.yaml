@@ -7,7 +7,7 @@ spec:
   description: EC Marketplace multi-tenant platform
 
   sourceRepos:
-    - 'https://github.com/*/ec-marketplace.git'
+    - "https://github.com/*/ec-marketplace.git"
 
   destinations:
     - namespace: ec-marketplace
@@ -15,22 +15,22 @@ spec:
       name: in-cluster
 
   clusterResourceWhitelist:
-    - group: ''
+    - group: ""
       kind: Namespace
 
   namespaceResourceWhitelist:
-    - group: ''
-      kind: '*'
+    - group: ""
+      kind: "*"
     - group: apps
-      kind: '*'
+      kind: "*"
     - group: autoscaling
-      kind: '*'
+      kind: "*"
     - group: batch
-      kind: '*'
+      kind: "*"
     - group: networking.k8s.io
-      kind: '*'
+      kind: "*"
     - group: policy
-      kind: '*'
+      kind: "*"
 
   roles:
     - name: admin

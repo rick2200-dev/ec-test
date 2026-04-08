@@ -38,36 +38,36 @@
 
 ## 技術スタック
 
-| カテゴリ | 技術 | バージョン / 備考 |
-|---------|------|-----------------|
-| バックエンド | Go | 1.25 |
-| フロントエンド | Next.js (App Router) | latest |
-| モノレポ管理 (Frontend) | Turborepo + pnpm | pnpm 10.x |
-| モノレポ管理 (Backend) | Go Workspaces | go.work |
-| データベース | PostgreSQL | 16 (RLS によるマルチテナント分離) |
-| キャッシュ | Redis | 7 |
-| メッセージング | Cloud Pub/Sub | GCP |
-| 認証 | Auth0 | JWT + Organizations |
-| 決済 | Stripe Connect | マーケットプレイス決済 |
-| 検索 | Vertex AI Search | GCP |
-| コンテナオーケストレーション | GKE | Google Kubernetes Engine |
-| CI/CD | GitHub Actions + ArgoCD | GitOps |
-| API 定義 | Protocol Buffers / OpenAPI | buf + openapi-generator |
+| カテゴリ                     | 技術                       | バージョン / 備考                 |
+| ---------------------------- | -------------------------- | --------------------------------- |
+| バックエンド                 | Go                         | 1.25                              |
+| フロントエンド               | Next.js (App Router)       | latest                            |
+| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                         |
+| モノレポ管理 (Backend)       | Go Workspaces              | go.work                           |
+| データベース                 | PostgreSQL                 | 16 (RLS によるマルチテナント分離) |
+| キャッシュ                   | Redis                      | 7                                 |
+| メッセージング               | Cloud Pub/Sub              | GCP                               |
+| 認証                         | Auth0                      | JWT + Organizations               |
+| 決済                         | Stripe Connect             | マーケットプレイス決済            |
+| 検索                         | Vertex AI Search           | GCP                               |
+| コンテナオーケストレーション | GKE                        | Google Kubernetes Engine          |
+| CI/CD                        | GitHub Actions + ArgoCD    | GitOps                            |
+| API 定義                     | Protocol Buffers / OpenAPI | buf + openapi-generator           |
 
 ## クイックスタート
 
 ### 前提条件
 
-| ツール | バージョン | インストール |
-|--------|----------|-------------|
-| Go | 1.25+ | https://go.dev/dl/ |
-| Node.js | 20+ | https://nodejs.org/ |
-| pnpm | 10+ | `corepack enable` |
-| Docker / Docker Compose | latest | https://docs.docker.com/get-docker/ |
-| golang-migrate | latest | `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest` |
-| air (ホットリロード) | latest | `go install github.com/air-verse/air@latest` |
-| golangci-lint | latest | https://golangci-lint.run/welcome/install/ |
-| buf (Proto) | latest | https://buf.build/docs/installation |
+| ツール                  | バージョン | インストール                                                                          |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------- |
+| Go                      | 1.25+      | https://go.dev/dl/                                                                    |
+| Node.js                 | 20+        | https://nodejs.org/                                                                   |
+| pnpm                    | 10+        | `corepack enable`                                                                     |
+| Docker / Docker Compose | latest     | https://docs.docker.com/get-docker/                                                   |
+| golang-migrate          | latest     | `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest` |
+| air (ホットリロード)    | latest     | `go install github.com/air-verse/air@latest`                                          |
+| golangci-lint           | latest     | https://golangci-lint.run/welcome/install/                                            |
+| buf (Proto)             | latest     | https://buf.build/docs/installation                                                   |
 
 ### セットアップ手順
 
@@ -145,23 +145,23 @@ ec-test/
 
 ## Make コマンド一覧
 
-| コマンド | 説明 |
-|---------|------|
-| `make deps-up` | ローカル依存サービス起動 (PostgreSQL, Redis, Pub/Sub) |
-| `make deps-down` | ローカル依存サービス停止 |
-| `make migrate` | DB マイグレーション実行 |
-| `make migrate-down` | 直前のマイグレーションをロールバック |
-| `make migrate-create` | 新規マイグレーションファイル作成 |
-| `make seed` | 開発用シードデータ投入 |
-| `make dev-<service>` | 指定サービスをホットリロードで起動 (air) |
-| `make dev-buyer` | Buyer Next.js アプリ起動 |
-| `make dev-seller` | Seller Next.js アプリ起動 |
-| `make dev-admin` | Admin Next.js アプリ起動 |
-| `make build-all` | 全 Go サービスをビルド |
-| `make lint-go` | 全 Go コードの lint 実行 |
-| `make test-go` | 全 Go コードのテスト実行 |
-| `make proto-gen` | Proto ファイルからコード生成 |
-| `make openapi-gen` | OpenAPI 仕様から API クライアント生成 |
+| コマンド              | 説明                                                  |
+| --------------------- | ----------------------------------------------------- |
+| `make deps-up`        | ローカル依存サービス起動 (PostgreSQL, Redis, Pub/Sub) |
+| `make deps-down`      | ローカル依存サービス停止                              |
+| `make migrate`        | DB マイグレーション実行                               |
+| `make migrate-down`   | 直前のマイグレーションをロールバック                  |
+| `make migrate-create` | 新規マイグレーションファイル作成                      |
+| `make seed`           | 開発用シードデータ投入                                |
+| `make dev-<service>`  | 指定サービスをホットリロードで起動 (air)              |
+| `make dev-buyer`      | Buyer Next.js アプリ起動                              |
+| `make dev-seller`     | Seller Next.js アプリ起動                             |
+| `make dev-admin`      | Admin Next.js アプリ起動                              |
+| `make build-all`      | 全 Go サービスをビルド                                |
+| `make lint-go`        | 全 Go コードの lint 実行                              |
+| `make test-go`        | 全 Go コードのテスト実行                              |
+| `make proto-gen`      | Proto ファイルからコード生成                          |
+| `make openapi-gen`    | OpenAPI 仕様から API クライアント生成                 |
 
 ## 開発ワークフロー
 

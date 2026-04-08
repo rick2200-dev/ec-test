@@ -21,17 +21,17 @@
 
 ### 必須ツール
 
-| ツール | バージョン | 用途 |
-|--------|----------|------|
-| Go | 1.25+ | バックエンドサービス |
-| Node.js | 20+ | フロントエンド |
-| pnpm | 10+ | パッケージマネージャー (`corepack enable` で有効化) |
-| Docker / Docker Compose | latest | ローカル依存サービス |
-| golang-migrate | latest | DB マイグレーション |
-| air | latest | Go ホットリロード |
-| golangci-lint | latest | Go lint |
-| buf | latest | Protocol Buffers コード生成 |
-| psql | latest | DB シードデータ投入 |
+| ツール                  | バージョン | 用途                                                |
+| ----------------------- | ---------- | --------------------------------------------------- |
+| Go                      | 1.25+      | バックエンドサービス                                |
+| Node.js                 | 20+        | フロントエンド                                      |
+| pnpm                    | 10+        | パッケージマネージャー (`corepack enable` で有効化) |
+| Docker / Docker Compose | latest     | ローカル依存サービス                                |
+| golang-migrate          | latest     | DB マイグレーション                                 |
+| air                     | latest     | Go ホットリロード                                   |
+| golangci-lint           | latest     | Go lint                                             |
+| buf                     | latest     | Protocol Buffers コード生成                         |
+| psql                    | latest     | DB シードデータ投入                                 |
 
 ### 初回セットアップ
 
@@ -54,15 +54,15 @@ make dev-auth         # Auth 起動後 → http://localhost:8081/healthz
 
 ## ブランチ命名規則
 
-| プレフィックス | 用途 | 例 |
-|--------------|------|-----|
-| `feature/` | 新機能開発 | `feature/add-cart-api` |
-| `fix/` | バグ修正 | `fix/order-total-calculation` |
-| `docs/` | ドキュメント変更 | `docs/update-api-spec` |
-| `refactor/` | リファクタリング | `refactor/extract-payment-service` |
-| `chore/` | 設定変更・依存更新等 | `chore/upgrade-go-1.26` |
-| `test/` | テスト追加・修正 | `test/add-catalog-integration` |
-| `hotfix/` | 本番緊急修正 | `hotfix/fix-rls-policy` |
+| プレフィックス | 用途                 | 例                                 |
+| -------------- | -------------------- | ---------------------------------- |
+| `feature/`     | 新機能開発           | `feature/add-cart-api`             |
+| `fix/`         | バグ修正             | `fix/order-total-calculation`      |
+| `docs/`        | ドキュメント変更     | `docs/update-api-spec`             |
+| `refactor/`    | リファクタリング     | `refactor/extract-payment-service` |
+| `chore/`       | 設定変更・依存更新等 | `chore/upgrade-go-1.26`            |
+| `test/`        | テスト追加・修正     | `test/add-catalog-integration`     |
+| `hotfix/`      | 本番緊急修正         | `hotfix/fix-rls-policy`            |
 
 **命名ルール:**
 
@@ -88,17 +88,17 @@ make dev-auth         # Auth 起動後 → http://localhost:8081/healthz
 
 ### Type 一覧
 
-| Type | 説明 |
-|------|------|
-| `feat` | 新機能 |
-| `fix` | バグ修正 |
-| `docs` | ドキュメントのみの変更 |
-| `style` | コードの意味に影響しない変更 (フォーマット等) |
-| `refactor` | バグ修正でも新機能でもないコード変更 |
-| `perf` | パフォーマンス改善 |
-| `test` | テストの追加・修正 |
-| `chore` | ビルドプロセスやツールの変更 |
-| `ci` | CI 設定の変更 |
+| Type       | 説明                                          |
+| ---------- | --------------------------------------------- |
+| `feat`     | 新機能                                        |
+| `fix`      | バグ修正                                      |
+| `docs`     | ドキュメントのみの変更                        |
+| `style`    | コードの意味に影響しない変更 (フォーマット等) |
+| `refactor` | バグ修正でも新機能でもないコード変更          |
+| `perf`     | パフォーマンス改善                            |
+| `test`     | テストの追加・修正                            |
+| `chore`    | ビルドプロセスやツールの変更                  |
+| `ci`       | CI 設定の変更                                 |
 
 ### Scope 一覧
 
@@ -528,11 +528,11 @@ export PUBSUB_EMULATOR_HOST=localhost:8085
 
 ### テストの種類
 
-| 種類 | 場所 | 実行方法 |
-|------|------|---------|
-| 単体テスト | `*_test.go` (同パッケージ) | `go test ./...` |
-| 統合テスト | `*_integration_test.go` | `go test -tags=integration ./...` |
-| E2E テスト | `tests/e2e/` (今後追加) | TBD |
+| 種類       | 場所                       | 実行方法                          |
+| ---------- | -------------------------- | --------------------------------- |
+| 単体テスト | `*_test.go` (同パッケージ) | `go test ./...`                   |
+| 統合テスト | `*_integration_test.go`    | `go test -tags=integration ./...` |
+| E2E テスト | `tests/e2e/` (今後追加)    | TBD                               |
 
 ### 単体テスト
 

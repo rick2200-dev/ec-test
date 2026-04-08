@@ -76,16 +76,16 @@
 
 ## サービス一覧
 
-| サービス | ポート | 役割 | DB スキーマ |
-|---------|-------|------|------------|
-| **gateway** | 8080 | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限 | なし |
-| **auth** | 8081 | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0) | `auth_svc` |
-| **catalog** | 8082 | 商品・SKU・カテゴリ管理、商品公開・非公開制御 | `catalog_svc` |
-| **inventory** | 8083 | 在庫数量管理、在庫引当・解放、在庫移動履歴 | `inventory_svc` |
-| **order** | 8084 | 注文作成・管理、決済処理 (Stripe)、コミッション計算、売上送金 | `order_svc` |
-| **search** | 8085 | 商品検索 (Vertex AI Search 連携)、ファセット検索 | なし (外部) |
-| **recommend** | 8086 | レコメンデーション、パーソナライズ | なし (外部) |
-| **notification** | 8087 | メール・プッシュ通知、イベント購読による自動通知 | なし |
+| サービス         | ポート | 役割                                                                    | DB スキーマ     |
+| ---------------- | ------ | ----------------------------------------------------------------------- | --------------- |
+| **gateway**      | 8080   | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限 | なし            |
+| **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)                | `auth_svc`      |
+| **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                           | `catalog_svc`   |
+| **inventory**    | 8083   | 在庫数量管理、在庫引当・解放、在庫移動履歴                              | `inventory_svc` |
+| **order**        | 8084   | 注文作成・管理、決済処理 (Stripe)、コミッション計算、売上送金           | `order_svc`     |
+| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                        | なし (外部)     |
+| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                      | なし (外部)     |
+| **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                        | なし            |
 
 ---
 
@@ -285,12 +285,12 @@ erDiagram
 
 PostgreSQL のスキーマ機能を利用し、サービスごとにスキーマを分離:
 
-| スキーマ | 担当サービス | テーブル |
-|---------|------------|---------|
-| `auth_svc` | auth | `tenants`, `sellers`, `seller_users` |
-| `catalog_svc` | catalog | `categories`, `products`, `skus`, `product_categories` |
-| `inventory_svc` | inventory | `inventory`, `stock_movements` |
-| `order_svc` | order | `orders`, `order_lines`, `commission_rules`, `payouts` |
+| スキーマ        | 担当サービス | テーブル                                               |
+| --------------- | ------------ | ------------------------------------------------------ |
+| `auth_svc`      | auth         | `tenants`, `sellers`, `seller_users`                   |
+| `catalog_svc`   | catalog      | `categories`, `products`, `skus`, `product_categories` |
+| `inventory_svc` | inventory    | `inventory`, `stock_movements`                         |
+| `order_svc`     | order        | `orders`, `order_lines`, `commission_rules`, `payouts` |
 
 ### 金額の表現
 
@@ -395,13 +395,13 @@ sequenceDiagram
 
 ### ロール一覧
 
-| ロール | 説明 | アクセス範囲 |
-|--------|------|-------------|
-| `platform:admin` | プラットフォーム管理者 | 全テナント・全操作 |
-| `tenant:admin` | テナント管理者 | 自テナント内の全操作 |
-| `seller:admin` | セラー管理者 | 自セラーの全操作 |
-| `seller:member` | セラーメンバー | 自セラーの限定操作 |
-| `buyer` | 購入者 | 商品閲覧・購入 |
+| ロール           | 説明                   | アクセス範囲         |
+| ---------------- | ---------------------- | -------------------- |
+| `platform:admin` | プラットフォーム管理者 | 全テナント・全操作   |
+| `tenant:admin`   | テナント管理者         | 自テナント内の全操作 |
+| `seller:admin`   | セラー管理者           | 自セラーの全操作     |
+| `seller:member`  | セラーメンバー         | 自セラーの限定操作   |
+| `buyer`          | 購入者                 | 商品閲覧・購入       |
 
 ---
 
@@ -409,16 +409,16 @@ sequenceDiagram
 
 ### トピック一覧
 
-| トピック | パブリッシャー | サブスクライバー | 説明 |
-|---------|--------------|----------------|------|
-| `order.created` | order | notification, inventory | 注文作成時 |
-| `order.paid` | order | notification, inventory | 決済完了時 |
-| `order.cancelled` | order | notification, inventory | 注文キャンセル時 |
-| `inventory.low_stock` | inventory | notification | 在庫が閾値以下 |
-| `catalog.product_updated` | catalog | search | 商品情報更新時 |
-| `catalog.product_deleted` | catalog | search | 商品削除時 |
-| `seller.registered` | auth | notification | セラー新規登録時 |
-| `payout.completed` | order | notification | 売上送金完了時 |
+| トピック                  | パブリッシャー | サブスクライバー        | 説明             |
+| ------------------------- | -------------- | ----------------------- | ---------------- |
+| `order.created`           | order          | notification, inventory | 注文作成時       |
+| `order.paid`              | order          | notification, inventory | 決済完了時       |
+| `order.cancelled`         | order          | notification, inventory | 注文キャンセル時 |
+| `inventory.low_stock`     | inventory      | notification            | 在庫が閾値以下   |
+| `catalog.product_updated` | catalog        | search                  | 商品情報更新時   |
+| `catalog.product_deleted` | catalog        | search                  | 商品削除時       |
+| `seller.registered`       | auth           | notification            | セラー新規登録時 |
+| `payout.completed`        | order          | notification            | 売上送金完了時   |
 
 ### メッセージフォーマット
 

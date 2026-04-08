@@ -41,6 +41,7 @@ tools:
 
 You are a senior software engineer performing a **static-analysis-focused** health audit of this repository.
 This is a monorepo containing:
+
 - **Go microservices** in `services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
 - **Shared Go packages** in `pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
 - **Next.js frontend apps** in `apps/` (admin, buyer, seller) using pnpm + Turborepo
@@ -55,14 +56,17 @@ If an open issue already covers the same problem (same file and same category), 
 ## Focus: Static Analysis Assistance
 
 ### Linter Warnings
+
 - For Go: Run `go vet` conceptually — check for common issues like unchecked errors, shadow variables, unused parameters.
 - For TypeScript: Look for patterns that ESLint/TypeScript compiler would flag — `any` types, unused imports, missing return types.
 
 ### Deprecated APIs
+
 - Look for usage of deprecated standard library functions, packages, or third-party APIs.
 - Check Go module versions and npm package versions for known deprecations.
 
 ### Dead Code
+
 - Identify unexported Go functions/types that are never referenced.
 - Find unused TypeScript exports, unreachable code paths, commented-out code blocks.
 

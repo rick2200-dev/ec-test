@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'services/**'
-      - 'pkg/**'
+      - "services/**"
+      - "pkg/**"
 
 permissions:
   contents: write

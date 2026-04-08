@@ -12,6 +12,7 @@ description: |
 This skill captures the end-to-end workflow for adding or extending gRPC in a Go microservices monorepo that uses buf, Go workspaces, and a gateway BFF pattern.
 
 The monorepo has this relevant structure:
+
 ```
 proto/                          # Proto definitions (buf-managed)
   buf.yaml                     # Lint: STANDARD, Breaking: FILE
@@ -57,6 +58,7 @@ cd proto && buf lint
 ```
 
 Common fixes:
+
 - Remove unused imports (e.g., `google/protobuf/timestamp.proto` if no Timestamp fields)
 - Ensure each RPC has a unique response message type (don't share responses between RPCs)
 - Follow STANDARD lint rules (field names snake_case, enum values UPPER_SNAKE_CASE with type prefix)
@@ -191,12 +193,14 @@ Ensure `GRPCPort` is added to the service's config struct if it doesn't exist.
 If the gateway needs to call this service, update `services/gateway/internal/grpcclient/`:
 
 1. **clients.go** — add connection and typed client fields to `GRPCClients`:
+
    ```go
    {service}Conn   *grpc.ClientConn
    {Service}Client {service}v1.{Service}ServiceClient
    ```
 
 2. **{service}.go** — add wrapper methods that construct requests and call the client:
+
    ```go
    func (c *GRPCClients) {RPC}(ctx context.Context, ...) (*{service}v1.{RPC}Response, error) {
        return c.{Service}Client.{RPC}(ctx, &{service}v1.{RPC}Request{...})
@@ -213,28 +217,30 @@ go build ./services/gateway/...
 ```
 
 If using Go workspaces, you can also run from the repo root:
+
 ```bash
 go build ./...
 ```
 
 ## Port Convention
 
-| Service     | HTTP  | gRPC  |
-|-------------|-------|-------|
-| gateway     | 8080  | —     |
-| auth        | 8081  | —     |
-| catalog     | 8082  | 50052 |
-| order       | 8083  | 50053 |
-| inventory   | 8084  | 50054 |
-| search      | 8085  | 50055 |
-| recommend   | 8086  | 50056 |
-| notification| 8087  | 50057 |
+| Service      | HTTP | gRPC  |
+| ------------ | ---- | ----- |
+| gateway      | 8080 | —     |
+| auth         | 8081 | —     |
+| catalog      | 8082 | 50052 |
+| order        | 8083 | 50053 |
+| inventory    | 8084 | 50054 |
+| search       | 8085 | 50055 |
+| recommend    | 8086 | 50056 |
+| notification | 8087 | 50057 |
 
 When adding a new gRPC service, pick the next available gRPC port following this pattern.
 
 ## Checklist
 
 Before marking gRPC integration complete, verify:
+
 - [ ] Proto file lints cleanly (`buf lint`)
 - [ ] Code generates without errors (`buf generate`)
 - [ ] `gen/go/go.mod` is tidy
