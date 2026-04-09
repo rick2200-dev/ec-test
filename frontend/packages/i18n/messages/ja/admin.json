@@ -9,6 +9,7 @@
     "dashboard": "ダッシュボード",
     "tenants": "テナント管理",
     "sellers": "セラー管理",
+    "plans": "サブスクリプションプラン",
     "commissions": "手数料設定",
     "analytics": "プラットフォーム分析",
     "settings": "システム設定"
@@ -117,6 +118,40 @@
     "salesBySeller": "セラー別売上",
     "salesByCategory": "カテゴリ別売上",
     "chartPlaceholder": "チャートコンポーネント（実装予定）"
+  },
+  "plans": {
+    "title": "サブスクリプションプラン",
+    "description": "セラー向けサブスクリプションプランを管理します",
+    "createNew": "新規プラン作成",
+    "planName": "プラン名",
+    "slug": "スラッグ",
+    "tier": "ティア",
+    "price": "月額料金",
+    "searchBoost": "検索ブースト",
+    "maxProducts": "最大商品数",
+    "featuredSlots": "注目枠数",
+    "promotedResults": "プロモーション数",
+    "status": "ステータス",
+    "actions": "操作",
+    "edit": "編集",
+    "unlimited": "無制限",
+    "free": "無料"
+  },
+  "newPlan": {
+    "title": "新規プラン作成",
+    "description": "新しいサブスクリプションプランを作成します",
+    "planName": "プラン名",
+    "slug": "スラッグ",
+    "tier": "ティア（数値が大きいほど上位）",
+    "priceAmount": "月額料金（円）",
+    "searchBoost": "検索ブースト倍率",
+    "maxProducts": "最大商品数（-1で無制限）",
+    "featuredSlots": "注目枠数",
+    "promotedResults": "プロモーション結果数",
+    "stripePriceId": "Stripe Price ID",
+    "create": "作成する",
+    "cancel": "キャンセル",
+    "createdMessage": "プランを作成しました（モック）"
   },
   "admin": {
     "role": "管理者"

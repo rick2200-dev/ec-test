@@ -33,6 +33,16 @@
     "size": "サイズ",
     "material": "素材"
   },
+  "search": {
+    "title": "検索結果",
+    "resultsFor": "「{query}」の検索結果",
+    "noResults": "検索結果が見つかりませんでした",
+    "sponsored": "スポンサー",
+    "totalResults": "{count}件の商品が見つかりました",
+    "categories": "カテゴリ",
+    "priceRange": "価格帯",
+    "searchPlaceholder": "キーワードを入力..."
+  },
   "footer": {
     "description": "あなたの欲しいものが見つかるマーケットプレイス",
     "categories": "カテゴリ",

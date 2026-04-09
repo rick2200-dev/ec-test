@@ -33,6 +33,16 @@
     "size": "Size",
     "material": "Material"
   },
+  "search": {
+    "title": "Search Results",
+    "resultsFor": "Results for \"{query}\"",
+    "noResults": "No results found",
+    "sponsored": "Sponsored",
+    "totalResults": "{count} products found",
+    "categories": "Categories",
+    "priceRange": "Price Range",
+    "searchPlaceholder": "Enter keywords..."
+  },
   "footer": {
     "description": "A marketplace where you can find everything you want",
     "categories": "Categories",

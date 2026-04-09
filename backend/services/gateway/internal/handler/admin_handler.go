@@ -69,3 +69,40 @@ func (h *AdminHandler) ApproveSeller(w http.ResponseWriter, r *http.Request) {
 	}
 	writeRaw(w, status, body)
 }
+
+// ListPlans lists all subscription plans.
+// GET /plans
+func (h *AdminHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.auth.Get(r.Context(), "/plans", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// CreatePlan creates a new subscription plan.
+// POST /plans
+func (h *AdminHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.auth.Post(r.Context(), "/plans", r.Body)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// UpdatePlan updates a subscription plan.
+// PUT /plans/{id}
+func (h *AdminHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	body, status, err := h.auth.Put(r.Context(), "/plans/"+url.PathEscape(id), r.Body)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}

@@ -62,6 +62,9 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 			sr.Put("/orders/{id}/status", seller.UpdateOrderStatus)
 			sr.Get("/inventory", seller.ListInventory)
 			sr.Put("/inventory/{skuID}", seller.UpdateStock)
+			sr.Get("/subscription", seller.GetSubscription)
+			sr.Post("/subscription", seller.Subscribe)
+			sr.Get("/plans", seller.ListPlans)
 		})
 
 		// Admin routes (requires platform_admin role)
@@ -72,6 +75,9 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 			ar.Post("/tenants", admin.CreateTenant)
 			ar.Get("/sellers", admin.ListSellers)
 			ar.Put("/sellers/{id}/approve", admin.ApproveSeller)
+			ar.Get("/plans", admin.ListPlans)
+			ar.Post("/plans", admin.CreatePlan)
+			ar.Put("/plans/{id}", admin.UpdatePlan)
 		})
 	})
 

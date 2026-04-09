@@ -61,3 +61,41 @@ export interface ProductWithSKUs {
   seller?: Seller;
   category?: Category;
 }
+
+/** A single product hit returned by the search service */
+export interface ProductHit {
+  id: string;
+  tenant_id: string;
+  seller_id: string;
+  name: string;
+  slug: string;
+  description: string;
+  status: string;
+  price_amount: number;
+  price_currency: string;
+  seller_name: string;
+  category_name: string;
+  score: number;
+  is_promoted: boolean;
+  plan_tier: number;
+}
+
+/** Facet value in search results */
+export interface FacetValue {
+  value: string;
+  count: number;
+}
+
+/** Facet group in search results */
+export interface Facet {
+  field: string;
+  values: FacetValue[];
+}
+
+/** Search result response from the search service */
+export interface SearchResult {
+  products: ProductHit[];
+  promoted_products: ProductHit[];
+  total: number;
+  facets: Facet[];
+}

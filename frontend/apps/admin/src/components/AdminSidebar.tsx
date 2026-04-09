@@ -11,6 +11,7 @@ const navItems: NavItem[] = [
   { href: "/", labelKey: "sidebar.dashboard", icon: "grid" },
   { href: "/tenants", labelKey: "sidebar.tenants", icon: "building" },
   { href: "/sellers", labelKey: "sidebar.sellers", icon: "users" },
+  { href: "/plans", labelKey: "sidebar.plans", icon: "credit-card" },
   { href: "/commissions", labelKey: "sidebar.commissions", icon: "percent" },
   { href: "/analytics", labelKey: "sidebar.analytics", icon: "chart" },
   { href: "/settings", labelKey: "sidebar.settings", icon: "settings" },
@@ -62,6 +63,22 @@ const icons: Record<string, ReactNode> = {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+      />
+    </svg>
+  ),
+  "credit-card": (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
       />
     </svg>
   ),

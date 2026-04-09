@@ -15,6 +15,7 @@ type SellerHandler struct {
 	catalog   *proxy.ServiceClient
 	order     *proxy.ServiceClient
 	inventory *proxy.ServiceClient
+	auth      *proxy.ServiceClient
 }
 
 // NewSellerHandler creates a new SellerHandler.
@@ -23,6 +24,7 @@ func NewSellerHandler(svc *proxy.Services) *SellerHandler {
 		catalog:   svc.Catalog,
 		order:     svc.Order,
 		inventory: svc.Inventory,
+		auth:      svc.Auth,
 	}
 }
 
@@ -126,6 +128,52 @@ func (h *SellerHandler) UpdateStock(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("proxy to inventory failed", "error", err)
 		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "inventory service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// ListPlans lists all available subscription plans.
+// GET /plans
+func (h *SellerHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
+	body, status, pErr := h.auth.Get(r.Context(), "/plans", r.URL.RawQuery)
+	if pErr != nil {
+		slog.Error("proxy to auth failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// GetSubscription retrieves the current subscription for the seller.
+// GET /subscription
+func (h *SellerHandler) GetSubscription(w http.ResponseWriter, r *http.Request) {
+	tc, err := tenant.FromContext(r.Context())
+	if err != nil || tc.SellerID == nil {
+		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "seller context required"})
+		return
+	}
+	body, status, pErr := h.auth.Get(r.Context(), "/subscriptions/sellers/"+tc.SellerID.String(), "")
+	if pErr != nil {
+		slog.Error("proxy to auth failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// Subscribe subscribes the seller to a plan.
+// POST /subscription
+func (h *SellerHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
+	tc, err := tenant.FromContext(r.Context())
+	if err != nil || tc.SellerID == nil {
+		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "seller context required"})
+		return
+	}
+	body, status, pErr := h.auth.Post(r.Context(), "/subscriptions/sellers/"+tc.SellerID.String(), r.Body)
+	if pErr != nil {
+		slog.Error("proxy to auth failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)

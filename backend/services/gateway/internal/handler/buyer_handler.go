@@ -14,6 +14,7 @@ type BuyerHandler struct {
 	catalog   *proxy.ServiceClient
 	order     *proxy.ServiceClient
 	recommend *proxy.ServiceClient
+	search    *proxy.ServiceClient
 }
 
 // NewBuyerHandler creates a new BuyerHandler.
@@ -22,6 +23,7 @@ func NewBuyerHandler(svc *proxy.Services) *BuyerHandler {
 		catalog:   svc.Catalog,
 		order:     svc.Order,
 		recommend: svc.Recommend,
+		search:    svc.Search,
 	}
 }
 
@@ -55,13 +57,13 @@ func (h *BuyerHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 // SearchProducts proxies to the search service.
 // GET /search
 func (h *BuyerHandler) SearchProducts(w http.ResponseWriter, r *http.Request) {
-	// TODO: proxy to search service once it is ready
-	q := r.URL.Query().Get("q")
-	httputil.JSON(w, http.StatusOK, map[string]any{
-		"query":   q,
-		"results": []any{},
-		"message": "stub: search service not ready",
-	})
+	body, status, err := h.search.Get(r.Context(), "/search", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to search failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "search service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
 }
 
 // CreateOrder proxies to the order service.

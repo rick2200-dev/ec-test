@@ -10,6 +10,7 @@
     "orders": "Orders",
     "inventory": "Inventory",
     "sales": "Sales & Payouts",
+    "subscription": "Plan",
     "settings": "Settings"
   },
   "dashboard": {
@@ -100,6 +101,24 @@
     "lowStock": "Low Stock",
     "normal": "Normal",
     "editStock": "Edit Stock"
+  },
+  "subscription": {
+    "title": "Plan Management",
+    "description": "View and change your current subscription plan",
+    "currentPlan": "Current Plan",
+    "changePlan": "Change Plan",
+    "planComparison": "Plan Comparison",
+    "monthlyPrice": "Monthly Price",
+    "maxProducts": "Max Products",
+    "searchBoost": "Search Boost",
+    "featuredSlots": "Featured Slots",
+    "promotedResults": "Promoted Results",
+    "unlimited": "Unlimited",
+    "free": "Free",
+    "current": "Current Plan",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "perMonth": "/mo"
   },
   "store": {
     "sampleStore": "Sample Store"

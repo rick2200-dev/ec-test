@@ -34,3 +34,25 @@ export interface PlatformStats {
   monthlyTransactionAmount: number;
   monthlyCommissionIncome: number;
 }
+
+export interface PlanFeatures {
+  max_products: number;
+  search_boost: number;
+  featured_slots: number;
+  promoted_results: number;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  tenant_id: string;
+  name: string;
+  slug: string;
+  tier: number;
+  price_amount: number;
+  price_currency: string;
+  features: PlanFeatures;
+  stripe_price_id: string;
+  status: "active" | "archived";
+  created_at: string;
+  updated_at: string;
+}

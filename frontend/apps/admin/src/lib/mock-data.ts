@@ -1,4 +1,4 @@
-import type { Tenant, Seller, CommissionRule, PlatformStats } from "./types";
+import type { Tenant, Seller, CommissionRule, PlatformStats, SubscriptionPlan } from "./types";
 
 export const platformStats: PlatformStats = {
   totalTenants: 12,
@@ -157,6 +157,51 @@ export const commissionRules: CommissionRule[] = [
     priority: 3,
     validFrom: "2025-04-01",
     validUntil: "2026-06-30",
+  },
+];
+
+export const subscriptionPlans: SubscriptionPlan[] = [
+  {
+    id: "plan-001",
+    tenant_id: "t-001",
+    name: "Free",
+    slug: "free",
+    tier: 0,
+    price_amount: 0,
+    price_currency: "JPY",
+    features: { max_products: 10, search_boost: 1.0, featured_slots: 0, promoted_results: 0 },
+    stripe_price_id: "",
+    status: "active",
+    created_at: "2025-01-15",
+    updated_at: "2025-01-15",
+  },
+  {
+    id: "plan-002",
+    tenant_id: "t-001",
+    name: "Standard",
+    slug: "standard",
+    tier: 1,
+    price_amount: 9800,
+    price_currency: "JPY",
+    features: { max_products: 50, search_boost: 1.5, featured_slots: 2, promoted_results: 0 },
+    stripe_price_id: "price_standard_001",
+    status: "active",
+    created_at: "2025-01-15",
+    updated_at: "2025-01-15",
+  },
+  {
+    id: "plan-003",
+    tenant_id: "t-001",
+    name: "Premium",
+    slug: "premium",
+    tier: 2,
+    price_amount: 29800,
+    price_currency: "JPY",
+    features: { max_products: -1, search_boost: 2.5, featured_slots: 5, promoted_results: 3 },
+    stripe_price_id: "price_premium_001",
+    status: "active",
+    created_at: "2025-01-15",
+    updated_at: "2025-01-15",
   },
 ];
 

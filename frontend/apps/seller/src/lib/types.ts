@@ -60,3 +60,30 @@ export interface SalesStats {
   pendingOrders: number;
   stockAlerts: number;
 }
+
+export interface PlanFeatures {
+  max_products: number;
+  search_boost: number;
+  featured_slots: number;
+  promoted_results: number;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string;
+  tier: number;
+  price_amount: number;
+  price_currency: string;
+  features: PlanFeatures;
+}
+
+export interface SellerSubscription {
+  id: string;
+  plan_id: string;
+  plan_name: string;
+  plan_slug: string;
+  plan_tier: number;
+  status: "active" | "past_due" | "canceled" | "trialing";
+  current_period_end: string | null;
+}

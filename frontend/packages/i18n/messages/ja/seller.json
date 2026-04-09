@@ -10,6 +10,7 @@
     "orders": "注文管理",
     "inventory": "在庫管理",
     "sales": "売上・入金",
+    "subscription": "プラン管理",
     "settings": "設定"
   },
   "dashboard": {
@@ -100,6 +101,24 @@
     "lowStock": "残りわずか",
     "normal": "正常",
     "editStock": "在庫編集"
+  },
+  "subscription": {
+    "title": "プラン管理",
+    "description": "ご利用中のプランを確認・変更できます",
+    "currentPlan": "現在のプラン",
+    "changePlan": "プランを変更",
+    "planComparison": "プラン比較",
+    "monthlyPrice": "月額料金",
+    "maxProducts": "最大商品数",
+    "searchBoost": "検索ブースト",
+    "featuredSlots": "注目枠数",
+    "promotedResults": "プロモーション数",
+    "unlimited": "無制限",
+    "free": "無料",
+    "current": "現在のプラン",
+    "upgrade": "アップグレード",
+    "downgrade": "ダウングレード",
+    "perMonth": "/月"
   },
   "store": {
     "sampleStore": "サンプルストア"

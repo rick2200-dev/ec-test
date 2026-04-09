@@ -13,15 +13,17 @@ import (
 
 // AuthService implements business logic for auth operations.
 type AuthService struct {
-	tenants *repository.TenantRepository
-	sellers *repository.SellerRepository
+	tenants       *repository.TenantRepository
+	sellers       *repository.SellerRepository
+	subscriptions *repository.SubscriptionRepository
 }
 
 // NewAuthService creates a new AuthService.
-func NewAuthService(tenants *repository.TenantRepository, sellers *repository.SellerRepository) *AuthService {
+func NewAuthService(tenants *repository.TenantRepository, sellers *repository.SellerRepository, subscriptions *repository.SubscriptionRepository) *AuthService {
 	return &AuthService{
-		tenants: tenants,
-		sellers: sellers,
+		tenants:       tenants,
+		sellers:       sellers,
+		subscriptions: subscriptions,
 	}
 }
 
@@ -135,4 +137,115 @@ func (s *AuthService) ApproveSeller(ctx context.Context, tenantID, id uuid.UUID)
 
 	slog.Info("seller approved", "id", id, "tenant_id", tenantID)
 	return nil
+}
+
+// --- Subscription Plan Methods ---
+
+// CreatePlan creates a new subscription plan within a tenant.
+func (s *AuthService) CreatePlan(ctx context.Context, tenantID uuid.UUID, plan *domain.SubscriptionPlan) error {
+	if plan.Status == "" {
+		plan.Status = "active"
+	}
+	if plan.PriceCurrency == "" {
+		plan.PriceCurrency = "JPY"
+	}
+
+	if err := s.subscriptions.CreatePlan(ctx, tenantID, plan); err != nil {
+		return apperrors.Internal("failed to create plan", err)
+	}
+
+	slog.Info("subscription plan created", "id", plan.ID, "tenant_id", tenantID, "slug", plan.Slug)
+	return nil
+}
+
+// ListPlans returns all active subscription plans for a tenant.
+func (s *AuthService) ListPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.SubscriptionPlan, error) {
+	plans, err := s.subscriptions.ListPlans(ctx, tenantID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to list plans", err)
+	}
+	return plans, nil
+}
+
+// GetPlan retrieves a subscription plan by ID.
+func (s *AuthService) GetPlan(ctx context.Context, tenantID, planID uuid.UUID) (*domain.SubscriptionPlan, error) {
+	plan, err := s.subscriptions.GetPlanByID(ctx, tenantID, planID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get plan", err)
+	}
+	if plan == nil {
+		return nil, apperrors.NotFound("plan not found")
+	}
+	return plan, nil
+}
+
+// UpdatePlan modifies an existing subscription plan.
+func (s *AuthService) UpdatePlan(ctx context.Context, tenantID uuid.UUID, plan *domain.SubscriptionPlan) error {
+	existing, err := s.subscriptions.GetPlanByID(ctx, tenantID, plan.ID)
+	if err != nil {
+		return apperrors.Internal("failed to get plan", err)
+	}
+	if existing == nil {
+		return apperrors.NotFound("plan not found")
+	}
+
+	if err := s.subscriptions.UpdatePlan(ctx, tenantID, plan); err != nil {
+		return apperrors.Internal("failed to update plan", err)
+	}
+
+	slog.Info("subscription plan updated", "id", plan.ID, "tenant_id", tenantID)
+	return nil
+}
+
+// GetSellerSubscription retrieves the current subscription for a seller.
+func (s *AuthService) GetSellerSubscription(ctx context.Context, tenantID, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error) {
+	sub, err := s.subscriptions.GetSellerSubscription(ctx, tenantID, sellerID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get seller subscription", err)
+	}
+	if sub == nil {
+		return nil, apperrors.NotFound("seller subscription not found")
+	}
+	return sub, nil
+}
+
+// SubscribeSeller subscribes a seller to a plan. Returns a Stripe Checkout URL for paid plans.
+func (s *AuthService) SubscribeSeller(ctx context.Context, tenantID, sellerID, planID uuid.UUID) (*domain.SellerSubscription, error) {
+	// Verify seller exists.
+	seller, err := s.sellers.GetByID(ctx, tenantID, sellerID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get seller", err)
+	}
+	if seller == nil {
+		return nil, apperrors.NotFound("seller not found")
+	}
+
+	// Verify plan exists.
+	plan, err := s.subscriptions.GetPlanByID(ctx, tenantID, planID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get plan", err)
+	}
+	if plan == nil {
+		return nil, apperrors.NotFound("plan not found")
+	}
+
+	sub := &domain.SellerSubscription{
+		ID:       uuid.New(),
+		TenantID: tenantID,
+		SellerID: sellerID,
+		PlanID:   planID,
+		Status:   domain.SubscriptionStatusActive,
+	}
+
+	if err := s.subscriptions.UpsertSellerSubscription(ctx, tenantID, sub); err != nil {
+		return nil, apperrors.Internal("failed to subscribe seller", err)
+	}
+
+	// Refresh the materialized view so search picks up the change.
+	if err := s.subscriptions.RefreshPlanBoostView(ctx); err != nil {
+		slog.Warn("failed to refresh plan boost view", "error", err)
+	}
+
+	slog.Info("seller subscribed", "seller_id", sellerID, "plan_id", planID, "tenant_id", tenantID)
+	return sub, nil
 }

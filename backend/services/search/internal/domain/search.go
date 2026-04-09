@@ -19,9 +19,10 @@ type SearchRequest struct {
 
 // SearchResult holds the response from a search query.
 type SearchResult struct {
-	Products []ProductHit `json:"products"`
-	Total    int          `json:"total"`
-	Facets   []Facet      `json:"facets"`
+	Products         []ProductHit `json:"products"`
+	PromotedProducts []ProductHit `json:"promoted_products,omitempty"`
+	Total            int          `json:"total"`
+	Facets           []Facet      `json:"facets"`
 }
 
 // ProductHit represents a single product in search results.
@@ -38,6 +39,8 @@ type ProductHit struct {
 	SellerName    string    `json:"seller_name"`
 	CategoryName  string    `json:"category_name"`
 	Score         float64   `json:"score"`
+	IsPromoted    bool      `json:"is_promoted"`
+	PlanTier      int       `json:"plan_tier"`
 }
 
 // Facet represents a facet grouping in search results.

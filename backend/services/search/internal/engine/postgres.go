@@ -70,10 +70,10 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 
 	whereClause := "WHERE " + strings.Join(conditions, " AND ")
 
-	// Build rank expression
-	rankExpr := "0"
+	// Build rank expression (boosted by seller plan)
+	rankExpr := "COALESCE(spb.search_boost, 1.0)"
 	if hasQuery {
-		rankExpr = fmt.Sprintf("ts_rank(p.search_vector, to_tsquery('simple', $2))")
+		rankExpr = "ts_rank(p.search_vector, to_tsquery('simple', $2)) * COALESCE(spb.search_boost, 1.0)"
 	}
 
 	// Sort
@@ -109,12 +109,14 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 			p.id, p.tenant_id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
 			p.status,
 			COALESCE(s.price_amount, 0), COALESCE(s.price_currency, 'JPY'),
-			COALESCE(sel.company_name, ''), COALESCE(c.name, ''),
-			%s AS rank
+			COALESCE(sel.name, ''), COALESCE(c.name, ''),
+			%s AS rank,
+			COALESCE(spb.plan_tier, 0)
 		FROM catalog_svc.products p
 		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
 		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id AND sel.tenant_id = p.tenant_id
 		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id AND c.tenant_id = p.tenant_id
+		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id AND spb.tenant_id = p.tenant_id
 		%s
 		%s
 		LIMIT %s OFFSET %s
@@ -135,6 +137,7 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 			&h.PriceAmount, &h.PriceCurrency,
 			&h.SellerName, &h.CategoryName,
 			&h.Score,
+			&h.PlanTier,
 		); err != nil {
 			return nil, fmt.Errorf("scan search result: %w", err)
 		}
@@ -144,6 +147,15 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 		return nil, fmt.Errorf("iterate search results: %w", err)
 	}
 
+	// Fetch promoted products for the first page only.
+	var promotedProducts []domain.ProductHit
+	if req.Offset == 0 {
+		promotedProducts, err = e.fetchPromotedProducts(ctx, req, hasQuery, args)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Facets: categories
 	facets, err := e.buildFacets(ctx, args[:1], req.TenantID) // reuse first arg (tenant_id)
 	if err != nil {
@@ -151,10 +163,87 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 	}
 
 	return &domain.SearchResult{
-		Products: products,
-		Total:    total,
-		Facets:   facets,
+		Products:         products,
+		PromotedProducts: promotedProducts,
+		Total:            total,
+		Facets:           facets,
 	}, nil
+}
+
+// fetchPromotedProducts returns promoted products from sellers with promoted_results > 0.
+func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.SearchRequest, hasQuery bool, baseArgs []any) ([]domain.ProductHit, error) {
+	var (
+		conditions []string
+		args       []any
+		argIdx     int
+	)
+
+	nextArg := func(val any) string {
+		argIdx++
+		args = append(args, val)
+		return fmt.Sprintf("$%d", argIdx)
+	}
+
+	conditions = append(conditions, fmt.Sprintf("p.tenant_id = %s", nextArg(req.TenantID)))
+	conditions = append(conditions, "p.status = 'active'")
+	conditions = append(conditions, "spb.promoted_results > 0")
+
+	if hasQuery && len(baseArgs) >= 2 {
+		terms := strings.Fields(req.Query)
+		tsTerms := make([]string, len(terms))
+		for i, t := range terms {
+			tsTerms[i] = t + ":*"
+		}
+		tsQuery := strings.Join(tsTerms, " & ")
+		conditions = append(conditions, fmt.Sprintf("p.search_vector @@ to_tsquery('simple', %s)", nextArg(tsQuery)))
+	}
+
+	whereClause := "WHERE " + strings.Join(conditions, " AND ")
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT ON (p.id)
+			p.id, p.tenant_id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
+			p.status,
+			COALESCE(s.price_amount, 0), COALESCE(s.price_currency, 'JPY'),
+			COALESCE(sel.name, ''), COALESCE(c.name, ''),
+			COALESCE(spb.search_boost, 1.0) AS rank,
+			COALESCE(spb.plan_tier, 0)
+		FROM catalog_svc.products p
+		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
+		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id AND sel.tenant_id = p.tenant_id
+		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id AND c.tenant_id = p.tenant_id
+		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id AND spb.tenant_id = p.tenant_id
+		%s
+		ORDER BY RANDOM()
+		LIMIT 3
+	`, whereClause)
+
+	rows, err := e.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("fetch promoted products: %w", err)
+	}
+	defer rows.Close()
+
+	var promoted []domain.ProductHit
+	for rows.Next() {
+		var h domain.ProductHit
+		if err := rows.Scan(
+			&h.ID, &h.TenantID, &h.SellerID, &h.Name, &h.Slug, &h.Description,
+			&h.Status,
+			&h.PriceAmount, &h.PriceCurrency,
+			&h.SellerName, &h.CategoryName,
+			&h.Score,
+			&h.PlanTier,
+		); err != nil {
+			return nil, fmt.Errorf("scan promoted product: %w", err)
+		}
+		h.IsPromoted = true
+		promoted = append(promoted, h)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate promoted products: %w", err)
+	}
+	return promoted, nil
 }
 
 // buildFacets generates category and price range facets for the tenant.
@@ -255,6 +344,6 @@ func buildOrderClause(sortBy, sortOrder string, hasQuery bool) string {
 		if hasQuery {
 			return "ORDER BY rank DESC, p.name ASC"
 		}
-		return "ORDER BY p.created_at DESC"
+		return "ORDER BY COALESCE(spb.plan_tier, 0) DESC, p.created_at DESC"
 	}
 }

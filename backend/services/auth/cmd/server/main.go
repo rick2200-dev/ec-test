@@ -44,13 +44,15 @@ func main() {
 	// Repositories
 	tenantRepo := repository.NewTenantRepository(pool)
 	sellerRepo := repository.NewSellerRepository(pool)
+	subscriptionRepo := repository.NewSubscriptionRepository(pool)
 
 	// Service
-	authSvc := service.NewAuthService(tenantRepo, sellerRepo)
+	authSvc := service.NewAuthService(tenantRepo, sellerRepo, subscriptionRepo)
 
 	// Handlers
 	tenantHandler := handler.NewTenantHandler(authSvc)
 	sellerHandler := handler.NewSellerHandler(authSvc)
+	subscriptionHandler := handler.NewSubscriptionHandler(authSvc)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -69,6 +71,10 @@ func main() {
 
 	// Seller endpoints (tenant-scoped, require JWT)
 	r.Mount("/sellers", sellerHandler.Routes())
+
+	// Subscription plan endpoints (tenant-scoped)
+	r.Mount("/plans", subscriptionHandler.PlanRoutes())
+	r.Mount("/subscriptions", subscriptionHandler.SubscriptionRoutes())
 
 	// HTTP server
 	addr := ":" + cfg.HTTPPort

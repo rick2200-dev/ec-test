@@ -9,6 +9,7 @@
     "dashboard": "Dashboard",
     "tenants": "Tenants",
     "sellers": "Sellers",
+    "plans": "Subscription Plans",
     "commissions": "Commissions",
     "analytics": "Analytics",
     "settings": "System Settings"
@@ -117,6 +118,40 @@
     "salesBySeller": "Sales by Seller",
     "salesByCategory": "Sales by Category",
     "chartPlaceholder": "Chart component (coming soon)"
+  },
+  "plans": {
+    "title": "Subscription Plans",
+    "description": "Manage subscription plans for sellers",
+    "createNew": "Create New Plan",
+    "planName": "Plan Name",
+    "slug": "Slug",
+    "tier": "Tier",
+    "price": "Monthly Price",
+    "searchBoost": "Search Boost",
+    "maxProducts": "Max Products",
+    "featuredSlots": "Featured Slots",
+    "promotedResults": "Promoted Results",
+    "status": "Status",
+    "actions": "Actions",
+    "edit": "Edit",
+    "unlimited": "Unlimited",
+    "free": "Free"
+  },
+  "newPlan": {
+    "title": "Create New Plan",
+    "description": "Create a new subscription plan",
+    "planName": "Plan Name",
+    "slug": "Slug",
+    "tier": "Tier (higher number = higher rank)",
+    "priceAmount": "Monthly Price (JPY)",
+    "searchBoost": "Search Boost Multiplier",
+    "maxProducts": "Max Products (-1 for unlimited)",
+    "featuredSlots": "Featured Slots",
+    "promotedResults": "Promoted Results",
+    "stripePriceId": "Stripe Price ID",
+    "create": "Create",
+    "cancel": "Cancel",
+    "createdMessage": "Plan created (mock)"
   },
   "admin": {
     "role": "Administrator"
