@@ -23,6 +23,10 @@ func orderToProto(o *domain.Order, lines []domain.OrderLine) *orderv1.Order {
 			Amount:   o.SubtotalAmount,
 			Currency: o.Currency,
 		},
+		ShippingFee: &commonv1.Money{
+			Amount:   o.ShippingFee,
+			Currency: o.Currency,
+		},
 		Commission: &commonv1.Money{
 			Amount:   o.CommissionAmount,
 			Currency: o.Currency,

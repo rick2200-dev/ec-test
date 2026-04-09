@@ -106,3 +106,40 @@ func (h *AdminHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	writeRaw(w, status, body)
 }
+
+// ListBuyerPlans lists all buyer subscription plans.
+// GET /buyer-plans
+func (h *AdminHandler) ListBuyerPlans(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.auth.Get(r.Context(), "/buyer-plans", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// CreateBuyerPlan creates a new buyer subscription plan.
+// POST /buyer-plans
+func (h *AdminHandler) CreateBuyerPlan(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.auth.Post(r.Context(), "/buyer-plans", r.Body)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// UpdateBuyerPlan updates a buyer subscription plan.
+// PUT /buyer-plans/{id}
+func (h *AdminHandler) UpdateBuyerPlan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	body, status, err := h.auth.Put(r.Context(), "/buyer-plans/"+url.PathEscape(id), r.Body)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}

@@ -49,6 +49,9 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 			br.Get("/orders", buyer.ListOrders)
 			br.Post("/events", buyer.TrackEvent)
 			br.Get("/recommendations", buyer.GetRecommendations)
+			br.Get("/plans", buyer.ListBuyerPlans)
+			br.Get("/subscription", buyer.GetSubscription)
+			br.Post("/subscription", buyer.Subscribe)
 		})
 
 		// Seller routes (requires seller role)
@@ -78,6 +81,9 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 			ar.Get("/plans", admin.ListPlans)
 			ar.Post("/plans", admin.CreatePlan)
 			ar.Put("/plans/{id}", admin.UpdatePlan)
+			ar.Get("/buyer-plans", admin.ListBuyerPlans)
+			ar.Post("/buyer-plans", admin.CreateBuyerPlan)
+			ar.Put("/buyer-plans/{id}", admin.UpdateBuyerPlan)
 		})
 	})
 

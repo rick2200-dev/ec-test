@@ -13,17 +13,24 @@ import (
 
 // AuthService implements business logic for auth operations.
 type AuthService struct {
-	tenants       *repository.TenantRepository
-	sellers       *repository.SellerRepository
-	subscriptions *repository.SubscriptionRepository
+	tenants            *repository.TenantRepository
+	sellers            *repository.SellerRepository
+	subscriptions      *repository.SubscriptionRepository
+	buyerSubscriptions *repository.BuyerSubscriptionRepository
 }
 
 // NewAuthService creates a new AuthService.
-func NewAuthService(tenants *repository.TenantRepository, sellers *repository.SellerRepository, subscriptions *repository.SubscriptionRepository) *AuthService {
+func NewAuthService(
+	tenants *repository.TenantRepository,
+	sellers *repository.SellerRepository,
+	subscriptions *repository.SubscriptionRepository,
+	buyerSubscriptions *repository.BuyerSubscriptionRepository,
+) *AuthService {
 	return &AuthService{
-		tenants:       tenants,
-		sellers:       sellers,
-		subscriptions: subscriptions,
+		tenants:            tenants,
+		sellers:            sellers,
+		subscriptions:      subscriptions,
+		buyerSubscriptions: buyerSubscriptions,
 	}
 }
 
@@ -247,5 +254,102 @@ func (s *AuthService) SubscribeSeller(ctx context.Context, tenantID, sellerID, p
 	}
 
 	slog.Info("seller subscribed", "seller_id", sellerID, "plan_id", planID, "tenant_id", tenantID)
+	return sub, nil
+}
+
+// --- Buyer Plan Methods ---
+
+// CreateBuyerPlan creates a new buyer subscription plan within a tenant.
+func (s *AuthService) CreateBuyerPlan(ctx context.Context, tenantID uuid.UUID, plan *domain.BuyerPlan) error {
+	if plan.Status == "" {
+		plan.Status = "active"
+	}
+	if plan.PriceCurrency == "" {
+		plan.PriceCurrency = "JPY"
+	}
+
+	if err := s.buyerSubscriptions.CreateBuyerPlan(ctx, tenantID, plan); err != nil {
+		return apperrors.Internal("failed to create buyer plan", err)
+	}
+
+	slog.Info("buyer plan created", "id", plan.ID, "tenant_id", tenantID, "slug", plan.Slug)
+	return nil
+}
+
+// ListBuyerPlans returns all active buyer plans for a tenant.
+func (s *AuthService) ListBuyerPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error) {
+	plans, err := s.buyerSubscriptions.ListBuyerPlans(ctx, tenantID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to list buyer plans", err)
+	}
+	return plans, nil
+}
+
+// GetBuyerPlan retrieves a buyer plan by ID.
+func (s *AuthService) GetBuyerPlan(ctx context.Context, tenantID, planID uuid.UUID) (*domain.BuyerPlan, error) {
+	plan, err := s.buyerSubscriptions.GetBuyerPlanByID(ctx, tenantID, planID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get buyer plan", err)
+	}
+	if plan == nil {
+		return nil, apperrors.NotFound("buyer plan not found")
+	}
+	return plan, nil
+}
+
+// UpdateBuyerPlan modifies an existing buyer plan.
+func (s *AuthService) UpdateBuyerPlan(ctx context.Context, tenantID uuid.UUID, plan *domain.BuyerPlan) error {
+	existing, err := s.buyerSubscriptions.GetBuyerPlanByID(ctx, tenantID, plan.ID)
+	if err != nil {
+		return apperrors.Internal("failed to get buyer plan", err)
+	}
+	if existing == nil {
+		return apperrors.NotFound("buyer plan not found")
+	}
+
+	if err := s.buyerSubscriptions.UpdateBuyerPlan(ctx, tenantID, plan); err != nil {
+		return apperrors.Internal("failed to update buyer plan", err)
+	}
+
+	slog.Info("buyer plan updated", "id", plan.ID, "tenant_id", tenantID)
+	return nil
+}
+
+// GetBuyerSubscription retrieves the current subscription for a buyer.
+func (s *AuthService) GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
+	sub, err := s.buyerSubscriptions.GetBuyerSubscription(ctx, tenantID, buyerAuth0ID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get buyer subscription", err)
+	}
+	if sub == nil {
+		return nil, apperrors.NotFound("buyer subscription not found")
+	}
+	return sub, nil
+}
+
+// SubscribeBuyer subscribes a buyer to a plan.
+func (s *AuthService) SubscribeBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, planID uuid.UUID) (*domain.BuyerSubscription, error) {
+	// Verify plan exists.
+	plan, err := s.buyerSubscriptions.GetBuyerPlanByID(ctx, tenantID, planID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get buyer plan", err)
+	}
+	if plan == nil {
+		return nil, apperrors.NotFound("buyer plan not found")
+	}
+
+	sub := &domain.BuyerSubscription{
+		ID:           uuid.New(),
+		TenantID:     tenantID,
+		BuyerAuth0ID: buyerAuth0ID,
+		PlanID:       planID,
+		Status:       domain.SubscriptionStatusActive,
+	}
+
+	if err := s.buyerSubscriptions.UpsertBuyerSubscription(ctx, tenantID, sub); err != nil {
+		return nil, apperrors.Internal("failed to subscribe buyer", err)
+	}
+
+	slog.Info("buyer subscribed", "buyer_auth0_id", buyerAuth0ID, "plan_id", planID, "tenant_id", tenantID)
 	return sub, nil
 }

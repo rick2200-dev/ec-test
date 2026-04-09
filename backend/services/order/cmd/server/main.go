@@ -76,8 +76,11 @@ func main() {
 	commissionRepo := repository.NewCommissionRepository(pool)
 	payoutRepo := repository.NewPayoutRepository(pool)
 
+	// Buyer subscription client (for checking free shipping eligibility)
+	buyerSubClient := service.NewBuyerSubscriptionClient(cfg.AuthServiceURL)
+
 	// Service
-	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher)
+	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, cfg.DefaultShippingFee)
 
 	// Handlers
 	orderHandler := handler.NewOrderHandler(orderSvc)

@@ -45,14 +45,16 @@ func main() {
 	tenantRepo := repository.NewTenantRepository(pool)
 	sellerRepo := repository.NewSellerRepository(pool)
 	subscriptionRepo := repository.NewSubscriptionRepository(pool)
+	buyerSubRepo := repository.NewBuyerSubscriptionRepository(pool)
 
 	// Service
-	authSvc := service.NewAuthService(tenantRepo, sellerRepo, subscriptionRepo)
+	authSvc := service.NewAuthService(tenantRepo, sellerRepo, subscriptionRepo, buyerSubRepo)
 
 	// Handlers
 	tenantHandler := handler.NewTenantHandler(authSvc)
 	sellerHandler := handler.NewSellerHandler(authSvc)
 	subscriptionHandler := handler.NewSubscriptionHandler(authSvc)
+	buyerSubHandler := handler.NewBuyerSubscriptionHandler(authSvc)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -61,6 +63,7 @@ func main() {
 	r.Use(chimiddleware.RealIP)
 	r.Use(pkgmiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(pkgmiddleware.InternalContext)
 
 	// Health endpoints (no auth required)
 	r.Get("/healthz", healthHandler.Liveness)
@@ -75,6 +78,10 @@ func main() {
 	// Subscription plan endpoints (tenant-scoped)
 	r.Mount("/plans", subscriptionHandler.PlanRoutes())
 	r.Mount("/subscriptions", subscriptionHandler.SubscriptionRoutes())
+
+	// Buyer plan and subscription endpoints (tenant-scoped)
+	r.Mount("/buyer-plans", buyerSubHandler.BuyerPlanRoutes())
+	r.Mount("/buyer-subscriptions", buyerSubHandler.BuyerSubscriptionRoutes())
 
 	// HTTP server
 	addr := ":" + cfg.HTTPPort

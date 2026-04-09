@@ -26,6 +26,7 @@ type Order struct {
 	BuyerAuth0ID          string          `json:"buyer_auth0_id"`
 	Status                string          `json:"status"`
 	SubtotalAmount        int64           `json:"subtotal_amount"`
+	ShippingFee           int64           `json:"shipping_fee"`
 	CommissionAmount      int64           `json:"commission_amount"`
 	TotalAmount           int64           `json:"total_amount"`
 	Currency              string          `json:"currency"`

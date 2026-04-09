@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
+	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
 
@@ -15,6 +16,7 @@ type BuyerHandler struct {
 	order     *proxy.ServiceClient
 	recommend *proxy.ServiceClient
 	search    *proxy.ServiceClient
+	auth      *proxy.ServiceClient
 }
 
 // NewBuyerHandler creates a new BuyerHandler.
@@ -24,6 +26,7 @@ func NewBuyerHandler(svc *proxy.Services) *BuyerHandler {
 		order:     svc.Order,
 		recommend: svc.Recommend,
 		search:    svc.Search,
+		auth:      svc.Auth,
 	}
 }
 
@@ -109,6 +112,52 @@ func (h *BuyerHandler) GetRecommendations(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		slog.Error("proxy to recommend failed", "error", err)
 		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "recommend service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// ListBuyerPlans proxies to the auth service to list buyer subscription plans.
+// GET /plans
+func (h *BuyerHandler) ListBuyerPlans(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.auth.Get(r.Context(), "/buyer-plans", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to auth failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// GetSubscription proxies to the auth service to get the buyer's current subscription.
+// GET /subscription
+func (h *BuyerHandler) GetSubscription(w http.ResponseWriter, r *http.Request) {
+	tc, err := tenant.FromContext(r.Context())
+	if err != nil {
+		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "missing tenant context"})
+		return
+	}
+	body, status, pErr := h.auth.Get(r.Context(), "/buyer-subscriptions/buyers/"+url.PathEscape(tc.UserID), "")
+	if pErr != nil {
+		slog.Error("proxy to auth failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// Subscribe proxies to the auth service to subscribe the buyer to a plan.
+// POST /subscription
+func (h *BuyerHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
+	tc, err := tenant.FromContext(r.Context())
+	if err != nil {
+		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "missing tenant context"})
+		return
+	}
+	body, status, pErr := h.auth.Post(r.Context(), "/buyer-subscriptions/buyers/"+url.PathEscape(tc.UserID), r.Body)
+	if pErr != nil {
+		slog.Error("proxy to auth failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)

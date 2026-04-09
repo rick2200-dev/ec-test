@@ -39,6 +39,7 @@ type Order struct {
 	PaidAt                *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=paid_at,json=paidAt,proto3" json:"paid_at,omitempty"`
 	CreatedAt             *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt             *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ShippingFee           *v1.Money              `protobuf:"bytes,15,opt,name=shipping_fee,json=shippingFee,proto3" json:"shipping_fee,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -167,6 +168,13 @@ func (x *Order) GetCreatedAt() *timestamppb.Timestamp {
 func (x *Order) GetUpdatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *Order) GetShippingFee() *v1.Money {
+	if x != nil {
+		return x.ShippingFee
 	}
 	return nil
 }
@@ -1107,7 +1115,7 @@ var File_order_v1_order_proto protoreflect.FileDescriptor
 
 const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xda\x04\n" +
+	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x8f\x05\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
@@ -1127,7 +1135,8 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x89\x02\n" +
+	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x123\n" +
+	"\fshipping_fee\x18\x0f \x01(\v2\x10.common.v1.MoneyR\vshippingFee\"\x89\x02\n" +
 	"\tOrderLine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x15\n" +
@@ -1258,41 +1267,42 @@ var file_order_v1_order_proto_depIdxs = []int32{
 	17, // 4: order.v1.Order.paid_at:type_name -> google.protobuf.Timestamp
 	17, // 5: order.v1.Order.created_at:type_name -> google.protobuf.Timestamp
 	17, // 6: order.v1.Order.updated_at:type_name -> google.protobuf.Timestamp
-	16, // 7: order.v1.OrderLine.unit_price:type_name -> common.v1.Money
-	16, // 8: order.v1.OrderLine.line_total:type_name -> common.v1.Money
-	16, // 9: order.v1.Payout.amount:type_name -> common.v1.Money
-	17, // 10: order.v1.Payout.created_at:type_name -> google.protobuf.Timestamp
-	17, // 11: order.v1.Payout.completed_at:type_name -> google.protobuf.Timestamp
-	4,  // 12: order.v1.CreateOrderRequest.lines:type_name -> order.v1.OrderLineInput
-	0,  // 13: order.v1.CreateOrderResponse.order:type_name -> order.v1.Order
-	0,  // 14: order.v1.GetOrderResponse.order:type_name -> order.v1.Order
-	18, // 15: order.v1.ListBuyerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
-	18, // 16: order.v1.ListSellerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
-	0,  // 17: order.v1.ListBuyerOrdersResponse.orders:type_name -> order.v1.Order
-	19, // 18: order.v1.ListBuyerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
-	0,  // 19: order.v1.ListSellerOrdersResponse.orders:type_name -> order.v1.Order
-	19, // 20: order.v1.ListSellerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
-	0,  // 21: order.v1.UpdateOrderStatusResponse.order:type_name -> order.v1.Order
-	18, // 22: order.v1.ListPayoutsRequest.pagination:type_name -> common.v1.PaginationRequest
-	2,  // 23: order.v1.ListPayoutsResponse.payouts:type_name -> order.v1.Payout
-	19, // 24: order.v1.ListPayoutsResponse.pagination:type_name -> common.v1.PaginationResponse
-	3,  // 25: order.v1.OrderService.CreateOrder:input_type -> order.v1.CreateOrderRequest
-	6,  // 26: order.v1.OrderService.GetOrder:input_type -> order.v1.GetOrderRequest
-	8,  // 27: order.v1.OrderService.ListBuyerOrders:input_type -> order.v1.ListBuyerOrdersRequest
-	9,  // 28: order.v1.OrderService.ListSellerOrders:input_type -> order.v1.ListSellerOrdersRequest
-	12, // 29: order.v1.OrderService.UpdateOrderStatus:input_type -> order.v1.UpdateOrderStatusRequest
-	14, // 30: order.v1.OrderService.ListPayouts:input_type -> order.v1.ListPayoutsRequest
-	5,  // 31: order.v1.OrderService.CreateOrder:output_type -> order.v1.CreateOrderResponse
-	7,  // 32: order.v1.OrderService.GetOrder:output_type -> order.v1.GetOrderResponse
-	10, // 33: order.v1.OrderService.ListBuyerOrders:output_type -> order.v1.ListBuyerOrdersResponse
-	11, // 34: order.v1.OrderService.ListSellerOrders:output_type -> order.v1.ListSellerOrdersResponse
-	13, // 35: order.v1.OrderService.UpdateOrderStatus:output_type -> order.v1.UpdateOrderStatusResponse
-	15, // 36: order.v1.OrderService.ListPayouts:output_type -> order.v1.ListPayoutsResponse
-	31, // [31:37] is the sub-list for method output_type
-	25, // [25:31] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	16, // 7: order.v1.Order.shipping_fee:type_name -> common.v1.Money
+	16, // 8: order.v1.OrderLine.unit_price:type_name -> common.v1.Money
+	16, // 9: order.v1.OrderLine.line_total:type_name -> common.v1.Money
+	16, // 10: order.v1.Payout.amount:type_name -> common.v1.Money
+	17, // 11: order.v1.Payout.created_at:type_name -> google.protobuf.Timestamp
+	17, // 12: order.v1.Payout.completed_at:type_name -> google.protobuf.Timestamp
+	4,  // 13: order.v1.CreateOrderRequest.lines:type_name -> order.v1.OrderLineInput
+	0,  // 14: order.v1.CreateOrderResponse.order:type_name -> order.v1.Order
+	0,  // 15: order.v1.GetOrderResponse.order:type_name -> order.v1.Order
+	18, // 16: order.v1.ListBuyerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
+	18, // 17: order.v1.ListSellerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
+	0,  // 18: order.v1.ListBuyerOrdersResponse.orders:type_name -> order.v1.Order
+	19, // 19: order.v1.ListBuyerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
+	0,  // 20: order.v1.ListSellerOrdersResponse.orders:type_name -> order.v1.Order
+	19, // 21: order.v1.ListSellerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
+	0,  // 22: order.v1.UpdateOrderStatusResponse.order:type_name -> order.v1.Order
+	18, // 23: order.v1.ListPayoutsRequest.pagination:type_name -> common.v1.PaginationRequest
+	2,  // 24: order.v1.ListPayoutsResponse.payouts:type_name -> order.v1.Payout
+	19, // 25: order.v1.ListPayoutsResponse.pagination:type_name -> common.v1.PaginationResponse
+	3,  // 26: order.v1.OrderService.CreateOrder:input_type -> order.v1.CreateOrderRequest
+	6,  // 27: order.v1.OrderService.GetOrder:input_type -> order.v1.GetOrderRequest
+	8,  // 28: order.v1.OrderService.ListBuyerOrders:input_type -> order.v1.ListBuyerOrdersRequest
+	9,  // 29: order.v1.OrderService.ListSellerOrders:input_type -> order.v1.ListSellerOrdersRequest
+	12, // 30: order.v1.OrderService.UpdateOrderStatus:input_type -> order.v1.UpdateOrderStatusRequest
+	14, // 31: order.v1.OrderService.ListPayouts:input_type -> order.v1.ListPayoutsRequest
+	5,  // 32: order.v1.OrderService.CreateOrder:output_type -> order.v1.CreateOrderResponse
+	7,  // 33: order.v1.OrderService.GetOrder:output_type -> order.v1.GetOrderResponse
+	10, // 34: order.v1.OrderService.ListBuyerOrders:output_type -> order.v1.ListBuyerOrdersResponse
+	11, // 35: order.v1.OrderService.ListSellerOrders:output_type -> order.v1.ListSellerOrdersResponse
+	13, // 36: order.v1.OrderService.UpdateOrderStatus:output_type -> order.v1.UpdateOrderStatusResponse
+	15, // 37: order.v1.OrderService.ListPayouts:output_type -> order.v1.ListPayoutsResponse
+	32, // [32:38] is the sub-list for method output_type
+	26, // [26:32] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_order_v1_order_proto_init() }

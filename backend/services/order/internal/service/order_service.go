@@ -17,11 +17,13 @@ import (
 
 // OrderService implements order business logic.
 type OrderService struct {
-	orderRepo      *repository.OrderRepository
-	commissionRepo *repository.CommissionRepository
-	payoutRepo     *repository.PayoutRepository
-	stripe         *stripeClient.Client
-	publisher      pubsub.Publisher
+	orderRepo          *repository.OrderRepository
+	commissionRepo     *repository.CommissionRepository
+	payoutRepo         *repository.PayoutRepository
+	stripe             *stripeClient.Client
+	publisher          pubsub.Publisher
+	buyerSubClient     *BuyerSubscriptionClient
+	defaultShippingFee int64
 }
 
 // NewOrderService creates a new OrderService.
@@ -31,13 +33,17 @@ func NewOrderService(
 	payoutRepo *repository.PayoutRepository,
 	stripe *stripeClient.Client,
 	publisher pubsub.Publisher,
+	buyerSubClient *BuyerSubscriptionClient,
+	defaultShippingFee int64,
 ) *OrderService {
 	return &OrderService{
-		orderRepo:      orderRepo,
-		commissionRepo: commissionRepo,
-		payoutRepo:     payoutRepo,
-		stripe:         stripe,
-		publisher:      publisher,
+		orderRepo:          orderRepo,
+		commissionRepo:     commissionRepo,
+		payoutRepo:         payoutRepo,
+		stripe:             stripe,
+		publisher:          publisher,
+		buyerSubClient:     buyerSubClient,
+		defaultShippingFee: defaultShippingFee,
 	}
 }
 
@@ -76,15 +82,23 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 		commissionAmount = subtotal * int64(rule.RateBps) / 10000
 	}
 
-	// 4. Calculate total (buyer pays subtotal; commission is deducted from seller's share).
-	totalAmount := subtotal
+	// 4. Determine shipping fee based on buyer's subscription status.
+	var shippingFee int64 = s.defaultShippingFee
+	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, tenantID, input.BuyerAuth0ID); err != nil {
+		slog.Warn("failed to check buyer subscription, charging standard shipping", "error", err)
+	} else if hasFree {
+		shippingFee = 0
+	}
+
+	// 5. Calculate total (buyer pays subtotal + shipping; commission is deducted from seller's share).
+	totalAmount := subtotal + shippingFee
 
 	currency := input.Currency
 	if currency == "" {
 		currency = "jpy"
 	}
 
-	// 5. Create Stripe PaymentIntent.
+	// 6. Create Stripe PaymentIntent.
 	metadata := map[string]string{
 		"tenant_id": tenantID.String(),
 		"seller_id": input.SellerID.String(),
@@ -102,12 +116,13 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 		return nil, "", apperrors.Internal("failed to create payment intent", err)
 	}
 
-	// 6. Save order + lines to DB.
+	// 7. Save order + lines to DB.
 	order := &domain.Order{
 		SellerID:              input.SellerID,
 		BuyerAuth0ID:          input.BuyerAuth0ID,
 		Status:                domain.StatusPending,
 		SubtotalAmount:        subtotal,
+		ShippingFee:           shippingFee,
 		CommissionAmount:      commissionAmount,
 		TotalAmount:           totalAmount,
 		Currency:              currency,

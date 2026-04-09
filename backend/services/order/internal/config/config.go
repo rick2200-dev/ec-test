@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 // Config holds all configuration for the order service.
@@ -12,6 +13,8 @@ type Config struct {
 	StripeSecretKey     string
 	StripeWebhookSecret string
 	PubSubProjectID     string
+	AuthServiceURL      string
+	DefaultShippingFee  int64
 }
 
 // Load reads configuration from environment variables.
@@ -23,12 +26,23 @@ func Load() Config {
 		StripeSecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		PubSubProjectID:     getEnv("PUBSUB_PROJECT_ID", ""),
+		AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
+		DefaultShippingFee:  getEnvInt64("DEFAULT_SHIPPING_FEE", 500),
 	}
 }
 
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt64(key string, fallback int64) int64 {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return n
+		}
 	}
 	return fallback
 }

@@ -34,6 +34,7 @@ message Order {
   google.protobuf.Timestamp paid_at = 12;
   google.protobuf.Timestamp created_at = 13;
   google.protobuf.Timestamp updated_at = 14;
+  common.v1.Money shipping_fee = 15;
 }
 
 message OrderLine {

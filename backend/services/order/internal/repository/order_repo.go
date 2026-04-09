@@ -31,11 +31,11 @@ func (r *OrderRepository) Create(ctx context.Context, tenantID uuid.UUID, order 
 	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
 			`INSERT INTO order_svc.orders
-			 (id, tenant_id, seller_id, buyer_auth0_id, status, subtotal_amount, commission_amount, total_amount, currency, shipping_address, stripe_payment_intent_id)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			 (id, tenant_id, seller_id, buyer_auth0_id, status, subtotal_amount, shipping_fee, commission_amount, total_amount, currency, shipping_address, stripe_payment_intent_id)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			 RETURNING created_at, updated_at`,
 			order.ID, order.TenantID, order.SellerID, order.BuyerAuth0ID, order.Status,
-			order.SubtotalAmount, order.CommissionAmount, order.TotalAmount, order.Currency,
+			order.SubtotalAmount, order.ShippingFee, order.CommissionAmount, order.TotalAmount, order.Currency,
 			order.ShippingAddress, order.StripePaymentIntentID,
 		).Scan(&order.CreatedAt, &order.UpdatedAt)
 		if err != nil {
@@ -73,13 +73,13 @@ func (r *OrderRepository) GetByID(ctx context.Context, tenantID, orderID uuid.UU
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
 			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
-			        subtotal_amount, commission_amount, total_amount, currency,
+			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE id = $1 AND tenant_id = $2`,
 			orderID, tenantID,
 		).Scan(
 			&result.ID, &result.TenantID, &result.SellerID, &result.BuyerAuth0ID, &result.Status,
-			&result.SubtotalAmount, &result.CommissionAmount, &result.TotalAmount, &result.Currency,
+			&result.SubtotalAmount, &result.ShippingFee, &result.CommissionAmount, &result.TotalAmount, &result.Currency,
 			&result.ShippingAddress, &result.StripePaymentIntentID, &result.PaidAt, &result.CreatedAt, &result.UpdatedAt,
 		)
 		if err == pgx.ErrNoRows {
@@ -137,7 +137,7 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, b
 
 		rows, err := tx.Query(ctx,
 			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
-			        subtotal_amount, commission_amount, total_amount, currency,
+			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE tenant_id = $1 AND buyer_auth0_id = $2
 			 ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
@@ -152,7 +152,7 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, b
 			var o domain.Order
 			if err := rows.Scan(
 				&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
-				&o.SubtotalAmount, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
+				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 			); err != nil {
 				return fmt.Errorf("scan order: %w", err)
@@ -190,7 +190,7 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, tenantID, sellerID u
 
 		query := fmt.Sprintf(
 			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
-			        subtotal_amount, commission_amount, total_amount, currency,
+			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 			conditions, argIdx, argIdx+1,
@@ -207,7 +207,7 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, tenantID, sellerID u
 			var o domain.Order
 			if err := rows.Scan(
 				&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
-				&o.SubtotalAmount, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
+				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 			); err != nil {
 				return fmt.Errorf("scan order: %w", err)
@@ -267,13 +267,13 @@ func (r *OrderRepository) GetByStripePaymentIntentID(ctx context.Context, tenant
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
 			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
-			        subtotal_amount, commission_amount, total_amount, currency,
+			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE stripe_payment_intent_id = $1 AND tenant_id = $2`,
 			paymentIntentID, tenantID,
 		).Scan(
 			&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
-			&o.SubtotalAmount, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
+			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 		)
 		if err == pgx.ErrNoRows {
@@ -300,13 +300,13 @@ func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, payme
 	var o domain.Order
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
-		        subtotal_amount, commission_amount, total_amount, currency,
+		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 		        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1`,
 		paymentIntentID,
 	).Scan(
 		&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
-		&o.SubtotalAmount, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
+		&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 		&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
