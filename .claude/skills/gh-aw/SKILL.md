@@ -315,7 +315,11 @@ Check `.github/workflows/*.md` for overlapping concerns. This monorepo already h
 | `health-check-static-analysis.md` | Weekly (other day) | Linting, deprecated APIs, dead code |
 | `health-check-documentation.md` | Weekly (other day) | README, comments, rationale docs |
 | `repo-health-check.md` | Manual only | Full audit across all 4 health-check areas |
-| `architect-review.md` | Weekly Monday 9am JST | Large-scale architecture (8 areas) |
+| `architect-review.md` | Manual only | Full architecture review (all 8 areas) |
+| `architect-review-backend.md` | Weekly Monday 9am JST | Service boundaries, shared packages |
+| `architect-review-api.md` | Weekly Tuesday 9am JST | API/Proto consistency, event-driven |
+| `architect-review-security.md` | Weekly Wednesday 9am JST | Multi-tenant isolation, dependencies |
+| `architect-review-platform.md` | Weekly Thursday 9am JST | Frontend architecture, infrastructure |
 
 Ensure the new workflow doesn't duplicate existing concerns.
 

@@ -1,13 +1,12 @@
 ---
-name: "Architecture Review (Weekly)"
-description: Weekly deep architectural review — service boundaries, coupling, tenant isolation, API consistency
+name: "Architecture Review (Full)"
+description: Full architectural review across all 8 areas — manual trigger only. For scheduled runs, see the split workflows.
 on:
-  schedule: "weekly on monday around 9am utc+9"
   workflow_dispatch:
 concurrency:
   group: architect-review
   cancel-in-progress: true
-timeout-minutes: 30
+timeout-minutes: 60
 permissions:
   contents: read
   issues: read
