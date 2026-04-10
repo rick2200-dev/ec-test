@@ -6,7 +6,7 @@ on:
 concurrency:
   group: architect-review
   cancel-in-progress: true
-timeout-minutes: 60
+timeout-minutes: 30
 permissions:
   contents: read
   issues: read
