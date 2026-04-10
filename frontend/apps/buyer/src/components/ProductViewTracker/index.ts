@@ -1,0 +1,1 @@
+export { ProductViewTracker } from "./ProductViewTracker";
