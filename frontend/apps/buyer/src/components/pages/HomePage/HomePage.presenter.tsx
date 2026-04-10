@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ProductCardPresenter, type ProductCardPresenterProps } from "@/components/ProductCard";
+import {
+  ProductCardPresenter,
+  type ProductCardPresenterProps,
+} from "../../ProductCard/ProductCard.presenter";
 
 export interface HomePageCategoryItem {
   id: string;

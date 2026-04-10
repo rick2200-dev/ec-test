@@ -206,6 +206,9 @@ importers:
 
   frontend/apps/storybook:
     devDependencies:
+      '@ec-marketplace/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@storybook/addon-a11y':
         specifier: ^8.6
         version: 8.6.18(storybook@8.6.18(prettier@3.8.1))

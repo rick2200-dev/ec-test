@@ -8,6 +8,7 @@
     "clean": "rm -rf dist .turbo node_modules"
   },
   "devDependencies": {
+    "@ec-marketplace/tsconfig": "workspace:*",
     "storybook": "^8.6",
     "@storybook/react-vite": "^8.6",
     "@storybook/react": "^8.6",

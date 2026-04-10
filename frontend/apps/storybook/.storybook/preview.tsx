@@ -1,6 +1,7 @@
 import type { Preview } from "@storybook/react";
 import React from "react";
 import { NextIntlClientProvider } from "next-intl";
+import "./storybook.css";
 import jaCommon from "../../../packages/i18n/messages/ja/common.json";
 import jaBuyer from "../../../packages/i18n/messages/ja/buyer.json";
 import jaSeller from "../../../packages/i18n/messages/ja/seller.json";

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { HomePagePresenter } from "./HomePage.presenter";
-import { RecommendationsPresenter } from "@/components/Recommendations";
+import { RecommendationsPresenter } from "../../Recommendations/Recommendations.presenter";
 
 const meta: Meta<typeof HomePagePresenter> = {
   title: "Buyer/Pages/HomePage",

@@ -1,4 +1,7 @@
-import { ProductCardPresenter, type ProductCardPresenterProps } from "../ProductCard";
+import {
+  ProductCardPresenter,
+  type ProductCardPresenterProps,
+} from "../ProductCard/ProductCard.presenter";
 
 export interface RecommendationsItem extends ProductCardPresenterProps {
   id: string;
