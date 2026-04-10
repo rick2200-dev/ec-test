@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -16,6 +17,9 @@ import (
 type ServiceClient struct {
 	baseURL string
 	http    *http.Client
+	// extraHeaders are attached to every request made by this client.
+	// Used to inject the shared internal-token for /internal/* calls.
+	extraHeaders map[string]string
 }
 
 // NewServiceClient creates a ServiceClient for the given base URL.
@@ -25,6 +29,20 @@ func NewServiceClient(baseURL string) *ServiceClient {
 		http: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+	}
+}
+
+// WithHeader returns a copy of the client that attaches the given header
+// to every request. Intended for shared-secret auth on /internal/* routes.
+// The underlying http.Client is shared.
+func (c *ServiceClient) WithHeader(key, value string) *ServiceClient {
+	headers := make(map[string]string, len(c.extraHeaders)+1)
+	maps.Copy(headers, c.extraHeaders)
+	headers[key] = value
+	return &ServiceClient{
+		baseURL:      c.baseURL,
+		http:         c.http,
+		extraHeaders: headers,
 	}
 }
 
@@ -50,6 +68,12 @@ func (c *ServiceClient) Put(ctx context.Context, path string, body io.Reader) ([
 	return c.do(ctx, http.MethodPut, url, body)
 }
 
+// Delete sends a DELETE request to the downstream service.
+func (c *ServiceClient) Delete(ctx context.Context, path string) ([]byte, int, error) {
+	url := c.baseURL + path
+	return c.do(ctx, http.MethodDelete, url, nil)
+}
+
 // do executes the HTTP request, attaching tenant context headers.
 func (c *ServiceClient) do(ctx context.Context, method, url string, body io.Reader) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -67,6 +91,11 @@ func (c *ServiceClient) do(ctx context.Context, method, url string, body io.Read
 		if len(tc.Roles) > 0 {
 			req.Header.Set("X-Roles", strings.Join(tc.Roles, ","))
 		}
+	}
+
+	// Apply any client-level extra headers (e.g. internal shared secret).
+	for k, v := range c.extraHeaders {
+		req.Header.Set(k, v)
 	}
 
 	if body != nil {

@@ -15,12 +15,15 @@ import (
 
 // SellerHandler handles HTTP requests for seller operations.
 type SellerHandler struct {
-	svc *service.AuthService
+	svc  *service.AuthService
+	team *SellerTeamHandler
 }
 
-// NewSellerHandler creates a new SellerHandler.
-func NewSellerHandler(svc *service.AuthService) *SellerHandler {
-	return &SellerHandler{svc: svc}
+// NewSellerHandler creates a new SellerHandler. The team handler is mounted
+// as a nested subroute at /{sellerID}/team so that the /sellers prefix can
+// own the entire seller subtree.
+func NewSellerHandler(svc *service.AuthService, team *SellerTeamHandler) *SellerHandler {
+	return &SellerHandler{svc: svc, team: team}
 }
 
 // Routes returns the chi router for seller endpoints.
@@ -30,6 +33,10 @@ func (h *SellerHandler) Routes() chi.Router {
 	r.Get("/", h.List)
 	r.Get("/{id}", h.GetByID)
 	r.Put("/{id}/approve", h.Approve)
+	// Seller team management lives under /{sellerID}/team. The team handler's
+	// Mount registers GET/POST/PUT/DELETE on the subrouter so the {sellerID}
+	// URL parameter is available to its handlers via chi.URLParam.
+	r.Route("/{sellerID}/team", h.team.Mount)
 	return r
 }
 

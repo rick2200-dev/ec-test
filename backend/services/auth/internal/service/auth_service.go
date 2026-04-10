@@ -5,30 +5,46 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Riku-KANO/ec-test/pkg/database"
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
+	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/repository"
 )
 
 // AuthService implements business logic for auth operations.
 type AuthService struct {
+	pool               *pgxpool.Pool
 	tenants            *repository.TenantRepository
 	sellers            *repository.SellerRepository
+	sellerUsers        *repository.SellerUserRepository
+	platformAdmins     *repository.PlatformAdminRepository
+	rbacAudit          *repository.RBACAuditRepository
 	subscriptions      *repository.SubscriptionRepository
 	buyerSubscriptions *repository.BuyerSubscriptionRepository
 }
 
 // NewAuthService creates a new AuthService.
 func NewAuthService(
+	pool *pgxpool.Pool,
 	tenants *repository.TenantRepository,
 	sellers *repository.SellerRepository,
+	sellerUsers *repository.SellerUserRepository,
+	platformAdmins *repository.PlatformAdminRepository,
+	rbacAudit *repository.RBACAuditRepository,
 	subscriptions *repository.SubscriptionRepository,
 	buyerSubscriptions *repository.BuyerSubscriptionRepository,
 ) *AuthService {
 	return &AuthService{
+		pool:               pool,
 		tenants:            tenants,
 		sellers:            sellers,
+		sellerUsers:        sellerUsers,
+		platformAdmins:     platformAdmins,
+		rbacAudit:          rbacAudit,
 		subscriptions:      subscriptions,
 		buyerSubscriptions: buyerSubscriptions,
 	}
@@ -75,7 +91,9 @@ func (s *AuthService) ListTenants(ctx context.Context, limit, offset int) ([]dom
 	return tenants, total, nil
 }
 
-// CreateSeller creates a new seller within a tenant.
+// CreateSeller creates a new seller within a tenant and records the calling
+// user as the initial owner of that seller organization. Both inserts happen
+// in a single transaction so the seller is never left without an owner.
 func (s *AuthService) CreateSeller(ctx context.Context, tenantID uuid.UUID, seller *domain.Seller) error {
 	// Verify tenant exists.
 	t, err := s.tenants.GetByID(ctx, tenantID)
@@ -86,7 +104,15 @@ func (s *AuthService) CreateSeller(ctx context.Context, tenantID uuid.UUID, sell
 		return apperrors.NotFound("tenant not found")
 	}
 
-	// Check slug uniqueness within tenant.
+	// The caller becomes the initial owner. Without an identified caller we
+	// cannot set up the owning user_role, so fail loudly.
+	tc, err := tenant.FromContext(ctx)
+	if err != nil || tc.UserID == "" {
+		return apperrors.Unauthorized("caller identity required to create seller")
+	}
+
+	// Check slug uniqueness within tenant (non-TX; UNIQUE constraint is the
+	// source of truth for concurrent races).
 	existing, err := s.sellers.GetBySlug(ctx, tenantID, seller.Slug)
 	if err != nil {
 		return apperrors.Internal("failed to check seller slug", err)
@@ -96,11 +122,24 @@ func (s *AuthService) CreateSeller(ctx context.Context, tenantID uuid.UUID, sell
 	}
 
 	seller.Status = domain.SellerStatusPending
-	if err := s.sellers.Create(ctx, tenantID, seller); err != nil {
+
+	err = database.TenantTx(ctx, s.pool, tenantID, func(tx pgx.Tx) error {
+		if err := s.sellers.CreateTx(ctx, tx, tenantID, seller); err != nil {
+			return err
+		}
+		owner := &domain.SellerUser{
+			TenantID:    tenantID,
+			SellerID:    seller.ID,
+			Auth0UserID: tc.UserID,
+			Role:        domain.SellerUserRoleOwner,
+		}
+		return s.sellerUsers.CreateTx(ctx, tx, owner)
+	})
+	if err != nil {
 		return apperrors.Internal("failed to create seller", err)
 	}
 
-	slog.Info("seller created", "id", seller.ID, "tenant_id", tenantID, "slug", seller.Slug)
+	slog.Info("seller created", "id", seller.ID, "tenant_id", tenantID, "slug", seller.Slug, "owner", tc.UserID)
 	return nil
 }
 

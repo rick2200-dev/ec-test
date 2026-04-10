@@ -25,21 +25,29 @@ func NewSellerRepository(pool *pgxpool.Pool) *SellerRepository {
 
 // Create inserts a new seller within a tenant-scoped transaction.
 func (r *SellerRepository) Create(ctx context.Context, tenantID uuid.UUID, s *domain.Seller) error {
-	s.ID = uuid.New()
+	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+		return r.CreateTx(ctx, tx, tenantID, s)
+	})
+}
+
+// CreateTx inserts a new seller using an existing tenant-scoped transaction.
+// This enables atomic multi-step operations such as creating a seller and its
+// initial owner seller_user in the same commit.
+func (r *SellerRepository) CreateTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, s *domain.Seller) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
 	s.TenantID = tenantID
 	settings := json.RawMessage("{}")
 	if s.Settings != nil {
 		settings = s.Settings
 	}
-
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		return tx.QueryRow(ctx,
-			`INSERT INTO auth_svc.sellers (id, tenant_id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-			 RETURNING created_at, updated_at`,
-			s.ID, s.TenantID, s.Auth0OrgID, s.Name, s.Slug, s.Status, s.StripeAccountID, s.CommissionRateBPS, settings,
-		).Scan(&s.CreatedAt, &s.UpdatedAt)
-	})
+	return tx.QueryRow(ctx,
+		`INSERT INTO auth_svc.sellers (id, tenant_id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		 RETURNING created_at, updated_at`,
+		s.ID, s.TenantID, s.Auth0OrgID, s.Name, s.Slug, s.Status, s.StripeAccountID, s.CommissionRateBPS, settings,
+	).Scan(&s.CreatedAt, &s.UpdatedAt)
 }
 
 // GetByID retrieves a seller by ID within a tenant scope.
