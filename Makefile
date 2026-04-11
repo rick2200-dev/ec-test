@@ -1,5 +1,5 @@
 .PHONY: help deps-up deps-down migrate seed proto-gen openapi-gen \
-       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification \
+       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart \
        dev-buyer dev-seller dev-admin \
        build-all lint-go test-go
 
@@ -66,6 +66,9 @@ dev-recommend:
 dev-notification:
 	cd backend/services/notification && air
 
+dev-cart:
+	cd backend/services/cart && air
+
 # ─── Frontend ──────────────────────────────────────────────────
 dev-buyer:
 	pnpm --filter buyer dev
@@ -78,20 +81,20 @@ dev-admin:
 
 # ─── Build & Test ──────────────────────────────────────────────
 build-all:
-	@for svc in gateway auth catalog inventory order search recommend notification; do \
+	@for svc in gateway auth catalog inventory order search recommend notification cart; do \
 		echo "Building $$svc..."; \
 		cd backend/services/$$svc && go build -o ../../../bin/$$svc ./cmd/server && cd ../../..; \
 	done
 
 lint-go:
-	@for svc in gateway auth catalog inventory order search recommend notification; do \
+	@for svc in gateway auth catalog inventory order search recommend notification cart; do \
 		echo "Linting $$svc..."; \
 		cd backend/services/$$svc && golangci-lint run ./... && cd ../../..; \
 	done
 	cd backend/pkg && golangci-lint run ./...
 
 test-go:
-	@for svc in gateway auth catalog inventory order search recommend notification; do \
+	@for svc in gateway auth catalog inventory order search recommend notification cart; do \
 		echo "Testing $$svc..."; \
 		cd backend/services/$$svc && go test ./... && cd ../../..; \
 	done

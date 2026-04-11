@@ -25,9 +25,14 @@ func NewOrderHandler(svc *service.OrderService) *OrderHandler {
 }
 
 // Routes returns the chi router for order endpoints.
+//
+// Note: POST /orders is intentionally not registered here. All buyer purchases
+// now flow through the cart service (POST /api/v1/buyer/cart/checkout), which
+// calls the order service's internal POST /internal/checkouts endpoint. The
+// legacy single-seller Create handler is retained on this struct only so the
+// deprecated gRPC CreateOrder RPC has an implementation to delegate to.
 func (h *OrderHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", h.Create)
 	r.Get("/buyer", h.ListBuyerOrders)
 	r.Get("/seller", h.ListSellerOrders)
 	r.Get("/{id}", h.GetByID)

@@ -87,6 +87,7 @@ func main() {
 	commissionHandler := handler.NewCommissionHandler(orderSvc)
 	payoutHandler := handler.NewPayoutHandler(orderSvc)
 	webhookHandler := handler.NewWebhookHandler(orderSvc, cfg.StripeWebhookSecret)
+	internalHandler := handler.NewInternalHandler(orderSvc)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -95,6 +96,7 @@ func main() {
 	r.Use(chimiddleware.RealIP)
 	r.Use(pkgmiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(pkgmiddleware.InternalContext)
 
 	// Health endpoints (no auth required)
 	r.Get("/healthz", healthHandler.Liveness)
@@ -111,6 +113,9 @@ func main() {
 
 	// Payout endpoints (tenant-scoped)
 	r.Mount("/payouts", payoutHandler.Routes())
+
+	// Intra-cluster endpoints (cart service, etc.)
+	r.Mount("/internal", internalHandler.Routes())
 
 	// gRPC server
 	grpcAddr := ":" + cfg.GRPCPort

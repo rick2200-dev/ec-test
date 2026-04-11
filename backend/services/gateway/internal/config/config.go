@@ -16,6 +16,7 @@ type Config struct {
 	SearchServiceURL       string
 	NotificationServiceURL string
 	RecommendServiceURL    string
+	CartServiceURL         string
 
 	// JWT / Auth0 settings
 	JWTIssuer   string
@@ -47,6 +48,7 @@ func Load() Config {
 		SearchServiceURL:       getEnv("SEARCH_SERVICE_URL", "http://localhost:8085"),
 		NotificationServiceURL: getEnv("NOTIFICATION_SERVICE_URL", "http://localhost:8086"),
 		RecommendServiceURL:    getEnv("RECOMMEND_SERVICE_URL", "http://localhost:8087"),
+		CartServiceURL:         getEnv("CART_SERVICE_URL", "http://localhost:8088"),
 
 		JWTIssuer:   getEnv("JWT_ISSUER", "https://ecmarket.example.com/"),
 		JWTAudience: getEnv("JWT_AUDIENCE", "https://api.ecmarket.example.com"),
@@ -54,9 +56,12 @@ func Load() Config {
 
 		AuthInternalToken: getEnv("AUTH_INTERNAL_TOKEN", ""),
 
-		CatalogGRPCAddr:   getEnv("CATALOG_GRPC_ADDR", "localhost:50051"),
-		InventoryGRPCAddr: getEnv("INVENTORY_GRPC_ADDR", "localhost:50052"),
+		// Note: catalog's GRPC_PORT default is 50052 (see
+		// backend/services/catalog/internal/config/config.go). Keep this in
+		// sync — the buyer read path now talks to catalog over gRPC.
+		CatalogGRPCAddr:   getEnv("CATALOG_GRPC_ADDR", "localhost:50052"),
 		OrderGRPCAddr:     getEnv("ORDER_GRPC_ADDR", "localhost:50053"),
+		InventoryGRPCAddr: getEnv("INVENTORY_GRPC_ADDR", "localhost:50054"),
 
 		AllowedOrigins: getEnv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"),
 	}

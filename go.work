@@ -4,6 +4,7 @@ use (
 	./backend/gen/go
 	./backend/pkg
 	./backend/services/auth
+	./backend/services/cart
 	./backend/services/catalog
 	./backend/services/gateway
 	./backend/services/inventory

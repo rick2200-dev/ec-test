@@ -72,6 +72,7 @@ func main() {
 	// Handlers
 	productHandler := handler.NewProductHandler(catalogSvc)
 	categoryHandler := handler.NewCategoryHandler(catalogSvc)
+	internalHandler := handler.NewInternalHandler(catalogSvc)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -80,6 +81,7 @@ func main() {
 	r.Use(chimiddleware.RealIP)
 	r.Use(pkgmiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(pkgmiddleware.InternalContext)
 
 	// Health endpoints (no auth required)
 	r.Get("/healthz", healthHandler.Liveness)
@@ -90,6 +92,9 @@ func main() {
 
 	// Category endpoints (tenant-scoped)
 	r.Mount("/categories", categoryHandler.Routes())
+
+	// Intra-cluster endpoints (cart service, etc.)
+	r.Mount("/internal", internalHandler.Routes())
 
 	// HTTP server
 	addr := ":" + cfg.HTTPPort

@@ -153,34 +153,285 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 	return result, clientSecret, nil
 }
 
-// HandlePaymentSuccess handles a successful payment from Stripe.
-func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIntentID string) error {
-	// Find order by payment intent ID (cross-tenant lookup for webhook).
-	order, err := s.orderRepo.FindByStripePaymentIntentID(ctx, stripePaymentIntentID)
+// CreateCheckout creates one Order (plus a pending Payout) per seller for a
+// multi-seller cart, all inside a single tenant transaction, then issues a
+// single Stripe PaymentIntent covering the full cart. The returned orders
+// all share the same stripe_payment_intent_id, which is the grouping key
+// the webhook handler uses to distribute funds via per-seller Transfers.
+func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, input domain.CheckoutInput) (*domain.CheckoutResult, error) {
+	if len(input.Lines) == 0 {
+		return nil, apperrors.BadRequest("checkout must have at least one line item")
+	}
+	if input.BuyerAuth0ID == "" {
+		return nil, apperrors.BadRequest("buyer_auth0_id is required")
+	}
+
+	currency := input.Currency
+	if currency == "" {
+		currency = "jpy"
+	}
+
+	// 1. Group lines by seller_id, preserving input order so the output is
+	//    deterministic (needed for tests and predictable user-facing lists).
+	type sellerGroup struct {
+		sellerID uuid.UUID
+		lines    []domain.CheckoutLineInput
+	}
+	var groupOrder []uuid.UUID
+	groups := make(map[uuid.UUID]*sellerGroup)
+	for _, line := range input.Lines {
+		if line.Quantity <= 0 {
+			return nil, apperrors.BadRequest("quantity must be positive")
+		}
+		g, ok := groups[line.SellerID]
+		if !ok {
+			g = &sellerGroup{sellerID: line.SellerID}
+			groups[line.SellerID] = g
+			groupOrder = append(groupOrder, line.SellerID)
+		}
+		g.lines = append(g.lines, line)
+	}
+
+	// 2. Determine shipping fee per order based on buyer subscription. The
+	//    fee is charged once per order (one per seller); premium buyers get
+	//    free shipping on every order in the checkout.
+	var shippingFeePerOrder int64 = s.defaultShippingFee
+	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, tenantID, input.BuyerAuth0ID); err != nil {
+		slog.Warn("failed to check buyer subscription, charging standard shipping", "error", err)
+	} else if hasFree {
+		shippingFeePerOrder = 0
+	}
+
+	// 3. Build an (Order, Lines, Payout) tuple for each seller group and
+	//    compute the cart-wide total for the PaymentIntent.
+	batch := make([]repository.CheckoutBatchItem, 0, len(groupOrder))
+	var cartTotal int64
+	for _, sellerID := range groupOrder {
+		group := groups[sellerID]
+
+		var subtotal int64
+		lines := make([]domain.OrderLine, 0, len(group.lines))
+		for _, li := range group.lines {
+			lineTotal := li.UnitPrice * int64(li.Quantity)
+			subtotal += lineTotal
+			lines = append(lines, domain.OrderLine{
+				SKUID:       li.SKUID,
+				ProductName: li.ProductName,
+				SKUCode:     li.SKUCode,
+				Quantity:    li.Quantity,
+				UnitPrice:   li.UnitPrice,
+				LineTotal:   lineTotal,
+			})
+		}
+
+		rule, err := s.commissionRepo.GetApplicableRule(ctx, tenantID, sellerID, nil)
+		if err != nil {
+			return nil, apperrors.Internal("failed to get commission rule", err)
+		}
+		var commissionAmount int64
+		if rule != nil {
+			commissionAmount = subtotal * int64(rule.RateBps) / 10000
+		}
+
+		orderTotal := subtotal + shippingFeePerOrder
+		cartTotal += orderTotal
+
+		order := &domain.Order{
+			SellerID:         sellerID,
+			BuyerAuth0ID:     input.BuyerAuth0ID,
+			Status:           domain.StatusPending,
+			SubtotalAmount:   subtotal,
+			ShippingFee:      shippingFeePerOrder,
+			CommissionAmount: commissionAmount,
+			TotalAmount:      orderTotal,
+			Currency:         currency,
+			ShippingAddress:  input.ShippingAddress,
+			// StripePaymentIntentID is stamped after Stripe call below.
+		}
+
+		payout := &domain.Payout{
+			SellerID: sellerID,
+			Amount:   subtotal - commissionAmount,
+			Currency: currency,
+		}
+
+		batch = append(batch, repository.CheckoutBatchItem{
+			Order:  order,
+			Lines:  lines,
+			Payout: payout,
+		})
+	}
+
+	// 4. Insert all orders + pending payouts atomically.
+	if err := s.orderRepo.CreateCheckoutBatch(ctx, tenantID, batch); err != nil {
+		return nil, apperrors.Internal("failed to create checkout batch", err)
+	}
+
+	// 5. Create one PaymentIntent on the platform account (Separate Charges
+	//    and Transfers). Funds land on the platform; per-seller Transfers
+	//    will be created by the webhook once payment succeeds.
+	metadata := map[string]string{
+		"tenant_id":      tenantID.String(),
+		"buyer_auth0_id": input.BuyerAuth0ID,
+		"order_count":    fmt.Sprintf("%d", len(batch)),
+	}
+	piID, clientSecret, err := s.stripe.CreatePlatformPaymentIntent(cartTotal, currency, metadata)
 	if err != nil {
-		return apperrors.Internal("failed to find order by payment intent", err)
-	}
-	if order == nil {
-		return apperrors.NotFound("order not found for payment intent: " + stripePaymentIntentID)
+		// Orders were already inserted; without a PI they are unusable.
+		// The caller should retry checkout; stale pending orders will be
+		// cleaned up by a future reaper or surface to the buyer as pending.
+		return nil, apperrors.Internal("failed to create payment intent", err)
 	}
 
-	// Update status to paid.
+	// 6. Stamp the PI id on every order we just created.
+	for i := range batch {
+		if err := s.orderRepo.SetStripePaymentIntentID(ctx, tenantID, batch[i].Order.ID, piID); err != nil {
+			return nil, apperrors.Internal("failed to attach payment intent to order", err)
+		}
+		batch[i].Order.StripePaymentIntentID = &piID
+	}
+
+	// 7. Publish order.created for each order in the checkout.
+	for i := range batch {
+		o := batch[i].Order
+		pubsub.PublishEvent(ctx, s.publisher, tenantID, "order.created", "order-events", map[string]any{
+			"order_id":                 o.ID.String(),
+			"seller_id":                o.SellerID.String(),
+			"buyer_auth0_id":           o.BuyerAuth0ID,
+			"total_amount":             o.TotalAmount,
+			"currency":                 o.Currency,
+			"stripe_payment_intent_id": piID,
+		})
+	}
+
+	slog.Info("checkout created",
+		"tenant_id", tenantID,
+		"buyer_auth0_id", input.BuyerAuth0ID,
+		"order_count", len(batch),
+		"total", cartTotal,
+		"payment_intent", piID,
+	)
+
+	// 8. Shape the return value.
+	result := &domain.CheckoutResult{
+		Orders:                make([]domain.OrderWithLines, 0, len(batch)),
+		StripeClientSecret:    clientSecret,
+		StripePaymentIntentID: piID,
+		TotalAmount:           cartTotal,
+		Currency:              currency,
+	}
+	for i := range batch {
+		result.Orders = append(result.Orders, domain.OrderWithLines{
+			Order: *batch[i].Order,
+			Lines: batch[i].Lines,
+		})
+	}
+	return result, nil
+}
+
+// HandlePaymentSuccess handles a successful payment from Stripe. A single
+// PaymentIntent may cover multiple orders (one per seller) from a multi-seller
+// checkout, so this iterates over every matching order and creates a Stripe
+// Transfer to each seller's connected account.
+func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIntentID string) error {
+	orders, err := s.orderRepo.FindAllByStripePaymentIntentID(ctx, stripePaymentIntentID)
+	if err != nil {
+		return apperrors.Internal("failed to find orders by payment intent", err)
+	}
+	if len(orders) == 0 {
+		return apperrors.NotFound("orders not found for payment intent: " + stripePaymentIntentID)
+	}
+
 	now := time.Now()
-	if err := s.orderRepo.SetPaid(ctx, order.TenantID, order.ID, now, stripePaymentIntentID); err != nil {
-		return apperrors.Internal("failed to update order to paid", err)
+	for i := range orders {
+		order := &orders[i]
+
+		// 1. Mark the order paid.
+		if err := s.orderRepo.SetPaid(ctx, order.TenantID, order.ID, now, stripePaymentIntentID); err != nil {
+			return apperrors.Internal("failed to update order to paid", err)
+		}
+
+		// 2. Locate the pending payout we inserted during checkout.
+		payout, err := s.payoutRepo.GetByOrderID(ctx, order.TenantID, order.ID)
+		if err != nil {
+			return apperrors.Internal("failed to get payout for order", err)
+		}
+		if payout == nil {
+			slog.Warn("no payout record found for order, skipping transfer",
+				"order_id", order.ID, "payment_intent", stripePaymentIntentID)
+			continue
+		}
+
+		// 3. Resolve the seller's connected Stripe account id. This is a
+		//    stub until sellers are onboarded through Stripe Connect; see
+		//    docs/payment.md (known limitations) for the real lookup path.
+		sellerStripeAccountID := getSellerStripeAccountID(order.TenantID, order.SellerID)
+
+		// 4. Create the Stripe Transfer on the platform-held funds.
+		transferID, transferErr := s.stripe.CreateTransfer(
+			payout.Amount,
+			payout.Currency,
+			sellerStripeAccountID,
+			stripePaymentIntentID,
+		)
+		if transferErr != nil {
+			slog.Error("failed to create stripe transfer",
+				"error", transferErr,
+				"order_id", order.ID,
+				"payout_id", payout.ID,
+				"amount", payout.Amount,
+			)
+			if failErr := s.payoutRepo.UpdateStatus(ctx, order.TenantID, payout.ID, domain.PayoutStatusFailed, nil); failErr != nil {
+				slog.Error("failed to mark payout failed", "error", failErr, "payout_id", payout.ID)
+			}
+			pubsub.PublishEvent(ctx, s.publisher, order.TenantID, "payout.failed", "payout-events", map[string]any{
+				"payout_id": payout.ID.String(),
+				"order_id":  order.ID.String(),
+				"seller_id": order.SellerID.String(),
+				"error":     transferErr.Error(),
+			})
+			continue
+		}
+
+		// 5. Mark the payout completed with the transfer id.
+		if err := s.payoutRepo.UpdateStatus(ctx, order.TenantID, payout.ID, domain.PayoutStatusCompleted, &transferID); err != nil {
+			return apperrors.Internal("failed to mark payout completed", err)
+		}
+
+		slog.Info("order marked paid and transfer created",
+			"order_id", order.ID,
+			"payment_intent", stripePaymentIntentID,
+			"transfer_id", transferID,
+		)
+
+		// 6. Publish order.paid and payout.completed.
+		pubsub.PublishEvent(ctx, s.publisher, order.TenantID, "order.paid", "order-events", map[string]any{
+			"order_id":                 order.ID.String(),
+			"seller_id":                order.SellerID.String(),
+			"buyer_auth0_id":           order.BuyerAuth0ID,
+			"total_amount":             order.TotalAmount,
+			"stripe_payment_intent_id": stripePaymentIntentID,
+		})
+		pubsub.PublishEvent(ctx, s.publisher, order.TenantID, "payout.completed", "payout-events", map[string]any{
+			"payout_id":          payout.ID.String(),
+			"order_id":           order.ID.String(),
+			"seller_id":          order.SellerID.String(),
+			"amount":             payout.Amount,
+			"currency":           payout.Currency,
+			"stripe_transfer_id": transferID,
+		})
 	}
-
-	slog.Info("order marked as paid", "order_id", order.ID, "payment_intent", stripePaymentIntentID)
-
-	pubsub.PublishEvent(ctx, s.publisher, order.TenantID, "order.paid", "order-events", map[string]any{
-		"order_id":                order.ID.String(),
-		"seller_id":               order.SellerID.String(),
-		"buyer_auth0_id":          order.BuyerAuth0ID,
-		"total_amount":            order.TotalAmount,
-		"stripe_payment_intent_id": stripePaymentIntentID,
-	})
 
 	return nil
+}
+
+// getSellerStripeAccountID returns the seller's Stripe connected account id.
+// This is currently a stub that synthesizes an id from the seller uuid. The
+// real implementation must look up sellers.stripe_account_id via the auth
+// service (or a shared seller lookup API). Tracked as a known limitation in
+// docs/payment.md.
+func getSellerStripeAccountID(_, sellerID uuid.UUID) string {
+	return "acct_stub_" + sellerID.String()
 }
 
 // GetOrder retrieves an order with its lines.

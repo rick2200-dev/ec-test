@@ -33,8 +33,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer grpcClients.Close()
-	// gRPC clients are available for future handler migration.
-	_ = grpcClients
+
+	// Wire gRPC clients into the Services struct so handlers can call them.
+	// Only the catalog buyer read path has been migrated so far; other
+	// downstream services still use HTTP.
+	svc.CatalogGRPC = grpcClients.CatalogClient
 
 	router := handler.NewRouter(bgCtx, cfg, svc)
 

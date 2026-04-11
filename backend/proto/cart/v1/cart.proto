@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package cart.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/gen/go/cart/v1;cartv1";
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// CartService manages the buyer's shopping cart and multi-seller checkout.
+// Carts are persisted in Redis (not PostgreSQL) with a 30-day TTL that
+// resets on every mutation.
+service CartService {
+  rpc GetCart(GetCartRequest) returns (GetCartResponse);
+  rpc AddItem(AddItemRequest) returns (CartResponse);
+  rpc UpdateItemQuantity(UpdateItemQuantityRequest) returns (CartResponse);
+  rpc RemoveItem(RemoveItemRequest) returns (CartResponse);
+  rpc ClearCart(ClearCartRequest) returns (CartResponse);
+  rpc Checkout(CheckoutRequest) returns (CheckoutResponse);
+}
+
+// ─── Domain Messages ─────────────────────────────────────────
+
+message Cart {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  repeated CartItem items = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// CartItem holds a SKU reference plus price/name snapshots taken at
+// add-to-cart time. Checkout re-validates snapshots against the catalog.
+message CartItem {
+  string sku_id = 1;
+  string seller_id = 2;
+  int32 quantity = 3;
+  common.v1.Money unit_price_snapshot = 4;
+  string product_name_snapshot = 5;
+  string sku_code_snapshot = 6;
+  google.protobuf.Timestamp added_at = 7;
+}
+
+// ─── GetCart ─────────────────────────────────────────────────
+
+message GetCartRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+}
+
+message GetCartResponse {
+  Cart cart = 1;
+}
+
+// ─── AddItem ─────────────────────────────────────────────────
+
+message AddItemRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  string sku_id = 3;
+  int32 quantity = 4;
+}
+
+// ─── UpdateItemQuantity ──────────────────────────────────────
+
+message UpdateItemQuantityRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  string sku_id = 3;
+  int32 quantity = 4;  // New absolute quantity; 0 removes the item
+}
+
+// ─── RemoveItem ──────────────────────────────────────────────
+
+message RemoveItemRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  string sku_id = 3;
+}
+
+// ─── ClearCart ───────────────────────────────────────────────
+
+message ClearCartRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+}
+
+// CartResponse returns the full cart state after a mutation.
+message CartResponse {
+  Cart cart = 1;
+}
+
+// ─── Checkout ────────────────────────────────────────────────
+
+message CheckoutRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  string shipping_address_json = 3;
+  string currency = 4;
+}
+
+// CheckoutResponse reports the orders created for this checkout (one per
+// seller) along with a single PaymentIntent that covers the total amount.
+// All returned order IDs share the same stripe_payment_intent_id.
+message CheckoutResponse {
+  repeated string order_ids = 1;
+  string stripe_client_secret = 2;
+  string stripe_payment_intent_id = 3;
+  common.v1.Money total = 4;
+}

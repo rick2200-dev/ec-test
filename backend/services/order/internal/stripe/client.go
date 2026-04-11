@@ -20,6 +20,10 @@ func NewClient(secretKey string) *Client {
 }
 
 // CreatePaymentIntent creates a Stripe PaymentIntent with a connected account as the destination.
+//
+// Deprecated: this is the Destination Charges model which supports only one
+// seller per PaymentIntent. Multi-seller checkouts use CreatePlatformPaymentIntent
+// + CreateTransfer (Separate Charges and Transfers). Retained for reference.
 func (c *Client) CreatePaymentIntent(amount int64, currency string, sellerStripeAccountID string, metadata map[string]string) (paymentIntentID, clientSecret string, err error) {
 	params := &gostripe.PaymentIntentParams{
 		Amount:   gostripe.Int64(amount),
@@ -36,6 +40,29 @@ func (c *Client) CreatePaymentIntent(amount int64, currency string, sellerStripe
 	pi, err := paymentintent.New(params)
 	if err != nil {
 		return "", "", fmt.Errorf("create payment intent: %w", err)
+	}
+
+	return pi.ID, pi.ClientSecret, nil
+}
+
+// CreatePlatformPaymentIntent creates a Stripe PaymentIntent that charges the
+// platform account (no TransferData). This is the Separate Charges and
+// Transfers model: funds land on the platform first, and per-seller Transfers
+// are created later by the webhook handler once payment succeeds. This is
+// required for multi-seller checkouts where one PaymentIntent spans N sellers.
+func (c *Client) CreatePlatformPaymentIntent(amount int64, currency string, metadata map[string]string) (paymentIntentID, clientSecret string, err error) {
+	params := &gostripe.PaymentIntentParams{
+		Amount:   gostripe.Int64(amount),
+		Currency: gostripe.String(currency),
+	}
+
+	for k, v := range metadata {
+		params.AddMetadata(k, v)
+	}
+
+	pi, err := paymentintent.New(params)
+	if err != nil {
+		return "", "", fmt.Errorf("create platform payment intent: %w", err)
 	}
 
 	return pi.ID, pi.ClientSecret, nil

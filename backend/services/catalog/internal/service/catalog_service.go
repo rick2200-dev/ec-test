@@ -290,6 +290,51 @@ func (s *CatalogService) GetSKU(ctx context.Context, tenantID, id uuid.UUID) (*d
 	return sku, nil
 }
 
+// SKULookup is the shape returned by GetSKUWithProductName, used by the
+// cart service to snapshot price and display metadata at add-to-cart time.
+type SKULookup struct {
+	SKUID         uuid.UUID `json:"id"`
+	ProductID     uuid.UUID `json:"product_id"`
+	SellerID      uuid.UUID `json:"seller_id"`
+	ProductName   string    `json:"product_name"`
+	SKUCode       string    `json:"sku_code"`
+	PriceAmount   int64     `json:"price_amount"`
+	PriceCurrency string    `json:"price_currency"`
+	Status        string    `json:"status"`
+}
+
+// GetSKUWithProductName returns a SKU joined with its product name.
+// Intended for intra-cluster callers (e.g. cart service) that need the
+// full purchasable snapshot in one round-trip.
+func (s *CatalogService) GetSKUWithProductName(ctx context.Context, tenantID, id uuid.UUID) (*SKULookup, error) {
+	sku, err := s.skus.GetByID(ctx, tenantID, id)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get sku", err)
+	}
+	if sku == nil {
+		return nil, apperrors.NotFound("sku not found")
+	}
+
+	product, err := s.products.GetByID(ctx, tenantID, sku.ProductID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to get product for sku", err)
+	}
+	if product == nil {
+		return nil, apperrors.NotFound("product not found for sku")
+	}
+
+	return &SKULookup{
+		SKUID:         sku.ID,
+		ProductID:     sku.ProductID,
+		SellerID:      sku.SellerID,
+		ProductName:   product.Name,
+		SKUCode:       sku.SKUCode,
+		PriceAmount:   sku.PriceAmount,
+		PriceCurrency: sku.PriceCurrency,
+		Status:        string(sku.Status),
+	}, nil
+}
+
 // ListSKUs returns all SKUs for a product.
 func (s *CatalogService) ListSKUs(ctx context.Context, tenantID, productID uuid.UUID) ([]domain.SKU, error) {
 	skus, err := s.skus.List(ctx, tenantID, productID)

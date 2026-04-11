@@ -18,6 +18,13 @@ const (
 	StatusCancelled  = "cancelled"
 )
 
+// Payout status constants.
+const (
+	PayoutStatusPending   = "pending"
+	PayoutStatusCompleted = "completed"
+	PayoutStatusFailed    = "failed"
+)
+
 // Order represents a marketplace order.
 type Order struct {
 	ID                    uuid.UUID       `json:"id"`
@@ -100,4 +107,37 @@ type OrderLineInput struct {
 	SKUCode     string    `json:"sku_code"`
 	Quantity    int       `json:"quantity"`
 	UnitPrice   int64     `json:"unit_price"`
+}
+
+// CheckoutInput holds the data needed for a multi-seller checkout. The order
+// service groups the flat Lines list by seller_id, creates one Order per
+// seller in a single transaction, and then issues a single PaymentIntent
+// covering the whole cart.
+type CheckoutInput struct {
+	BuyerAuth0ID    string              `json:"buyer_auth0_id"`
+	Lines           []CheckoutLineInput `json:"lines"`
+	ShippingAddress json.RawMessage     `json:"shipping_address"`
+	Currency        string              `json:"currency"`
+}
+
+// CheckoutLineInput is one line in a checkout request, carrying the seller_id
+// so the order service can group by seller, plus price snapshots captured at
+// add-to-cart time.
+type CheckoutLineInput struct {
+	SKUID       uuid.UUID `json:"sku_id"`
+	SellerID    uuid.UUID `json:"seller_id"`
+	Quantity    int       `json:"quantity"`
+	UnitPrice   int64     `json:"unit_price"`
+	ProductName string    `json:"product_name"`
+	SKUCode     string    `json:"sku_code"`
+}
+
+// CheckoutResult is what CreateCheckout returns: the created orders (one per
+// seller) sharing a single Stripe PaymentIntent.
+type CheckoutResult struct {
+	Orders                []OrderWithLines `json:"orders"`
+	StripeClientSecret    string           `json:"stripe_client_secret"`
+	StripePaymentIntentID string           `json:"stripe_payment_intent_id"`
+	TotalAmount           int64            `json:"total_amount"`
+	Currency              string           `json:"currency"`
 }

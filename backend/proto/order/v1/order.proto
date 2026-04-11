@@ -8,8 +8,17 @@ import "google/protobuf/timestamp.proto";
 import "common/v1/common.proto";
 
 // OrderService manages orders and payments.
+//
+// All buyer purchases flow through CreateCheckout, which accepts a flat list
+// of items spanning one or more sellers and creates one Order per seller
+// sharing a single Stripe PaymentIntent. The legacy single-seller
+// CreateOrder RPC is deprecated and retained only for backwards
+// compatibility with older generated code; do not use it for new callers.
 service OrderService {
-  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc CreateCheckout(CreateCheckoutRequest) returns (CreateCheckoutResponse);
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse) {
+    option deprecated = true;
+  }
   rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
   rpc ListBuyerOrders(ListBuyerOrdersRequest) returns (ListBuyerOrdersResponse);
   rpc ListSellerOrders(ListSellerOrdersRequest) returns (ListSellerOrdersResponse);
@@ -60,9 +69,10 @@ message Payout {
   google.protobuf.Timestamp completed_at = 9;
 }
 
-// ─── CreateOrder ─────────────────────────────────────────────
+// ─── CreateOrder (deprecated) ────────────────────────────────
 
 message CreateOrderRequest {
+  option deprecated = true;
   string tenant_id = 1;
   string seller_id = 2;
   string buyer_auth0_id = 3;
@@ -71,13 +81,46 @@ message CreateOrderRequest {
 }
 
 message OrderLineInput {
+  option deprecated = true;
   string sku_id = 1;
   int32 quantity = 2;
 }
 
 message CreateOrderResponse {
+  option deprecated = true;
   Order order = 1;
-  string stripe_client_secret = 2;  // For frontend Stripe payment
+  string stripe_client_secret = 2;
+}
+
+// ─── CreateCheckout ──────────────────────────────────────────
+
+// CreateCheckoutRequest carries a flat list of items across one or more
+// sellers. The service groups by seller_id, creates one Order per group in
+// a single transaction, and returns all order IDs sharing one PaymentIntent.
+message CreateCheckoutRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  string shipping_address_json = 3;
+  string currency = 4;
+  repeated CheckoutLineInput lines = 5;
+}
+
+// CheckoutLineInput includes seller_id and price snapshots from cart state.
+// The order service re-validates prices against the catalog before insert.
+message CheckoutLineInput {
+  string sku_id = 1;
+  string seller_id = 2;
+  int32 quantity = 3;
+  common.v1.Money unit_price_snapshot = 4;
+  string product_name_snapshot = 5;
+  string sku_code_snapshot = 6;
+}
+
+message CreateCheckoutResponse {
+  repeated Order orders = 1;
+  string stripe_client_secret = 2;
+  string stripe_payment_intent_id = 3;
+  common.v1.Money total = 4;
 }
 
 // ─── GetOrder ────────────────────────────────────────────────

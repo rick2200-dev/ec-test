@@ -5,56 +5,117 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/go-chi/chi/v5"
+
+	catalogv1 "github.com/Riku-KANO/ec-test/gen/go/catalog/v1"
+	commonv1 "github.com/Riku-KANO/ec-test/gen/go/common/v1"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
+	"github.com/Riku-KANO/ec-test/pkg/pagination"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
 
 // BuyerHandler handles buyer-facing routes.
+//
+// The catalog read path (ListProducts, GetProduct) has been migrated to gRPC
+// as a pilot — it calls svc.CatalogGRPC directly instead of proxying via
+// HTTP. All other buyer routes still proxy HTTP through the ServiceClient
+// fields below.
 type BuyerHandler struct {
-	catalog   *proxy.ServiceClient
-	order     *proxy.ServiceClient
-	recommend *proxy.ServiceClient
-	search    *proxy.ServiceClient
-	auth      *proxy.ServiceClient
+	catalogGRPC catalogv1.CatalogServiceClient
+	order       *proxy.ServiceClient
+	recommend   *proxy.ServiceClient
+	search      *proxy.ServiceClient
+	auth        *proxy.ServiceClient
 }
 
 // NewBuyerHandler creates a new BuyerHandler.
 func NewBuyerHandler(svc *proxy.Services) *BuyerHandler {
 	return &BuyerHandler{
-		catalog:   svc.Catalog,
-		order:     svc.Order,
-		recommend: svc.Recommend,
-		search:    svc.Search,
-		auth:      svc.Auth,
+		catalogGRPC: svc.CatalogGRPC,
+		order:       svc.Order,
+		recommend:   svc.Recommend,
+		search:      svc.Search,
+		auth:        svc.Auth,
 	}
 }
 
-// ListProducts proxies to the catalog service to list products.
+// ListProducts calls the catalog gRPC service to list active products.
 // GET /products
+//
+// The proto response is converted back to the REST JSON shape that the
+// catalog HTTP handler previously produced, so the frontend contract is
+// unchanged.
 func (h *BuyerHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	q.Set("status", "active")
-	body, status, err := h.catalog.Get(r.Context(), "/products", q.Encode())
+	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		slog.Error("proxy to catalog failed", "error", err)
-		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "catalog service unavailable"})
+		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "missing tenant context"})
 		return
 	}
-	writeRaw(w, status, body)
+
+	p := pagination.FromRequest(r)
+
+	req := &catalogv1.ListProductsRequest{
+		TenantId: tc.TenantID.String(),
+		Status:   "active",
+		Pagination: &commonv1.PaginationRequest{
+			Limit:  int32(p.Limit),
+			Offset: int32(p.Offset),
+		},
+	}
+	if sellerID := r.URL.Query().Get("seller_id"); sellerID != "" {
+		req.SellerId = sellerID
+	}
+	if categoryID := r.URL.Query().Get("category_id"); categoryID != "" {
+		req.CategoryId = categoryID
+	}
+
+	resp, err := h.catalogGRPC.ListProducts(r.Context(), req)
+	if err != nil {
+		writeGRPCError(w, "catalog ListProducts", err)
+		return
+	}
+
+	items := make([]productJSON, 0, len(resp.GetProducts()))
+	for _, p := range resp.GetProducts() {
+		items = append(items, protoProductToJSON(p))
+	}
+
+	httputil.JSON(w, http.StatusOK, pagination.Response[productJSON]{
+		Items:  items,
+		Total:  int(resp.GetPagination().GetTotal()),
+		Limit:  int(resp.GetPagination().GetLimit()),
+		Offset: int(resp.GetPagination().GetOffset()),
+	})
 }
 
-// GetProduct proxies to the catalog service to get a single product by slug.
+// GetProduct calls the catalog gRPC service to fetch a single product by
+// slug, including its SKUs.
 // GET /products/{slug}
 func (h *BuyerHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	slug := r.PathValue("slug")
-	body, status, err := h.catalog.Get(r.Context(), "/products/"+url.PathEscape(slug), "")
+	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		slog.Error("proxy to catalog failed", "error", err)
-		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "catalog service unavailable"})
+		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "missing tenant context"})
 		return
 	}
-	writeRaw(w, status, body)
+
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		slug = r.PathValue("slug")
+	}
+
+	req := &catalogv1.GetProductRequest{
+		TenantId:   tc.TenantID.String(),
+		Identifier: &catalogv1.GetProductRequest_Slug{Slug: slug},
+	}
+
+	resp, err := h.catalogGRPC.GetProduct(r.Context(), req)
+	if err != nil {
+		writeGRPCError(w, "catalog GetProduct", err)
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, protoProductWithSKUsToJSON(resp.GetProduct()))
 }
 
 // SearchProducts proxies to the search service.
@@ -64,18 +125,6 @@ func (h *BuyerHandler) SearchProducts(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("proxy to search failed", "error", err)
 		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "search service unavailable"})
-		return
-	}
-	writeRaw(w, status, body)
-}
-
-// CreateOrder proxies to the order service.
-// POST /orders
-func (h *BuyerHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	body, status, err := h.order.Post(r.Context(), "/orders", r.Body)
-	if err != nil {
-		slog.Error("proxy to order failed", "error", err)
-		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)

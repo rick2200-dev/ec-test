@@ -91,6 +91,7 @@ make dev-auth         # Auth Service  → :8081
 make dev-catalog      # Catalog       → :8082
 make dev-inventory    # Inventory     → :8083
 make dev-order        # Order         → :8084
+make dev-cart         # Cart          → :8088
 
 # 6. フロントエンドを起動 (別ターミナルで)
 pnpm install
@@ -123,7 +124,8 @@ ec-test/
 │   │   ├── order/           #     注文・決済・コミッション
 │   │   ├── search/          #     商品検索 (Vertex AI Search)
 │   │   ├── recommend/       #     レコメンデーション
-│   │   └── notification/    #     通知 (メール・プッシュ)
+│   │   ├── notification/    #     通知 (メール・プッシュ)
+│   │   └── cart/            #     カート・チェックアウトオーケストレーション (Redis)
 │   ├── pkg/                 #   Go 共有パッケージ
 │   │   ├── tenant/          #     テナントコンテキスト管理
 │   │   ├── database/        #     DB 接続プール・RLS 設定
@@ -228,3 +230,5 @@ DATABASE_URL=postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=di
 
 - [コントリビューションガイド](docs/CONTRIBUTING.md) -- 開発規約・PR ルール・新機能追加手順
 - [アーキテクチャ設計書](docs/architecture.md) -- システム設計・データモデル・通信パターン
+- [決済・Stripe Connect 設計](docs/payment.md) -- マルチセラー決済 (Separate Charges and Transfers) の設計・webhook・payout
+- [カート・チェックアウト設計](docs/cart-and-checkout.md) -- カートのデータモデル・API・チェックアウトオーケストレーション

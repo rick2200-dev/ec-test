@@ -49,17 +49,29 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 
 		// Buyer routes (any authenticated user)
 		buyer := NewBuyerHandler(svc)
+		cart := NewCartHandler(svc)
 		api.Route("/buyer", func(br chi.Router) {
 			br.Get("/products", buyer.ListProducts)
 			br.Get("/products/{slug}", buyer.GetProduct)
 			br.Get("/search", buyer.SearchProducts)
-			br.Post("/orders", buyer.CreateOrder)
+			// Buyer purchases flow through the cart service. The direct
+			// POST /orders endpoint was removed; use POST /cart/checkout.
 			br.Get("/orders", buyer.ListOrders)
 			br.Post("/events", buyer.TrackEvent)
 			br.Get("/recommendations", buyer.GetRecommendations)
 			br.Get("/plans", buyer.ListBuyerPlans)
 			br.Get("/subscription", buyer.GetSubscription)
 			br.Post("/subscription", buyer.Subscribe)
+
+			// Cart routes — all buyer purchases start here.
+			br.Route("/cart", func(cr chi.Router) {
+				cr.Get("/", cart.Get)
+				cr.Delete("/", cart.Clear)
+				cr.Post("/items", cart.AddItem)
+				cr.Put("/items/{skuId}", cart.UpdateItem)
+				cr.Delete("/items/{skuId}", cart.RemoveItem)
+				cr.Post("/checkout", cart.Checkout)
+			})
 		})
 
 		// Seller routes (requires seller role at the JWT level)
