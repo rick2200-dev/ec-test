@@ -233,7 +233,7 @@ Content-Type: application/json
       (トランザクション先頭で cross-schema lookup: `auth_svc.sellers.name` から
        `orders.seller_name` を、`catalog_svc.skus.product_id` から
        `order_lines.product_id` をスナップショット。
-       詳細は [docs/architecture.md § 購入履歴と商品スナップショット](./architecture.md#購入履歴と商品スナップショット))
+       詳細は [docs/architecture.md § 購入履歴と商品スナップショット](./architecture.md#購入履歴と商品スナップショット) を参照)
    c. Stripe に 1 回 PaymentIntent を発行 (合計金額)
    d. 発行された PI ID を全 order に書き戻す
    e. order.created イベントを N 回 publish

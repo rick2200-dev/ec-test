@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// nilUUIDString is the zero-UUID sentinel used by migration 000012 for
+// order_lines whose original sku_id no longer exists in catalog_svc.skus.
+// The gateway short-circuits lines carrying this value to is_deleted=true
+// without issuing a (guaranteed-NotFound) catalog lookup.
+const nilUUIDString = "00000000-0000-0000-0000-000000000000"
+
 // orderLineJSON is the shape that order-svc returns today for a line inside
 // an OrderWithLines JSON body. Mirrors
 // backend/services/order/internal/domain/order.go OrderLine.

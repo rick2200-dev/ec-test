@@ -195,6 +195,15 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Buyer ownership check: order-svc's GET /orders/{id} is only
+	// tenant-scoped, so it would happily return another buyer's order
+	// within the same tenant. Reject any mismatch with 404 (rather than
+	// 403) to avoid leaking the existence of the id to probes.
+	if detail.BuyerAuth0ID != tc.UserID {
+		httputil.JSON(w, http.StatusNotFound, map[string]string{"error": "order not found"})
+		return
+	}
+
 	// Enrich each line. A missing or archived product degrades to
 	// is_deleted=true; other errors also degrade (logged) so a single
 	// flaky catalog lookup doesn't fail the whole order view.
@@ -212,6 +221,18 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 				Quantity:    line.Quantity,
 				UnitPrice:   line.UnitPrice,
 				LineTotal:   line.LineTotal,
+			}
+
+			// Historical rows backfilled by migration 000012 may carry
+			// the nil UUID sentinel when their original SKU no longer
+			// exists in catalog_svc.skus. Short-circuit to deleted
+			// without issuing a guaranteed-NotFound gRPC call.
+			if line.ProductID == nilUUIDString {
+				el.IsDeleted = true
+				mu.Lock()
+				enriched[i] = el
+				mu.Unlock()
+				return nil
 			}
 
 			resp, err := h.catalogGRPC.GetProduct(gctx, &catalogv1.GetProductRequest{

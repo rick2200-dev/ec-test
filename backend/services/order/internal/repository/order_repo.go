@@ -29,7 +29,7 @@ func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
 // order_svc are always consistent with catalog state at the moment of sale.
 func (r *OrderRepository) Create(ctx context.Context, tenantID uuid.UUID, order *domain.Order, lines []domain.OrderLine) error {
 	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		sellerNames, err := lookupSellerNames(ctx, tx, []uuid.UUID{order.SellerID})
+		sellerNames, err := lookupSellerNames(ctx, tx, tenantID, []uuid.UUID{order.SellerID})
 		if err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ func (r *OrderRepository) Create(ctx context.Context, tenantID uuid.UUID, order 
 		for _, l := range lines {
 			skuIDs = append(skuIDs, l.SKUID)
 		}
-		productIDs, err := lookupSKUProductIDs(ctx, tx, skuIDs)
+		productIDs, err := lookupSKUProductIDs(ctx, tx, tenantID, skuIDs)
 		if err != nil {
 			return err
 		}
@@ -100,20 +100,26 @@ func insertOrderTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, order *do
 }
 
 // lookupSellerNames resolves seller ids to their current company name by
-// querying auth_svc.sellers in the same transaction. auth_svc.sellers has the
-// same tenant_isolation RLS policy as order_svc.orders (both scoped to
+// querying auth_svc.sellers in the same transaction. auth_svc.sellers has
+// the same tenant_isolation RLS policy as order_svc.orders (both scoped to
 // current_setting('app.current_tenant_id')), so this cross-schema read works
-// inside a TenantTx without any additional SET ROLE gymnastics. Returns a map
-// keyed by seller id; callers must tolerate missing keys (seller may have
-// been deleted, in which case seller_name is stamped as empty string).
-func lookupSellerNames(ctx context.Context, tx pgx.Tx, sellerIDs []uuid.UUID) (map[uuid.UUID]string, error) {
+// inside a TenantTx without any additional SET ROLE gymnastics. An explicit
+// tenant_id predicate is also applied as defense-in-depth against RLS
+// misconfiguration and to align with existing cross-schema join patterns
+// (see backend/services/search/internal/engine/postgres.go:116-118). Returns
+// a map keyed by seller id; callers must tolerate missing keys (seller may
+// have been deleted, in which case seller_name is stamped as empty string).
+func lookupSellerNames(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, sellerIDs []uuid.UUID) (map[uuid.UUID]string, error) {
 	result := make(map[uuid.UUID]string, len(sellerIDs))
 	if len(sellerIDs) == 0 {
 		return result, nil
 	}
 	rows, err := tx.Query(ctx,
-		`SELECT id, name FROM auth_svc.sellers WHERE id = ANY($1)`,
-		sellerIDs,
+		`SELECT id, name
+		 FROM auth_svc.sellers
+		 WHERE id = ANY($1)
+		   AND tenant_id = $2`,
+		sellerIDs, tenantID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("lookup seller names: %w", err)
@@ -133,15 +139,20 @@ func lookupSellerNames(ctx context.Context, tx pgx.Tx, sellerIDs []uuid.UUID) (m
 // lookupSKUProductIDs resolves SKU ids to their parent product id by querying
 // catalog_svc.skus in the same transaction. Used at checkout to snapshot
 // product_id on order_lines so the buyer order-detail page can enrich each
-// line via catalog gRPC without a live sku->product lookup.
-func lookupSKUProductIDs(ctx context.Context, tx pgx.Tx, skuIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+// line via catalog gRPC without a live sku->product lookup. As with
+// lookupSellerNames, an explicit tenant_id predicate is applied in addition
+// to RLS.
+func lookupSKUProductIDs(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, skuIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
 	result := make(map[uuid.UUID]uuid.UUID, len(skuIDs))
 	if len(skuIDs) == 0 {
 		return result, nil
 	}
 	rows, err := tx.Query(ctx,
-		`SELECT id, product_id FROM catalog_svc.skus WHERE id = ANY($1)`,
-		skuIDs,
+		`SELECT id, product_id
+		 FROM catalog_svc.skus
+		 WHERE id = ANY($1)
+		   AND tenant_id = $2`,
+		skuIDs, tenantID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("lookup sku product ids: %w", err)
@@ -199,11 +210,11 @@ func (r *OrderRepository) CreateCheckoutBatch(ctx context.Context, tenantID uuid
 			skuIDs = append(skuIDs, id)
 		}
 
-		sellerNames, err := lookupSellerNames(ctx, tx, sellerIDs)
+		sellerNames, err := lookupSellerNames(ctx, tx, tenantID, sellerIDs)
 		if err != nil {
 			return err
 		}
-		productIDs, err := lookupSKUProductIDs(ctx, tx, skuIDs)
+		productIDs, err := lookupSKUProductIDs(ctx, tx, tenantID, skuIDs)
 		if err != nil {
 			return err
 		}

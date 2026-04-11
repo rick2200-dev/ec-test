@@ -26,7 +26,18 @@ UPDATE order_svc.order_lines ol
  WHERE ol.sku_id = sk.id
    AND ol.tenant_id = sk.tenant_id;
 
--- Enforce NOT NULL now that existing rows are populated.
+-- For any historical rows whose sku_id no longer exists in catalog_svc.skus
+-- (no FK constraint binds those tables), stamp the nil UUID as a sentinel so
+-- the NOT NULL constraint below can be enforced safely. The gateway's order
+-- detail enrichment treats the nil UUID as "product deleted" and returns
+-- is_deleted=true for those lines, preserving buyer-visible history with
+-- only the snapshotted product_name and sku_code.
+UPDATE order_svc.order_lines
+   SET product_id = '00000000-0000-0000-0000-000000000000'
+ WHERE product_id IS NULL;
+
+-- Enforce NOT NULL now that every row has either a real product_id or the
+-- sentinel nil UUID.
 ALTER TABLE order_svc.order_lines
     ALTER COLUMN product_id SET NOT NULL;
 
