@@ -50,6 +50,7 @@ func main() {
 	rbacAuditRepo := repository.NewRBACAuditRepository(pool)
 	subscriptionRepo := repository.NewSubscriptionRepository(pool)
 	buyerSubRepo := repository.NewBuyerSubscriptionRepository(pool)
+	apiTokenRepo := repository.NewAPITokenRepository(pool)
 
 	// Service
 	authSvc := service.NewAuthService(
@@ -61,6 +62,7 @@ func main() {
 		rbacAuditRepo,
 		subscriptionRepo,
 		buyerSubRepo,
+		apiTokenRepo,
 	)
 
 	// Bootstrap the initial super_admin if requested via environment.
@@ -77,7 +79,8 @@ func main() {
 	// Handlers
 	tenantHandler := handler.NewTenantHandler(authSvc)
 	sellerTeamHandler := handler.NewSellerTeamHandler(authSvc)
-	sellerHandler := handler.NewSellerHandler(authSvc, sellerTeamHandler)
+	apiTokenHandler := handler.NewAPITokenHandler(authSvc, cfg.APITokenPrefix)
+	sellerHandler := handler.NewSellerHandler(authSvc, sellerTeamHandler, apiTokenHandler)
 	platformAdminHandler := handler.NewPlatformAdminHandler(authSvc)
 	internalAuthzHandler := handler.NewInternalAuthzHandler(authSvc, cfg.InternalToken)
 	subscriptionHandler := handler.NewSubscriptionHandler(authSvc)

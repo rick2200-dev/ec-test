@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	pkgredis "github.com/Riku-KANO/ec-test/pkg/redis"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/grpcclient"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/handler"
@@ -39,7 +40,20 @@ func main() {
 	// downstream services still use HTTP.
 	svc.CatalogGRPC = grpcClients.CatalogClient
 
-	router := handler.NewRouter(bgCtx, cfg, svc)
+	// Redis client used by the API-token rate limiter. We connect
+	// eagerly with a short timeout so a Redis outage surfaces at boot
+	// (docker-compose retry) rather than as a 503 on the first
+	// token-authenticated request.
+	redisCtx, redisCancel := context.WithTimeout(bgCtx, 10*time.Second)
+	redisClient, err := pkgredis.NewClient(redisCtx, cfg.RedisURL)
+	redisCancel()
+	if err != nil {
+		slog.Error("failed to connect to redis", "error", err, "url", cfg.RedisURL)
+		os.Exit(1)
+	}
+	defer func() { _ = redisClient.Close() }()
+
+	router := handler.NewRouter(bgCtx, cfg, svc, redisClient)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.HTTPPort,

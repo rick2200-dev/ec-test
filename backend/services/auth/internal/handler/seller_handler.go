@@ -15,15 +15,17 @@ import (
 
 // SellerHandler handles HTTP requests for seller operations.
 type SellerHandler struct {
-	svc  *service.AuthService
-	team *SellerTeamHandler
+	svc       *service.AuthService
+	team      *SellerTeamHandler
+	apiTokens *APITokenHandler
 }
 
-// NewSellerHandler creates a new SellerHandler. The team handler is mounted
-// as a nested subroute at /{sellerID}/team so that the /sellers prefix can
-// own the entire seller subtree.
-func NewSellerHandler(svc *service.AuthService, team *SellerTeamHandler) *SellerHandler {
-	return &SellerHandler{svc: svc, team: team}
+// NewSellerHandler creates a new SellerHandler. The team and API token
+// handlers are mounted as nested subroutes under /{sellerID} so the
+// /sellers prefix can own the entire seller subtree. apiTokens may be nil
+// in tests that don't exercise the token surface.
+func NewSellerHandler(svc *service.AuthService, team *SellerTeamHandler, apiTokens *APITokenHandler) *SellerHandler {
+	return &SellerHandler{svc: svc, team: team, apiTokens: apiTokens}
 }
 
 // Routes returns the chi router for seller endpoints.
@@ -37,6 +39,12 @@ func (h *SellerHandler) Routes() chi.Router {
 	// Mount registers GET/POST/PUT/DELETE on the subrouter so the {sellerID}
 	// URL parameter is available to its handlers via chi.URLParam.
 	r.Route("/{sellerID}/team", h.team.Mount)
+	// Seller API access tokens live under /{sellerID}/api-tokens, parallel
+	// to /team. The handler is optional so tests that only care about the
+	// team surface can skip wiring it.
+	if h.apiTokens != nil {
+		r.Route("/{sellerID}/api-tokens", h.apiTokens.Mount)
+	}
 	return r
 }
 
