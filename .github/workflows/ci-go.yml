@@ -5,6 +5,12 @@ on:
     paths:
       - "backend/services/**"
       - "backend/pkg/**"
+      - "backend/proto/**"
+      - "backend/gen/go/**"
+      - "go.work"
+      - "go.work.sum"
+      - "infra/db/migrations/**"
+      - ".github/workflows/ci-go.yml"
 
 permissions:
   contents: read
@@ -19,17 +25,103 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # Each service filter includes its own code PLUS the cross-cutting
+          # paths that any service depends on: shared Go packages, generated
+          # proto code, workspace files, and DB migrations. These must be
+          # duplicated per-filter because dorny/paths-filter turns every
+          # top-level filter name into a matrix entry — introducing a
+          # separate `shared` filter would try to run it as a pseudo-service.
           filters: |
-            gateway: ['backend/services/gateway/**', 'backend/pkg/**']
-            auth: ['backend/services/auth/**', 'backend/pkg/**']
-            cart: ['backend/services/cart/**', 'backend/pkg/**']
-            catalog: ['backend/services/catalog/**', 'backend/pkg/**']
-            inventory: ['backend/services/inventory/**', 'backend/pkg/**']
-            order: ['backend/services/order/**', 'backend/pkg/**']
-            search: ['backend/services/search/**', 'backend/pkg/**']
-            recommend: ['backend/services/recommend/**', 'backend/pkg/**']
-            notification: ['backend/services/notification/**', 'backend/pkg/**']
-            inquiry: ['backend/services/inquiry/**', 'backend/pkg/**']
+            gateway:
+              - 'backend/services/gateway/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            auth:
+              - 'backend/services/auth/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            cart:
+              - 'backend/services/cart/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            catalog:
+              - 'backend/services/catalog/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            inventory:
+              - 'backend/services/inventory/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            order:
+              - 'backend/services/order/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            search:
+              - 'backend/services/search/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            recommend:
+              - 'backend/services/recommend/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            notification:
+              - 'backend/services/notification/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            inquiry:
+              - 'backend/services/inquiry/**'
+              - 'backend/pkg/**'
+              - 'backend/proto/**'
+              - 'backend/gen/go/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
 
   lint-and-test:
     needs: changes

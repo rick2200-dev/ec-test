@@ -19,14 +19,18 @@ import (
 // OrderClient calls the order service's internal checkout endpoint to
 // materialize a cart into orders + a PaymentIntent.
 type OrderClient struct {
-	baseURL string
-	http    *http.Client
+	baseURL       string
+	internalToken string
+	http          *http.Client
 }
 
 // NewOrderClient constructs an OrderClient pointing at the order service.
-func NewOrderClient(baseURL string) *OrderClient {
+// internalToken is sent in the X-Internal-Token header on every request
+// and must match ORDER_INTERNAL_TOKEN on the order service.
+func NewOrderClient(baseURL, internalToken string) *OrderClient {
 	return &OrderClient{
-		baseURL: strings.TrimRight(baseURL, "/"),
+		baseURL:       strings.TrimRight(baseURL, "/"),
+		internalToken: internalToken,
 		// Checkout fans out across multiple DB inserts + a Stripe call.
 		// Give it a generous timeout to absorb Stripe latency spikes.
 		http: &http.Client{Timeout: 30 * time.Second},
@@ -49,6 +53,7 @@ func (c *OrderClient) CreateCheckout(ctx context.Context, tenantID uuid.UUID, in
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Tenant-ID", tenantID.String())
+	req.Header.Set("X-Internal-Token", c.internalToken)
 
 	resp, err := c.http.Do(req)
 	if err != nil {

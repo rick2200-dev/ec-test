@@ -177,7 +177,7 @@ func (r *APITokenRepository) RevokeTx(ctx context.Context, tx pgx.Tx, tenantID, 
 // gateway hot path: called on every API-token request before the tenant
 // context is known. It intentionally does NOT use TenantTx — in the
 // current single-DB-role deployment the auth service owns the table and
-// bypasses RLS (no FORCE ROW LEVEL SECURITY). See migration 000012 for
+// bypasses RLS (no FORCE ROW LEVEL SECURITY). See migration 000014 for
 // the hardening note if/when roles split.
 //
 // Returns (nil, nil) if no row is found.

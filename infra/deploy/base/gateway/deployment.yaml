@@ -31,7 +31,7 @@ spec:
             - configMapRef:
                 name: gateway-config
           env:
-            - name: PORT
+            - name: HTTP_PORT
               value: "8080"
             - name: LOG_LEVEL
               value: "info"

@@ -76,7 +76,7 @@ func main() {
 	// Handlers
 	productHandler := handler.NewProductHandler(catalogSvc)
 	categoryHandler := handler.NewCategoryHandler(catalogSvc)
-	internalHandler := handler.NewInternalHandler(catalogSvc)
+	internalHandler := handler.NewInternalHandler(catalogSvc, cfg.InternalToken)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router

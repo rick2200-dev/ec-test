@@ -87,7 +87,7 @@ func main() {
 	commissionHandler := handler.NewCommissionHandler(orderSvc)
 	payoutHandler := handler.NewPayoutHandler(orderSvc)
 	webhookHandler := handler.NewWebhookHandler(orderSvc, cfg.StripeWebhookSecret)
-	internalHandler := handler.NewInternalHandler(orderSvc)
+	internalHandler := handler.NewInternalHandler(orderSvc, cfg.InternalToken)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 // GCPPublisher implements the Publisher interface using Google Cloud Pub/Sub.
@@ -30,8 +30,13 @@ func (p *GCPPublisher) Publish(ctx context.Context, topic string, event Event) e
 		return fmt.Errorf("encode event: %w", err)
 	}
 
-	t := p.client.Topic(topic)
-	result := t.Publish(ctx, &pubsub.Message{
+	// In v2 the Topic API was replaced by Publisher. We create a Publisher
+	// per call and Stop() it once the synchronous Get below returns so the
+	// background flushing goroutine is released.
+	publisher := p.client.Publisher(topic)
+	defer publisher.Stop()
+
+	result := publisher.Publish(ctx, &pubsub.Message{
 		Data: data,
 		Attributes: map[string]string{
 			"event_type": event.Type,

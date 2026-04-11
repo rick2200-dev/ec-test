@@ -26,7 +26,9 @@ func TestJSON_StatusAndBody(t *testing.T) {
 	}
 
 	var body map[string]string
-	json.NewDecoder(res.Body).Decode(&body)
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if body["key"] != "value" {
 		t.Errorf("expected body key=value, got %v", body)
 	}
@@ -55,7 +57,9 @@ func TestError_AppError(t *testing.T) {
 		t.Errorf("expected %d, got %d", http.StatusNotFound, res.StatusCode)
 	}
 	var body map[string]string
-	json.NewDecoder(res.Body).Decode(&body)
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if body["error"] != "thing not found" {
 		t.Errorf("unexpected error message: %q", body["error"])
 	}

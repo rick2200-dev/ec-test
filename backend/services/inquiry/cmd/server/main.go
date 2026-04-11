@@ -67,7 +67,7 @@ func main() {
 	inquiryRepo := repository.NewInquiryRepository(pool)
 
 	// Internal clients
-	orderClient := service.NewOrderClient(cfg.OrderServiceURL)
+	orderClient := service.NewOrderClient(cfg.OrderServiceURL, cfg.OrderInternalToken)
 
 	// Service
 	inquirySvc := service.NewInquiryService(inquiryRepo, orderClient, publisher)

@@ -10,17 +10,23 @@ type Config struct {
 	AuthServiceURL    string
 	InternalAuthToken string
 	PubSubProjectID   string
+
+	// Shared secret used as X-Internal-Token on requests to the order
+	// /internal endpoints. Must match ORDER_INTERNAL_TOKEN on the order
+	// service.
+	OrderInternalToken string
 }
 
 // Load reads configuration from environment variables.
 func Load() Config {
 	return Config{
-		DatabaseURL:       getEnv("DATABASE_URL", "postgres://ecmarket:ecmarket@localhost:5432/ecmarket?sslmode=disable"),
-		HTTPPort:          getEnv("HTTP_PORT", "8090"),
-		OrderServiceURL:   getEnv("ORDER_SERVICE_URL", "http://localhost:8083"),
-		AuthServiceURL:    getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
-		InternalAuthToken: getEnv("INTERNAL_AUTH_TOKEN", ""),
-		PubSubProjectID:   getEnv("PUBSUB_PROJECT_ID", ""),
+		DatabaseURL:        getEnv("DATABASE_URL", "postgres://ecmarket:ecmarket@localhost:5432/ecmarket?sslmode=disable"),
+		HTTPPort:           getEnv("HTTP_PORT", "8090"),
+		OrderServiceURL:    getEnv("ORDER_SERVICE_URL", "http://localhost:8083"),
+		AuthServiceURL:     getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
+		InternalAuthToken:  getEnv("INTERNAL_AUTH_TOKEN", ""),
+		PubSubProjectID:    getEnv("PUBSUB_PROJECT_ID", ""),
+		OrderInternalToken: getEnv("ORDER_INTERNAL_TOKEN", ""),
 	}
 }
 

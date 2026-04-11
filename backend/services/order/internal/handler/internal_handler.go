@@ -9,26 +9,34 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
+	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/service"
 )
 
 // InternalHandler exposes intra-cluster endpoints that bypass the API
-// gateway. Currently used by the cart service to create multi-seller
-// checkouts (one PaymentIntent covering N orders across N sellers).
+// gateway. Routes are gated by a shared-secret X-Internal-Token header in
+// addition to any cluster-level network isolation so an accidental
+// exposure of this port does not expose the checkout API to the open
+// Internet. Currently used by the cart service to create multi-seller
+// checkouts and by the inquiry service to verify purchase history.
 type InternalHandler struct {
-	svc *service.OrderService
+	svc    *service.OrderService
+	secret string
 }
 
-// NewInternalHandler creates a new InternalHandler.
-func NewInternalHandler(svc *service.OrderService) *InternalHandler {
-	return &InternalHandler{svc: svc}
+// NewInternalHandler creates a new InternalHandler. The secret is checked
+// against the X-Internal-Token header on every request; an empty secret
+// causes the middleware to fail closed with 503.
+func NewInternalHandler(svc *service.OrderService, secret string) *InternalHandler {
+	return &InternalHandler{svc: svc, secret: secret}
 }
 
 // Routes returns the chi router for /internal endpoints.
 func (h *InternalHandler) Routes() chi.Router {
 	r := chi.NewRouter()
+	r.Use(pkgmiddleware.RequireInternalToken(h.secret))
 	r.Post("/checkouts", h.CreateCheckout)
 	r.Post("/purchase-check", h.CheckPurchase)
 	return r

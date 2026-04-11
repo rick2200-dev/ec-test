@@ -11,6 +11,11 @@ type Config struct {
 	GRPCPort           string
 	PubSubEmulatorHost string
 	PubSubProjectID    string
+
+	// Shared secret required on every request to /internal/*. Must match the
+	// value set on any in-cluster caller (cart service today). Empty value
+	// causes the middleware to fail closed with 503.
+	InternalToken string
 }
 
 // Load reads configuration from environment variables.
@@ -21,6 +26,7 @@ func Load() Config {
 		GRPCPort:           getEnv("GRPC_PORT", "50052"),
 		PubSubEmulatorHost: getEnv("PUBSUB_EMULATOR_HOST", ""),
 		PubSubProjectID:    getEnv("PUBSUB_PROJECT_ID", ""),
+		InternalToken:      getEnv("CATALOG_INTERNAL_TOKEN", ""),
 	}
 }
 

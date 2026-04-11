@@ -6,7 +6,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      PORT: "8080"
+      HTTP_PORT: "8080"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       AUTH_SERVICE_URL: http://auth:8081
@@ -39,7 +39,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      PORT: "8081"
+      HTTP_PORT: "8081"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
@@ -66,12 +66,14 @@ services:
     ports:
       - "8082:8082"
     environment:
-      PORT: "8082"
+      HTTP_PORT: "8082"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/1
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      # Must match cart.CATALOG_INTERNAL_TOKEN.
+      CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,7 +95,7 @@ services:
     ports:
       - "8083:8083"
     environment:
-      PORT: "8083"
+      HTTP_PORT: "8083"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
@@ -102,6 +104,8 @@ services:
       INVENTORY_SERVICE_URL: http://inventory:8084
       CATALOG_SERVICE_URL: http://catalog:8082
       NOTIFICATION_SERVICE_URL: http://notification:8087
+      # Must match cart/inquiry ORDER_INTERNAL_TOKEN.
+      ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
       postgres:
         condition: service_healthy
@@ -125,7 +129,7 @@ services:
     ports:
       - "8084:8084"
     environment:
-      PORT: "8084"
+      HTTP_PORT: "8084"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
@@ -152,7 +156,7 @@ services:
     ports:
       - "8085:8085"
     environment:
-      PORT: "8085"
+      HTTP_PORT: "8085"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
@@ -179,7 +183,7 @@ services:
     ports:
       - "8086:8086"
     environment:
-      PORT: "8086"
+      HTTP_PORT: "8086"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
@@ -206,7 +210,7 @@ services:
     ports:
       - "8087:8087"
     environment:
-      PORT: "8087"
+      HTTP_PORT: "8087"
       LOG_LEVEL: debug
       LOG_FORMAT: text
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
@@ -240,6 +244,10 @@ services:
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      # Shared secrets for /internal calls; must match the respective
+      # *_INTERNAL_TOKEN on the catalog and order services.
+      CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
+      ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
       redis:
         condition: service_healthy
@@ -270,6 +278,8 @@ services:
       ORDER_SERVICE_URL: http://order:8083
       AUTH_SERVICE_URL: http://auth:8081
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      # Must match order.ORDER_INTERNAL_TOKEN.
+      ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
       postgres:
         condition: service_healthy

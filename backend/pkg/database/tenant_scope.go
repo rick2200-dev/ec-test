@@ -16,7 +16,10 @@ func TenantTx(ctx context.Context, pool *pgxpool.Pool, tenantID uuid.UUID, fn fu
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	// On the commit path Rollback is a no-op and returns
+	// pgx.ErrTxClosed; we don't care about that. On an error path the
+	// caller already has the real error from fn(tx).
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Set the tenant_id session variable for Row-Level Security policies.
 	if _, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL app.current_tenant_id = '%s'", tenantID.String())); err != nil {

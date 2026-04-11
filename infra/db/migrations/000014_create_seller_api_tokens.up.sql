@@ -15,7 +15,8 @@
 -- *from* this row, so it cannot set `app.current_tenant_id` before the
 -- lookup. In the current single-role deployment (service and migrations
 -- both run as `ecmarket`) the auth service owns the table and therefore
--- bypasses RLS policies (no table uses FORCE ROW LEVEL SECURITY). If the
+-- bypasses RLS policies. Migration 000015 deliberately does NOT apply
+-- FORCE ROW LEVEL SECURITY to this table for the same reason. If the
 -- deployment ever moves to separate DB roles, `GetByLookup` must be
 -- reimplemented as a `SECURITY DEFINER` SQL function owned by a role that
 -- can bypass RLS for this one query.

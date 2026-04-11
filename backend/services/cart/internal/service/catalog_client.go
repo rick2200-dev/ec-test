@@ -18,15 +18,19 @@ import (
 // CatalogClient is a small HTTP client for fetching SKU details from the
 // catalog service. Used during AddItem to snapshot price/name/seller_id.
 type CatalogClient struct {
-	baseURL string
-	http    *http.Client
+	baseURL       string
+	internalToken string
+	http          *http.Client
 }
 
 // NewCatalogClient constructs a CatalogClient pointing at the catalog service.
-func NewCatalogClient(baseURL string) *CatalogClient {
+// internalToken is sent in the X-Internal-Token header on every request and
+// must match CATALOG_INTERNAL_TOKEN on the catalog service.
+func NewCatalogClient(baseURL, internalToken string) *CatalogClient {
 	return &CatalogClient{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		http:    &http.Client{Timeout: 5 * time.Second},
+		baseURL:       strings.TrimRight(baseURL, "/"),
+		internalToken: internalToken,
+		http:          &http.Client{Timeout: 5 * time.Second},
 	}
 }
 
@@ -52,6 +56,7 @@ func (c *CatalogClient) LookupSKU(ctx context.Context, tenantID, skuID uuid.UUID
 		return nil, fmt.Errorf("build catalog request: %w", err)
 	}
 	req.Header.Set("X-Tenant-ID", tenantID.String())
+	req.Header.Set("X-Internal-Token", c.internalToken)
 
 	resp, err := c.http.Do(req)
 	if err != nil {

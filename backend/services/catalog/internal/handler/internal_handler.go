@@ -8,25 +8,33 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
+	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/service"
 )
 
 // InternalHandler exposes intra-cluster endpoints that bypass the API
-// gateway (no JWT, relies on cluster network isolation). Currently used
-// by the cart service to snapshot SKU details at add-to-cart time.
+// gateway. Routes are gated by a shared-secret X-Internal-Token header in
+// addition to any cluster-level network isolation, so an accidental
+// exposure of this port does not leak catalog data to the open Internet.
+// Currently used by the cart service to snapshot SKU details at
+// add-to-cart time.
 type InternalHandler struct {
-	svc *service.CatalogService
+	svc    *service.CatalogService
+	secret string
 }
 
-// NewInternalHandler creates a new InternalHandler.
-func NewInternalHandler(svc *service.CatalogService) *InternalHandler {
-	return &InternalHandler{svc: svc}
+// NewInternalHandler creates a new InternalHandler. The secret is checked
+// against the X-Internal-Token header on every request; an empty secret
+// causes the middleware to fail closed with 503.
+func NewInternalHandler(svc *service.CatalogService, secret string) *InternalHandler {
+	return &InternalHandler{svc: svc, secret: secret}
 }
 
 // Routes returns the chi router for /internal endpoints.
 func (h *InternalHandler) Routes() chi.Router {
 	r := chi.NewRouter()
+	r.Use(pkgmiddleware.RequireInternalToken(h.secret))
 	r.Get("/skus/{id}", h.GetSKU)
 	return r
 }

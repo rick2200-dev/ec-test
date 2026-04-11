@@ -2,6 +2,7 @@ package httputil
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
@@ -12,7 +13,12 @@ func JSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if data != nil {
-		json.NewEncoder(w).Encode(data)
+		// Once WriteHeader has been called we cannot change the status,
+		// so an Encode error here is logged-and-swallowed. The most
+		// likely cause is a client disconnect mid-response.
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			slog.Warn("failed to encode JSON response", "error", err)
+		}
 	}
 }
 
@@ -30,7 +36,7 @@ func Decode(r *http.Request, target any) error {
 	if r.Body == nil {
 		return apperrors.BadRequest("empty request body")
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()

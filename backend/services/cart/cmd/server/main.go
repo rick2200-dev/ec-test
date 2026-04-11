@@ -63,8 +63,8 @@ func main() {
 
 	// Wire dependencies.
 	cartRepo := repository.NewCartRepository(redisClient, cfg.CartTTLSeconds)
-	catalogClient := service.NewCatalogClient(cfg.CatalogServiceURL)
-	orderClient := service.NewOrderClient(cfg.OrderServiceURL)
+	catalogClient := service.NewCatalogClient(cfg.CatalogServiceURL, cfg.CatalogInternalToken)
+	orderClient := service.NewOrderClient(cfg.OrderServiceURL, cfg.OrderInternalToken)
 	cartSvc := service.NewCartService(cartRepo, catalogClient, orderClient, publisher)
 
 	cartHandler := handler.NewCartHandler(cartSvc)

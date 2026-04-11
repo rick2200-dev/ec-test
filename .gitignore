@@ -12,6 +12,9 @@ bin/
 *.so
 *.dylib
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Go
 *.test
 *.out

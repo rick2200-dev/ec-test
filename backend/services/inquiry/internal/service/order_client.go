@@ -19,14 +19,18 @@ import (
 // so the inquiry service can verify a buyer actually bought the SKU they
 // want to contact the seller about.
 type OrderClient struct {
-	baseURL string
-	http    *http.Client
+	baseURL       string
+	internalToken string
+	http          *http.Client
 }
 
 // NewOrderClient constructs an OrderClient pointing at the order service.
-func NewOrderClient(baseURL string) *OrderClient {
+// internalToken is sent in the X-Internal-Token header on every request
+// and must match ORDER_INTERNAL_TOKEN on the order service.
+func NewOrderClient(baseURL, internalToken string) *OrderClient {
 	return &OrderClient{
-		baseURL: strings.TrimRight(baseURL, "/"),
+		baseURL:       strings.TrimRight(baseURL, "/"),
+		internalToken: internalToken,
 		// Purchase check is a single indexed read; a tight timeout keeps a
 		// slow order service from blocking inquiry creation.
 		http: &http.Client{Timeout: 5 * time.Second},
@@ -71,6 +75,7 @@ func (c *OrderClient) CheckPurchase(
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Tenant-ID", tenantID.String())
 	req.Header.Set("X-User-ID", buyerAuth0ID)
+	req.Header.Set("X-Internal-Token", c.internalToken)
 
 	resp, err := c.http.Do(req)
 	if err != nil {

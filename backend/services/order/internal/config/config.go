@@ -15,6 +15,11 @@ type Config struct {
 	PubSubProjectID     string
 	AuthServiceURL      string
 	DefaultShippingFee  int64
+
+	// Shared secret required on every request to /internal/*. Must match
+	// the value set on in-cluster callers (cart, inquiry). Empty value
+	// causes the middleware to fail closed with 503.
+	InternalToken string
 }
 
 // Load reads configuration from environment variables.
@@ -28,6 +33,7 @@ func Load() Config {
 		PubSubProjectID:     getEnv("PUBSUB_PROJECT_ID", ""),
 		AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
 		DefaultShippingFee:  getEnvInt64("DEFAULT_SHIPPING_FEE", 500),
+		InternalToken:       getEnv("ORDER_INTERNAL_TOKEN", ""),
 	}
 }
 
