@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { formatPrice } from "@/lib/mock-data";
 import { fetchAPI } from "@/lib/api";
+import StartInquiryButton from "@/components/StartInquiryButton";
 import type { OrderDetail, OrderStatus } from "@/lib/types";
 import {
   OrderDetailPagePresenter,
@@ -10,6 +11,21 @@ import {
 
 interface OrderDetailPageProps {
   orderId: string;
+}
+
+/**
+ * Order status at which a buyer → seller inquiry is allowed. Mirrors the
+ * backend gate (inquiry-svc rejects unpaid orders with 403); this is only a
+ * UX hint so we hide the CTA when we already know it would fail.
+ */
+function canContactSeller(status: OrderStatus): boolean {
+  return (
+    status === "paid" ||
+    status === "processing" ||
+    status === "shipped" ||
+    status === "delivered" ||
+    status === "completed"
+  );
 }
 
 /**
@@ -47,6 +63,8 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
     imageMissing: t("orders.lineImageMissing"),
   };
 
+  const contactable = canContactSeller(detail.status);
+
   const lines: OrderDetailLineItem[] = detail.lines.map((l) => ({
     id: l.id,
     productName: l.product_name,
@@ -58,6 +76,18 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
     productHref: l.is_deleted || !l.product_slug ? "" : `/products/${l.product_slug}`,
     isDeleted: l.is_deleted,
     labels,
+    // Offer the inquiry CTA per line, but skip lines whose referenced SKU
+    // has been archived — the inquiry POST would fail on a missing sku
+    // anyway, so don't dangle a broken button.
+    actionSlot:
+      contactable && !l.is_deleted ? (
+        <StartInquiryButton
+          sellerId={detail.seller_id}
+          skuId={l.sku_id}
+          productName={l.product_name}
+          skuCode={l.sku_code}
+        />
+      ) : undefined,
   }));
 
   return (
@@ -78,6 +108,7 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       shippingFeeValue={formatPrice(detail.shipping_fee, currency)}
       totalLabel={t("orders.totalLabel")}
       totalValue={formatPrice(detail.total_amount, currency)}
+      purchaseRequiredNotice={contactable ? undefined : t("orders.purchaseRequiredNotice")}
       lines={lines}
     />
   );

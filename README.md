@@ -34,6 +34,11 @@
     │  (RLS tenant    │  │  7     │  │        │
     │   isolation)    │  └────────┘  └────────┘
     └─────────────────┘
+
+         ┌─────────┐  ┌──────────┐
+         │  Cart   │  │ Inquiry  │
+         │  :8088  │  │  :8090   │
+         └─────────┘  └──────────┘
 ```
 
 ## 技術スタック
@@ -92,6 +97,7 @@ make dev-catalog      # Catalog       → :8082
 make dev-inventory    # Inventory     → :8083
 make dev-order        # Order         → :8084
 make dev-cart         # Cart          → :8088
+make dev-inquiry      # Inquiry       → :8090
 
 # 6. フロントエンドを起動 (別ターミナルで)
 pnpm install
@@ -125,7 +131,8 @@ ec-test/
 │   │   ├── search/          #     商品検索 (Vertex AI Search)
 │   │   ├── recommend/       #     レコメンデーション
 │   │   ├── notification/    #     通知 (メール・プッシュ)
-│   │   └── cart/            #     カート・チェックアウトオーケストレーション (Redis)
+│   │   ├── cart/            #     カート・チェックアウトオーケストレーション (Redis)
+│   │   └── inquiry/         #     買い手→売り手お問い合わせ (購入済み SKU 単位)
 │   ├── pkg/                 #   Go 共有パッケージ
 │   │   ├── tenant/          #     テナントコンテキスト管理
 │   │   ├── database/        #     DB 接続プール・RLS 設定

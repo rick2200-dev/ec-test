@@ -223,7 +223,7 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 				LineTotal:   line.LineTotal,
 			}
 
-			// Historical rows backfilled by migration 000012 may carry
+			// Historical rows backfilled by migration 000013 may carry
 			// the nil UUID sentinel when their original SKU no longer
 			// exists in catalog_svc.skus. Short-circuit to deleted
 			// without issuing a guaranteed-NotFound gRPC call.

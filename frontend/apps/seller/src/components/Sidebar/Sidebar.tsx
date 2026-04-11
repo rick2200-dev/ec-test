@@ -20,6 +20,7 @@ const navItemDefs: NavItemDef[] = [
   { href: "/products", labelKey: "sidebar.products", icon: "package" },
   { href: "/orders", labelKey: "sidebar.orders", icon: "shopping-cart" },
   { href: "/inventory", labelKey: "sidebar.inventory", icon: "warehouse" },
+  { href: "/inquiries", labelKey: "sidebar.inquiries", icon: "mail" },
   { href: "/sales", labelKey: "sidebar.sales", icon: "trending-up" },
   { href: "/subscription", labelKey: "sidebar.subscription", icon: "credit-card" },
   { href: "/settings", labelKey: "sidebar.settings", icon: "settings" },

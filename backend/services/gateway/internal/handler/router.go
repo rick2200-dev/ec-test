@@ -50,6 +50,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 		// Buyer routes (any authenticated user)
 		buyer := NewBuyerHandler(svc)
 		cart := NewCartHandler(svc)
+		inquiry := NewInquiryHandler(svc)
 		api.Route("/buyer", func(br chi.Router) {
 			br.Get("/products", buyer.ListProducts)
 			br.Get("/products/{slug}", buyer.GetProduct)
@@ -73,6 +74,15 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 				cr.Delete("/items/{skuId}", cart.RemoveItem)
 				cr.Post("/checkout", cart.Checkout)
 			})
+
+			// Buyer↔seller inquiry threads (per purchased SKU).
+			br.Route("/inquiries", func(ir chi.Router) {
+				ir.Get("/", inquiry.BuyerList)
+				ir.Post("/", inquiry.BuyerCreate)
+				ir.Get("/{id}", inquiry.BuyerGet)
+				ir.Post("/{id}/messages", inquiry.BuyerPostMessage)
+				ir.Post("/{id}/read", inquiry.BuyerMarkRead)
+			})
 		})
 
 		// Seller routes (requires seller role at the JWT level)
@@ -94,6 +104,17 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 			// Seller team management. Reads (List/Me) require any team
 			// member; writes require owner. Two nested groups apply
 			// different minimum roles.
+			// Inquiry threads (seller view). Requires seller team membership
+			// in the same RBAC tier as team reads.
+			sr.Route("/inquiries", func(ir chi.Router) {
+				ir.Use(pkgauthz.RequireSellerRole(rbacLoader, pkgauthz.SellerRoleMember))
+				ir.Get("/", inquiry.SellerList)
+				ir.Get("/{id}", inquiry.SellerGet)
+				ir.Post("/{id}/messages", inquiry.SellerPostMessage)
+				ir.Post("/{id}/read", inquiry.SellerMarkRead)
+				ir.Post("/{id}/close", inquiry.SellerClose)
+			})
+
 			sr.Route("/team", func(tr chi.Router) {
 				tr.Group(func(read chi.Router) {
 					read.Use(pkgauthz.RequireSellerRole(rbacLoader, pkgauthz.SellerRoleMember))

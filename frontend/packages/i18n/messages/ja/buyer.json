@@ -52,6 +52,42 @@
     "terms": "利用規約",
     "copyright": "© 2025 EC Marketplace. All rights reserved."
   },
+  "inquiries": {
+    "title": "お問い合わせ",
+    "description": "購入した商品について出品者に問い合わせたスレッドの一覧です",
+    "empty": "お問い合わせはまだありません",
+    "new": "出品者に問い合わせる",
+    "subject": "件名",
+    "subjectPlaceholder": "例：発送時期について",
+    "body": "メッセージ",
+    "bodyPlaceholder": "出品者に伝えたい内容を入力してください",
+    "initialBody": "最初のメッセージ",
+    "send": "送信する",
+    "sending": "送信中...",
+    "cancel": "キャンセル",
+    "reply": "返信する",
+    "onlyPurchased": "購入済みの商品のみ問い合わせできます",
+    "product": "商品",
+    "seller": "出品者",
+    "lastMessageAt": "最終メッセージ",
+    "errorForbidden": "この商品には問い合わせできません",
+    "errorGeneric": "通信エラーが発生しました。時間をおいて再度お試しください",
+    "errorEmpty": "件名とメッセージを入力してください",
+    "unread": "未読",
+    "unreadCount": "{count}件未読",
+    "backToList": "一覧に戻る",
+    "threadClosed": "このスレッドは完了しています",
+    "sender": {
+      "you": "あなた",
+      "buyer": "購入者",
+      "seller": "出品者"
+    },
+    "status": {
+      "columnLabel": "ステータス",
+      "open": "対応中",
+      "closed": "完了"
+    }
+  },
   "orders": {
     "pageTitle": "購入履歴",
     "empty": "まだ購入履歴はありません",
@@ -70,6 +106,7 @@
     "lineDeletedBadge": "削除済み",
     "lineImageMissing": "画像なし",
     "notFound": "注文が見つかりませんでした",
+    "purchaseRequiredNotice": "出品者への問い合わせは、購入済み（入金後）の注文のみ可能です",
     "status": {
       "pending": "支払い待ち",
       "paid": "支払い済み",

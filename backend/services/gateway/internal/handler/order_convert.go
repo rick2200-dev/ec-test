@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// nilUUIDString is the zero-UUID sentinel used by migration 000012 for
+// nilUUIDString is the zero-UUID sentinel used by migration 000013 for
 // order_lines whose original sku_id no longer exists in catalog_svc.skus.
 // The gateway short-circuits lines carrying this value to is_deleted=true
 // without issuing a (guaranteed-NotFound) catalog lookup.

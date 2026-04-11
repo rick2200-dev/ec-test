@@ -35,6 +35,15 @@ const baseArgs = {
   totalValue: "¥13,800",
 };
 
+const inquiryButtonStub = (
+  <button
+    type="button"
+    className="inline-flex items-center rounded-md border border-blue-600 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+  >
+    出品者に問い合わせる
+  </button>
+);
+
 export const AllLive: Story = {
   args: {
     ...baseArgs,
@@ -50,6 +59,7 @@ export const AllLive: Story = {
         productHref: "/products/wireless-headphones",
         isDeleted: false,
         labels: baseLabels,
+        actionSlot: inquiryButtonStub,
       },
       {
         id: "l2",
@@ -62,6 +72,7 @@ export const AllLive: Story = {
         productHref: "/products/usb-c-cable",
         isDeleted: false,
         labels: baseLabels,
+        actionSlot: inquiryButtonStub,
       },
     ],
   },
@@ -82,6 +93,7 @@ export const MixedWithDeleted: Story = {
         productHref: "/products/wireless-headphones",
         isDeleted: false,
         labels: baseLabels,
+        actionSlot: inquiryButtonStub,
       },
       {
         id: "l2",
@@ -126,6 +138,29 @@ export const AllDeleted: Story = {
         imageUrl: "",
         productHref: "",
         isDeleted: true,
+        labels: baseLabels,
+      },
+    ],
+  },
+};
+
+export const PendingOrder: Story = {
+  args: {
+    ...baseArgs,
+    statusLabel: "支払い待ち",
+    purchaseRequiredNotice:
+      "出品者への問い合わせは、購入済み（入金後）の注文のみ可能です",
+    lines: [
+      {
+        id: "l1",
+        productName: "Wireless Headphones",
+        skuCode: "WH-001-BLK",
+        quantity: 1,
+        unitPriceLabel: "¥12,800",
+        lineTotalLabel: "¥12,800",
+        imageUrl: "https://picsum.photos/seed/headphones/200/200",
+        productHref: "/products/wireless-headphones",
+        isDeleted: false,
         labels: baseLabels,
       },
     ],

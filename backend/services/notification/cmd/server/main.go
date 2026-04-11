@@ -54,6 +54,7 @@ func main() {
 	// Start event subscribers in goroutines.
 	orderSub := subscriber.NewOrderSubscriber(sub, sender)
 	inventorySub := subscriber.NewInventorySubscriber(sub, sender)
+	inquirySub := subscriber.NewInquirySubscriber(sub, sender)
 
 	go func() {
 		if err := orderSub.Start(ctx); err != nil {
@@ -64,6 +65,12 @@ func main() {
 	go func() {
 		if err := inventorySub.Start(ctx); err != nil {
 			slog.Error("inventory subscriber error", "error", err)
+		}
+	}()
+
+	go func() {
+		if err := inquirySub.Start(ctx); err != nil {
+			slog.Error("inquiry subscriber error", "error", err)
 		}
 	}()
 

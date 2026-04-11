@@ -9,6 +9,7 @@
     "products": "商品管理",
     "orders": "注文管理",
     "inventory": "在庫管理",
+    "inquiries": "お問い合わせ",
     "sales": "売上・入金",
     "subscription": "プラン管理",
     "settings": "設定"
@@ -122,5 +123,33 @@
   },
   "store": {
     "sampleStore": "サンプルストア"
+  },
+  "inquiries": {
+    "title": "お問い合わせ",
+    "description": "購入者からのお問い合わせを一覧で確認できます",
+    "empty": "お問い合わせはまだありません",
+    "reply": "返信する",
+    "send": "送信する",
+    "sending": "送信中...",
+    "close": "スレッドを閉じる",
+    "closed": "このスレッドは完了しています",
+    "body": "メッセージ",
+    "bodyPlaceholder": "購入者への返信を入力してください",
+    "product": "商品",
+    "buyer": "購入者",
+    "lastMessageAt": "最終メッセージ",
+    "unread": "未読",
+    "backToList": "一覧に戻る",
+    "errorGeneric": "通信エラーが発生しました。時間をおいて再度お試しください",
+    "sender": {
+      "you": "あなた",
+      "buyer": "購入者",
+      "seller": "出品者"
+    },
+    "status": {
+      "open": "対応中",
+      "closed": "完了",
+      "columnLabel": "ステータス"
+    }
   }
 }

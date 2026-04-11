@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -19,6 +20,9 @@ export interface OrderLineItemPresenterProps {
     deletedBadge: string;
     imageMissing: string;
   };
+  /** Optional trailing action (e.g. a StartInquiryButton). Rendered
+   *  right-aligned beneath the price. Omitted when undefined. */
+  actionSlot?: ReactNode;
 }
 
 /**
@@ -39,6 +43,7 @@ export function OrderLineItemPresenter({
   productHref,
   isDeleted,
   labels,
+  actionSlot,
 }: OrderLineItemPresenterProps) {
   const imageBlock = imageUrl ? (
     <Image
@@ -78,6 +83,7 @@ export function OrderLineItemPresenter({
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-semibold text-gray-900">{lineTotalLabel}</p>
+        {actionSlot && <div className="mt-2">{actionSlot}</div>}
       </div>
     </div>
   );
