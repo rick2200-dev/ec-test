@@ -72,7 +72,11 @@ func main() {
 			slog.Error("failed to create pubsub subscriber", "error", err)
 			os.Exit(1)
 		}
-		defer sub.Close()
+		defer func() {
+			if err := sub.Close(); err != nil {
+				slog.Warn("failed to close pubsub subscriber", "error", err)
+			}
+		}()
 
 		eventSub := subscriber.NewEventSubscriber(recommendSvc, sub)
 		if err := eventSub.Start(initCtx); err != nil {

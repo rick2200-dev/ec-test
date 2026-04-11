@@ -58,7 +58,7 @@ func (c *BuyerSubscriptionClient) HasFreeShipping(ctx context.Context, tenantID 
 	if err != nil {
 		return false, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return false, nil

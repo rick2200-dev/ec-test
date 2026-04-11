@@ -54,7 +54,7 @@ func (c *OrderClient) CreateCheckout(ctx context.Context, tenantID uuid.UUID, in
 	if err != nil {
 		return nil, apperrors.Internal("order service unreachable", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 

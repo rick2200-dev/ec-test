@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { ProductFormPresenter } from "./ProductForm.presenter";
+import { ProductFormPresenter, type ProductFormPresenterProps } from "./ProductForm.presenter";
 
 const meta: Meta<typeof ProductFormPresenter> = {
   title: "Seller/ProductForm",
@@ -62,29 +62,31 @@ export const Filled: Story = {
   },
 };
 
+function InteractiveStory(args: ProductFormPresenterProps) {
+  const [name, setName] = useState(args.name);
+  const [slug, setSlug] = useState(args.slug);
+  const [description, setDescription] = useState(args.description);
+  const [categoryId, setCategoryId] = useState(args.categoryId);
+  const [status, setStatus] = useState<"draft" | "active">(args.status);
+  return (
+    <ProductFormPresenter
+      {...args}
+      name={name}
+      slug={slug}
+      description={description}
+      categoryId={categoryId}
+      status={status}
+      onNameChange={setName}
+      onSlugChange={setSlug}
+      onDescriptionChange={setDescription}
+      onCategoryChange={setCategoryId}
+      onStatusChange={setStatus}
+    />
+  );
+}
+
 export const Interactive: Story = {
-  render: (args) => {
-    const [name, setName] = useState(args.name);
-    const [slug, setSlug] = useState(args.slug);
-    const [description, setDescription] = useState(args.description);
-    const [categoryId, setCategoryId] = useState(args.categoryId);
-    const [status, setStatus] = useState<"draft" | "active">(args.status);
-    return (
-      <ProductFormPresenter
-        {...args}
-        name={name}
-        slug={slug}
-        description={description}
-        categoryId={categoryId}
-        status={status}
-        onNameChange={setName}
-        onSlugChange={setSlug}
-        onDescriptionChange={setDescription}
-        onCategoryChange={setCategoryId}
-        onStatusChange={setStatus}
-      />
-    );
-  },
+  render: (args) => <InteractiveStory {...args} />,
   args: {
     name: "",
     slug: "",

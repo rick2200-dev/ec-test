@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	//nolint:staticcheck // SA1019: pubsub v2 migration is tracked separately; using v1 consistently across services
 	gcppubsub "cloud.google.com/go/pubsub"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"

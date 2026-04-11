@@ -10,7 +10,8 @@ export type StatusType =
   | "suspended"
   | "operational"
   | "degraded"
-  | "down";
+  | "down"
+  | "archived";
 
 const statusTone: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
   active: "success",
@@ -20,6 +21,7 @@ const statusTone: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
   operational: "success",
   degraded: "warning",
   down: "danger",
+  archived: "neutral",
 };
 
 const statusKeys: Record<StatusType, string> = {
@@ -30,6 +32,7 @@ const statusKeys: Record<StatusType, string> = {
   operational: "status.operational",
   degraded: "status.degraded",
   down: "status.down",
+  archived: "status.archived",
 };
 
 export default function StatusBadge({ status }: { status: StatusType }) {

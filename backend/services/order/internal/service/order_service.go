@@ -83,7 +83,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 	}
 
 	// 4. Determine shipping fee based on buyer's subscription status.
-	var shippingFee int64 = s.defaultShippingFee
+	shippingFee := s.defaultShippingFee
 	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, tenantID, input.BuyerAuth0ID); err != nil {
 		slog.Warn("failed to check buyer subscription, charging standard shipping", "error", err)
 	} else if hasFree {
@@ -106,6 +106,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 
 	// For MVP, use seller_id as a placeholder for connected account ID.
 	// In production, you'd look up the seller's Stripe connected account ID.
+	// Legacy single-seller path deliberately uses the deprecated Destination
+	// Charges API; multi-seller checkouts go through CreateCheckout, which
+	// uses CreatePlatformPaymentIntent + CreateTransfer instead.
+	//nolint:staticcheck // SA1019: legacy single-seller CreateOrder intentionally uses the deprecated Destination Charges API
 	piID, clientSecret, err := s.stripe.CreatePaymentIntent(
 		totalAmount,
 		currency,
@@ -195,7 +199,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 	// 2. Determine shipping fee per order based on buyer subscription. The
 	//    fee is charged once per order (one per seller); premium buyers get
 	//    free shipping on every order in the checkout.
-	var shippingFeePerOrder int64 = s.defaultShippingFee
+	shippingFeePerOrder := s.defaultShippingFee
 	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, tenantID, input.BuyerAuth0ID); err != nil {
 		slog.Warn("failed to check buyer subscription, charging standard shipping", "error", err)
 	} else if hasFree {

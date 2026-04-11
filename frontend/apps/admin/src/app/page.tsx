@@ -25,6 +25,7 @@ function statusToBadge(
     degraded: "warning",
     suspended: "danger",
     down: "danger",
+    archived: "neutral",
   };
   const labelKeyMap: Record<StatusType, string> = {
     active: "status.active",
@@ -34,6 +35,7 @@ function statusToBadge(
     operational: "status.operational",
     degraded: "status.degraded",
     down: "status.down",
+    archived: "status.archived",
   };
   return {
     tone: toneMap[status] ?? "neutral",

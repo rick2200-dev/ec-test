@@ -107,6 +107,11 @@ func payoutToProto(p *domain.Payout) *orderv1.Payout {
 }
 
 // protoLinesToDomain converts proto OrderLineInput to domain OrderLineInput.
+//
+// OrderLineInput is part of the deprecated single-seller CreateOrder RPC,
+// which the gRPC server still implements for backwards compatibility.
+//
+//nolint:staticcheck // SA1019: helper for deprecated CreateOrder RPC
 func protoLinesToDomain(lines []*orderv1.OrderLineInput) []domain.OrderLineInput {
 	result := make([]domain.OrderLineInput, 0, len(lines))
 	for _, l := range lines {
