@@ -59,10 +59,10 @@ func (r *ProductRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID)
 
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, created_at, updated_at
+			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
 			 FROM catalog_svc.products WHERE id = $1 AND tenant_id = $2`,
 			id, tenantID,
-		).Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.CreatedAt, &p.UpdatedAt)
+		).Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -88,10 +88,10 @@ func (r *ProductRepository) GetBySlug(ctx context.Context, tenantID uuid.UUID, s
 
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, created_at, updated_at
+			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
 			 FROM catalog_svc.products WHERE slug = $1 AND tenant_id = $2`,
 			slug, tenantID,
-		).Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.CreatedAt, &p.UpdatedAt)
+		).Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -147,7 +147,7 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 
 		// Fetch page.
 		query := fmt.Sprintf(
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, created_at, updated_at
+			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
 			 FROM catalog_svc.products WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 			where, argIdx, argIdx+1,
 		)
@@ -161,7 +161,7 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 
 		for rows.Next() {
 			var p domain.Product
-			if err := rows.Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			if err := rows.Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
 				return fmt.Errorf("scan product: %w", err)
 			}
 			products = append(products, p)
@@ -224,10 +224,10 @@ func (r *ProductRepository) GetWithSKUs(ctx context.Context, tenantID uuid.UUID,
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		// Fetch product.
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, created_at, updated_at
+			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
 			 FROM catalog_svc.products WHERE id = $1 AND tenant_id = $2`,
 			productID, tenantID,
-		).Scan(&result.ID, &result.TenantID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.CreatedAt, &result.UpdatedAt)
+		).Scan(&result.ID, &result.TenantID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.ImageURL, &result.CreatedAt, &result.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -273,10 +273,10 @@ func (r *ProductRepository) GetWithSKUsBySlug(ctx context.Context, tenantID uuid
 
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, created_at, updated_at
+			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
 			 FROM catalog_svc.products WHERE slug = $1 AND tenant_id = $2`,
 			slug, tenantID,
-		).Scan(&result.ID, &result.TenantID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.CreatedAt, &result.UpdatedAt)
+		).Scan(&result.ID, &result.TenantID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.ImageURL, &result.CreatedAt, &result.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}

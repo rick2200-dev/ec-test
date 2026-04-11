@@ -99,3 +99,85 @@ export interface SearchResult {
   total: number;
   facets: Facet[];
 }
+
+/** Order status matching Go domain order status constants */
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "completed"
+  | "cancelled";
+
+/**
+ * OrderSummary matches the shape returned by GET /api/v1/buyer/orders.
+ * Corresponds to domain.Order on the backend — a flat listing row with no
+ * line items, used for the order history index page.
+ */
+export interface OrderSummary {
+  id: string;
+  tenant_id: string;
+  seller_id: string;
+  /** Company name snapshot captured at checkout. Empty if seller was
+   *  deleted before the snapshot existed — the UI falls back to a label. */
+  seller_name: string;
+  status: OrderStatus;
+  subtotal_amount: number;
+  shipping_fee: number;
+  commission_amount: number;
+  total_amount: number;
+  currency: string;
+  stripe_payment_intent_id?: string;
+  paid_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Paginated response wrapper matching pagination.Response[T] on the Go side. */
+export interface OrderListResponse {
+  items: OrderSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * OrderLine is one enriched line item returned by GET /api/v1/buyer/orders/{id}.
+ * product_name is always the historical snapshot; image_url / product_slug
+ * reflect current catalog state, and is_deleted is true when the product
+ * has been archived or removed since the purchase.
+ */
+export interface OrderLine {
+  id: string;
+  sku_id: string;
+  product_id: string;
+  product_name: string;
+  sku_code: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  image_url: string;
+  product_slug: string;
+  is_deleted: boolean;
+}
+
+/** OrderDetail matches the response shape of GET /api/v1/buyer/orders/{id}. */
+export interface OrderDetail {
+  id: string;
+  tenant_id: string;
+  seller_id: string;
+  seller_name: string;
+  status: OrderStatus;
+  subtotal_amount: number;
+  shipping_fee: number;
+  commission_amount: number;
+  total_amount: number;
+  currency: string;
+  shipping_address?: Record<string, unknown>;
+  stripe_payment_intent_id?: string;
+  paid_at?: string;
+  created_at: string;
+  updated_at: string;
+  lines: OrderLine[];
+}

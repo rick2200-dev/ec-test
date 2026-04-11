@@ -51,5 +51,33 @@
     "contact": "Contact Us",
     "terms": "Terms of Service",
     "copyright": "\u00a9 2025 EC Marketplace. All rights reserved."
+  },
+  "orders": {
+    "pageTitle": "Purchase history",
+    "empty": "You haven't placed any orders yet",
+    "browseCta": "Browse products",
+    "detailTitle": "Order details",
+    "orderNumber": "Order #{id}",
+    "orderedAt": "Ordered on",
+    "sellerLabel": "Seller",
+    "unknownSeller": "Unknown seller",
+    "totalLabel": "Total",
+    "subtotalLabel": "Subtotal",
+    "shippingFeeLabel": "Shipping",
+    "itemsLabel": "Items",
+    "quantityLabel": "Qty",
+    "backToList": "Back to orders",
+    "lineDeletedBadge": "Deleted",
+    "lineImageMissing": "No image",
+    "notFound": "Order not found",
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
   }
 }

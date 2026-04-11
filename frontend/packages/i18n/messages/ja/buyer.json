@@ -51,5 +51,33 @@
     "contact": "お問い合わせ",
     "terms": "利用規約",
     "copyright": "© 2025 EC Marketplace. All rights reserved."
+  },
+  "orders": {
+    "pageTitle": "購入履歴",
+    "empty": "まだ購入履歴はありません",
+    "browseCta": "商品を探す",
+    "detailTitle": "注文詳細",
+    "orderNumber": "注文番号: {id}",
+    "orderedAt": "注文日",
+    "sellerLabel": "販売者",
+    "unknownSeller": "不明な販売者",
+    "totalLabel": "合計",
+    "subtotalLabel": "小計",
+    "shippingFeeLabel": "送料",
+    "itemsLabel": "注文商品",
+    "quantityLabel": "数量",
+    "backToList": "注文履歴に戻る",
+    "lineDeletedBadge": "削除済み",
+    "lineImageMissing": "画像なし",
+    "notFound": "注文が見つかりませんでした",
+    "status": {
+      "pending": "支払い待ち",
+      "paid": "支払い済み",
+      "processing": "準備中",
+      "shipped": "発送済み",
+      "delivered": "配達済み",
+      "completed": "完了",
+      "cancelled": "キャンセル済み"
+    }
   }
 }

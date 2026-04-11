@@ -17,6 +17,7 @@ func orderToProto(o *domain.Order, lines []domain.OrderLine) *orderv1.Order {
 		Id:           o.ID.String(),
 		TenantId:     o.TenantID.String(),
 		SellerId:     o.SellerID.String(),
+		SellerName:   o.SellerName,
 		BuyerAuth0Id: o.BuyerAuth0ID,
 		Status:       o.Status,
 		Subtotal: &commonv1.Money{
@@ -61,6 +62,7 @@ func orderLineToProto(l *domain.OrderLine, currency string) *orderv1.OrderLine {
 		Id:          l.ID.String(),
 		OrderId:     l.OrderID.String(),
 		SkuId:       l.SKUID.String(),
+		ProductId:   l.ProductID.String(),
 		ProductName: l.ProductName,
 		SkuCode:     l.SKUCode,
 		Quantity:    int32(l.Quantity),

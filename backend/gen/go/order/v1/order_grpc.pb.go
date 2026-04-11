@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	OrderService_CreateCheckout_FullMethodName    = "/order.v1.OrderService/CreateCheckout"
 	OrderService_CreateOrder_FullMethodName       = "/order.v1.OrderService/CreateOrder"
 	OrderService_GetOrder_FullMethodName          = "/order.v1.OrderService/GetOrder"
 	OrderService_ListBuyerOrders_FullMethodName   = "/order.v1.OrderService/ListBuyerOrders"
@@ -32,7 +33,15 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // OrderService manages orders and payments.
+//
+// All buyer purchases flow through CreateCheckout, which accepts a flat list
+// of items spanning one or more sellers and creates one Order per seller
+// sharing a single Stripe PaymentIntent. The legacy single-seller
+// CreateOrder RPC is deprecated and retained only for backwards
+// compatibility with older generated code; do not use it for new callers.
 type OrderServiceClient interface {
+	CreateCheckout(ctx context.Context, in *CreateCheckoutRequest, opts ...grpc.CallOption) (*CreateCheckoutResponse, error)
+	// Deprecated: Do not use.
 	CreateOrder(ctx context.Context, in *CreateOrderRequest, opts ...grpc.CallOption) (*CreateOrderResponse, error)
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderResponse, error)
 	ListBuyerOrders(ctx context.Context, in *ListBuyerOrdersRequest, opts ...grpc.CallOption) (*ListBuyerOrdersResponse, error)
@@ -49,6 +58,17 @@ func NewOrderServiceClient(cc grpc.ClientConnInterface) OrderServiceClient {
 	return &orderServiceClient{cc}
 }
 
+func (c *orderServiceClient) CreateCheckout(ctx context.Context, in *CreateCheckoutRequest, opts ...grpc.CallOption) (*CreateCheckoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCheckoutResponse)
+	err := c.cc.Invoke(ctx, OrderService_CreateCheckout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Deprecated: Do not use.
 func (c *orderServiceClient) CreateOrder(ctx context.Context, in *CreateOrderRequest, opts ...grpc.CallOption) (*CreateOrderResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateOrderResponse)
@@ -114,7 +134,15 @@ func (c *orderServiceClient) ListPayouts(ctx context.Context, in *ListPayoutsReq
 // for forward compatibility.
 //
 // OrderService manages orders and payments.
+//
+// All buyer purchases flow through CreateCheckout, which accepts a flat list
+// of items spanning one or more sellers and creates one Order per seller
+// sharing a single Stripe PaymentIntent. The legacy single-seller
+// CreateOrder RPC is deprecated and retained only for backwards
+// compatibility with older generated code; do not use it for new callers.
 type OrderServiceServer interface {
+	CreateCheckout(context.Context, *CreateCheckoutRequest) (*CreateCheckoutResponse, error)
+	// Deprecated: Do not use.
 	CreateOrder(context.Context, *CreateOrderRequest) (*CreateOrderResponse, error)
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderResponse, error)
 	ListBuyerOrders(context.Context, *ListBuyerOrdersRequest) (*ListBuyerOrdersResponse, error)
@@ -131,6 +159,9 @@ type OrderServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedOrderServiceServer struct{}
 
+func (UnimplementedOrderServiceServer) CreateCheckout(context.Context, *CreateCheckoutRequest) (*CreateCheckoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCheckout not implemented")
+}
 func (UnimplementedOrderServiceServer) CreateOrder(context.Context, *CreateOrderRequest) (*CreateOrderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateOrder not implemented")
 }
@@ -168,6 +199,24 @@ func RegisterOrderServiceServer(s grpc.ServiceRegistrar, srv OrderServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&OrderService_ServiceDesc, srv)
+}
+
+func _OrderService_CreateCheckout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCheckoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).CreateCheckout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_CreateCheckout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).CreateCheckout(ctx, req.(*CreateCheckoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _OrderService_CreateOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -285,6 +334,10 @@ var OrderService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "order.v1.OrderService",
 	HandlerType: (*OrderServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateCheckout",
+			Handler:    _OrderService_CreateCheckout_Handler,
+		},
 		{
 			MethodName: "CreateOrder",
 			Handler:    _OrderService_CreateOrder_Handler,

@@ -57,6 +57,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 			// Buyer purchases flow through the cart service. The direct
 			// POST /orders endpoint was removed; use POST /cart/checkout.
 			br.Get("/orders", buyer.ListOrders)
+			br.Get("/orders/{id}", buyer.GetOrder)
 			br.Post("/events", buyer.TrackEvent)
 			br.Get("/recommendations", buyer.GetRecommendations)
 			br.Get("/plans", buyer.ListBuyerPlans)
