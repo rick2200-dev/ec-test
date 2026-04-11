@@ -25,6 +25,7 @@ type AuthService struct {
 	rbacAudit          *repository.RBACAuditRepository
 	subscriptions      *repository.SubscriptionRepository
 	buyerSubscriptions *repository.BuyerSubscriptionRepository
+	apiTokens          *repository.APITokenRepository
 }
 
 // NewAuthService creates a new AuthService.
@@ -37,6 +38,7 @@ func NewAuthService(
 	rbacAudit *repository.RBACAuditRepository,
 	subscriptions *repository.SubscriptionRepository,
 	buyerSubscriptions *repository.BuyerSubscriptionRepository,
+	apiTokens *repository.APITokenRepository,
 ) *AuthService {
 	return &AuthService{
 		pool:               pool,
@@ -47,6 +49,7 @@ func NewAuthService(
 		rbacAudit:          rbacAudit,
 		subscriptions:      subscriptions,
 		buyerSubscriptions: buyerSubscriptions,
+		apiTokens:          apiTokens,
 	}
 }
 

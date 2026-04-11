@@ -27,26 +27,34 @@ func NewAPITokenRepository(pool *pgxpool.Pool) *APITokenRepository {
 // generating the plaintext token and hashing its secret portion; this repo
 // only persists the already-hashed value.
 func (r *APITokenRepository) Create(ctx context.Context, t *domain.SellerAPIToken) error {
+	return database.TenantTx(ctx, r.pool, t.TenantID, func(tx pgx.Tx) error {
+		return r.CreateTx(ctx, tx, t)
+	})
+}
+
+// CreateTx inserts a new seller_api_tokens row inside an existing tenant
+// transaction. Use this variant when the caller already holds a tx (for
+// example, to perform an RBAC check and the insert atomically); use Create
+// when no outer tx is needed.
+func (r *APITokenRepository) CreateTx(ctx context.Context, tx pgx.Tx, t *domain.SellerAPIToken) error {
 	if t.ID == uuid.Nil {
 		t.ID = uuid.New()
 	}
 	scopes := scopesToStrings(t.Scopes)
-	return database.TenantTx(ctx, r.pool, t.TenantID, func(tx pgx.Tx) error {
-		return tx.QueryRow(ctx,
-			`INSERT INTO auth_svc.seller_api_tokens (
-			    id, tenant_id, seller_id, name,
-			    token_prefix, token_lookup, token_hash,
-			    scopes, rate_limit_rps, rate_limit_burst,
-			    issued_by_auth0_user_id, expires_at
-			 )
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			 RETURNING created_at, updated_at`,
-			t.ID, t.TenantID, t.SellerID, t.Name,
-			t.TokenPrefix, t.TokenLookup, t.TokenHash,
-			scopes, t.RateLimitRPS, t.RateLimitBurst,
-			t.IssuedByAuth0UserID, t.ExpiresAt,
-		).Scan(&t.CreatedAt, &t.UpdatedAt)
-	})
+	return tx.QueryRow(ctx,
+		`INSERT INTO auth_svc.seller_api_tokens (
+		    id, tenant_id, seller_id, name,
+		    token_prefix, token_lookup, token_hash,
+		    scopes, rate_limit_rps, rate_limit_burst,
+		    issued_by_auth0_user_id, expires_at
+		 )
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		 RETURNING created_at, updated_at`,
+		t.ID, t.TenantID, t.SellerID, t.Name,
+		t.TokenPrefix, t.TokenLookup, t.TokenHash,
+		scopes, t.RateLimitRPS, t.RateLimitBurst,
+		t.IssuedByAuth0UserID, t.ExpiresAt,
+	).Scan(&t.CreatedAt, &t.UpdatedAt)
 }
 
 // GetByID retrieves a token by its primary key within a tenant scope.
@@ -124,38 +132,45 @@ func (r *APITokenRepository) ListBySeller(ctx context.Context, tenantID, sellerI
 // revoked token is a no-op that still returns nil.
 func (r *APITokenRepository) Revoke(ctx context.Context, tenantID, id uuid.UUID, actorAuth0UserID string) error {
 	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx,
-			`UPDATE auth_svc.seller_api_tokens
-			 SET revoked_at = NOW(),
-			     revoked_by_auth0_user_id = $3,
-			     updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL`,
-			id, tenantID, actorAuth0UserID,
-		)
-		if err != nil {
-			return fmt.Errorf("revoke api token: %w", err)
-		}
-		// RowsAffected() == 0 means either the row doesn't exist OR it was
-		// already revoked. We resolve the ambiguity with an existence check
-		// so callers get NotFound vs silent idempotent success.
-		if tag.RowsAffected() == 0 {
-			var exists bool
-			if err := tx.QueryRow(ctx,
-				`SELECT EXISTS(
-				    SELECT 1 FROM auth_svc.seller_api_tokens
-				    WHERE id = $1 AND tenant_id = $2
-				 )`,
-				id, tenantID,
-			).Scan(&exists); err != nil {
-				return err
-			}
-			if !exists {
-				return domain.ErrAPITokenNotFound
-			}
-			// Already revoked — idempotent success.
-		}
-		return nil
+		return r.RevokeTx(ctx, tx, tenantID, id, actorAuth0UserID)
 	})
+}
+
+// RevokeTx is the transactional variant of Revoke. Use when the caller
+// already holds a tenant-scoped tx (typically to pair an RBAC check with
+// the revoke atomically).
+func (r *APITokenRepository) RevokeTx(ctx context.Context, tx pgx.Tx, tenantID, id uuid.UUID, actorAuth0UserID string) error {
+	tag, err := tx.Exec(ctx,
+		`UPDATE auth_svc.seller_api_tokens
+		 SET revoked_at = NOW(),
+		     revoked_by_auth0_user_id = $3,
+		     updated_at = NOW()
+		 WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL`,
+		id, tenantID, actorAuth0UserID,
+	)
+	if err != nil {
+		return fmt.Errorf("revoke api token: %w", err)
+	}
+	// RowsAffected() == 0 means either the row doesn't exist OR it was
+	// already revoked. We resolve the ambiguity with an existence check so
+	// callers get NotFound vs silent idempotent success.
+	if tag.RowsAffected() == 0 {
+		var exists bool
+		if err := tx.QueryRow(ctx,
+			`SELECT EXISTS(
+			    SELECT 1 FROM auth_svc.seller_api_tokens
+			    WHERE id = $1 AND tenant_id = $2
+			 )`,
+			id, tenantID,
+		).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return domain.ErrAPITokenNotFound
+		}
+		// Already revoked — idempotent success.
+	}
+	return nil
 }
 
 // GetByLookup retrieves a token by its (prefix, lookup) pair. This is the
