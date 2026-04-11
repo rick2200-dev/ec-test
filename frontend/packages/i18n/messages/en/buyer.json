@@ -72,6 +72,7 @@
     "lastMessageAt": "Last message",
     "errorForbidden": "You cannot contact the seller of this item",
     "errorGeneric": "A network error occurred. Please try again later.",
+    "errorEmpty": "Please enter both a subject and a message",
     "unread": "Unread",
     "unreadCount": "{count} unread",
     "backToList": "Back to list",
@@ -82,6 +83,7 @@
       "seller": "Seller"
     },
     "status": {
+      "columnLabel": "Status",
       "open": "Open",
       "closed": "Closed"
     }
@@ -96,6 +98,9 @@
     "status": "Status",
     "viewDetail": "Details",
     "products": "Items",
+    "actions": "Actions",
+    "productSummarySingle": "{name} x{quantity}",
+    "productSummaryMulti": "{name} +{rest} more",
     "contactSeller": "Contact seller",
     "purchaseRequiredNotice": "You can only contact sellers after an order is paid",
     "status_pending": "Pending payment",

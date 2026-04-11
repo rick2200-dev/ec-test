@@ -72,6 +72,7 @@
     "lastMessageAt": "最終メッセージ",
     "errorForbidden": "この商品には問い合わせできません",
     "errorGeneric": "通信エラーが発生しました。時間をおいて再度お試しください",
+    "errorEmpty": "件名とメッセージを入力してください",
     "unread": "未読",
     "unreadCount": "{count}件未読",
     "backToList": "一覧に戻る",
@@ -82,6 +83,7 @@
       "seller": "出品者"
     },
     "status": {
+      "columnLabel": "ステータス",
       "open": "対応中",
       "closed": "完了"
     }
@@ -96,6 +98,9 @@
     "status": "ステータス",
     "viewDetail": "詳細",
     "products": "商品",
+    "actions": "操作",
+    "productSummarySingle": "{name} x{quantity}",
+    "productSummaryMulti": "{name} ほか {rest} 点",
     "contactSeller": "出品者に問い合わせる",
     "purchaseRequiredNotice": "出品者への問い合わせは、購入済み（入金後）の注文のみ可能です",
     "status_pending": "未入金",

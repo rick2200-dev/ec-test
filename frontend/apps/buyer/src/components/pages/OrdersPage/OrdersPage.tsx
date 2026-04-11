@@ -21,10 +21,17 @@ export default async function OrdersPage() {
   const locale = await getLocale();
 
   const orderItems: OrdersPageOrderItem[] = buyerOrders.map((order) => {
+    const firstLine = order.lines[0];
     const productSummary =
       order.lines.length === 1
-        ? `${order.lines[0].product_name} x${order.lines[0].quantity}`
-        : `${order.lines[0].product_name} ほか ${order.lines.length - 1} 点`;
+        ? t("productSummarySingle", {
+            name: firstLine.product_name,
+            quantity: firstLine.quantity,
+          })
+        : t("productSummaryMulti", {
+            name: firstLine.product_name,
+            rest: order.lines.length - 1,
+          });
     return {
       id: order.id,
       href: `/orders/${order.id}`,
@@ -50,7 +57,7 @@ export default async function OrdersPage() {
       totalLabel={t("total")}
       statusLabel={t("status")}
       productsLabel={t("products")}
-      actionsLabel="操作"
+      actionsLabel={t("actions")}
       viewDetailLabel={t("viewDetail")}
       orders={orderItems}
     />

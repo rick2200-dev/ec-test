@@ -47,8 +47,8 @@ func Load() Config {
 		OrderServiceURL:        getEnv("ORDER_SERVICE_URL", "http://localhost:8083"),
 		InventoryServiceURL:    getEnv("INVENTORY_SERVICE_URL", "http://localhost:8084"),
 		SearchServiceURL:       getEnv("SEARCH_SERVICE_URL", "http://localhost:8085"),
-		NotificationServiceURL: getEnv("NOTIFICATION_SERVICE_URL", "http://localhost:8086"),
-		RecommendServiceURL:    getEnv("RECOMMEND_SERVICE_URL", "http://localhost:8087"),
+		NotificationServiceURL: getEnv("NOTIFICATION_SERVICE_URL", "http://localhost:8087"),
+		RecommendServiceURL:    getEnv("RECOMMEND_SERVICE_URL", "http://localhost:8086"),
 		CartServiceURL:         getEnv("CART_SERVICE_URL", "http://localhost:8088"),
 		InquiryServiceURL:      getEnv("INQUIRY_SERVICE_URL", "http://localhost:8090"),
 

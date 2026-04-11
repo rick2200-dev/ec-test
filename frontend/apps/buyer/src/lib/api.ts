@@ -29,16 +29,39 @@ export async function trackEvent(eventType: string, productId: string) {
   }
 }
 
+/**
+ * ApiError carries the HTTP status code alongside the parsed error body so
+ * callers can branch on status (e.g. 403) without string-matching on message
+ * content. Always thrown from `jsonOrThrow` on non-2xx responses.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+
+  constructor(status: number, message: string, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = "";
+    let parsed: unknown = null;
     try {
-      const body = (await res.json()) as { error?: string; message?: string };
+      parsed = await res.json();
+      const body = parsed as { error?: string; message?: string };
       detail = body.error ?? body.message ?? "";
     } catch {
       // ignore parse errors
     }
-    throw new Error(detail || `request failed: ${res.status}`);
+    throw new ApiError(
+      res.status,
+      detail || `request failed: ${res.status}`,
+      parsed,
+    );
   }
   return (await res.json()) as T;
 }

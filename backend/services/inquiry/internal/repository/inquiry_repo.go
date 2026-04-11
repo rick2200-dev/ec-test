@@ -2,16 +2,33 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	"github.com/Riku-KANO/ec-test/services/inquiry/internal/domain"
 )
+
+// pgUniqueViolation is the PostgreSQL SQLSTATE for a unique constraint
+// violation (23505). We detect it via *pgconn.PgError rather than string
+// matching on err.Error() so the check is robust across driver versions
+// and locales.
+const pgUniqueViolation = "23505"
+
+// isUniqueViolation reports whether err is a pg unique-constraint violation
+// on the given constraint name.
+func isUniqueViolation(err error, constraint string) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+	return pgErr.Code == pgUniqueViolation && pgErr.ConstraintName == constraint
+}
 
 // InquiryRepository persists inquiries and their messages.
 type InquiryRepository struct {
@@ -65,7 +82,7 @@ func (r *InquiryRepository) Create(
 			if err != nil {
 				// A concurrent create lost the race and hit uq_inquiry_per_sku.
 				// Fall back to the existing row.
-				if strings.Contains(err.Error(), "uq_inquiry_per_sku") {
+				if isUniqueViolation(err, "uq_inquiry_per_sku") {
 					row, loadErr := loadInquiryByParticipantsTx(ctx, tx, tenantID, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID)
 					if loadErr != nil {
 						return loadErr

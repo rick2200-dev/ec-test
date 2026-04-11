@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { createInquiry } from "@/lib/api";
+import { ApiError, createInquiry } from "@/lib/api";
 import { StartInquiryButtonPresenter } from "./StartInquiryButton.presenter";
 
 export interface StartInquiryButtonProps {
@@ -48,25 +48,36 @@ export default function StartInquiryButton({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submitting) return;
+
+    // HTML `required` on whitespace-only input won't reject — validate trimmed.
+    const trimmedSubject = subject.trim();
+    const trimmedBody = body.trim();
+    if (!trimmedSubject || !trimmedBody) {
+      setError(t("errorEmpty"));
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
       const created = await createInquiry({
         seller_id: sellerId,
         sku_id: skuId,
-        subject: subject.trim(),
-        initial_body: body.trim(),
+        subject: trimmedSubject,
+        initial_body: trimmedBody,
       });
       setOpen(false);
       reset();
       router.push(`/inquiries/${created.id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      // Forbidden means "not purchased" — show the friendlier copy.
-      if (message.toLowerCase().includes("forbidden") || message.includes("403")) {
+      // Branch on HTTP status (ApiError.status), not on message content,
+      // so the backend wording is free to change.
+      if (err instanceof ApiError && err.status === 403) {
         setError(t("errorForbidden"));
+      } else if (err instanceof Error) {
+        setError(err.message || t("errorGeneric"));
       } else {
-        setError(message || t("errorGeneric"));
+        setError(t("errorGeneric"));
       }
       setSubmitting(false);
     }

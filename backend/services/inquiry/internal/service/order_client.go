@@ -76,7 +76,9 @@ func (c *OrderClient) CheckPurchase(
 	if err != nil {
 		return nil, apperrors.Internal("order service unreachable", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	raw, _ := io.ReadAll(resp.Body)
 

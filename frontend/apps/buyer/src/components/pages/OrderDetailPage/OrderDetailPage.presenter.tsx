@@ -20,6 +20,9 @@ export interface OrderDetailPagePresenterProps {
   orderIdLabel: string;
   orderedAt: string;
   orderedAtLabel: string;
+  /** Column/dt header for the status field (e.g. "Status" / "ステータス"). */
+  statusHeading: string;
+  /** Rendered status value (e.g. "Paid" / "発送済み"). */
   statusLabel: string;
   totalLabel: string;
   totalValue: string;
@@ -35,6 +38,7 @@ export function OrderDetailPagePresenter({
   orderIdLabel,
   orderedAt,
   orderedAtLabel,
+  statusHeading,
   statusLabel,
   totalLabel,
   totalValue,
@@ -62,7 +66,7 @@ export function OrderDetailPagePresenter({
             <dd className="mt-1 text-sm text-gray-800">{orderedAt}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase text-gray-500">ステータス</dt>
+            <dt className="text-xs uppercase text-gray-500">{statusHeading}</dt>
             <dd className="mt-1 text-sm text-gray-800">{statusLabel}</dd>
           </div>
           <div>

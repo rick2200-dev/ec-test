@@ -50,7 +50,7 @@
 ┌─────┐┌─────┐┌──────┐┌─────┐┌─────┐┌──────┐┌──────┐┌───────┐
 │Auth ││Cata-││Inven-││Order││Cart ││Search││Recom-││Inquiry│
 │     ││log  ││tory  ││     ││     ││      ││mend  ││       │
-│:8081││:8082││:8083 ││:8084││:8088││:8085 ││:8086 ││:8090  │
+│:8081││:8082││:8084 ││:8083││:8088││:8085 ││:8086 ││:8090  │
 └──┬──┘└──┬──┘└──┬───┘└──┬──┘└──┬──┘└──┬───┘└──────┘└───┬───┘
    │      │      │       │▲     │      │                │
    │      │      │       │└─────┤      │  ┌────────────┐│
@@ -88,8 +88,8 @@
 | **gateway**      | 8080   | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限 | なし            |
 | **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)                | `auth_svc`      |
 | **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                           | `catalog_svc`   |
-| **inventory**    | 8083   | 在庫数量管理、在庫引当・解放、在庫移動履歴                              | `inventory_svc` |
-| **order**        | 8084   | 注文作成・管理、決済処理 (Stripe)、コミッション計算、売上送金           | `order_svc`     |
+| **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                              | `inventory_svc` |
+| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、コミッション計算、売上送金           | `order_svc`     |
 | **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                        | なし (外部)     |
 | **recommend**    | 8086   | レコメンデーション、パーソナライズ                                      | なし (外部)     |
 | **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                        | なし            |
@@ -123,7 +123,7 @@ Order Service   ──gRPC──▶  Catalog Service (商品情報取得)
 Order Service   ──gRPC──▶  Inventory Service (在庫引当)
 Cart Service    ──HTTP──▶  Catalog Service (POST /internal/sku-lookup で価格・名称取得)
 Cart Service    ──HTTP──▶  Order Service   (POST /internal/checkouts でマルチセラー注文作成)
-Inquiry Service ──HTTP──▶  Order Service   (POST /internal/orders/purchase-check で買い手の SKU 購入有無を検証)
+Inquiry Service ──HTTP──▶  Order Service   (POST /internal/purchase-check で買い手の SKU 購入有無を検証)
 ```
 
 - Proto 定義: `backend/proto/` ディレクトリ

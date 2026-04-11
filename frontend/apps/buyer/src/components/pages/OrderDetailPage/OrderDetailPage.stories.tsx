@@ -16,6 +16,7 @@ const baseProps = {
   orderIdLabel: "注文番号",
   orderedAt: "2026/04/02 09:12",
   orderedAtLabel: "注文日",
+  statusHeading: "ステータス",
   statusLabel: "発送済み",
   totalLabel: "合計金額",
   totalValue: "¥12,800",

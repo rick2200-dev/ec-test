@@ -54,6 +54,7 @@ export default async function OrderDetailPage({ orderId }: OrderDetailPageProps)
         minute: "2-digit",
       })}
       orderedAtLabel={t("orderedAt")}
+      statusHeading={t("status")}
       statusLabel={t(`status_${order.status}`)}
       totalLabel={t("total")}
       totalValue={formatPrice(order.total_amount, order.currency)}

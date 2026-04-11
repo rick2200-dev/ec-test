@@ -53,7 +53,7 @@ export default function InquiriesPage() {
           emptyLabel={loaded ? t("empty") : "..."}
           productColumnLabel={t("product")}
           lastMessageColumnLabel={t("lastMessageAt")}
-          statusColumnLabel={t("status.open")}
+          statusColumnLabel={t("status.columnLabel")}
           unreadLabel={t("unread")}
           openLabel={t("status.open")}
           closedLabel={t("status.closed")}
