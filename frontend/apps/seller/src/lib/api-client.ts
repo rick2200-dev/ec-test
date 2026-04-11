@@ -1,51 +1,25 @@
-// Seller API client. Thin fetch wrapper over the gateway's
-// /api/v1/seller/* surface. Follows the same shape as the buyer app's
-// lib/api.ts to keep auth plumbing consistent across apps once the
-// Auth0 session wiring lands.
+// Seller API client. Thin wrapper over the gateway's
+// /api/v1/seller/* surface. Built on top of the shared
+// `@ec-marketplace/api-client` primitives so auth plumbing and error
+// handling stay consistent across apps once the Auth0 session wiring
+// lands.
 //
-// NOTE: this file intentionally does NOT inject an Authorization header
-// yet — the seller app does not have an Auth0 session context mounted.
-// Once it does, add a single `headers.Authorization = `Bearer ${token}``
-// here. The gateway will then accept either the session JWT or an
-// `sk_live_*` API token transparently.
+// NOTE: this module intentionally does NOT inject an Authorization
+// header yet — the seller app does not have an Auth0 session context
+// mounted. Once it does, add a default header to the shared
+// `fetchAPI` (or a wrapper around it) and the gateway will accept
+// either the session JWT or an `sk_live_*` API token transparently.
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { ApiError, fetchAPI, jsonOrThrow } from "@ec-marketplace/api-client";
 
-// APIError carries the HTTP status and server-side error message so the
-// UI can differentiate (e.g. 401 → "session expired", 429 → "rate
-// limited", 5xx → "try again later"). Every client method throws this
-// on a non-2xx response.
-export class APIError extends Error {
-  readonly status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-    this.name = "APIError";
-  }
-}
+// Existing seller code (notably
+// `src/app/(dashboard)/settings/api-tokens/page.tsx`) imports the
+// error class as `APIError`. Re-export the shared `ApiError` under
+// both spellings so call sites keep working without a mass rename.
+export { ApiError, ApiError as APIError };
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-  if (!res.ok) {
-    // The gateway returns {"error": "..."} on every error path; fall
-    // back to the raw status text if the body isn't valid JSON.
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new APIError(res.status, body.error ?? res.statusText);
-  }
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return (await res.json()) as T;
-}
-
-// APIToken is the subset of the server-side SellerAPIToken shape the UI
-// cares about. Keep in sync with
+// APIToken is the subset of the server-side SellerAPIToken shape the
+// UI cares about. Keep in sync with
 // backend/services/auth/internal/domain/api_token.go. TokenHash is
 // intentionally absent — the server never sends it.
 export interface APIToken {
@@ -88,6 +62,11 @@ interface ListAPITokensResponse {
   offset: number;
 }
 
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetchAPI(path, options);
+  return jsonOrThrow<T>(res);
+}
+
 // listAPITokens returns the seller's tokens newest-first. Revoked and
 // expired rows are included so the UI can render a complete history.
 export async function listAPITokens(): Promise<APIToken[]> {
@@ -105,7 +84,8 @@ export async function createAPIToken(
 }
 
 export async function revokeAPIToken(id: string): Promise<void> {
-  await request<{ status: string }>(`/api/v1/seller/api-tokens/${id}`, {
+  await request<void>(`/api/v1/seller/api-tokens/${id}`, {
     method: "DELETE",
   });
 }
+

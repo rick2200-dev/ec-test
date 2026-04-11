@@ -1,0 +1,13 @@
+{
+  "name": "@ec-marketplace/ui-utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@ec-marketplace/tsconfig": "workspace:*",
+    "typescript": "^5"
+  }
+}

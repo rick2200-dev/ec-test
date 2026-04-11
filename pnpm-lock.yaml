@@ -23,6 +23,12 @@ importers:
       '@ec-marketplace/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@ec-marketplace/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@ec-marketplace/ui-utils':
+        specifier: workspace:*
+        version: link:../../packages/ui-utils
       next:
         specifier: ^15.3.1
         version: 15.5.14(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -81,9 +87,18 @@ importers:
 
   frontend/apps/buyer:
     dependencies:
+      '@ec-marketplace/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@ec-marketplace/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@ec-marketplace/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@ec-marketplace/ui-utils':
+        specifier: workspace:*
+        version: link:../../packages/ui-utils
       next:
         specifier: ^15
         version: 15.5.14(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -145,9 +160,18 @@ importers:
 
   frontend/apps/seller:
     dependencies:
+      '@ec-marketplace/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@ec-marketplace/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@ec-marketplace/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@ec-marketplace/ui-utils':
+        specifier: workspace:*
+        version: link:../../packages/ui-utils
       next:
         specifier: ^15.3.1
         version: 15.5.14(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -258,6 +282,15 @@ importers:
         specifier: ^5.8
         version: 5.9.3
 
+  frontend/packages/api-client:
+    devDependencies:
+      '@ec-marketplace/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   frontend/packages/eslint-config:
     dependencies:
       '@eslint/js':
@@ -301,6 +334,24 @@ importers:
         version: 19.2.4
 
   frontend/packages/tsconfig: {}
+
+  frontend/packages/types:
+    devDependencies:
+      '@ec-marketplace/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  frontend/packages/ui-utils:
+    devDependencies:
+      '@ec-marketplace/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5
+        version: 5.9.3
 
   frontend/packages/vitest-config:
     dependencies:

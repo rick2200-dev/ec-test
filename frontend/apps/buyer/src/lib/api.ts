@@ -1,22 +1,14 @@
+import { fetchAPI, jsonOrThrow } from "@ec-marketplace/api-client";
 import type {
   Inquiry,
   InquiryListResponse,
   InquiryMessage,
   InquiryWithMessages,
-} from "./types";
+} from "@ec-marketplace/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-export async function fetchAPI(path: string, options?: RequestInit) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
-  return res;
-}
+// Re-export the shared primitives so existing call sites that import
+// `fetchAPI` / `ApiError` from this module keep working.
+export { fetchAPI, ApiError } from "@ec-marketplace/api-client";
 
 export async function trackEvent(eventType: string, productId: string) {
   try {
@@ -27,43 +19,6 @@ export async function trackEvent(eventType: string, productId: string) {
   } catch {
     // Silently fail - tracking should not break the UI
   }
-}
-
-/**
- * ApiError carries the HTTP status code alongside the parsed error body so
- * callers can branch on status (e.g. 403) without string-matching on message
- * content. Always thrown from `jsonOrThrow` on non-2xx responses.
- */
-export class ApiError extends Error {
-  readonly status: number;
-  readonly body: unknown;
-
-  constructor(status: number, message: string, body: unknown) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.body = body;
-  }
-}
-
-async function jsonOrThrow<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let detail = "";
-    let parsed: unknown = null;
-    try {
-      parsed = await res.json();
-      const body = parsed as { error?: string; message?: string };
-      detail = body.error ?? body.message ?? "";
-    } catch {
-      // ignore parse errors
-    }
-    throw new ApiError(
-      res.status,
-      detail || `request failed: ${res.status}`,
-      parsed,
-    );
-  }
-  return (await res.json()) as T;
 }
 
 /** List the current buyer's inquiry threads. */

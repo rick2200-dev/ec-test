@@ -1,8 +1,10 @@
-/** Product status matching Go domain ProductStatus */
-export type ProductStatus = "draft" | "active" | "archived";
+import type {
+  OrderStatus,
+  ProductStatus,
+  SellerStatus,
+} from "@ec-marketplace/types";
 
-/** Seller status matching Go domain SellerStatus */
-export type SellerStatus = "pending" | "approved" | "rejected" | "suspended";
+export type { ProductStatus, SellerStatus, OrderStatus };
 
 /** Category matching catalog_svc.Category */
 export interface Category {
@@ -100,16 +102,6 @@ export interface SearchResult {
   facets: Facet[];
 }
 
-/** Order status matching Go domain order status constants */
-export type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "completed"
-  | "cancelled";
-
 /**
  * OrderSummary matches the shape returned by GET /api/v1/buyer/orders.
  * Corresponds to domain.Order on the backend — a flat listing row with no
@@ -182,44 +174,9 @@ export interface OrderDetail {
   lines: OrderLine[];
 }
 
-/** Inquiry thread (1 thread per buyer × seller × SKU) */
-export interface Inquiry {
-  id: string;
-  tenant_id: string;
-  buyer_auth0_id: string;
-  seller_id: string;
-  sku_id: string;
-  product_name: string;
-  sku_code: string;
-  subject: string;
-  status: "open" | "closed";
-  last_message_at: string;
-  created_at: string;
-  updated_at: string;
-  unread_count?: number;
-}
-
-/** Single message in an inquiry thread */
-export interface InquiryMessage {
-  id: string;
-  tenant_id: string;
-  inquiry_id: string;
-  sender_type: "buyer" | "seller";
-  sender_id: string;
-  body: string;
-  read_at?: string | null;
-  created_at: string;
-}
-
-/** Inquiry thread with its messages */
-export interface InquiryWithMessages extends Inquiry {
-  messages: InquiryMessage[];
-}
-
-/** Paginated inquiry list response */
-export interface InquiryListResponse {
-  items: Inquiry[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+export type {
+  Inquiry,
+  InquiryMessage,
+  InquiryWithMessages,
+  InquiryListResponse,
+} from "@ec-marketplace/types";

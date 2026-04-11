@@ -35,12 +35,8 @@ export interface PlatformStats {
   monthlyCommissionIncome: number;
 }
 
-export interface PlanFeatures {
-  max_products: number;
-  search_boost: number;
-  featured_slots: number;
-  promoted_results: number;
-}
+import type { PlanFeatures } from "@ec-marketplace/types";
+export type { PlanFeatures };
 
 export interface SubscriptionPlan {
   id: string;

@@ -1,35 +1,12 @@
+import { fetchAPI, jsonOrThrow } from "@ec-marketplace/api-client";
 import type {
   Inquiry,
   InquiryListResponse,
   InquiryMessage,
   InquiryWithMessages,
-} from "./types";
+} from "@ec-marketplace/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-export async function fetchAPI(path: string, options?: RequestInit): Promise<Response> {
-  return fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
-}
-
-async function jsonOrThrow<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let detail = "";
-    try {
-      const body = (await res.json()) as { error?: string; message?: string };
-      detail = body.error ?? body.message ?? "";
-    } catch {
-      // ignore
-    }
-    throw new Error(detail || `request failed: ${res.status}`);
-  }
-  return (await res.json()) as T;
-}
+export { fetchAPI, ApiError } from "@ec-marketplace/api-client";
 
 /** List inquiry threads for the current seller. */
 export async function listSellerInquiries(

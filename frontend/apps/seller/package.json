@@ -14,7 +14,10 @@
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
+    "@ec-marketplace/api-client": "workspace:*",
     "@ec-marketplace/i18n": "workspace:*",
+    "@ec-marketplace/types": "workspace:*",
+    "@ec-marketplace/ui-utils": "workspace:*",
     "next": "^15.3.1",
     "next-intl": "^4",
     "react": "^19.1.0",
