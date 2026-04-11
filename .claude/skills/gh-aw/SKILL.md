@@ -166,11 +166,13 @@ safe-outputs:
     max: 5                                       # Max issues to create
     title-prefix: "[My Prefix] "                 # Required prefix
     labels: ["my-label"]                         # Auto-applied labels
-  update-issue:
-    status: true
-    title: true
-    body:
-      operation: append                          # append|prepend|replace|replace-island
+  update-issue:                                  # Enable updating existing issues
+    status:                                      # Enable status changes (open/closed) — value MUST be empty (null)
+    title:                                       # Enable title changes — value MUST be empty (null)
+    body:                                        # Enable body changes — value MUST be empty (null)
+    # allowed-repos: ["owner/repo"]              # Optional: restrict which repos can be updated
+    # NOTE: update-issue does NOT accept `max:` — the schema rejects it.
+    # NOTE: each sub-field (status/title/body) is a toggle — presence enables it, value must be null.
   add-labels:
     max: 5
   add-comment:
