@@ -35,6 +35,8 @@ message Product {
   repeated SKU skus = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
+  // Primary image URL. Empty string if no image has been uploaded yet.
+  string image_url = 12;
 }
 
 message SKU {

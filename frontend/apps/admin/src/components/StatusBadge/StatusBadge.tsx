@@ -5,34 +5,34 @@ import { StatusBadgePresenter, type StatusBadgePresenterProps } from "./StatusBa
 
 export type StatusType =
   | "active"
+  | "archived"
   | "approved"
   | "pending"
   | "suspended"
   | "operational"
   | "degraded"
-  | "down"
-  | "archived";
+  | "down";
 
 const statusTone: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
   active: "success",
+  archived: "neutral",
   approved: "success",
   pending: "warning",
   suspended: "danger",
   operational: "success",
   degraded: "warning",
   down: "danger",
-  archived: "neutral",
 };
 
 const statusKeys: Record<StatusType, string> = {
   active: "status.active",
+  archived: "status.archived",
   approved: "status.approved",
   pending: "status.pending",
   suspended: "status.suspended",
   operational: "status.operational",
   degraded: "status.degraded",
   down: "status.down",
-  archived: "status.archived",
 };
 
 export default function StatusBadge({ status }: { status: StatusType }) {

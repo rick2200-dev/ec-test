@@ -1,5 +1,5 @@
-import OrdersPage from "@/components/pages/OrdersPage";
+import { OrderHistoryPage } from "@/components/pages/OrderHistoryPage";
 
-export default async function Page() {
-  return <OrdersPage />;
+export default async function OrdersRoute() {
+  return <OrderHistoryPage />;
 }

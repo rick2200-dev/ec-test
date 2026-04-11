@@ -36,8 +36,10 @@ type Product struct {
 	Skus           []*SKU                 `protobuf:"bytes,9,rep,name=skus,proto3" json:"skus,omitempty"`
 	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Primary image URL. Empty string if no image has been uploaded yet.
+	ImageUrl      string `protobuf:"bytes,12,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Product) Reset() {
@@ -145,6 +147,13 @@ func (x *Product) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Product) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
 }
 
 type SKU struct {
@@ -1258,7 +1267,7 @@ var File_catalog_v1_catalog_proto protoreflect.FileDescriptor
 const file_catalog_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"\x18catalog/v1/catalog.proto\x12\n" +
-	"catalog.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xf9\x02\n" +
+	"catalog.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x96\x03\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
@@ -1273,7 +1282,8 @@ const file_catalog_v1_catalog_proto_rawDesc = "" +
 	"created_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xe8\x02\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
+	"\timage_url\x18\f \x01(\tR\bimageUrl\"\xe8\x02\n" +
 	"\x03SKU\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1d\n" +

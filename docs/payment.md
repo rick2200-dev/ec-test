@@ -86,9 +86,11 @@ sequenceDiagram
 
     rect rgba(200, 220, 255, 0.25)
     note over Order,DB: 1 トランザクションで N 個の order + N 個の pending payout を作成
+    Order->>DB: SELECT auth_svc.sellers.name (seller_name スナップショット用)
+    Order->>DB: SELECT catalog_svc.skus.product_id (product_id スナップショット用)
     loop 各セラーグループ
-      Order->>DB: INSERT order_svc.orders
-      Order->>DB: INSERT order_svc.order_lines
+      Order->>DB: INSERT order_svc.orders (seller_name 付き)
+      Order->>DB: INSERT order_svc.order_lines (product_id 付き)
       Order->>DB: INSERT order_svc.payouts (status=pending)
     end
     end

@@ -1,7 +1,6 @@
-export { default } from "./OrderDetailPage";
-export type { OrderDetailPageProps } from "./OrderDetailPage";
+export { OrderDetailPage } from "./OrderDetailPage";
 export {
   OrderDetailPagePresenter,
+  type OrderDetailLineItem,
   type OrderDetailPagePresenterProps,
-  type OrderDetailLineRow,
 } from "./OrderDetailPage.presenter";

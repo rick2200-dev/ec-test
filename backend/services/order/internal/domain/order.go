@@ -30,6 +30,7 @@ type Order struct {
 	ID                    uuid.UUID       `json:"id"`
 	TenantID              uuid.UUID       `json:"tenant_id"`
 	SellerID              uuid.UUID       `json:"seller_id"`
+	SellerName            string          `json:"seller_name"`
 	BuyerAuth0ID          string          `json:"buyer_auth0_id"`
 	Status                string          `json:"status"`
 	SubtotalAmount        int64           `json:"subtotal_amount"`
@@ -50,6 +51,7 @@ type OrderLine struct {
 	TenantID    uuid.UUID `json:"tenant_id"`
 	OrderID     uuid.UUID `json:"order_id"`
 	SKUID       uuid.UUID `json:"sku_id"`
+	ProductID   uuid.UUID `json:"product_id"`
 	ProductName string    `json:"product_name"`
 	SKUCode     string    `json:"sku_code"`
 	Quantity    int       `json:"quantity"`

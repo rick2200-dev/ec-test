@@ -1,115 +1,128 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
+import {
+  OrderLineItemPresenter,
+  type OrderLineItemPresenterProps,
+} from "@/components/OrderLineItem";
 
-export interface OrderDetailLineRow {
-  key: string;
-  productName: string;
-  skuCode: string;
-  sellerName: string;
-  quantity: number;
-  unitPriceLabel: string;
-  subtotalLabel: string;
-  /** Button / trigger rendered next to the line (StartInquiryButton or disabled placeholder). */
-  actionSlot?: ReactNode;
+export interface OrderDetailLineItem extends OrderLineItemPresenterProps {
+  id: string;
 }
 
 export interface OrderDetailPagePresenterProps {
-  backHref: string;
+  /** Page heading like "注文詳細". */
+  title: string;
+  /** Back-to-list link label and target. */
   backLabel: string;
-  orderId: string;
-  orderIdLabel: string;
-  orderedAt: string;
+  backHref: string;
+  /** Order metadata block. */
+  orderNumberLabel: string;
   orderedAtLabel: string;
-  /** Column/dt header for the status field (e.g. "Status" / "ステータス"). */
-  statusHeading: string;
-  /** Rendered status value (e.g. "Paid" / "発送済み"). */
+  orderedAtValue: string;
+  sellerLabel: string;
+  sellerName: string;
   statusLabel: string;
+  /** Totals block labels + values. */
+  itemsLabel: string;
+  subtotalLabel: string;
+  subtotalValue: string;
+  shippingFeeLabel: string;
+  shippingFeeValue: string;
   totalLabel: string;
   totalValue: string;
-  productsLabel: string;
+  /** Optional banner shown when buyer cannot yet contact the seller
+   *  (e.g. order still `pending`). Hidden when undefined. */
   purchaseRequiredNotice?: string;
-  lines: OrderDetailLineRow[];
+  /** Enriched order lines. */
+  lines: OrderDetailLineItem[];
 }
 
+/**
+ * OrderDetailPagePresenter renders /orders/[id]. It is a pure presentational
+ * component: the container is responsible for enrichment (image, deleted
+ * flag) and for formatting every price / date via the locale-aware helpers.
+ */
 export function OrderDetailPagePresenter({
-  backHref,
+  title,
   backLabel,
-  orderId,
-  orderIdLabel,
-  orderedAt,
+  backHref,
+  orderNumberLabel,
   orderedAtLabel,
-  statusHeading,
+  orderedAtValue,
+  sellerLabel,
+  sellerName,
   statusLabel,
+  itemsLabel,
+  subtotalLabel,
+  subtotalValue,
+  shippingFeeLabel,
+  shippingFeeValue,
   totalLabel,
   totalValue,
-  productsLabel,
   purchaseRequiredNotice,
   lines,
 }: OrderDetailPagePresenterProps) {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-5">
-      <Link
-        href={backHref}
-        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-      >
-        ← {backLabel}
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <Link href={backHref} className="text-sm text-blue-600 hover:text-blue-800">
+        &larr; {backLabel}
       </Link>
+      <h1 className="mt-2 text-2xl font-bold text-gray-900">{title}</h1>
 
-      <header className="rounded-lg border border-gray-200 bg-white p-4">
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      {/* Order metadata card */}
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <dt className="text-xs uppercase text-gray-500">{orderIdLabel}</dt>
-            <dd className="mt-1 font-mono text-xs text-gray-800">{orderId}</dd>
+            <p className="text-xs text-gray-500">{orderNumberLabel}</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {orderedAtLabel}: {orderedAtValue}
+            </p>
+            <p className="mt-1 text-sm font-medium text-gray-900">
+              {sellerLabel}: {sellerName}
+            </p>
           </div>
-          <div>
-            <dt className="text-xs uppercase text-gray-500">{orderedAtLabel}</dt>
-            <dd className="mt-1 text-sm text-gray-800">{orderedAt}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-gray-500">{statusHeading}</dt>
-            <dd className="mt-1 text-sm text-gray-800">{statusLabel}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-gray-500">{totalLabel}</dt>
-            <dd className="mt-1 text-sm font-semibold text-gray-900">{totalValue}</dd>
-          </div>
-        </dl>
-      </header>
+          <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+            {statusLabel}
+          </span>
+        </div>
+      </section>
 
       {purchaseRequiredNotice && (
         <div
-          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
           role="note"
         >
           {purchaseRequiredNotice}
         </div>
       )}
 
-      <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <h2 className="border-b border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900">
-          {productsLabel}
+      {/* Line items */}
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white px-6">
+        <h2 className="py-4 text-sm font-semibold text-gray-900 border-b border-gray-200">
+          {itemsLabel}
         </h2>
         <ul className="divide-y divide-gray-200">
-          {lines.map((line) => (
-            <li
-              key={line.key}
-              className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <div className="text-sm font-medium text-gray-900">{line.productName}</div>
-                <div className="mt-0.5 text-xs text-gray-500">
-                  <span className="font-mono">{line.skuCode}</span>
-                  <span className="mx-2">·</span>
-                  <span>{line.sellerName}</span>
-                </div>
-                <div className="mt-1 text-xs text-gray-600">
-                  {line.unitPriceLabel} × {line.quantity} = {line.subtotalLabel}
-                </div>
-              </div>
-              {line.actionSlot && <div className="shrink-0">{line.actionSlot}</div>}
-            </li>
+          {lines.map(({ id, ...lineProps }) => (
+            <OrderLineItemPresenter key={id} {...lineProps} />
           ))}
         </ul>
+      </section>
+
+      {/* Totals */}
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+        <dl className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-gray-600">{subtotalLabel}</dt>
+            <dd className="text-gray-900">{subtotalValue}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-600">{shippingFeeLabel}</dt>
+            <dd className="text-gray-900">{shippingFeeValue}</dd>
+          </div>
+          <div className="flex justify-between border-t border-gray-200 pt-2">
+            <dt className="text-base font-semibold text-gray-900">{totalLabel}</dt>
+            <dd className="text-base font-bold text-gray-900">{totalValue}</dd>
+          </div>
+        </dl>
       </section>
     </div>
   );

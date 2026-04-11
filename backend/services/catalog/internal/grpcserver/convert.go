@@ -27,6 +27,9 @@ func domainProductToProto(p *domain.Product) *catalogv1.Product {
 	if len(p.Attributes) > 0 {
 		pb.AttributesJson = string(p.Attributes)
 	}
+	if p.ImageURL != nil {
+		pb.ImageUrl = *p.ImageURL
+	}
 	return pb
 }
 

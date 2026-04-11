@@ -230,6 +230,10 @@ Content-Type: application/json
 3. Order service:
    a. items を seller_id でグループ化
    b. 1 トランザクションで N 個の order + order_lines + pending payout を作成
+      (トランザクション先頭で cross-schema lookup: `auth_svc.sellers.name` から
+       `orders.seller_name` を、`catalog_svc.skus.product_id` から
+       `order_lines.product_id` をスナップショット。
+       詳細は [docs/architecture.md § 購入履歴と商品スナップショット](./architecture.md#購入履歴と商品スナップショット) を参照)
    c. Stripe に 1 回 PaymentIntent を発行 (合計金額)
    d. 発行された PI ID を全 order に書き戻す
    e. order.created イベントを N 回 publish
@@ -276,6 +280,30 @@ Stripe 呼び出しが失敗した場合、Tx #1 で作成した注文を `statu
 ### API サポート
 
 `GET /api/v1/buyer/orders` は現状 1 レコード = 1 注文だが、フロント側でクライアントサイドに `stripe_payment_intent_id` でグルーピングする。将来的には order service に `ListCheckouts` (PI ID でグルーピング済み) を追加することを検討する。
+
+---
+
+## 購入履歴の取得
+
+`/orders`, `/orders/{id}` 画面は、削除済み / アーカイブ済みの商品も含めて購入者が過去の注文を参照できる必要があります。表示に必要な情報は **スナップショット** と **クエリ時エンリッチ** の 2 系統に分けて保持します (詳細は [docs/architecture.md § 購入履歴と商品スナップショット](./architecture.md#購入履歴と商品スナップショット))。
+
+### 一覧: `GET /api/v1/buyer/orders`
+
+Gateway は order service の既存 REST を薄くプロキシします。レスポンスの各要素には checkout 時に固定された `seller_name` が含まれるため、販売者が削除されていてもカード表示に支障はありません。フロントは `seller_name` が空文字の場合 `orders.unknownSeller` にフォールバックします。
+
+### 詳細: `GET /api/v1/buyer/orders/{id}`
+
+Gateway は以下を行います:
+
+1. `GET /orders/{id}` を order service に発行 (スナップショット値を含む)
+2. 各行の `product_id` に対して `catalogGRPC.GetProduct` を `errgroup.WithContext` で **並列** に呼び出し
+3. エンリッチ結果を以下のように合成:
+   - `NotFound` または `product.status == "archived"` → `is_deleted=true`, `image_url=""`, `product_slug=""`
+   - `active` → `image_url` と `slug` を乗せる
+   - その他のエラー → warn ログ + `is_deleted=true` (グレースフル縮退: 1 行の失敗で注文全体の取得を失敗させない)
+4. 商品名 (`product_name`) は **常にスナップショット値** を返す。現在の catalog 値にはフォールバックせず、購入時点の表示を保存する
+
+注: catalog RPC に `BatchGetProducts` は実装していません。典型的な注文は ≤10 行で並列 `GetProduct` で十分です。行数が大きくなる領域 (B2B 一括注文など) に拡張する場合は batch RPC を追加してください。
 
 ---
 

@@ -1,10 +1,10 @@
-import OrderDetailPage from "@/components/pages/OrderDetailPage";
+import { OrderDetailPage } from "@/components/pages/OrderDetailPage";
 
-interface PageProps {
+interface OrderDetailRouteProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function OrderDetailRoute({ params }: OrderDetailRouteProps) {
   const { id } = await params;
   return <OrderDetailPage orderId={id} />;
 }

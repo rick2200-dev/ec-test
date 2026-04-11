@@ -23,26 +23,53 @@ func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
 	return &OrderRepository{pool: pool}
 }
 
-// Create inserts a new order and its lines within a single tenant-scoped transaction.
+// Create inserts a new order and its lines within a single tenant-scoped
+// transaction. Resolves seller_name (from auth_svc.sellers) and product_id
+// (from catalog_svc.skus) in the same transaction so the snapshots stored on
+// order_svc are always consistent with catalog state at the moment of sale.
 func (r *OrderRepository) Create(ctx context.Context, tenantID uuid.UUID, order *domain.Order, lines []domain.OrderLine) error {
 	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+		sellerNames, err := lookupSellerNames(ctx, tx, tenantID, []uuid.UUID{order.SellerID})
+		if err != nil {
+			return err
+		}
+		order.SellerName = sellerNames[order.SellerID]
+
+		skuIDs := make([]uuid.UUID, 0, len(lines))
+		for _, l := range lines {
+			skuIDs = append(skuIDs, l.SKUID)
+		}
+		productIDs, err := lookupSKUProductIDs(ctx, tx, tenantID, skuIDs)
+		if err != nil {
+			return err
+		}
+		for i := range lines {
+			pid, ok := productIDs[lines[i].SKUID]
+			if !ok {
+				return fmt.Errorf("sku %s has no matching product", lines[i].SKUID)
+			}
+			lines[i].ProductID = pid
+		}
+
 		return insertOrderTx(ctx, tx, tenantID, order, lines)
 	})
 }
 
 // insertOrderTx inserts a single order plus its lines using an existing
-// transaction. Callers are responsible for the surrounding TenantTx. This
-// is shared by Create and by CreateCheckoutBatch (multi-seller path).
+// transaction. Callers are responsible for the surrounding TenantTx and for
+// populating order.SellerName and line.ProductID via lookupSellerNames /
+// lookupSKUProductIDs before calling this. Shared by Create (single-seller,
+// deprecated) and CreateCheckoutBatch (multi-seller).
 func insertOrderTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, order *domain.Order, lines []domain.OrderLine) error {
 	order.ID = uuid.New()
 	order.TenantID = tenantID
 
 	err := tx.QueryRow(ctx,
 		`INSERT INTO order_svc.orders
-		 (id, tenant_id, seller_id, buyer_auth0_id, status, subtotal_amount, shipping_fee, commission_amount, total_amount, currency, shipping_address, stripe_payment_intent_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		 (id, tenant_id, seller_id, seller_name, buyer_auth0_id, status, subtotal_amount, shipping_fee, commission_amount, total_amount, currency, shipping_address, stripe_payment_intent_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		 RETURNING created_at, updated_at`,
-		order.ID, order.TenantID, order.SellerID, order.BuyerAuth0ID, order.Status,
+		order.ID, order.TenantID, order.SellerID, order.SellerName, order.BuyerAuth0ID, order.Status,
 		order.SubtotalAmount, order.ShippingFee, order.CommissionAmount, order.TotalAmount, order.Currency,
 		order.ShippingAddress, order.StripePaymentIntentID,
 	).Scan(&order.CreatedAt, &order.UpdatedAt)
@@ -57,10 +84,10 @@ func insertOrderTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, order *do
 
 		err := tx.QueryRow(ctx,
 			`INSERT INTO order_svc.order_lines
-			 (id, tenant_id, order_id, sku_id, product_name, sku_code, quantity, unit_price, line_total)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			 (id, tenant_id, order_id, sku_id, product_id, product_name, sku_code, quantity, unit_price, line_total)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			 RETURNING created_at`,
-			lines[i].ID, lines[i].TenantID, lines[i].OrderID, lines[i].SKUID,
+			lines[i].ID, lines[i].TenantID, lines[i].OrderID, lines[i].SKUID, lines[i].ProductID,
 			lines[i].ProductName, lines[i].SKUCode, lines[i].Quantity,
 			lines[i].UnitPrice, lines[i].LineTotal,
 		).Scan(&lines[i].CreatedAt)
@@ -70,6 +97,75 @@ func insertOrderTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, order *do
 	}
 
 	return nil
+}
+
+// lookupSellerNames resolves seller ids to their current company name by
+// querying auth_svc.sellers in the same transaction. auth_svc.sellers has
+// the same tenant_isolation RLS policy as order_svc.orders (both scoped to
+// current_setting('app.current_tenant_id')), so this cross-schema read works
+// inside a TenantTx without any additional SET ROLE gymnastics. An explicit
+// tenant_id predicate is also applied as defense-in-depth against RLS
+// misconfiguration and to align with existing cross-schema join patterns
+// (see backend/services/search/internal/engine/postgres.go:116-118). Returns
+// a map keyed by seller id; callers must tolerate missing keys (seller may
+// have been deleted, in which case seller_name is stamped as empty string).
+func lookupSellerNames(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, sellerIDs []uuid.UUID) (map[uuid.UUID]string, error) {
+	result := make(map[uuid.UUID]string, len(sellerIDs))
+	if len(sellerIDs) == 0 {
+		return result, nil
+	}
+	rows, err := tx.Query(ctx,
+		`SELECT id, name
+		 FROM auth_svc.sellers
+		 WHERE id = ANY($1)
+		   AND tenant_id = $2`,
+		sellerIDs, tenantID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("lookup seller names: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("scan seller name: %w", err)
+		}
+		result[id] = name
+	}
+	return result, rows.Err()
+}
+
+// lookupSKUProductIDs resolves SKU ids to their parent product id by querying
+// catalog_svc.skus in the same transaction. Used at checkout to snapshot
+// product_id on order_lines so the buyer order-detail page can enrich each
+// line via catalog gRPC without a live sku->product lookup. As with
+// lookupSellerNames, an explicit tenant_id predicate is applied in addition
+// to RLS.
+func lookupSKUProductIDs(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, skuIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	result := make(map[uuid.UUID]uuid.UUID, len(skuIDs))
+	if len(skuIDs) == 0 {
+		return result, nil
+	}
+	rows, err := tx.Query(ctx,
+		`SELECT id, product_id
+		 FROM catalog_svc.skus
+		 WHERE id = ANY($1)
+		   AND tenant_id = $2`,
+		skuIDs, tenantID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("lookup sku product ids: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, productID uuid.UUID
+		if err := rows.Scan(&id, &productID); err != nil {
+			return nil, fmt.Errorf("scan sku product id: %w", err)
+		}
+		result[id] = productID
+	}
+	return result, rows.Err()
 }
 
 // CheckoutBatchItem is one (order, lines, payout) tuple for a single seller
@@ -86,9 +182,53 @@ type CheckoutBatchItem struct {
 // transaction. All IDs are assigned by this method. If any insert fails,
 // the entire batch rolls back — so a multi-seller checkout either creates
 // every order cleanly or leaves the database untouched.
+//
+// Before inserts, this method resolves seller_name and sku->product_id
+// snapshots via two bulk cross-schema queries against auth_svc.sellers and
+// catalog_svc.skus respectively. The resolved values are stamped onto each
+// order/line so historical data survives later deletion of the underlying
+// seller or SKU.
 func (r *OrderRepository) CreateCheckoutBatch(ctx context.Context, tenantID uuid.UUID, items []CheckoutBatchItem) error {
 	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+		// Collect unique seller ids and sku ids across the whole batch so
+		// we can resolve snapshots with exactly two queries regardless of
+		// how many sellers / lines the checkout has.
+		sellerIDSet := make(map[uuid.UUID]struct{})
+		skuIDSet := make(map[uuid.UUID]struct{})
 		for _, item := range items {
+			sellerIDSet[item.Order.SellerID] = struct{}{}
+			for _, l := range item.Lines {
+				skuIDSet[l.SKUID] = struct{}{}
+			}
+		}
+		sellerIDs := make([]uuid.UUID, 0, len(sellerIDSet))
+		for id := range sellerIDSet {
+			sellerIDs = append(sellerIDs, id)
+		}
+		skuIDs := make([]uuid.UUID, 0, len(skuIDSet))
+		for id := range skuIDSet {
+			skuIDs = append(skuIDs, id)
+		}
+
+		sellerNames, err := lookupSellerNames(ctx, tx, tenantID, sellerIDs)
+		if err != nil {
+			return err
+		}
+		productIDs, err := lookupSKUProductIDs(ctx, tx, tenantID, skuIDs)
+		if err != nil {
+			return err
+		}
+
+		for _, item := range items {
+			item.Order.SellerName = sellerNames[item.Order.SellerID]
+			for i := range item.Lines {
+				pid, ok := productIDs[item.Lines[i].SKUID]
+				if !ok {
+					return fmt.Errorf("sku %s has no matching product", item.Lines[i].SKUID)
+				}
+				item.Lines[i].ProductID = pid
+			}
+
 			if err := insertOrderTx(ctx, tx, tenantID, item.Order, item.Lines); err != nil {
 				return err
 			}
@@ -123,13 +263,13 @@ func (r *OrderRepository) GetByID(ctx context.Context, tenantID, orderID uuid.UU
 
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
+			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE id = $1 AND tenant_id = $2`,
 			orderID, tenantID,
 		).Scan(
-			&result.ID, &result.TenantID, &result.SellerID, &result.BuyerAuth0ID, &result.Status,
+			&result.ID, &result.TenantID, &result.SellerID, &result.SellerName, &result.BuyerAuth0ID, &result.Status,
 			&result.SubtotalAmount, &result.ShippingFee, &result.CommissionAmount, &result.TotalAmount, &result.Currency,
 			&result.ShippingAddress, &result.StripePaymentIntentID, &result.PaidAt, &result.CreatedAt, &result.UpdatedAt,
 		)
@@ -142,7 +282,7 @@ func (r *OrderRepository) GetByID(ctx context.Context, tenantID, orderID uuid.UU
 		found = true
 
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, order_id, sku_id, product_name, sku_code, quantity, unit_price, line_total, created_at
+			`SELECT id, tenant_id, order_id, sku_id, product_id, product_name, sku_code, quantity, unit_price, line_total, created_at
 			 FROM order_svc.order_lines WHERE order_id = $1 AND tenant_id = $2
 			 ORDER BY created_at ASC`,
 			orderID, tenantID,
@@ -155,7 +295,7 @@ func (r *OrderRepository) GetByID(ctx context.Context, tenantID, orderID uuid.UU
 		for rows.Next() {
 			var l domain.OrderLine
 			if err := rows.Scan(
-				&l.ID, &l.TenantID, &l.OrderID, &l.SKUID, &l.ProductName,
+				&l.ID, &l.TenantID, &l.OrderID, &l.SKUID, &l.ProductID, &l.ProductName,
 				&l.SKUCode, &l.Quantity, &l.UnitPrice, &l.LineTotal, &l.CreatedAt,
 			); err != nil {
 				return err
@@ -239,7 +379,7 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, b
 		}
 
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
+			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE tenant_id = $1 AND buyer_auth0_id = $2
@@ -254,7 +394,7 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, b
 		for rows.Next() {
 			var o domain.Order
 			if err := rows.Scan(
-				&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
+				&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 			); err != nil {
@@ -292,7 +432,7 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, tenantID, sellerID u
 		}
 
 		query := fmt.Sprintf(
-			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
+			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
@@ -309,7 +449,7 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, tenantID, sellerID u
 		for rows.Next() {
 			var o domain.Order
 			if err := rows.Scan(
-				&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
+				&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 			); err != nil {
@@ -369,13 +509,13 @@ func (r *OrderRepository) GetByStripePaymentIntentID(ctx context.Context, tenant
 
 	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
+			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 			 FROM order_svc.orders WHERE stripe_payment_intent_id = $1 AND tenant_id = $2`,
 			paymentIntentID, tenantID,
 		).Scan(
-			&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
+			&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 		)
@@ -402,13 +542,13 @@ func (r *OrderRepository) GetByStripePaymentIntentID(ctx context.Context, tenant
 func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, paymentIntentID string) (*domain.Order, error) {
 	var o domain.Order
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
+		`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 		        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1`,
 		paymentIntentID,
 	).Scan(
-		&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
+		&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 		&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 		&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 	)
@@ -426,7 +566,7 @@ func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, payme
 // PaymentIntent maps to N orders (one per seller) in a multi-seller checkout.
 func (r *OrderRepository) FindAllByStripePaymentIntentID(ctx context.Context, paymentIntentID string) ([]domain.Order, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, tenant_id, seller_id, buyer_auth0_id, status,
+		`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 		        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1
@@ -442,7 +582,7 @@ func (r *OrderRepository) FindAllByStripePaymentIntentID(ctx context.Context, pa
 	for rows.Next() {
 		var o domain.Order
 		if err := rows.Scan(
-			&o.ID, &o.TenantID, &o.SellerID, &o.BuyerAuth0ID, &o.Status,
+			&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
 		); err != nil {

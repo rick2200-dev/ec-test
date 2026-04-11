@@ -44,6 +44,9 @@ message Order {
   google.protobuf.Timestamp created_at = 13;
   google.protobuf.Timestamp updated_at = 14;
   common.v1.Money shipping_fee = 15;
+  // Seller company name captured at order creation time. Preserved even if
+  // the seller is later deleted so buyer order history remains readable.
+  string seller_name = 16;
 }
 
 message OrderLine {
@@ -55,6 +58,9 @@ message OrderLine {
   int32 quantity = 6;
   common.v1.Money unit_price = 7;
   common.v1.Money line_total = 8;
+  // Product id snapshot (resolved from sku_id at checkout). Used by the
+  // gateway to enrich order detail responses with current catalog data.
+  string product_id = 9;
 }
 
 message Payout {
