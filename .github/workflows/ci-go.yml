@@ -28,6 +28,7 @@ jobs:
             search: ['backend/services/search/**', 'backend/pkg/**']
             recommend: ['backend/services/recommend/**', 'backend/pkg/**']
             notification: ['backend/services/notification/**', 'backend/pkg/**']
+            inquiry: ['backend/services/inquiry/**', 'backend/pkg/**']
 
   lint-and-test:
     needs: changes
