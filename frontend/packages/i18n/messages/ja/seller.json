@@ -12,7 +12,8 @@
     "inquiries": "お問い合わせ",
     "sales": "売上・入金",
     "subscription": "プラン管理",
-    "settings": "設定"
+    "settings": "設定",
+    "apiTokens": "APIトークン"
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -150,6 +151,76 @@
       "open": "対応中",
       "closed": "完了",
       "columnLabel": "ステータス"
+    }
+  },
+  "apiTokens": {
+    "title": "APIトークン",
+    "description": "外部システムからAPIを呼び出すためのアクセストークンを発行・管理します。トークンはパスワードと同等に取り扱ってください。",
+    "newToken": "新規発行",
+    "loading": "トークンを読み込んでいます...",
+    "empty": "発行済みのAPIトークンはまだありません。「新規発行」から作成してください。",
+    "revoke": "無効化",
+    "lastUsedNever": "未使用",
+    "noExpiry": "期限なし",
+    "status": {
+      "active": "有効",
+      "revoked": "無効化済み",
+      "expired": "期限切れ"
+    },
+    "scopeLabels": {
+      "products:read": "商品の読み取り",
+      "products:write": "商品の更新",
+      "orders:read": "注文の読み取り",
+      "orders:write": "注文の更新",
+      "inventory:read": "在庫の読み取り",
+      "inventory:write": "在庫の更新"
+    },
+    "table": {
+      "name": "名前",
+      "scopes": "スコープ",
+      "lastUsed": "最終利用",
+      "created": "作成日時",
+      "expires": "有効期限",
+      "status": "ステータス",
+      "actions": "操作"
+    },
+    "create": {
+      "title": "APIトークンを発行",
+      "description": "用途がわかる名前を付け、必要最小限のスコープを選択してください。発行後はいつでも無効化・再発行できます。",
+      "name": "名前",
+      "namePlaceholder": "例: 在庫同期ジョブ",
+      "scopes": "スコープ",
+      "expiresAt": "有効期限（任意）",
+      "expiresAtHint": "未指定の場合は無期限になります。CIジョブなどでは短期の有効期限の設定を推奨します。",
+      "cancel": "キャンセル",
+      "submit": "発行する",
+      "submitting": "発行中..."
+    },
+    "reveal": {
+      "title": "新しいAPIトークン",
+      "description": "この画面を閉じると平文は二度と表示されません。今のうちにコピーして保管してください。",
+      "plaintextLabel": "トークン",
+      "copy": "コピー",
+      "copied": "コピー済み",
+      "dismiss": "保存しました",
+      "warningTitle": "トークンは今すぐコピーしてください。",
+      "warningBody": "この画面を閉じると再表示はできません。紛失した場合は無効化して再発行が必要です。"
+    },
+    "confirmRevoke": {
+      "title": "APIトークンを無効化",
+      "description": "無効化すると直ちにこのトークンは利用できなくなり、使用中のスクリプトや連携は401エラーを返します。この操作は取り消せません。",
+      "promptPrefix": "確認のため、下の入力欄に",
+      "promptSuffix": "と入力してください。",
+      "cancel": "キャンセル",
+      "revoke": "無効化する",
+      "revoking": "無効化中..."
+    },
+    "errors": {
+      "loadFailed": "APIトークンを読み込めませんでした。画面を再読み込みしてお試しください。",
+      "createFailed": "APIトークンの発行に失敗しました。",
+      "revokeFailed": "APIトークンの無効化に失敗しました。",
+      "nameRequired": "名前を入力してください。",
+      "scopeRequired": "1つ以上のスコープを選択してください。"
     }
   }
 }

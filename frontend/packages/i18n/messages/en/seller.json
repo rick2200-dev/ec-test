@@ -12,7 +12,8 @@
     "inquiries": "Inquiries",
     "sales": "Sales & Payouts",
     "subscription": "Plan",
-    "settings": "Settings"
+    "settings": "Settings",
+    "apiTokens": "API Tokens"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -150,6 +151,76 @@
       "open": "Open",
       "closed": "Closed",
       "columnLabel": "Status"
+    }
+  },
+  "apiTokens": {
+    "title": "API Tokens",
+    "description": "Issue and manage access tokens for programmatic API access. Tokens grant scoped access to your seller data — treat them like passwords.",
+    "newToken": "New token",
+    "loading": "Loading tokens...",
+    "empty": "No API tokens yet. Click \"New token\" to create your first one.",
+    "revoke": "Revoke",
+    "lastUsedNever": "Never",
+    "noExpiry": "No expiry",
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "scopeLabels": {
+      "products:read": "Read products",
+      "products:write": "Write products",
+      "orders:read": "Read orders",
+      "orders:write": "Write orders",
+      "inventory:read": "Read inventory",
+      "inventory:write": "Write inventory"
+    },
+    "table": {
+      "name": "Name",
+      "scopes": "Scopes",
+      "lastUsed": "Last used",
+      "created": "Created",
+      "expires": "Expires",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "create": {
+      "title": "Create API token",
+      "description": "Choose a descriptive name and select the minimum scopes this token will need. You can always revoke and re-issue later.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Inventory sync job",
+      "scopes": "Scopes",
+      "expiresAt": "Expires at (optional)",
+      "expiresAtHint": "Leave empty for no expiration. Short-lived tokens are safer for CI jobs.",
+      "cancel": "Cancel",
+      "submit": "Create token",
+      "submitting": "Creating..."
+    },
+    "reveal": {
+      "title": "Your new API token",
+      "description": "Paste it into your target system now — this is the only time you will see the plaintext.",
+      "plaintextLabel": "Token",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "dismiss": "I've saved it",
+      "warningTitle": "Copy this token now.",
+      "warningBody": "You will not be able to see it again. If you lose it, you must revoke this token and issue a new one."
+    },
+    "confirmRevoke": {
+      "title": "Revoke API token",
+      "description": "This immediately invalidates the token. Any scripts or integrations using it will start receiving 401 errors. This cannot be undone.",
+      "promptPrefix": "To confirm, type",
+      "promptSuffix": "below.",
+      "cancel": "Cancel",
+      "revoke": "Revoke token",
+      "revoking": "Revoking..."
+    },
+    "errors": {
+      "loadFailed": "Failed to load API tokens. Please refresh and try again.",
+      "createFailed": "Failed to create API token.",
+      "revokeFailed": "Failed to revoke API token.",
+      "nameRequired": "Name is required.",
+      "scopeRequired": "Select at least one scope."
     }
   }
 }
