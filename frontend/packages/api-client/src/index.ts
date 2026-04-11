@@ -23,15 +23,28 @@ export const API_BASE =
  * callers can branch on status (e.g. 403 → forbidden, 429 → rate
  * limited) without string-matching on the message. Always thrown from
  * `jsonOrThrow` on non-2xx responses.
+ *
+ * `code` holds the application-defined semantic error code when the
+ * backend attached one (e.g. "DUPLICATE_EMAIL", "INVALID_OTP"). It lets
+ * callers pick a display pattern for errors that share the same HTTP
+ * status — two 400s that need different UI. Undefined when the server
+ * did not set one, so legacy endpoints are unaffected.
  */
 export class ApiError extends Error {
   readonly status: number;
+  readonly code?: string;
   readonly body: unknown;
 
-  constructor(status: number, message: string, body: unknown = null) {
+  constructor(
+    status: number,
+    message: string,
+    body: unknown = null,
+    code?: string,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
     this.body = body;
   }
 }
@@ -56,18 +69,31 @@ export async function fetchAPI(
 
 /**
  * Parses a JSON response, throwing `ApiError` on non-2xx. Understands
- * the gateway's `{error, message}` envelope and also handles 204s by
- * returning `undefined` (cast to `T` — callers using `jsonOrThrow<void>`
- * get the expected behavior).
+ * the gateway's `{error, code, message}` envelope and also handles 204s
+ * by returning `undefined` (cast to `T` — callers using
+ * `jsonOrThrow<void>` get the expected behavior).
+ *
+ * When the body carries a `code` field, it is promoted onto the thrown
+ * `ApiError.code` so call sites can switch on it directly:
+ *
+ *     catch (e) {
+ *       if (e instanceof ApiError && e.code === "DUPLICATE_EMAIL") ...
+ *     }
  */
 export async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = "";
+    let code: string | undefined;
     let parsed: unknown = null;
     try {
       parsed = await res.json();
-      const body = parsed as { error?: string; message?: string };
+      const body = parsed as {
+        error?: string;
+        message?: string;
+        code?: string;
+      };
       detail = body.error ?? body.message ?? "";
+      code = body.code;
     } catch {
       // response wasn't JSON — fall back to status-based message
     }
@@ -75,6 +101,7 @@ export async function jsonOrThrow<T>(res: Response): Promise<T> {
       res.status,
       detail || `request failed: ${res.status}`,
       parsed,
+      code,
     );
   }
   if (res.status === 204) {

@@ -65,6 +65,46 @@ func TestError_AppError(t *testing.T) {
 	}
 }
 
+func TestError_AppErrorWithCode(t *testing.T) {
+	// Errors carrying a semantic Code should surface that code in the JSON
+	// body alongside the message, so clients can switch display patterns
+	// on codes like "DUPLICATE_EMAIL" without parsing human text.
+	w := httptest.NewRecorder()
+	httputil.Error(w, apperrors.BadRequest("email already registered").WithCode("DUPLICATE_EMAIL"))
+
+	res := w.Result()
+	if res.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected %d, got %d", http.StatusBadRequest, res.StatusCode)
+	}
+	var body map[string]string
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
+	if body["error"] != "email already registered" {
+		t.Errorf("unexpected error message: %q", body["error"])
+	}
+	if body["code"] != "DUPLICATE_EMAIL" {
+		t.Errorf("expected code=DUPLICATE_EMAIL, got %q", body["code"])
+	}
+}
+
+func TestError_AppErrorNoCodeOmitted(t *testing.T) {
+	// When no Code is attached, the `code` field must be absent (not an
+	// empty string). This pins the omitempty behavior so legacy handlers
+	// keep producing the exact same body they did before.
+	w := httptest.NewRecorder()
+	httputil.Error(w, apperrors.BadRequest("bad input"))
+
+	res := w.Result()
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
+	if _, present := body["code"]; present {
+		t.Errorf("expected no `code` field for uncoded error, got body=%v", body)
+	}
+}
+
 func TestError_GenericError(t *testing.T) {
 	w := httptest.NewRecorder()
 	httputil.Error(w, errors.New("some internal error"))
@@ -100,7 +140,7 @@ func TestDecode_NilBody(t *testing.T) {
 		t.Fatal("expected error for nil body")
 	}
 	var appErr *apperrors.AppError
-	if !errors.As(err, &appErr) || appErr.Code != http.StatusBadRequest {
+	if !errors.As(err, &appErr) || appErr.Status != http.StatusBadRequest {
 		t.Errorf("expected 400 AppError, got %v", err)
 	}
 }

@@ -23,9 +23,18 @@ func JSON(w http.ResponseWriter, status int, data any) {
 }
 
 // Error writes an error JSON response.
+//
+// When err is an *apperrors.AppError, the full struct is marshaled so any
+// application-defined Code (e.g. "DUPLICATE_EMAIL") reaches the client as
+// `{"error": "...", "code": "..."}`. Callers that did not set a code get
+// the legacy `{"error": "..."}` shape because Code is `omitempty`.
+//
+// Unwrapped (non-AppError) errors collapse to a generic 500 so internal
+// details never leak to the caller — callers who need a specific status
+// must produce an AppError.
 func Error(w http.ResponseWriter, err error) {
 	if appErr, ok := err.(*apperrors.AppError); ok {
-		JSON(w, appErr.Code, map[string]string{"error": appErr.Message})
+		JSON(w, appErr.Status, appErr)
 		return
 	}
 	JSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})

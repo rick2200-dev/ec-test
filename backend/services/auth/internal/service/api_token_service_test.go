@@ -221,8 +221,8 @@ func TestMapAPITokenError(t *testing.T) {
 			if !errors.As(got, &appErr) {
 				t.Fatalf("got %T, want *apperrors.AppError", got)
 			}
-			if appErr.Code != c.wantCode {
-				t.Errorf("Code = %d, want %d", appErr.Code, c.wantCode)
+			if appErr.Status != c.wantCode {
+				t.Errorf("Status = %d, want %d", appErr.Status, c.wantCode)
 			}
 		})
 	}
