@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -14,6 +15,13 @@ import (
 // limiter. We use miniredis rather than a real Redis because the Lua
 // script runs unchanged against it and keeping the test hermetic beats
 // adding a docker dependency for `go test`.
+//
+// The limiter's clock is pinned to a fixed wall time so that tests
+// cannot accidentally straddle a second boundary under heavy CI load —
+// the sliding window is second-keyed, and without pinning a slow tick
+// flips the test into the next bucket and flakes. Each call to this
+// helper gets a fresh uuid-namespaced set of buckets, so tests remain
+// mutually isolated even though they share a clock.
 func newTestLimiter(t *testing.T, rps, burst int) *Limiter { //nolint:unparam
 	t.Helper()
 	srv := miniredis.RunT(t)
@@ -21,7 +29,13 @@ func newTestLimiter(t *testing.T, rps, burst int) *Limiter { //nolint:unparam
 	t.Cleanup(func() { _ = client.Close() })
 	// pkgredis.Client is a type alias for goredis.Client so *goredis.Client
 	// satisfies the limiter's *pkgredis.Client parameter directly.
-	return NewLimiter(client, rps, burst)
+	l := NewLimiter(client, rps, burst)
+	// Freeze the clock at a deterministic wall time (aligned on a
+	// second boundary so elapsed_ms = 0 and the previous bucket's
+	// weight is 1.0 — keeps arithmetic predictable for expectations).
+	fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	l.now = func() time.Time { return fixed }
+	return l
 }
 
 // runRequests fires n sequential requests through the limiter and

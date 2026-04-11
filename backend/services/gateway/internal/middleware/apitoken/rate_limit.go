@@ -68,11 +68,16 @@ return {1, weighted + new_curr}
 // to API-token requests; JWT requests pass through untouched. Per-token
 // RPS/burst overrides come from apitoken.Context (0 = use the defaults
 // configured on the limiter).
+//
+// now is injectable so tests can pin a fixed timestamp — the sliding
+// window is second-keyed, and production callers should leave it nil to
+// fall back to time.Now.
 type Limiter struct {
-	rdb     *pkgredis.Client
-	script  *goredis.Script
-	defRPS  int
+	rdb      *pkgredis.Client
+	script   *goredis.Script
+	defRPS   int
 	defBurst int
+	now      func() time.Time
 }
 
 // NewLimiter builds a Limiter. defRPS and defBurst are the fallbacks used
@@ -87,6 +92,7 @@ func NewLimiter(rdb *pkgredis.Client, defRPS, defBurst int) *Limiter {
 		script:   goredis.NewScript(rateLimitScript),
 		defRPS:   defRPS,
 		defBurst: defBurst,
+		now:      time.Now,
 	}
 }
 
@@ -141,7 +147,7 @@ func (l *Limiter) Middleware(next http.Handler) http.Handler {
 // independent windows; aborting an over-limit call on one token does not
 // affect another token from the same seller.
 func (l *Limiter) check(ctx context.Context, tokenID string, rps, burst int) (bool, error) {
-	now := time.Now()
+	now := l.now()
 	sec := now.Unix()
 	elapsedMs := now.UnixMilli() - (sec * 1000)
 
