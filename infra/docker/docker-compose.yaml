@@ -18,10 +18,16 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification:8087
       CART_SERVICE_URL: http://cart:8088
       INQUIRY_SERVICE_URL: http://inquiry:8090
+      # DB 8 is the API-token rate limiter's namespace; cart owns DB 7.
+      REDIS_URL: redis://redis:6379/8
+      # Must match auth service API_TOKEN_PREFIX.
+      API_TOKEN_PREFIX: sk_live_
     depends_on:
       auth:
         condition: service_healthy
       catalog:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - backend

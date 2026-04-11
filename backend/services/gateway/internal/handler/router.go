@@ -7,16 +7,23 @@ import (
 
 	pkgauthz "github.com/Riku-KANO/ec-test/pkg/authz"
 	pkgmw "github.com/Riku-KANO/ec-test/pkg/middleware"
+	pkgredis "github.com/Riku-KANO/ec-test/pkg/redis"
 	gwauthz "github.com/Riku-KANO/ec-test/services/gateway/internal/authz"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 	gwmw "github.com/Riku-KANO/ec-test/services/gateway/internal/middleware"
+	"github.com/Riku-KANO/ec-test/services/gateway/internal/middleware/apitoken"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
 
 // NewRouter builds and returns the top-level chi router with all middleware
 // and route groups registered. ctx controls the lifetime of background tasks
 // such as JWKS key refresh; cancel it during service shutdown.
-func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi.Mux {
+//
+// redisClient is used by the API-token rate limiter. A nil client is
+// treated as a startup error in cmd/server/main.go (we fail-fast rather
+// than silently degrade) so by the time this function runs it is
+// guaranteed to be non-nil.
+func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redisClient *pkgredis.Client) *chi.Mux {
 	r := chi.NewRouter()
 
 	// --- Global middleware ---
@@ -42,6 +49,16 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services) *chi
 	// is shared across requests.
 	internalAuthClient := svc.Auth.WithHeader("X-Internal-Token", cfg.AuthInternalToken)
 	rbacLoader := gwauthz.NewLoader(internalAuthClient)
+
+	// --- API token loader + rate limiter (dark in this PR). Constructed
+	// here so the initialization path is already validated by `go build`
+	// and docker-compose. The next PR attaches them to /api/v1/seller by
+	// replacing `_ = apiTokenLoader; _ = apiTokenLimiter` below with real
+	// sr.Use(...) calls inside the seller subtree.
+	apiTokenLoader := apitoken.NewLoader(internalAuthClient, cfg.APITokenCacheTTL)
+	apiTokenLimiter := apitoken.NewLimiter(redisClient, cfg.APITokenRPSDefault, cfg.APITokenBurstDefault)
+	_ = apiTokenLoader
+	_ = apiTokenLimiter
 
 	// --- Authenticated API routes ---
 	r.Route("/api/v1", func(api chi.Router) {
