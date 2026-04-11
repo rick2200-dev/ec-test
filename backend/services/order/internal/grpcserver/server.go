@@ -25,6 +25,12 @@ func NewServer(svc *service.OrderService) *Server {
 }
 
 // CreateOrder creates a new order with Stripe PaymentIntent.
+//
+// The single-seller CreateOrder RPC is marked deprecated in the proto file;
+// this server still implements it for backwards compatibility with existing
+// clients. New callers should use CreateCheckout instead.
+//
+//nolint:staticcheck // SA1019: implementing deprecated RPC for backwards compatibility
 func (s *Server) CreateOrder(ctx context.Context, req *orderv1.CreateOrderRequest) (*orderv1.CreateOrderResponse, error) {
 	tenantID, err := uuid.Parse(req.GetTenantId())
 	if err != nil {

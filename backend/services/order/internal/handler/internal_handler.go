@@ -108,7 +108,7 @@ func (h *InternalHandler) CreateCheckout(w http.ResponseWriter, r *http.Request)
 
 	orderIDs := make([]string, 0, len(result.Orders))
 	for i := range result.Orders {
-		orderIDs = append(orderIDs, result.Orders[i].Order.ID.String())
+		orderIDs = append(orderIDs, result.Orders[i].ID.String())
 	}
 
 	httputil.JSON(w, http.StatusCreated, checkoutResponse{

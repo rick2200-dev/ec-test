@@ -41,9 +41,14 @@ const config: StorybookConfig = {
     // Defense-in-depth: stub out `process.env` so any stray Next.js-style
     // env access in transitively-bundled modules doesn't crash the browser
     // bundle. `api.ts` falls back to a default URL when this is undefined.
+    //
+    // The value must be an esbuild-compatible JSON literal. `JSON.stringify({})`
+    // produces the string `"{}"`, which esbuild accepts as an empty-object
+    // literal. Raw `"({})"` is rejected by newer esbuild versions with
+    // `Invalid define value (must be an entity name or JS literal)`.
     config.define = {
       ...config.define,
-      "process.env": "({})",
+      "process.env": JSON.stringify({}),
     };
     // Force the automatic JSX runtime in esbuild. The shared monorepo
     // tsconfig sets `jsx: "preserve"` for Next.js, which would otherwise

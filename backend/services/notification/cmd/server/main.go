@@ -26,7 +26,9 @@ func main() {
 
 	// Set emulator host if configured.
 	if cfg.PubSubEmulatorHost != "" {
-		os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost)
+		if err := os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost); err != nil {
+			slog.Warn("failed to set PUBSUB_EMULATOR_HOST", "error", err)
+		}
 	}
 
 	// Email sender (log-only for MVP).
@@ -41,7 +43,11 @@ func main() {
 		slog.Error("failed to create pubsub subscriber", "error", err)
 		os.Exit(1)
 	}
-	defer sub.Close()
+	defer func() {
+		if err := sub.Close(); err != nil {
+			slog.Warn("failed to close pubsub subscriber", "error", err)
+		}
+	}()
 
 	slog.Info("connected to pubsub", "project_id", cfg.PubSubProjectID)
 

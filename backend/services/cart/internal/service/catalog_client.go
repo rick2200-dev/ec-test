@@ -57,7 +57,7 @@ func (c *CatalogClient) LookupSKU(ctx context.Context, tenantID, skuID uuid.UUID
 	if err != nil {
 		return nil, apperrors.Internal("catalog service unreachable", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, apperrors.NotFound(fmt.Sprintf("sku not found: %s", skuID))

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState, type ComponentProps } from "react";
-import { ProductFormPresenter } from "./ProductForm.presenter";
+import { useState } from "react";
+import { ProductFormPresenter, type ProductFormPresenterProps } from "./ProductForm.presenter";
 
 const meta: Meta<typeof ProductFormPresenter> = {
   title: "Seller/ProductForm",
@@ -62,7 +62,7 @@ export const Filled: Story = {
   },
 };
 
-function InteractiveProductForm(args: ComponentProps<typeof ProductFormPresenter>) {
+function InteractiveStory(args: ProductFormPresenterProps) {
   const [name, setName] = useState(args.name);
   const [slug, setSlug] = useState(args.slug);
   const [description, setDescription] = useState(args.description);
@@ -86,7 +86,7 @@ function InteractiveProductForm(args: ComponentProps<typeof ProductFormPresenter
 }
 
 export const Interactive: Story = {
-  render: (args) => <InteractiveProductForm {...args} />,
+  render: (args) => <InteractiveStory {...args} />,
   args: {
     name: "",
     slug: "",

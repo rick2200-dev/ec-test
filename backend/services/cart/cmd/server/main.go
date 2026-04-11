@@ -34,7 +34,11 @@ func main() {
 		slog.Error("failed to connect to redis", "error", err)
 		os.Exit(1)
 	}
-	defer redisClient.Close()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			slog.Warn("failed to close redis client", "error", err)
+		}
+	}()
 
 	slog.Info("connected to redis", "url", cfg.RedisURL)
 
@@ -46,7 +50,11 @@ func main() {
 			slog.Warn("failed to create pubsub publisher, events will not be published", "error", pubErr)
 		} else {
 			publisher = pub
-			defer pub.Close()
+			defer func() {
+				if err := pub.Close(); err != nil {
+					slog.Warn("failed to close pubsub publisher", "error", err)
+				}
+			}()
 			slog.Info("pubsub publisher created", "project_id", cfg.PubSubProjectID)
 		}
 	} else {

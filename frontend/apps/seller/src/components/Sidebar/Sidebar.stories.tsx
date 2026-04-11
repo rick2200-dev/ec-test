@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState, type ComponentProps } from "react";
-import { SidebarPresenter, type SidebarNavItem } from "./Sidebar.presenter";
+import { useState } from "react";
+import {
+  SidebarPresenter,
+  type SidebarNavItem,
+  type SidebarPresenterProps,
+} from "./Sidebar.presenter";
 
 const meta: Meta<typeof SidebarPresenter> = {
   title: "Seller/Sidebar",
@@ -55,7 +59,7 @@ export const ProductsActive: Story = {
   },
 };
 
-function InteractiveSidebar(args: ComponentProps<typeof SidebarPresenter>) {
+function InteractiveStory(args: SidebarPresenterProps) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <SidebarPresenter
@@ -67,6 +71,6 @@ function InteractiveSidebar(args: ComponentProps<typeof SidebarPresenter>) {
 }
 
 export const Interactive: Story = {
-  render: (args) => <InteractiveSidebar {...args} />,
+  render: (args) => <InteractiveStory {...args} />,
   args: { ...Default.args },
 };

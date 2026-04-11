@@ -22,6 +22,7 @@ jobs:
           filters: |
             gateway: ['backend/services/gateway/**', 'backend/pkg/**']
             auth: ['backend/services/auth/**', 'backend/pkg/**']
+            cart: ['backend/services/cart/**', 'backend/pkg/**']
             catalog: ['backend/services/catalog/**', 'backend/pkg/**']
             inventory: ['backend/services/inventory/**', 'backend/pkg/**']
             order: ['backend/services/order/**', 'backend/pkg/**']

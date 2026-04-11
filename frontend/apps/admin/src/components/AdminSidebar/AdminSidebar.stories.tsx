@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState, type ComponentProps } from "react";
-import { AdminSidebarPresenter, type AdminSidebarNavItem } from "./AdminSidebar.presenter";
+import { useState } from "react";
+import {
+  AdminSidebarPresenter,
+  type AdminSidebarNavItem,
+  type AdminSidebarPresenterProps,
+} from "./AdminSidebar.presenter";
 
 const meta: Meta<typeof AdminSidebarPresenter> = {
   title: "Admin/AdminSidebar",
@@ -52,7 +56,7 @@ export const SellersActive: Story = {
   },
 };
 
-function InteractiveAdminSidebar(args: ComponentProps<typeof AdminSidebarPresenter>) {
+function InteractiveStory(args: AdminSidebarPresenterProps) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <AdminSidebarPresenter
@@ -64,6 +68,6 @@ function InteractiveAdminSidebar(args: ComponentProps<typeof AdminSidebarPresent
 }
 
 export const Interactive: Story = {
-  render: (args) => <InteractiveAdminSidebar {...args} />,
+  render: (args) => <InteractiveStory {...args} />,
   args: { ...Default.args },
 };

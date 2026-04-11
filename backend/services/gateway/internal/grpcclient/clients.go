@@ -37,14 +37,14 @@ func NewGRPCClients(cfg config.Config) (*GRPCClients, error) {
 
 	inventoryConn, err := grpc.NewClient(cfg.InventoryGRPCAddr, opts...)
 	if err != nil {
-		catalogConn.Close()
+		_ = catalogConn.Close()
 		return nil, fmt.Errorf("failed to connect to inventory gRPC: %w", err)
 	}
 
 	orderConn, err := grpc.NewClient(cfg.OrderGRPCAddr, opts...)
 	if err != nil {
-		catalogConn.Close()
-		inventoryConn.Close()
+		_ = catalogConn.Close()
+		_ = inventoryConn.Close()
 		return nil, fmt.Errorf("failed to connect to order gRPC: %w", err)
 	}
 
@@ -64,15 +64,21 @@ func NewGRPCClients(cfg config.Config) (*GRPCClients, error) {
 	}, nil
 }
 
-// Close closes all gRPC connections.
+// Close closes all gRPC connections, logging any errors.
 func (c *GRPCClients) Close() {
 	if c.catalogConn != nil {
-		c.catalogConn.Close()
+		if err := c.catalogConn.Close(); err != nil {
+			slog.Warn("failed to close catalog gRPC connection", "error", err)
+		}
 	}
 	if c.inventoryConn != nil {
-		c.inventoryConn.Close()
+		if err := c.inventoryConn.Close(); err != nil {
+			slog.Warn("failed to close inventory gRPC connection", "error", err)
+		}
 	}
 	if c.orderConn != nil {
-		c.orderConn.Close()
+		if err := c.orderConn.Close(); err != nil {
+			slog.Warn("failed to close order gRPC connection", "error", err)
+		}
 	}
 }
