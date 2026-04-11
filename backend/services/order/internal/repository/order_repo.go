@@ -173,6 +173,58 @@ func (r *OrderRepository) GetByID(ctx context.Context, tenantID, orderID uuid.UU
 	return &result, nil
 }
 
+// PurchaseSKURecord is the minimal information returned by HasPurchasedSKU when
+// a matching purchase exists. It carries the earliest paid order plus the
+// product/SKU snapshot captured on that order line so callers (inquiry
+// service) can seed a new thread without a separate catalog lookup.
+type PurchaseSKURecord struct {
+	OrderID     uuid.UUID
+	ProductName string
+	SKUCode     string
+}
+
+// HasPurchasedSKU reports whether the given buyer has a paid-or-later order
+// with the given seller containing the given SKU. Returns the earliest such
+// order's id plus the product/sku name snapshot from the order line. Returns
+// (nil, nil) when no matching purchase exists. Statuses considered "purchased"
+// are paid, processing, shipped, delivered, and completed.
+func (r *OrderRepository) HasPurchasedSKU(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*PurchaseSKURecord, error) {
+	var rec PurchaseSKURecord
+	var found bool
+
+	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx,
+			`SELECT o.id, ol.product_name, ol.sku_code
+			   FROM order_svc.orders o
+			   JOIN order_svc.order_lines ol
+			        ON ol.order_id = o.id AND ol.tenant_id = o.tenant_id
+			  WHERE o.tenant_id      = $1
+			    AND o.buyer_auth0_id = $2
+			    AND o.seller_id      = $3
+			    AND ol.sku_id        = $4
+			    AND o.status IN ('paid','processing','shipped','delivered','completed')
+			  ORDER BY o.created_at ASC
+			  LIMIT 1`,
+			tenantID, buyerAuth0ID, sellerID, skuID,
+		).Scan(&rec.OrderID, &rec.ProductName, &rec.SKUCode)
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("check purchased sku: %w", err)
+	}
+	if !found {
+		return nil, nil
+	}
+	return &rec, nil
+}
+
 // ListByBuyer returns paginated orders for a specific buyer.
 func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error) {
 	var orders []domain.Order

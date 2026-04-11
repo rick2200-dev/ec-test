@@ -54,6 +54,23 @@ var orderShippedTmpl = template.Must(template.New("order_shipped").Parse(`
 </html>
 `))
 
+var inquiryNewMessageTmpl = template.Must(template.New("inquiry_new_message").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>新着メッセージのお知らせ</h2>
+<p>{{.RecipientLabel}} 様</p>
+<p>{{.SenderLabel}} から新着メッセージがあります。</p>
+<table>
+  <tr><td><strong>件名:</strong></td><td>{{.Subject}}</td></tr>
+  <tr><td><strong>商品:</strong></td><td>{{.ProductName}}</td></tr>
+</table>
+<blockquote>{{.BodyPreview}}</blockquote>
+<p>詳細を確認するには、お問い合わせスレッドを開いてください。</p>
+</body>
+</html>
+`))
+
 var lowStockAlertTmpl = template.Must(template.New("low_stock").Parse(`
 <!DOCTYPE html>
 <html>
@@ -104,6 +121,21 @@ func OrderShippedNotification(orderID, buyerName string) (subject, body string) 
 		"BuyerName": buyerName,
 	}
 	body = render(orderShippedTmpl, data)
+	return subject, body
+}
+
+// InquiryNewMessageNotification generates an email notifying the recipient
+// that a new message has been posted on a buyer↔seller inquiry thread.
+func InquiryNewMessageNotification(recipientLabel, senderLabel, subjectText, productName, bodyPreview string) (subject, body string) {
+	subject = fmt.Sprintf("【お問い合わせ】新着メッセージ: %s", subjectText)
+	data := map[string]any{
+		"RecipientLabel": recipientLabel,
+		"SenderLabel":    senderLabel,
+		"Subject":        subjectText,
+		"ProductName":    productName,
+		"BodyPreview":    bodyPreview,
+	}
+	body = render(inquiryNewMessageTmpl, data)
 	return subject, body
 }
 

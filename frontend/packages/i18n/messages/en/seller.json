@@ -9,6 +9,7 @@
     "products": "Products",
     "orders": "Orders",
     "inventory": "Inventory",
+    "inquiries": "Inquiries",
     "sales": "Sales & Payouts",
     "subscription": "Plan",
     "settings": "Settings"
@@ -122,5 +123,33 @@
   },
   "store": {
     "sampleStore": "Sample Store"
+  },
+  "inquiries": {
+    "title": "Inquiries",
+    "description": "Review messages from buyers",
+    "empty": "No inquiries yet",
+    "reply": "Reply",
+    "send": "Send",
+    "sending": "Sending...",
+    "close": "Close thread",
+    "closed": "This thread has been closed",
+    "body": "Message",
+    "bodyPlaceholder": "Write your reply to the buyer",
+    "product": "Product",
+    "buyer": "Buyer",
+    "lastMessageAt": "Last message",
+    "unread": "Unread",
+    "backToList": "Back to list",
+    "errorGeneric": "A network error occurred. Please try again later.",
+    "sender": {
+      "you": "You",
+      "buyer": "Buyer",
+      "seller": "Seller"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed",
+      "columnLabel": "Status"
+    }
   }
 }
