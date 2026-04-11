@@ -17,6 +17,7 @@ type Config struct {
 	NotificationServiceURL string
 	RecommendServiceURL    string
 	CartServiceURL         string
+	InquiryServiceURL      string
 
 	// JWT / Auth0 settings
 	JWTIssuer   string
@@ -49,6 +50,7 @@ func Load() Config {
 		NotificationServiceURL: getEnv("NOTIFICATION_SERVICE_URL", "http://localhost:8086"),
 		RecommendServiceURL:    getEnv("RECOMMEND_SERVICE_URL", "http://localhost:8087"),
 		CartServiceURL:         getEnv("CART_SERVICE_URL", "http://localhost:8088"),
+		InquiryServiceURL:      getEnv("INQUIRY_SERVICE_URL", "http://localhost:8090"),
 
 		JWTIssuer:   getEnv("JWT_ISSUER", "https://ecmarket.example.com/"),
 		JWTAudience: getEnv("JWT_AUDIENCE", "https://api.ecmarket.example.com"),

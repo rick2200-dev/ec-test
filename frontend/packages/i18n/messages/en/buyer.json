@@ -51,5 +51,59 @@
     "contact": "Contact Us",
     "terms": "Terms of Service",
     "copyright": "\u00a9 2025 EC Marketplace. All rights reserved."
+  },
+  "inquiries": {
+    "title": "Inquiries",
+    "description": "Threads you have started with sellers about products you purchased",
+    "empty": "You have no inquiries yet",
+    "new": "Contact seller",
+    "subject": "Subject",
+    "subjectPlaceholder": "e.g., About shipping date",
+    "body": "Message",
+    "bodyPlaceholder": "What would you like to ask the seller?",
+    "initialBody": "First message",
+    "send": "Send",
+    "sending": "Sending...",
+    "cancel": "Cancel",
+    "reply": "Reply",
+    "onlyPurchased": "You can only contact sellers of items you have purchased",
+    "product": "Product",
+    "seller": "Seller",
+    "lastMessageAt": "Last message",
+    "errorForbidden": "You cannot contact the seller of this item",
+    "errorGeneric": "A network error occurred. Please try again later.",
+    "unread": "Unread",
+    "unreadCount": "{count} unread",
+    "backToList": "Back to list",
+    "threadClosed": "This thread has been closed",
+    "sender": {
+      "you": "You",
+      "buyer": "Buyer",
+      "seller": "Seller"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    }
+  },
+  "orders": {
+    "title": "Order History",
+    "description": "Review your past orders",
+    "empty": "You have no orders yet",
+    "orderId": "Order ID",
+    "orderedAt": "Ordered",
+    "total": "Total",
+    "status": "Status",
+    "viewDetail": "Details",
+    "products": "Items",
+    "contactSeller": "Contact seller",
+    "purchaseRequiredNotice": "You can only contact sellers after an order is paid",
+    "status_pending": "Pending payment",
+    "status_paid": "Paid",
+    "status_processing": "Processing",
+    "status_shipped": "Shipped",
+    "status_delivered": "Delivered",
+    "status_completed": "Completed",
+    "status_cancelled": "Cancelled"
   }
 }

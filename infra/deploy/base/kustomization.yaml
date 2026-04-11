@@ -13,6 +13,7 @@ resources:
   - search/
   - recommend/
   - notification/
+  - inquiry/
 
 commonLabels:
   app.kubernetes.io/part-of: ec-marketplace

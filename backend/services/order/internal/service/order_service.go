@@ -434,6 +434,39 @@ func getSellerStripeAccountID(_, sellerID uuid.UUID) string {
 	return "acct_stub_" + sellerID.String()
 }
 
+// PurchaseCheckResult is returned by CheckPurchase when the caller is asking
+// whether a buyer has purchased a specific SKU from a specific seller.
+type PurchaseCheckResult struct {
+	Purchased       bool      `json:"purchased"`
+	EarliestOrderID uuid.UUID `json:"earliest_order_id,omitempty"`
+	ProductName     string    `json:"product_name,omitempty"`
+	SKUCode         string    `json:"sku_code,omitempty"`
+}
+
+// CheckPurchase verifies whether the given buyer has a paid-or-later order
+// containing the given SKU from the given seller. Used by the inquiry service
+// before allowing a buyer to open a new thread. Failure to find a matching
+// purchase is NOT an error — it returns Purchased=false so the caller can
+// respond with 403 to the buyer.
+func (s *OrderService) CheckPurchase(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*PurchaseCheckResult, error) {
+	if buyerAuth0ID == "" {
+		return nil, apperrors.BadRequest("buyer_auth0_id is required")
+	}
+	rec, err := s.orderRepo.HasPurchasedSKU(ctx, tenantID, buyerAuth0ID, sellerID, skuID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to check purchase", err)
+	}
+	if rec == nil {
+		return &PurchaseCheckResult{Purchased: false}, nil
+	}
+	return &PurchaseCheckResult{
+		Purchased:       true,
+		EarliestOrderID: rec.OrderID,
+		ProductName:     rec.ProductName,
+		SKUCode:         rec.SKUCode,
+	}, nil
+}
+
 // GetOrder retrieves an order with its lines.
 func (s *OrderService) GetOrder(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error) {
 	order, err := s.orderRepo.GetByID(ctx, tenantID, orderID)

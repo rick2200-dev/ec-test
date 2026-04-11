@@ -30,7 +30,65 @@ func NewInternalHandler(svc *service.OrderService) *InternalHandler {
 func (h *InternalHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/checkouts", h.CreateCheckout)
+	r.Post("/purchase-check", h.CheckPurchase)
 	return r
+}
+
+// purchaseCheckRequest is the request body for POST /internal/purchase-check.
+// Used by the inquiry service to verify that a buyer has purchased a specific
+// SKU from a specific seller before allowing them to open an inquiry thread.
+type purchaseCheckRequest struct {
+	BuyerAuth0ID string    `json:"buyer_auth0_id"`
+	SellerID     uuid.UUID `json:"seller_id"`
+	SKUID        uuid.UUID `json:"sku_id"`
+}
+
+// purchaseCheckResponse is the response body for POST /internal/purchase-check.
+type purchaseCheckResponse struct {
+	Purchased       bool      `json:"purchased"`
+	EarliestOrderID uuid.UUID `json:"earliest_order_id,omitempty"`
+	ProductName     string    `json:"product_name,omitempty"`
+	SKUCode         string    `json:"sku_code,omitempty"`
+}
+
+// CheckPurchase handles POST /internal/purchase-check.
+func (h *InternalHandler) CheckPurchase(w http.ResponseWriter, r *http.Request) {
+	tenantID, err := tenant.TenantID(r.Context())
+	if err != nil {
+		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		return
+	}
+
+	var req purchaseCheckRequest
+	if err := httputil.Decode(r, &req); err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	if req.BuyerAuth0ID == "" {
+		httputil.Error(w, apperrors.BadRequest("buyer_auth0_id is required"))
+		return
+	}
+	if req.SellerID == uuid.Nil {
+		httputil.Error(w, apperrors.BadRequest("seller_id is required"))
+		return
+	}
+	if req.SKUID == uuid.Nil {
+		httputil.Error(w, apperrors.BadRequest("sku_id is required"))
+		return
+	}
+
+	result, err := h.svc.CheckPurchase(r.Context(), tenantID, req.BuyerAuth0ID, req.SellerID, req.SKUID)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, purchaseCheckResponse{
+		Purchased:       result.Purchased,
+		EarliestOrderID: result.EarliestOrderID,
+		ProductName:     result.ProductName,
+		SKUCode:         result.SKUCode,
+	})
 }
 
 // checkoutRequest is the request body for POST /internal/checkouts.
