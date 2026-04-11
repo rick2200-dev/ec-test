@@ -10,6 +10,7 @@
     "orders": "注文管理",
     "inventory": "在庫管理",
     "inquiries": "お問い合わせ",
+    "notifications": "通知",
     "sales": "売上・入金",
     "subscription": "プラン管理",
     "settings": "設定",
@@ -124,6 +125,31 @@
   },
   "store": {
     "sampleStore": "サンプルストア"
+  },
+  "notifications": {
+    "title": "通知",
+    "description": "注文・在庫・問い合わせに関するお知らせを確認できます",
+    "empty": "通知はまだありません",
+    "markAllRead": "すべて既読にする",
+    "unreadBadge": "未読",
+    "filter": {
+      "all": "すべて",
+      "unread": "未読のみ"
+    },
+    "type": {
+      "orderCreated": "新しい注文が入りました",
+      "orderPaid": "注文の支払いが完了しました",
+      "inventoryLowStock": "在庫が少なくなっています",
+      "inquiryReceived": "購入者から問い合わせが届きました",
+      "sellerApproved": "出店が承認されました"
+    },
+    "body": {
+      "orderCreated": "注文 #{orderId} が作成されました。金額: {amount}",
+      "orderPaid": "注文 #{orderId} の支払いが確認されました。準備を開始してください。",
+      "inventoryLowStock": "SKU {sku}（{productName}）の在庫が {quantity} 個になりました。",
+      "inquiryReceived": "購入者から「{subject}」について問い合わせがあります。",
+      "sellerApproved": "出店申請が承認されました。商品登録を開始できます。"
+    }
   },
   "inquiries": {
     "title": "お問い合わせ",

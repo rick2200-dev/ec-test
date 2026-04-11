@@ -88,6 +88,29 @@
       "closed": "完了"
     }
   },
+  "notifications": {
+    "pageTitle": "通知",
+    "description": "注文や問い合わせに関するお知らせの一覧です",
+    "empty": "通知はまだありません",
+    "markAllRead": "すべて既読にする",
+    "unreadBadge": "未読",
+    "filter": {
+      "all": "すべて",
+      "unread": "未読のみ"
+    },
+    "type": {
+      "orderPaid": "注文の支払いが完了しました",
+      "orderShipped": "商品が発送されました",
+      "orderDelivered": "商品が配達されました",
+      "inquiryReplied": "出品者から返信があります"
+    },
+    "body": {
+      "orderPaid": "ご注文 #{orderId} の支払いが確認されました。",
+      "orderShipped": "ご注文 #{orderId} の商品を発送しました。追跡番号: {tracking}",
+      "orderDelivered": "ご注文 #{orderId} の商品がお届け先に到着しました。",
+      "inquiryReplied": "「{subject}」のスレッドに新しい返信があります。"
+    }
+  },
   "orders": {
     "pageTitle": "購入履歴",
     "empty": "まだ購入履歴はありません",

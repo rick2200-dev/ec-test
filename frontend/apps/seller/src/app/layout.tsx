@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -34,7 +35,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <h1 className="text-lg font-semibold text-text-primary">{t("meta.title")}</h1>
                 <div className="flex items-center gap-4">
                   {/* Notification bell */}
-                  <button
+                  <Link
+                    href="/notifications"
                     className="relative p-2 rounded-lg hover:bg-surface-hover transition-colors"
                     aria-label={t("a11y.notifications")}
                   >
@@ -53,7 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       />
                     </svg>
                     <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full"></span>
-                  </button>
+                  </Link>
                   {/* Seller name */}
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-sm font-medium">

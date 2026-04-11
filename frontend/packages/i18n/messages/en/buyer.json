@@ -88,6 +88,29 @@
       "closed": "Closed"
     }
   },
+  "notifications": {
+    "pageTitle": "Notifications",
+    "description": "Updates about your orders and inquiries",
+    "empty": "You have no notifications yet",
+    "markAllRead": "Mark all as read",
+    "unreadBadge": "Unread",
+    "filter": {
+      "all": "All",
+      "unread": "Unread only"
+    },
+    "type": {
+      "orderPaid": "Payment confirmed",
+      "orderShipped": "Your order has shipped",
+      "orderDelivered": "Your order has been delivered",
+      "inquiryReplied": "New reply from seller"
+    },
+    "body": {
+      "orderPaid": "Your payment for order #{orderId} has been confirmed.",
+      "orderShipped": "Your order #{orderId} has shipped. Tracking number: {tracking}",
+      "orderDelivered": "Your order #{orderId} has arrived at its destination.",
+      "inquiryReplied": "There is a new reply in the thread \"{subject}\"."
+    }
+  },
   "orders": {
     "pageTitle": "Purchase history",
     "empty": "You haven't placed any orders yet",

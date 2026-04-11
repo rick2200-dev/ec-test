@@ -21,6 +21,7 @@ const navItemDefs: NavItemDef[] = [
   { href: "/orders", labelKey: "sidebar.orders", icon: "shopping-cart" },
   { href: "/inventory", labelKey: "sidebar.inventory", icon: "warehouse" },
   { href: "/inquiries", labelKey: "sidebar.inquiries", icon: "mail" },
+  { href: "/notifications", labelKey: "sidebar.notifications", icon: "bell" },
   { href: "/sales", labelKey: "sidebar.sales", icon: "trending-up" },
   { href: "/subscription", labelKey: "sidebar.subscription", icon: "credit-card" },
   // API Tokens lives under /settings so a future settings landing page

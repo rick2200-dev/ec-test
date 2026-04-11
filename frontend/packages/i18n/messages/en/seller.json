@@ -10,6 +10,7 @@
     "orders": "Orders",
     "inventory": "Inventory",
     "inquiries": "Inquiries",
+    "notifications": "Notifications",
     "sales": "Sales & Payouts",
     "subscription": "Plan",
     "settings": "Settings",
@@ -124,6 +125,31 @@
   },
   "store": {
     "sampleStore": "Sample Store"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Stay on top of orders, inventory, and buyer inquiries",
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all as read",
+    "unreadBadge": "Unread",
+    "filter": {
+      "all": "All",
+      "unread": "Unread only"
+    },
+    "type": {
+      "orderCreated": "New order received",
+      "orderPaid": "Payment confirmed",
+      "inventoryLowStock": "Low stock warning",
+      "inquiryReceived": "New inquiry from buyer",
+      "sellerApproved": "Your store was approved"
+    },
+    "body": {
+      "orderCreated": "Order #{orderId} was placed. Amount: {amount}",
+      "orderPaid": "Payment for order #{orderId} is confirmed. Start preparing the shipment.",
+      "inventoryLowStock": "SKU {sku} ({productName}) stock is down to {quantity} units.",
+      "inquiryReceived": "A buyer is asking about \"{subject}\".",
+      "sellerApproved": "Your store application has been approved. You can start listing products now."
+    }
   },
   "inquiries": {
     "title": "Inquiries",
