@@ -152,6 +152,18 @@ func (h *APITokenHandler) Get(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, t)
 }
 
+// revokeAPITokenResponse surfaces the revoked token's (prefix, lookup)
+// pair so the caller — typically the gateway's SellerAPITokenHandler —
+// can synchronously evict its lookup cache. Without this, a revoked
+// token remains usable for up to the gateway cache TTL (30 s) after the
+// 200 OK comes back. The lookup is low-entropy and identifies an
+// already-revoked row, so echoing it is not a disclosure risk.
+type revokeAPITokenResponse struct {
+	Status      string `json:"status"`
+	TokenPrefix string `json:"token_prefix"`
+	TokenLookup string `json:"token_lookup"`
+}
+
 // Revoke handles DELETE /sellers/{sellerID}/api-tokens/{id}.
 func (h *APITokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 	tenantID, sellerID, ok := h.parseContext(w, r)
@@ -163,9 +175,14 @@ func (h *APITokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid token id"})
 		return
 	}
-	if err := h.svc.RevokeAPIToken(r.Context(), tenantID, sellerID, id); err != nil {
+	prefix, lookup, err := h.svc.RevokeAPIToken(r.Context(), tenantID, sellerID, id)
+	if err != nil {
 		httputil.Error(w, err)
 		return
 	}
-	httputil.JSON(w, http.StatusOK, map[string]string{"status": "revoked"})
+	httputil.JSON(w, http.StatusOK, revokeAPITokenResponse{
+		Status:      "revoked",
+		TokenPrefix: prefix,
+		TokenLookup: lookup,
+	})
 }

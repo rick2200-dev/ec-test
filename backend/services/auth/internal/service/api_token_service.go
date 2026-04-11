@@ -185,20 +185,28 @@ func (s *AuthService) GetAPIToken(ctx context.Context, tenantID, sellerID, id uu
 
 // RevokeAPIToken marks a token as revoked. Only owners may call this. The
 // call is idempotent: revoking an already-revoked token returns success.
-func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) error {
+//
+// Returns the (prefix, lookup) pair of the revoked token so upstream
+// callers — specifically the gateway — can evict their lookup cache
+// synchronously instead of waiting for the short TTL. This is a
+// deliberate leak of persistence-layer fields into the service signature:
+// the alternative (a second round-trip from the handler) would race the
+// eviction against a concurrent Load from another gateway request and
+// defeat the purpose.
+func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (prefix, lookup string, err error) {
 	tc, err := tenant.FromContext(ctx)
 	if err != nil || tc.UserID == "" {
-		return apperrors.Unauthorized("caller identity required")
+		return "", "", apperrors.Unauthorized("caller identity required")
 	}
 
 	// Pre-check seller membership so we return 404 (not 403) for tokens
 	// belonging to other sellers.
 	existing, err := s.apiTokens.GetByID(ctx, tenantID, id)
 	if err != nil {
-		return apperrors.Internal("failed to get api token", err)
+		return "", "", apperrors.Internal("failed to get api token", err)
 	}
 	if existing == nil || existing.SellerID != sellerID {
-		return apperrors.NotFound("api token not found")
+		return "", "", apperrors.NotFound("api token not found")
 	}
 
 	err = database.TenantTx(ctx, s.pool, tenantID, func(tx pgx.Tx) error {
@@ -208,7 +216,7 @@ func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id
 		return s.apiTokens.RevokeTx(ctx, tx, tenantID, id, tc.UserID)
 	})
 	if err != nil {
-		return mapAPITokenError(err, "failed to revoke api token")
+		return "", "", mapAPITokenError(err, "failed to revoke api token")
 	}
 
 	slog.Info("seller api token revoked",
@@ -217,7 +225,7 @@ func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id
 		"seller_id", sellerID,
 		"actor", tc.UserID,
 	)
-	return nil
+	return existing.TokenPrefix, existing.TokenLookup, nil
 }
 
 // LookupAPIToken is the gateway hot-path entry point. Given the three pieces
