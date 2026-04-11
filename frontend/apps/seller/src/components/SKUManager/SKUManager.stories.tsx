@@ -35,22 +35,24 @@ export const MultipleSKUs: Story = {
   },
 };
 
+function InteractiveSKUManager() {
+  const [skus, setSkus] = useState<SKUInput[]>([
+    { code: "", price: "", color: "", size: "" },
+  ]);
+  return (
+    <SKUManagerPresenter
+      skus={skus}
+      onAdd={() => setSkus([...skus, { code: "", price: "", color: "", size: "" }])}
+      onRemove={(i) => setSkus(skus.filter((_, idx) => idx !== i))}
+      onUpdate={(i, field, value) => {
+        const next = [...skus];
+        next[i] = { ...next[i], [field]: value };
+        setSkus(next);
+      }}
+    />
+  );
+}
+
 export const Interactive: Story = {
-  render: () => {
-    const [skus, setSkus] = useState<SKUInput[]>([
-      { code: "", price: "", color: "", size: "" },
-    ]);
-    return (
-      <SKUManagerPresenter
-        skus={skus}
-        onAdd={() => setSkus([...skus, { code: "", price: "", color: "", size: "" }])}
-        onRemove={(i) => setSkus(skus.filter((_, idx) => idx !== i))}
-        onUpdate={(i, field, value) => {
-          const next = [...skus];
-          next[i] = { ...next[i], [field]: value };
-          setSkus(next);
-        }}
-      />
-    );
-  },
+  render: () => <InteractiveSKUManager />,
 };

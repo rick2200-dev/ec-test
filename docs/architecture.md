@@ -153,6 +153,7 @@ erDiagram
     sellers ||--o{ payouts : "receives"
     products ||--o{ skus : "has many"
     products }o--o{ categories : "belongs to many"
+    products ||--o{ order_lines : "referenced by"
     skus ||--o| inventory : "has one"
     skus ||--o{ stock_movements : "has many"
     skus ||--o{ order_lines : "referenced by"
@@ -206,6 +207,7 @@ erDiagram
         varchar slug
         text description
         varchar status
+        varchar image_url
         jsonb attributes
     }
 
@@ -245,6 +247,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid seller_id FK
+        varchar seller_name
         varchar buyer_auth0_id
         varchar status
         bigint subtotal_amount
@@ -260,6 +263,7 @@ erDiagram
         uuid tenant_id FK
         uuid order_id FK
         uuid sku_id FK
+        uuid product_id FK
         varchar product_name
         varchar sku_code
         int quantity
@@ -310,6 +314,36 @@ Amazon 型のカート UX では 1 つのチェックアウトで複数セラー
 - 対応する `payouts` 行もセラーごとに 1 行ずつ作成 (pending → webhook で completed)
 
 詳細は [カート・チェックアウトと決済](#カートチェックアウトと決済) および [docs/payment.md](./payment.md) を参照。
+
+### 購入履歴と商品スナップショット
+
+買い手の購入履歴画面 (`/orders`, `/orders/{id}`) は、チェックアウトから数ヶ月〜数年経った注文も参照できる必要があります。商品や販売者はこの間に削除/アーカイブされ得るため、表示に必要な情報の一部を **スナップショット** として永続化し、残りは **クエリ時に catalog から再取得** します。
+
+| 項目           | 保存方針               | 保存場所                                                |
+| -------------- | ---------------------- | ------------------------------------------------------- |
+| `seller_name`  | スナップショット       | `order_svc.orders.seller_name` (checkout 時に固定)      |
+| `product_name` | スナップショット       | `order_svc.order_lines.product_name` (既存)             |
+| `sku_code`     | スナップショット       | `order_svc.order_lines.sku_code` (既存)                 |
+| `unit_price`   | スナップショット       | `order_svc.order_lines.unit_price` (既存)               |
+| `product_id`   | スナップショット       | `order_svc.order_lines.product_id` (catalog 参照キー)   |
+| `image_url`    | クエリ時エンリッチ     | `catalog_svc.products.image_url` を gRPC で取得         |
+| 商品の生存判定 | クエリ時エンリッチ     | catalog `GetProduct` が NotFound / `status=archived`    |
+
+**スナップショット時の解決**: `POST /internal/checkouts` の DB Tx #1 (`orders` + `order_lines` を INSERT するトランザクション) の先頭で、`order_svc` repository が cross-schema クエリを 2 本実行します:
+
+- `SELECT id, name FROM auth_svc.sellers WHERE id = ANY($1)` → `orders.seller_name`
+- `SELECT id, product_id FROM catalog_svc.skus WHERE id = ANY($1)` → `order_lines.product_id`
+
+`auth_svc.sellers` / `catalog_svc.skus` は `order_svc.orders` と同じ `tenant_isolation` RLS ポリシーを持ち、`TenantTx` が `app.current_tenant_id` をセットするため、テナント越境は自動的に防がれます。
+
+**クエリ時エンリッチ**: `GET /api/v1/buyer/orders/{id}` は gateway が:
+
+1. order service から注文 + 行を取得 (スナップショット値を含む)
+2. 各行の `product_id` に対して `catalogGRPC.GetProduct` を `errgroup` で並列実行
+3. `NotFound` または `status=archived` → `is_deleted=true` を設定し、`image_url` を空にする (スナップショット名はそのまま表示)
+4. `active` → `image_url` と `slug` をエンリッチして返す
+
+商品名は **常にスナップショット** を使用し、現在の catalog 値にはフォールバックしません。これは購入時点の商品表示の一貫性を保つためです。単一行のエンリッチ失敗はグレースフルに `is_deleted=true` へ縮退し、注文全体の取得は失敗させません。
 
 ### 金額の表現
 
@@ -520,6 +554,8 @@ Buyer frontend
     │ 2. GET  /api/v1/buyer/cart           (カート取得)
     │ 3. POST /api/v1/buyer/cart/checkout  (orders + PaymentIntent 作成)
     │ 4. Stripe.js confirmCardPayment(client_secret)
+    │ 5. GET  /api/v1/buyer/orders         (購入履歴一覧)
+    │ 6. GET  /api/v1/buyer/orders/{id}    (購入履歴詳細 + catalog エンリッチ)
     ▼
 Gateway (:8080)  ──▶  Cart Service (:8088)
                           │
@@ -547,6 +583,7 @@ Stripe ──▶ POST /webhooks/stripe (order service)
 - **Checkout の DB 書込は 1 トランザクション**: `TenantTx` で `orders` と `payouts` (pending) をまとめて作成し、その後 Stripe を呼び出します。ロールバック時は何も作成されません。
 - **価格スナップショット**: カート追加時点の価格を `unit_price_snapshot` として Redis に保存。チェックアウト時に order service が catalog の現行価格と比較し、差分があれば警告を返します。
 - **単一購入経路**: 「今すぐ購入」などの直接注文 API は廃止し、全ての購入はカート経由で行います (単一セラー注文でもカートに追加 → チェックアウト)。
+- **購入履歴のスナップショット+エンリッチ**: `GET /api/v1/buyer/orders/{id}` は、checkout 時に永続化した `seller_name` / `product_name` / `product_id` などのスナップショット値と、catalog gRPC (`GetProduct`) から取得した現在の `image_url` / `slug` / 生存状態 (`status=archived` で `is_deleted`) を組み合わせて返します。詳細は [データモデル § 購入履歴と商品スナップショット](#購入履歴と商品スナップショット) を参照。
 
 ### 関連ドキュメント
 

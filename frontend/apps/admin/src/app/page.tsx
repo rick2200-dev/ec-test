@@ -19,6 +19,7 @@ function statusToBadge(
 ): StatusBadgePresenterProps {
   const toneMap: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
     active: "success",
+    archived: "neutral",
     approved: "success",
     operational: "success",
     pending: "warning",
@@ -28,6 +29,7 @@ function statusToBadge(
   };
   const labelKeyMap: Record<StatusType, string> = {
     active: "status.active",
+    archived: "status.archived",
     approved: "status.approved",
     pending: "status.pending",
     suspended: "status.suspended",

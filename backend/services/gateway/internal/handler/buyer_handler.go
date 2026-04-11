@@ -218,22 +218,16 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 				TenantId:   tc.TenantID.String(),
 				Identifier: &catalogv1.GetProductRequest_Id{Id: line.ProductID},
 			})
-			switch {
-			case err == nil:
-				p := resp.GetProduct()
-				if p == nil || p.GetStatus() == "archived" {
-					el.IsDeleted = true
-				} else {
-					el.ImageURL = p.GetImageUrl()
-					el.ProductSlug = p.GetSlug()
-				}
-			default:
-				if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
-					el.IsDeleted = true
-				} else {
+			if err != nil {
+				if s, ok := status.FromError(err); !ok || s.Code() != codes.NotFound {
 					slog.Warn("catalog GetProduct enrich failed", "product_id", line.ProductID, "error", err)
-					el.IsDeleted = true
 				}
+				el.IsDeleted = true
+			} else if p := resp.GetProduct(); p == nil || p.GetStatus() == "archived" {
+				el.IsDeleted = true
+			} else {
+				el.ImageURL = p.GetImageUrl()
+				el.ProductSlug = p.GetSlug()
 			}
 
 			mu.Lock()

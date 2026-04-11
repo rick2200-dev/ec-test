@@ -5,6 +5,7 @@ import { StatusBadgePresenter, type StatusBadgePresenterProps } from "./StatusBa
 
 export type StatusType =
   | "active"
+  | "archived"
   | "approved"
   | "pending"
   | "suspended"
@@ -14,6 +15,7 @@ export type StatusType =
 
 const statusTone: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
   active: "success",
+  archived: "neutral",
   approved: "success",
   pending: "warning",
   suspended: "danger",
@@ -24,6 +26,7 @@ const statusTone: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
 
 const statusKeys: Record<StatusType, string> = {
   active: "status.active",
+  archived: "status.archived",
   approved: "status.approved",
   pending: "status.pending",
   suspended: "status.suspended",

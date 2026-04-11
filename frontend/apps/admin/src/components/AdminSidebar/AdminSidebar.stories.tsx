@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { AdminSidebarPresenter, type AdminSidebarNavItem } from "./AdminSidebar.presenter";
 
 const meta: Meta<typeof AdminSidebarPresenter> = {
@@ -52,16 +52,18 @@ export const SellersActive: Story = {
   },
 };
 
+function InteractiveAdminSidebar(args: ComponentProps<typeof AdminSidebarPresenter>) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <AdminSidebarPresenter
+      {...args}
+      collapsed={collapsed}
+      onToggleCollapsed={() => setCollapsed(!collapsed)}
+    />
+  );
+}
+
 export const Interactive: Story = {
-  render: (args) => {
-    const [collapsed, setCollapsed] = useState(false);
-    return (
-      <AdminSidebarPresenter
-        {...args}
-        collapsed={collapsed}
-        onToggleCollapsed={() => setCollapsed(!collapsed)}
-      />
-    );
-  },
+  render: (args) => <InteractiveAdminSidebar {...args} />,
   args: { ...Default.args },
 };
