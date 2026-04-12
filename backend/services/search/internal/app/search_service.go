@@ -24,7 +24,7 @@ func NewSearchService(eng engine.SearchEngine) *SearchService {
 func (s *SearchService) Search(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error) {
 	// tenant_id is always required
 	if req.TenantID == uuid.Nil {
-		return nil, apperrors.BadRequest("tenant_id is required")
+		return nil, domain.ErrMissingTenantID
 	}
 
 	// Enforce defaults
@@ -59,7 +59,7 @@ func (s *SearchService) Search(ctx context.Context, req domain.SearchRequest) (*
 // Suggest returns search suggestions based on a prefix query.
 func (s *SearchService) Suggest(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error) {
 	if req.TenantID == uuid.Nil {
-		return nil, apperrors.BadRequest("tenant_id is required")
+		return nil, domain.ErrMissingTenantID
 	}
 
 	// Suggestions return a small number of results

@@ -41,7 +41,7 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.svc.Search(r.Context(), req)
 	if err != nil {
-		httputil.Error(w, err)
+		httputil.Error(w, mapError(err))
 		return
 	}
 
@@ -58,7 +58,7 @@ func (h *SearchHandler) Suggest(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.svc.Suggest(r.Context(), req)
 	if err != nil {
-		httputil.Error(w, err)
+		httputil.Error(w, mapError(err))
 		return
 	}
 

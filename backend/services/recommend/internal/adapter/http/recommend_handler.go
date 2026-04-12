@@ -70,7 +70,7 @@ func (h *RecommendHandler) GetRecommendations(w http.ResponseWriter, r *http.Req
 
 	resp, err := h.svc.GetRecommendations(r.Context(), req)
 	if err != nil {
-		httputil.Error(w, err)
+		httputil.Error(w, mapError(err))
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *RecommendHandler) RecordEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.RecordUserEvent(r.Context(), event); err != nil {
-		httputil.Error(w, err)
+		httputil.Error(w, mapError(err))
 		return
 	}
 
