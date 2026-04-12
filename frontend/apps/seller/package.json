@@ -18,7 +18,7 @@
     "@ec-marketplace/i18n": "workspace:*",
     "@ec-marketplace/types": "workspace:*",
     "@ec-marketplace/ui-utils": "workspace:*",
-    "next": "^15.3.1",
+    "next": "^16.2.3",
     "next-intl": "^4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -29,14 +29,14 @@
     "@testing-library/jest-dom": "^6",
     "@testing-library/react": "^16",
     "@testing-library/user-event": "^14",
-    "@types/node": "^22",
+    "@types/node": "^25.6.0",
     "@types/react": "^19",
     "@tailwindcss/postcss": "^4",
-    "jsdom": "^26",
+    "jsdom": "^29.0.2",
     "tailwindcss": "^4",
-    "typescript": "^5.8",
+    "typescript": "^6.0.2",
     "@ec-marketplace/eslint-config": "workspace:*",
     "eslint": "^9",
-    "vitest": "^3.2"
+    "vitest": "^4.1.4"
   }
 }

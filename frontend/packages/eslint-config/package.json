@@ -11,11 +11,11 @@
     "@eslint/js": "^9",
     "eslint-config-prettier": "^10",
     "eslint-plugin-react": "^7",
-    "eslint-plugin-react-hooks": "^5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-jsx-a11y": "^6",
-    "@next/eslint-plugin-next": "^15",
+    "@next/eslint-plugin-next": "^16.2.3",
     "typescript-eslint": "^8",
-    "globals": "^16"
+    "globals": "^17.5.0"
   },
   "peerDependencies": {
     "eslint": "^9"

@@ -9,21 +9,19 @@
   },
   "devDependencies": {
     "@ec-marketplace/tsconfig": "workspace:*",
-    "storybook": "^8.6",
-    "@storybook/react-vite": "^8.6",
-    "@storybook/react": "^8.6",
-    "@storybook/addon-essentials": "^8.6",
-    "@storybook/addon-a11y": "^8.6",
-    "@storybook/addon-interactions": "^8.6",
-    "@storybook/test": "^8.6",
-    "@vitejs/plugin-react": "^4.5",
+    "storybook": "^10.3.5",
+    "@storybook/react-vite": "^10.3.5",
+    "@storybook/react": "^10.3.5",
+    "@storybook/addon-a11y": "^10.3.5",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.8",
     "react": "^19",
     "react-dom": "^19",
     "next-intl": "^4",
     "tailwindcss": "^4",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/vite": "^4",
-    "typescript": "^5.8",
+    "typescript": "^6.0.2",
     "@types/react": "^19"
   }
 }

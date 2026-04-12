@@ -8,6 +8,6 @@
   },
   "devDependencies": {
     "@ec-marketplace/tsconfig": "workspace:*",
-    "typescript": "^5"
+    "typescript": "^6.0.2"
   }
 }
