@@ -37,6 +37,9 @@ docker/.env
 .DS_Store
 Thumbs.db
 
+# Test coverage reports
+coverage/
+
 # Turborepo
 .turbo/
 
