@@ -48,3 +48,7 @@ docker/redisdata/
 tmp/
 *.tmp
 *.log
+
+# Claude Code (local-only runtime files)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
