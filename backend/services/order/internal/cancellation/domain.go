@@ -50,21 +50,12 @@ type CancellationRequest struct {
 }
 
 // canOrderBeCancelled reports whether an order in the given status can
-// still accept a cancellation request. The allowed statuses are chosen
-// to mirror the product decision: once the order has shipped, a
-// cancellation request no longer makes sense and the buyer should use
-// a return flow instead (out of scope).
-//
-// This is a pure function on purpose — it is called twice during the
-// approval flow (once at request creation, once again inside Tx1 of the
-// approval orchestration) to close the buyer-cancel / seller-ship race.
+// still accept a cancellation request. Delegates to domain.Order.CanBeCancelled
+// so the allowed-status set has a single source of truth in the domain.
+// This wrapper exists so the cancellation package tests can call it by name
+// and so the SQL guard in ApproveTx can verify alignment with cancellableStatuses.
 func canOrderBeCancelled(status string) bool {
-	switch status {
-	case domain.StatusPending, domain.StatusPaid, domain.StatusProcessing:
-		return true
-	default:
-		return false
-	}
+	return (&domain.Order{Status: status}).CanBeCancelled()
 }
 
 // IsTerminal reports whether a request has reached a terminal state.

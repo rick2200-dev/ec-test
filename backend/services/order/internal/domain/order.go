@@ -150,3 +150,34 @@ type CheckoutResult struct {
 	TotalAmount           int64            `json:"total_amount"`
 	Currency              string           `json:"currency"`
 }
+
+// CheckoutBatchItem is one (order, lines, payout) tuple for a single seller
+// inside a multi-seller checkout. Used by OrderStore.CreateCheckoutBatch to
+// insert all items atomically in a single tenant transaction.
+type CheckoutBatchItem struct {
+	Order  *Order
+	Lines  []OrderLine
+	Payout *Payout
+}
+
+// CanBeCancelled reports whether the order's current status allows a
+// cancellation request to be opened or approved. This is the Go-side
+// pre-check; the repository SQL guard uses cancellableStatuses() (in the
+// cancellation package) to re-enforce the same constraint atomically.
+func (o *Order) CanBeCancelled() bool {
+	switch o.Status {
+	case StatusPending, StatusPaid, StatusProcessing:
+		return true
+	}
+	return false
+}
+
+// PurchaseSKURecord is the minimal information returned by OrderStore.HasPurchasedSKU
+// when a matching purchase exists. It carries the earliest paid order plus the
+// product/SKU snapshot captured on that order line so callers (inquiry service)
+// can seed a new thread without a separate catalog lookup.
+type PurchaseSKURecord struct {
+	OrderID     uuid.UUID
+	ProductName string
+	SKUCode     string
+}

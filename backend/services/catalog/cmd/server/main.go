@@ -19,10 +19,10 @@ import (
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/config"
-	"github.com/Riku-KANO/ec-test/services/catalog/internal/grpcserver"
-	"github.com/Riku-KANO/ec-test/services/catalog/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/catalog/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/catalog/internal/service"
+	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/grpc"
+	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/postgres"
+	"github.com/Riku-KANO/ec-test/services/catalog/internal/app"
 )
 
 func main() {
@@ -71,7 +71,7 @@ func main() {
 	skuRepo := repository.NewSKURepository(pool)
 
 	// Service
-	catalogSvc := service.NewCatalogService(categoryRepo, productRepo, skuRepo, publisher)
+	catalogSvc := app.NewCatalogService(categoryRepo, productRepo, skuRepo, publisher)
 
 	// Handlers
 	productHandler := handler.NewProductHandler(catalogSvc)

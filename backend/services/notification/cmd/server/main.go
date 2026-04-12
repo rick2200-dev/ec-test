@@ -15,8 +15,8 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/config"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
-	"github.com/Riku-KANO/ec-test/services/notification/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/notification/internal/subscriber"
+	"github.com/Riku-KANO/ec-test/services/notification/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/notification/internal/adapter/pubsub"
 )
 
 func main() {

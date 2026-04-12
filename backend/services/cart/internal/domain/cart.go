@@ -57,6 +57,43 @@ func (c *Cart) FindItem(skuID uuid.UUID) int {
 	return -1
 }
 
+// AddItem appends item to the cart. If the SKU is already present its
+// quantity is incremented by item.Quantity; the price snapshot is not
+// refreshed. Callers must validate quantity > 0 before calling.
+func (c *Cart) AddItem(item CartItem) {
+	if idx := c.FindItem(item.SKUID); idx >= 0 {
+		c.Items[idx].Quantity += item.Quantity
+	} else {
+		c.Items = append(c.Items, item)
+	}
+	c.UpdatedAt = time.Now().UTC()
+}
+
+// RemoveItem removes the item with the given SKU. No-op if the SKU is
+// not in the cart (removing a non-existent item is idempotent).
+func (c *Cart) RemoveItem(skuID uuid.UUID) {
+	idx := c.FindItem(skuID)
+	if idx < 0 {
+		return
+	}
+	c.Items = append(c.Items[:idx], c.Items[idx+1:]...)
+	c.UpdatedAt = time.Now().UTC()
+}
+
+// SetItemQuantity sets the absolute quantity of a SKU. Returns
+// ErrSKUNotInCart if the SKU is not already in the cart. Callers must
+// validate quantity > 0 before calling (zero means remove, which is
+// handled at the service layer by delegating to RemoveItem instead).
+func (c *Cart) SetItemQuantity(skuID uuid.UUID, quantity int) error {
+	idx := c.FindItem(skuID)
+	if idx < 0 {
+		return ErrSKUNotInCart
+	}
+	c.Items[idx].Quantity = quantity
+	c.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
 // CheckoutInput is the payload passed to the order service to create
 // orders from a cart. ShippingAddress is opaque JSON forwarded verbatim.
 type CheckoutInput struct {

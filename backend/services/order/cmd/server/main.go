@@ -18,13 +18,14 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/order/internal/cancellation"
 	"github.com/Riku-KANO/ec-test/services/order/internal/config"
-	grpcserver "github.com/Riku-KANO/ec-test/services/order/internal/grpcserver"
-	"github.com/Riku-KANO/ec-test/services/order/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/order/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/order/internal/service"
-	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/stripe"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/grpc"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/postgres"
+	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/adapter/stripe"
+	"github.com/Riku-KANO/ec-test/services/order/internal/app"
 )
 
 func main() {
@@ -78,10 +79,10 @@ func main() {
 	payoutRepo := repository.NewPayoutRepository(pool)
 
 	// Buyer subscription client (for checking free shipping eligibility)
-	buyerSubClient := service.NewBuyerSubscriptionClient(cfg.AuthServiceURL)
+	buyerSubClient := httpclient.NewBuyerSubscriptionClient(cfg.AuthServiceURL)
 
 	// Service
-	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, cfg.DefaultShippingFee)
+	orderSvc := app.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, cfg.DefaultShippingFee)
 
 	// Cancellation bounded context — see internal/cancellation/doc.go.
 	// Wired in parallel with (not nested under) the order service so

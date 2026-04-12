@@ -16,9 +16,9 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/config"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/service"
+	"github.com/Riku-KANO/ec-test/services/auth/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/auth/internal/adapter/postgres"
+	"github.com/Riku-KANO/ec-test/services/auth/internal/app"
 )
 
 func main() {
@@ -53,8 +53,8 @@ func main() {
 	apiTokenRepo := repository.NewAPITokenRepository(pool)
 
 	// Service
-	authSvc := service.NewAuthService(
-		pool,
+	authSvc := app.NewAuthService(
+		&database.PoolTxRunner{Pool: pool},
 		tenantRepo,
 		sellerRepo,
 		sellerUserRepo,

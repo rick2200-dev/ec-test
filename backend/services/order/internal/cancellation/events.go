@@ -34,16 +34,60 @@ type CancelledLineItem struct {
 	Quantity    int       `json:"quantity"`
 }
 
+// Typed event structs for the cancellation lifecycle. Using structs instead
+// of map[string]any makes the event schema self-documenting and catches field
+// name typos at compile time. The JSON tags are the public contract and must
+// not be changed without coordinating downstream subscribers.
+
+type cancellationRequestedEvent struct {
+	RequestID    string `json:"request_id"`
+	OrderID      string `json:"order_id"`
+	TenantID     string `json:"tenant_id"`
+	SellerID     string `json:"seller_id"`
+	BuyerAuth0ID string `json:"buyer_auth0_id"`
+	Reason       string `json:"reason"`
+}
+
+type cancellationRejectedEvent struct {
+	RequestID     string `json:"request_id"`
+	OrderID       string `json:"order_id"`
+	TenantID      string `json:"tenant_id"`
+	SellerID      string `json:"seller_id"`
+	BuyerAuth0ID  string `json:"buyer_auth0_id"`
+	SellerComment string `json:"seller_comment"`
+}
+
+type cancellationApprovedEvent struct {
+	RequestID      string `json:"request_id"`
+	OrderID        string `json:"order_id"`
+	TenantID       string `json:"tenant_id"`
+	SellerID       string `json:"seller_id"`
+	BuyerAuth0ID   string `json:"buyer_auth0_id"`
+	StripeRefundID string `json:"stripe_refund_id"`
+	RefundAmount   int64  `json:"refund_amount"`
+}
+
+type orderCancelledEvent struct {
+	OrderID      string              `json:"order_id"`
+	TenantID     string              `json:"tenant_id"`
+	SellerID     string              `json:"seller_id"`
+	BuyerAuth0ID string              `json:"buyer_auth0_id"`
+	RequestID    string              `json:"request_id"`
+	Reason       string              `json:"reason"`
+	LineItems    []CancelledLineItem `json:"line_items"`
+	CancelledAt  *string             `json:"cancelled_at,omitempty"`
+}
+
 // publishRequested fires order.cancellation_requested after a buyer
 // successfully opens a new request. Consumers: notification.
 func publishRequested(ctx context.Context, pub pubsub.Publisher, req *CancellationRequest, order *domain.Order) {
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationRequested, orderEventsTopic, map[string]any{
-		"request_id":        req.ID.String(),
-		"order_id":          req.OrderID.String(),
-		"tenant_id":         req.TenantID.String(),
-		"seller_id":         order.SellerID.String(),
-		"buyer_auth0_id":    req.RequestedByAuth0ID,
-		"reason":            req.Reason,
+	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationRequested, orderEventsTopic, cancellationRequestedEvent{
+		RequestID:    req.ID.String(),
+		OrderID:      req.OrderID.String(),
+		TenantID:     req.TenantID.String(),
+		SellerID:     order.SellerID.String(),
+		BuyerAuth0ID: req.RequestedByAuth0ID,
+		Reason:       req.Reason,
 	})
 }
 
@@ -54,13 +98,13 @@ func publishRejected(ctx context.Context, pub pubsub.Publisher, req *Cancellatio
 	if req.SellerComment != nil {
 		comment = *req.SellerComment
 	}
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationRejected, orderEventsTopic, map[string]any{
-		"request_id":     req.ID.String(),
-		"order_id":       req.OrderID.String(),
-		"tenant_id":      req.TenantID.String(),
-		"seller_id":      order.SellerID.String(),
-		"buyer_auth0_id": req.RequestedByAuth0ID,
-		"seller_comment": comment,
+	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationRejected, orderEventsTopic, cancellationRejectedEvent{
+		RequestID:     req.ID.String(),
+		OrderID:       req.OrderID.String(),
+		TenantID:      req.TenantID.String(),
+		SellerID:      order.SellerID.String(),
+		BuyerAuth0ID:  req.RequestedByAuth0ID,
+		SellerComment: comment,
 	})
 }
 
@@ -72,14 +116,14 @@ func publishApproved(ctx context.Context, pub pubsub.Publisher, req *Cancellatio
 	if req.StripeRefundID != nil {
 		refundID = *req.StripeRefundID
 	}
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationApproved, orderEventsTopic, map[string]any{
-		"request_id":       req.ID.String(),
-		"order_id":         req.OrderID.String(),
-		"tenant_id":        req.TenantID.String(),
-		"seller_id":        order.SellerID.String(),
-		"buyer_auth0_id":   req.RequestedByAuth0ID,
-		"stripe_refund_id": refundID,
-		"refund_amount":    refundAmount,
+	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationApproved, orderEventsTopic, cancellationApprovedEvent{
+		RequestID:      req.ID.String(),
+		OrderID:        req.OrderID.String(),
+		TenantID:       req.TenantID.String(),
+		SellerID:       order.SellerID.String(),
+		BuyerAuth0ID:   req.RequestedByAuth0ID,
+		StripeRefundID: refundID,
+		RefundAmount:   refundAmount,
 	})
 }
 
@@ -102,19 +146,19 @@ func publishOrderCancelled(ctx context.Context, pub pubsub.Publisher, req *Cance
 		})
 	}
 
-	var cancelledAt any
+	evt := orderCancelledEvent{
+		OrderID:      order.ID.String(),
+		TenantID:     order.TenantID.String(),
+		SellerID:     order.SellerID.String(),
+		BuyerAuth0ID: order.BuyerAuth0ID,
+		RequestID:    req.ID.String(),
+		Reason:       req.Reason,
+		LineItems:    cancelledLines,
+	}
 	if order.CancelledAt != nil {
-		cancelledAt = order.CancelledAt.UTC()
+		s := order.CancelledAt.UTC().String()
+		evt.CancelledAt = &s
 	}
 
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeOrderCancelled, orderEventsTopic, map[string]any{
-		"order_id":       order.ID.String(),
-		"tenant_id":      order.TenantID.String(),
-		"seller_id":      order.SellerID.String(),
-		"buyer_auth0_id": order.BuyerAuth0ID,
-		"request_id":     req.ID.String(),
-		"reason":         req.Reason,
-		"line_items":     cancelledLines,
-		"cancelled_at":   cancelledAt,
-	})
+	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeOrderCancelled, orderEventsTopic, evt)
 }

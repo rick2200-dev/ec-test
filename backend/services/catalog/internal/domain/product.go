@@ -7,6 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// ProductFilter holds optional filters for listing products.
+type ProductFilter struct {
+	TenantID   uuid.UUID
+	SellerID   *uuid.UUID
+	Status     *ProductStatus
+	CategoryID *uuid.UUID
+}
+
 // ProductStatus represents the lifecycle state of a product or SKU.
 type ProductStatus string
 

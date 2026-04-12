@@ -19,11 +19,11 @@ import (
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/config"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/grpcserver"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/service"
-	"github.com/Riku-KANO/ec-test/services/inventory/internal/subscriber"
+	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/grpc"
+	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/postgres"
+	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/pubsub"
+	"github.com/Riku-KANO/ec-test/services/inventory/internal/app"
 )
 
 func main() {
@@ -82,7 +82,7 @@ func main() {
 	inventoryRepo := repository.NewInventoryRepository(pool)
 
 	// Service
-	inventorySvc := service.NewInventoryService(inventoryRepo, publisher)
+	inventorySvc := app.NewInventoryService(inventoryRepo, publisher)
 
 	// Pub/Sub subscriber (for incoming order.cancelled events). Created
 	// after the service so the subscriber can be wired with a live

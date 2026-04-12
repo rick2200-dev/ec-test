@@ -113,7 +113,7 @@ func (s *Service) RequestCancellation(ctx context.Context, tenantID, orderID uui
 	if err := assertBuyerOwnsOrder(&order.Order, buyerAuth0ID); err != nil {
 		return nil, err
 	}
-	if !canOrderBeCancelled(order.Status) {
+	if !order.CanBeCancelled() {
 		return nil, apperrors.Conflict("order cannot be cancelled in its current status").
 			WithCode(CodeOrderNotCancellable)
 	}
@@ -273,7 +273,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 		return nil, apperrors.Conflict("cancellation request is no longer pending").
 			WithCode(CodeCancellationRequestAlreadyProcessed)
 	}
-	if !canOrderBeCancelled(order.Status) {
+	if !order.CanBeCancelled() {
 		return nil, apperrors.Conflict("order cannot be cancelled in its current status").
 			WithCode(CodeOrderNotCancellable)
 	}
@@ -418,10 +418,10 @@ func assertSellerOwnsOrder(order *domain.Order, sellerID uuid.UUID) error {
 }
 
 // cancellableStatuses returns the list of order statuses for which a
-// cancellation approval is still legal. The list is duplicated
-// between canOrderBeCancelled (Go-side pre-check) and ApproveTx
-// (SQL guard inside the commit transaction). Keeping them in lockstep
-// here prevents the two from drifting silently.
+// cancellation approval is still legal. This list must stay in sync with
+// domain.Order.CanBeCancelled (the Go-side pre-check). The test
+// TestCancellableStatusesMatchesCanOrderBeCancelled enforces alignment
+// between these two so they cannot drift silently.
 func cancellableStatuses() []string {
 	return []string{
 		domain.StatusPending,

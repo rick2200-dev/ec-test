@@ -15,10 +15,11 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/services/inquiry/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/inquiry/internal/config"
-	"github.com/Riku-KANO/ec-test/services/inquiry/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/inquiry/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/inquiry/internal/service"
+	"github.com/Riku-KANO/ec-test/services/inquiry/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/inquiry/internal/adapter/postgres"
+	"github.com/Riku-KANO/ec-test/services/inquiry/internal/app"
 )
 
 func main() {
@@ -67,10 +68,10 @@ func main() {
 	inquiryRepo := repository.NewInquiryRepository(pool)
 
 	// Internal clients
-	orderClient := service.NewOrderClient(cfg.OrderServiceURL, cfg.OrderInternalToken)
+	orderClient := httpclient.NewOrderClient(cfg.OrderServiceURL, cfg.OrderInternalToken)
 
 	// Service
-	inquirySvc := service.NewInquiryService(inquiryRepo, orderClient, publisher)
+	inquirySvc := app.NewInquiryService(inquiryRepo, orderClient, publisher)
 
 	// Handlers
 	buyerHandler := handler.NewBuyerHandler(inquirySvc)

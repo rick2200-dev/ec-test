@@ -16,8 +16,8 @@ import (
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/services/search/internal/config"
 	"github.com/Riku-KANO/ec-test/services/search/internal/engine"
-	"github.com/Riku-KANO/ec-test/services/search/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/search/internal/service"
+	"github.com/Riku-KANO/ec-test/services/search/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/search/internal/app"
 )
 
 func main() {
@@ -52,7 +52,7 @@ func main() {
 	}
 
 	// Service
-	searchSvc := service.NewSearchService(searchEngine)
+	searchSvc := app.NewSearchService(searchEngine)
 
 	// Handlers
 	searchHandler := handler.NewSearchHandler(searchSvc)

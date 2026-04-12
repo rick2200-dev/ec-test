@@ -17,9 +17,10 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/config"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/engine"
-	"github.com/Riku-KANO/ec-test/services/recommend/internal/handler"
-	"github.com/Riku-KANO/ec-test/services/recommend/internal/service"
-	"github.com/Riku-KANO/ec-test/services/recommend/internal/subscriber"
+	"github.com/Riku-KANO/ec-test/services/recommend/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/recommend/internal/adapter/pubsub"
+	"github.com/Riku-KANO/ec-test/services/recommend/internal/app"
+	"github.com/Riku-KANO/ec-test/services/recommend/internal/repository"
 )
 
 func main() {
@@ -59,7 +60,8 @@ func main() {
 	}
 
 	// Service
-	recommendSvc := service.NewRecommendService(eng, pool)
+	viewRefresher := repository.NewPostgresViewRefresher(pool)
+	recommendSvc := app.NewRecommendService(eng, viewRefresher)
 
 	// Handlers
 	recommendHandler := handler.NewRecommendHandler(recommendSvc)

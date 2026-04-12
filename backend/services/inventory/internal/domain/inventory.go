@@ -29,6 +29,14 @@ type Inventory struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+// CancellationLine is a SKU+quantity pair representing one line item in an
+// order cancellation. Used by ReleaseForOrderCancellation so the caller
+// (the order-cancelled subscriber) does not need to import the repository.
+type CancellationLine struct {
+	SKUID    uuid.UUID
+	Quantity int
+}
+
 // StockMovement records a change in stock for auditing.
 type StockMovement struct {
 	ID            uuid.UUID    `json:"id"`

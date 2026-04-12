@@ -14,11 +14,12 @@ import (
 
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/config"
-	"github.com/Riku-KANO/ec-test/services/cart/internal/handler"
-	cartredis "github.com/Riku-KANO/ec-test/services/cart/internal/redis"
-	"github.com/Riku-KANO/ec-test/services/cart/internal/repository"
-	"github.com/Riku-KANO/ec-test/services/cart/internal/service"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/http"
+	cartredis "github.com/Riku-KANO/ec-test/services/cart/internal/adapter/redis"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/postgres"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/app"
 )
 
 func main() {
@@ -63,9 +64,9 @@ func main() {
 
 	// Wire dependencies.
 	cartRepo := repository.NewCartRepository(redisClient, cfg.CartTTLSeconds)
-	catalogClient := service.NewCatalogClient(cfg.CatalogServiceURL, cfg.CatalogInternalToken)
-	orderClient := service.NewOrderClient(cfg.OrderServiceURL, cfg.OrderInternalToken)
-	cartSvc := service.NewCartService(cartRepo, catalogClient, orderClient, publisher)
+	catalogClient := httpclient.NewCatalogClient(cfg.CatalogServiceURL, cfg.CatalogInternalToken)
+	orderClient := httpclient.NewOrderClient(cfg.OrderServiceURL, cfg.OrderInternalToken)
+	cartSvc := app.NewCartService(cartRepo, catalogClient, orderClient, publisher)
 
 	cartHandler := handler.NewCartHandler(cartSvc)
 	healthHandler := handler.NewHealthHandler(redisClient)
