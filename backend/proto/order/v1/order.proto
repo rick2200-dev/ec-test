@@ -24,6 +24,16 @@ service OrderService {
   rpc ListSellerOrders(ListSellerOrdersRequest) returns (ListSellerOrdersResponse);
   rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
   rpc ListPayouts(ListPayoutsRequest) returns (ListPayoutsResponse);
+
+  // Order cancellation workflow. Buyer opens a request; seller approves
+  // or rejects. Approval orchestrates Stripe refund + per-payout transfer
+  // reversals + inventory release via Pub/Sub. See
+  // docs/order-cancellation.md for the full flow.
+  rpc RequestOrderCancellation(RequestOrderCancellationRequest) returns (RequestOrderCancellationResponse);
+  rpc ApproveOrderCancellation(ApproveOrderCancellationRequest) returns (ApproveOrderCancellationResponse);
+  rpc RejectOrderCancellation(RejectOrderCancellationRequest) returns (RejectOrderCancellationResponse);
+  rpc ListOrderCancellationRequests(ListOrderCancellationRequestsRequest) returns (ListOrderCancellationRequestsResponse);
+  rpc GetOrderCancellationRequest(GetOrderCancellationRequestRequest) returns (GetOrderCancellationRequestResponse);
 }
 
 // ─── Domain Messages ─────────────────────────────────────────
@@ -188,4 +198,85 @@ message ListPayoutsRequest {
 message ListPayoutsResponse {
   repeated Payout payouts = 1;
   common.v1.PaginationResponse pagination = 2;
+}
+
+// ─── Order Cancellation Requests ─────────────────────────────
+
+// CancellationRequest mirrors order_svc.order_cancellation_requests.
+// The server (order service) is the authority for requested_by_auth0_id
+// and processed_by_seller_id; clients must not trust these fields from
+// request bodies and should rely on the authenticated caller's identity.
+message CancellationRequest {
+  string id = 1;
+  string tenant_id = 2;
+  string order_id = 3;
+  string requested_by_auth0_id = 4;
+  string reason = 5;
+  // Status: pending, approved, rejected, failed.
+  string status = 6;
+  string seller_comment = 7;
+  string processed_by_seller_id = 8;
+  google.protobuf.Timestamp processed_at = 9;
+  string stripe_refund_id = 10;
+  string failure_reason = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message RequestOrderCancellationRequest {
+  string tenant_id = 1;
+  string order_id = 2;
+  // buyer_auth0_id is resolved server-side from the authenticated
+  // identity. Clients that set this field are ignored.
+  string reason = 3;
+}
+
+message RequestOrderCancellationResponse {
+  CancellationRequest request = 1;
+}
+
+message ApproveOrderCancellationRequest {
+  string tenant_id = 1;
+  string id = 2;  // cancellation request id
+  string seller_comment = 3;  // optional
+}
+
+message ApproveOrderCancellationResponse {
+  CancellationRequest request = 1;
+}
+
+message RejectOrderCancellationRequest {
+  string tenant_id = 1;
+  string id = 2;  // cancellation request id
+  string seller_comment = 3;  // required — shown to the buyer
+}
+
+message RejectOrderCancellationResponse {
+  CancellationRequest request = 1;
+}
+
+message ListOrderCancellationRequestsRequest {
+  string tenant_id = 1;
+  // Optional status filter. Defaults to "pending" server-side when
+  // empty (seller dashboards land on pending-first).
+  string status = 2;
+  common.v1.PaginationRequest pagination = 3;
+  // Seller scope. MUST be set — the server joins order_svc.orders on this
+  // to prevent a multi-seller tenant from reading another seller's
+  // cancellation reasons or buyer identifiers. See docs/order-cancellation.md.
+  string seller_id = 4;
+}
+
+message ListOrderCancellationRequestsResponse {
+  repeated CancellationRequest requests = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message GetOrderCancellationRequestRequest {
+  string tenant_id = 1;
+  string id = 2;
+}
+
+message GetOrderCancellationRequestResponse {
+  CancellationRequest request = 1;
 }

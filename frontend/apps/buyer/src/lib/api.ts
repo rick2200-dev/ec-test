@@ -1,5 +1,6 @@
 import { fetchAPI, jsonOrThrow } from "@ec-marketplace/api-client";
 import type {
+  CancellationRequest,
   Inquiry,
   InquiryListResponse,
   InquiryMessage,
@@ -72,4 +73,40 @@ export async function markBuyerInquiryRead(id: string): Promise<Inquiry> {
     method: "POST",
   });
   return jsonOrThrow<Inquiry>(res);
+}
+
+/**
+ * Open a cancellation request against an order. Backend enforces the
+ * order status (only pending/paid/processing) and the partial unique
+ * index prevents a second pending request from being created.
+ */
+export async function requestOrderCancellation(
+  orderId: string,
+  reason: string,
+): Promise<CancellationRequest> {
+  const res = await fetchAPI(
+    `/api/v1/buyer/orders/${orderId}/cancellation-request`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+  );
+  return jsonOrThrow<CancellationRequest>(res);
+}
+
+/**
+ * Fetch the latest cancellation request for an order. Returns null when
+ * no request has ever been opened (backend returns 404 in that case,
+ * which we translate to null so callers can branch cleanly).
+ */
+export async function getOrderCancellationRequest(
+  orderId: string,
+): Promise<CancellationRequest | null> {
+  const res = await fetchAPI(
+    `/api/v1/buyer/orders/${orderId}/cancellation-request`,
+  );
+  if (res.status === 404) {
+    return null;
+  }
+  return jsonOrThrow<CancellationRequest>(res);
 }

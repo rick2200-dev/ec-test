@@ -271,3 +271,89 @@ func (r *InventoryRepository) RecordMovement(ctx context.Context, tenantID uuid.
 		return nil
 	})
 }
+
+// CancellationLine is a SKU+quantity pair to be released for an order
+// cancellation. It mirrors the order service's order_line snapshot and
+// avoids cross-service catalog lookups by relying on the event payload.
+type CancellationLine struct {
+	SKUID    uuid.UUID
+	Quantity int
+}
+
+// ReleaseForOrderCancellation releases stock for every line of an order
+// being cancelled, idempotently. The method is the sole write path used
+// by the order-cancellation subscriber; see
+// internal/subscriber/order_subscriber.go for the pub/sub integration.
+//
+// Idempotency is enforced by checking stock_movements for any prior row
+// with reference_type='order_cancellation' AND reference_id=<orderID>.
+// If one exists, the method returns (true, nil) so the subscriber can
+// Ack without double-releasing stock on at-least-once redelivery.
+//
+// Each SKU quantity is added to quantity_available (not quantity_reserved,
+// which may or may not still reflect this order depending on whether the
+// checkout path ever called ReserveStock). This matches the existing
+// AdjustStock semantics and keeps the operation tolerant of drift. One
+// movement row per line is inserted with reference_type='order_cancellation'
+// and reference_id=<orderID>, which doubles as the idempotency key.
+func (r *InventoryRepository) ReleaseForOrderCancellation(
+	ctx context.Context,
+	tenantID, orderID uuid.UUID,
+	lines []CancellationLine,
+) (alreadyReleased bool, err error) {
+	txErr := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+		// Idempotency guard: any prior movement with this reference
+		// means the cancellation has already been applied.
+		var existing int
+		if err := tx.QueryRow(ctx,
+			`SELECT 1
+			 FROM inventory_svc.stock_movements
+			 WHERE tenant_id = $1
+			   AND reference_type = 'order_cancellation'
+			   AND reference_id = $2
+			 LIMIT 1`,
+			tenantID, orderID,
+		).Scan(&existing); err == nil {
+			alreadyReleased = true
+			return nil
+		} else if err != pgx.ErrNoRows {
+			return fmt.Errorf("check prior cancellation movement: %w", err)
+		}
+
+		for _, line := range lines {
+			if line.Quantity <= 0 {
+				continue
+			}
+
+			// Increment available count. If no inventory row exists
+			// for this SKU we intentionally ignore RowsAffected and
+			// still record the movement below, so the idempotency
+			// guard is tripped on future deliveries — otherwise we'd
+			// keep trying to update nothing. One missing SKU must not
+			// block the whole cancellation (best-effort audit log).
+			if _, err := tx.Exec(ctx,
+				`UPDATE inventory_svc.inventory
+				 SET quantity_available = quantity_available + $3,
+				     updated_at = NOW()
+				 WHERE tenant_id = $1 AND sku_id = $2`,
+				tenantID, line.SKUID, line.Quantity,
+			); err != nil {
+				return fmt.Errorf("release stock for sku %s: %w", line.SKUID, err)
+			}
+
+			if _, err := tx.Exec(ctx,
+				`INSERT INTO inventory_svc.stock_movements
+				   (id, tenant_id, sku_id, movement_type, quantity, reference_type, reference_id)
+				 VALUES ($1, $2, $3, $4, $5, 'order_cancellation', $6)`,
+				uuid.New(), tenantID, line.SKUID, domain.MovementReleased, line.Quantity, orderID,
+			); err != nil {
+				return fmt.Errorf("record cancellation movement for sku %s: %w", line.SKUID, err)
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return false, txErr
+	}
+	return alreadyReleased, nil
+}

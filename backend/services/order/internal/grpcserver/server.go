@@ -2,6 +2,9 @@ package grpcserver
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -9,11 +12,18 @@ import (
 
 	commonv1 "github.com/Riku-KANO/ec-test/gen/go/common/v1"
 	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
+	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/service"
 )
 
 // Server implements the orderv1.OrderServiceServer interface.
+//
+// The cancellation RPCs declared in order.proto are INTENTIONALLY served
+// as codes.Unimplemented by this server — see cancellation_server.go for
+// the full rationale. The order cancellation workflow is only reachable
+// through the REST handler today because the gRPC messages carry no
+// authenticated caller identity and there is no gRPC auth interceptor.
 type Server struct {
 	orderv1.UnimplementedOrderServiceServer
 	svc *service.OrderService
@@ -146,6 +156,19 @@ func (s *Server) ListSellerOrders(ctx context.Context, req *orderv1.ListSellerOr
 }
 
 // UpdateOrderStatus updates the status of an order.
+//
+// Note: the gRPC request shape (tenant_id, id, status) does not
+// carry an authenticated seller identity, so this adapter cannot
+// independently enforce seller ownership before calling the service.
+// It resolves the order's seller_id up front and passes it as the
+// ownership argument — this effectively makes the check a no-op on
+// the gRPC path, matching the pre-existing behavior. The REST
+// handler (order_handler.UpdateStatus) IS tightened: it extracts
+// seller_id from tenant.Context and passes the authenticated caller
+// to the service, which is where the real ownership guarantee lives.
+// If the gRPC path ever needs a real auth check, the proto message
+// must add a seller_id field and this adapter should pass the
+// authenticated caller just like the REST handler does.
 func (s *Server) UpdateOrderStatus(ctx context.Context, req *orderv1.UpdateOrderStatusRequest) (*orderv1.UpdateOrderStatusResponse, error) {
 	tenantID, err := uuid.Parse(req.GetTenantId())
 	if err != nil {
@@ -157,7 +180,15 @@ func (s *Server) UpdateOrderStatus(ctx context.Context, req *orderv1.UpdateOrder
 		return nil, status.Errorf(codes.InvalidArgument, "invalid order id: %v", err)
 	}
 
-	if err := s.svc.UpdateOrderStatus(ctx, tenantID, orderID, req.GetStatus()); err != nil {
+	// Resolve the order's current seller_id so the service's
+	// ownership comparison is a no-op rather than a hard 404. See
+	// the method comment for why this is intentional on this path.
+	existing, err := s.svc.GetOrder(ctx, tenantID, orderID)
+	if err != nil {
+		return nil, serviceErrToGRPC(err)
+	}
+
+	if err := s.svc.UpdateOrderStatus(ctx, tenantID, existing.SellerID, orderID, req.GetStatus()); err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
 
@@ -221,35 +252,88 @@ func paginationDefaults(p *commonv1.PaginationRequest) (int, int) {
 	return limit, offset
 }
 
-// serviceErrToGRPC converts application-level errors to gRPC status errors.
+// serviceErrToGRPC converts application-level errors to gRPC status
+// errors. The mapping is primarily driven by *apperrors.AppError, so any
+// handler that returns a typed AppError gets a meaningful gRPC code and
+// does not leak the business error as codes.Internal.
+//
+// Mapping rules:
+//
+//	400 → InvalidArgument       401 → Unauthenticated
+//	403 → PermissionDenied      404 → NotFound
+//	409 → FailedPrecondition    (AlreadyExists when Code ends in
+//	                             "_ALREADY_EXISTS")
+//	429 → ResourceExhausted     502/503/504 → Unavailable
+//	5xx → Internal              (other)
+//
+// When an AppError carries a semantic code (Code field) it is prefixed
+// into the gRPC message so clients that log the status can still see
+// the stable business code. Non-AppError errors fall back to simple
+// substring matching so domain / repository sentinels returned without
+// wrapping still land on a sensible code (NotFound for "not found",
+// InvalidArgument for "invalid" / "bad request").
 func serviceErrToGRPC(err error) error {
 	if err == nil {
 		return nil
 	}
-	// Check for common error patterns from the apperrors package.
-	msg := err.Error()
 
-	// The apperrors package wraps errors with specific types.
-	// We use simple string matching as a pragmatic approach.
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
+		return appErrorToGRPC(appErr)
+	}
+
+	msg := err.Error()
+	lower := strings.ToLower(msg)
 	switch {
-	case contains(msg, "not found"):
+	case strings.Contains(lower, "not found"):
 		return status.Errorf(codes.NotFound, "%s", msg)
-	case contains(msg, "bad request"), contains(msg, "invalid"):
+	case strings.Contains(lower, "bad request"), strings.Contains(lower, "invalid"):
 		return status.Errorf(codes.InvalidArgument, "%s", msg)
 	default:
 		return status.Errorf(codes.Internal, "%s", msg)
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchSubstring(s, substr)
+// appErrorToGRPC maps a typed *apperrors.AppError onto the closest gRPC
+// status code. See serviceErrToGRPC for the full table.
+func appErrorToGRPC(appErr *apperrors.AppError) error {
+	code := appErrorGRPCCode(appErr)
+	// Include the semantic code (when present) in the message so a
+	// client that logs the raw gRPC status line still sees the stable
+	// business code — e.g. "ORDER_NOT_CANCELLABLE: order cannot be
+	// cancelled in its current status".
+	if appErr.Code != "" {
+		return status.Errorf(code, "%s: %s", appErr.Code, appErr.Message)
+	}
+	return status.Errorf(code, "%s", appErr.Message)
 }
 
-func searchSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
+func appErrorGRPCCode(appErr *apperrors.AppError) codes.Code {
+	switch appErr.Status {
+	case http.StatusBadRequest:
+		return codes.InvalidArgument
+	case http.StatusUnauthorized:
+		return codes.Unauthenticated
+	case http.StatusForbidden:
+		return codes.PermissionDenied
+	case http.StatusNotFound:
+		return codes.NotFound
+	case http.StatusConflict:
+		// Duplicate-resource errors map to AlreadyExists; state-machine
+		// conflicts (ORDER_NOT_CANCELLABLE, *_ALREADY_PROCESSED) map to
+		// FailedPrecondition — AlreadyExists would mislead a client
+		// into thinking a retry with a different id would succeed.
+		if strings.HasSuffix(appErr.Code, "_ALREADY_EXISTS") {
+			return codes.AlreadyExists
 		}
+		return codes.FailedPrecondition
+	case http.StatusTooManyRequests:
+		return codes.ResourceExhausted
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		// Upstream failure (e.g. Stripe refund / reversal). Unavailable
+		// signals a transient error that clients can surface / retry.
+		return codes.Unavailable
+	default:
+		return codes.Internal
 	}
-	return false
 }

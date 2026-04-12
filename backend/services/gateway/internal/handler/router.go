@@ -78,6 +78,8 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 			// POST /orders endpoint was removed; use POST /cart/checkout.
 			br.Get("/orders", buyer.ListOrders)
 			br.Get("/orders/{id}", buyer.GetOrder)
+			br.Post("/orders/{id}/cancellation-request", buyer.RequestOrderCancellation)
+			br.Get("/orders/{id}/cancellation-request", buyer.GetOrderCancellationRequest)
 			br.Post("/events", buyer.TrackEvent)
 			br.Get("/recommendations", buyer.GetRecommendations)
 			br.Get("/plans", buyer.ListBuyerPlans)
@@ -158,6 +160,17 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 				ui.Get("/subscription", seller.GetSubscription)
 				ui.Post("/subscription", seller.Subscribe)
 				ui.Get("/plans", seller.ListPlans)
+
+				// Cancellation request management. Parked in the UI-only
+				// subtree (apitoken.Block) because approving a cancellation
+				// triggers Stripe refund + transfer reversal — too dangerous
+				// to expose to API tokens in v1.
+				ui.Route("/cancellation-requests", func(cr chi.Router) {
+					cr.Get("/", seller.ListCancellationRequests)
+					cr.Get("/{id}", seller.GetCancellationRequest)
+					cr.Post("/{id}/approve", seller.ApproveCancellationRequest)
+					cr.Post("/{id}/reject", seller.RejectCancellationRequest)
+				})
 
 				// Inquiry threads (seller view). Requires seller team
 				// membership in the same RBAC tier as team reads.

@@ -138,6 +138,32 @@
       "delivered": "Delivered",
       "completed": "Completed",
       "cancelled": "Cancelled"
+    },
+    "cancellation": {
+      "trigger": "Cancel this order",
+      "modalTitle": "Request cancellation",
+      "modalDescription": "Tell the seller why you want to cancel. After the seller approves, we'll process the refund automatically.",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "e.g. Ordered by mistake",
+      "submit": "Submit request",
+      "submitting": "Sending…",
+      "cancel": "Close",
+      "errorEmpty": "Please enter a reason",
+      "errorNotCancellable": "This order can no longer be cancelled",
+      "errorAlreadyExists": "A cancellation request is already open for this order",
+      "errorGeneric": "Failed to submit cancellation request",
+      "statusBadge": {
+        "pending": "Cancellation requested",
+        "approved": "Cancellation approved",
+        "rejected": "Cancellation rejected",
+        "failed": "Cancellation failed"
+      },
+      "statusNote": {
+        "pending": "Waiting for the seller's response",
+        "approved": "Refund has been processed",
+        "rejected": "Seller comment: {comment}",
+        "failed": "Processing failed. Please contact support"
+      }
     }
   }
 }

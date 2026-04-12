@@ -23,6 +23,9 @@ const (
 	PayoutStatusPending   = "pending"
 	PayoutStatusCompleted = "completed"
 	PayoutStatusFailed    = "failed"
+	// PayoutStatusReversed is set when a seller-approved cancellation
+	// request has triggered a Stripe Transfer Reversal against this payout.
+	PayoutStatusReversed = "reversed"
 )
 
 // Order represents a marketplace order.
@@ -41,6 +44,8 @@ type Order struct {
 	ShippingAddress       json.RawMessage `json:"shipping_address"`
 	StripePaymentIntentID *string         `json:"stripe_payment_intent_id,omitempty"`
 	PaidAt                *time.Time      `json:"paid_at,omitempty"`
+	CancelledAt           *time.Time      `json:"cancelled_at,omitempty"`
+	CancellationReason    *string         `json:"cancellation_reason,omitempty"`
 	CreatedAt             time.Time       `json:"created_at"`
 	UpdatedAt             time.Time       `json:"updated_at"`
 }
@@ -88,9 +93,11 @@ type Payout struct {
 	Amount           int64      `json:"amount"`
 	Currency         string     `json:"currency"`
 	StripeTransferID *string    `json:"stripe_transfer_id,omitempty"`
+	StripeReversalID *string    `json:"stripe_reversal_id,omitempty"`
 	Status           string     `json:"status"`
 	CreatedAt        time.Time  `json:"created_at"`
 	CompletedAt      *time.Time `json:"completed_at,omitempty"`
+	ReversedAt       *time.Time `json:"reversed_at,omitempty"`
 }
 
 // CreateOrderInput holds the data needed to create a new order.

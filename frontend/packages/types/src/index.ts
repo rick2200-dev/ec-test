@@ -16,3 +16,9 @@ export type {
 export type { PlanFeatures } from "./subscription";
 
 export type { ProductStatus, SellerStatus, OrderStatus } from "./status";
+
+export type {
+  CancellationRequest,
+  CancellationRequestStatus,
+  CancellationRequestListResponse,
+} from "./cancellation";

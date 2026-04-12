@@ -140,6 +140,48 @@ func (s *InventoryService) ReleaseStock(ctx context.Context, tenantID, skuID uui
 	return nil
 }
 
+// CancellationLine is re-exported from the repository package so the
+// subscriber can assemble the payload without importing repository.
+type CancellationLine = repository.CancellationLine
+
+// ReleaseStockForOrderCancellation releases stock for every line of an
+// order that has been cancelled by the order service. It is idempotent:
+// a prior cancellation-movement for the same order_id makes the call a
+// no-op, which is required because Pub/Sub delivery is at-least-once.
+//
+// This method is called from internal/subscriber/order_subscriber.go in
+// response to order.cancelled events. See docs/order-cancellation.md for
+// the end-to-end flow.
+func (s *InventoryService) ReleaseStockForOrderCancellation(
+	ctx context.Context,
+	tenantID, orderID uuid.UUID,
+	lines []CancellationLine,
+) error {
+	if len(lines) == 0 {
+		slog.Info("skipping cancellation release with no lines", "order_id", orderID)
+		return nil
+	}
+
+	already, err := s.repo.ReleaseForOrderCancellation(ctx, tenantID, orderID, lines)
+	if err != nil {
+		return apperrors.Internal("release stock for order cancellation", err)
+	}
+	if already {
+		slog.Info("order cancellation already released",
+			"tenant_id", tenantID,
+			"order_id", orderID,
+		)
+		return nil
+	}
+
+	slog.Info("order cancellation stock released",
+		"tenant_id", tenantID,
+		"order_id", orderID,
+		"line_count", len(lines),
+	)
+	return nil
+}
+
 // ConfirmSold confirms that reserved stock has been sold and records the movement.
 func (s *InventoryService) ConfirmSold(ctx context.Context, tenantID, skuID uuid.UUID, quantity int) error {
 	if quantity <= 0 {

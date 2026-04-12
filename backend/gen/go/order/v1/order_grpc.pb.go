@@ -19,13 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OrderService_CreateCheckout_FullMethodName    = "/order.v1.OrderService/CreateCheckout"
-	OrderService_CreateOrder_FullMethodName       = "/order.v1.OrderService/CreateOrder"
-	OrderService_GetOrder_FullMethodName          = "/order.v1.OrderService/GetOrder"
-	OrderService_ListBuyerOrders_FullMethodName   = "/order.v1.OrderService/ListBuyerOrders"
-	OrderService_ListSellerOrders_FullMethodName  = "/order.v1.OrderService/ListSellerOrders"
-	OrderService_UpdateOrderStatus_FullMethodName = "/order.v1.OrderService/UpdateOrderStatus"
-	OrderService_ListPayouts_FullMethodName       = "/order.v1.OrderService/ListPayouts"
+	OrderService_CreateCheckout_FullMethodName                = "/order.v1.OrderService/CreateCheckout"
+	OrderService_CreateOrder_FullMethodName                   = "/order.v1.OrderService/CreateOrder"
+	OrderService_GetOrder_FullMethodName                      = "/order.v1.OrderService/GetOrder"
+	OrderService_ListBuyerOrders_FullMethodName               = "/order.v1.OrderService/ListBuyerOrders"
+	OrderService_ListSellerOrders_FullMethodName              = "/order.v1.OrderService/ListSellerOrders"
+	OrderService_UpdateOrderStatus_FullMethodName             = "/order.v1.OrderService/UpdateOrderStatus"
+	OrderService_ListPayouts_FullMethodName                   = "/order.v1.OrderService/ListPayouts"
+	OrderService_RequestOrderCancellation_FullMethodName      = "/order.v1.OrderService/RequestOrderCancellation"
+	OrderService_ApproveOrderCancellation_FullMethodName      = "/order.v1.OrderService/ApproveOrderCancellation"
+	OrderService_RejectOrderCancellation_FullMethodName       = "/order.v1.OrderService/RejectOrderCancellation"
+	OrderService_ListOrderCancellationRequests_FullMethodName = "/order.v1.OrderService/ListOrderCancellationRequests"
+	OrderService_GetOrderCancellationRequest_FullMethodName   = "/order.v1.OrderService/GetOrderCancellationRequest"
 )
 
 // OrderServiceClient is the client API for OrderService service.
@@ -48,6 +53,15 @@ type OrderServiceClient interface {
 	ListSellerOrders(ctx context.Context, in *ListSellerOrdersRequest, opts ...grpc.CallOption) (*ListSellerOrdersResponse, error)
 	UpdateOrderStatus(ctx context.Context, in *UpdateOrderStatusRequest, opts ...grpc.CallOption) (*UpdateOrderStatusResponse, error)
 	ListPayouts(ctx context.Context, in *ListPayoutsRequest, opts ...grpc.CallOption) (*ListPayoutsResponse, error)
+	// Order cancellation workflow. Buyer opens a request; seller approves
+	// or rejects. Approval orchestrates Stripe refund + per-payout transfer
+	// reversals + inventory release via Pub/Sub. See
+	// docs/order-cancellation.md for the full flow.
+	RequestOrderCancellation(ctx context.Context, in *RequestOrderCancellationRequest, opts ...grpc.CallOption) (*RequestOrderCancellationResponse, error)
+	ApproveOrderCancellation(ctx context.Context, in *ApproveOrderCancellationRequest, opts ...grpc.CallOption) (*ApproveOrderCancellationResponse, error)
+	RejectOrderCancellation(ctx context.Context, in *RejectOrderCancellationRequest, opts ...grpc.CallOption) (*RejectOrderCancellationResponse, error)
+	ListOrderCancellationRequests(ctx context.Context, in *ListOrderCancellationRequestsRequest, opts ...grpc.CallOption) (*ListOrderCancellationRequestsResponse, error)
+	GetOrderCancellationRequest(ctx context.Context, in *GetOrderCancellationRequestRequest, opts ...grpc.CallOption) (*GetOrderCancellationRequestResponse, error)
 }
 
 type orderServiceClient struct {
@@ -129,6 +143,56 @@ func (c *orderServiceClient) ListPayouts(ctx context.Context, in *ListPayoutsReq
 	return out, nil
 }
 
+func (c *orderServiceClient) RequestOrderCancellation(ctx context.Context, in *RequestOrderCancellationRequest, opts ...grpc.CallOption) (*RequestOrderCancellationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestOrderCancellationResponse)
+	err := c.cc.Invoke(ctx, OrderService_RequestOrderCancellation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) ApproveOrderCancellation(ctx context.Context, in *ApproveOrderCancellationRequest, opts ...grpc.CallOption) (*ApproveOrderCancellationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveOrderCancellationResponse)
+	err := c.cc.Invoke(ctx, OrderService_ApproveOrderCancellation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) RejectOrderCancellation(ctx context.Context, in *RejectOrderCancellationRequest, opts ...grpc.CallOption) (*RejectOrderCancellationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RejectOrderCancellationResponse)
+	err := c.cc.Invoke(ctx, OrderService_RejectOrderCancellation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) ListOrderCancellationRequests(ctx context.Context, in *ListOrderCancellationRequestsRequest, opts ...grpc.CallOption) (*ListOrderCancellationRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOrderCancellationRequestsResponse)
+	err := c.cc.Invoke(ctx, OrderService_ListOrderCancellationRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) GetOrderCancellationRequest(ctx context.Context, in *GetOrderCancellationRequestRequest, opts ...grpc.CallOption) (*GetOrderCancellationRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOrderCancellationRequestResponse)
+	err := c.cc.Invoke(ctx, OrderService_GetOrderCancellationRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrderServiceServer is the server API for OrderService service.
 // All implementations must embed UnimplementedOrderServiceServer
 // for forward compatibility.
@@ -149,6 +213,15 @@ type OrderServiceServer interface {
 	ListSellerOrders(context.Context, *ListSellerOrdersRequest) (*ListSellerOrdersResponse, error)
 	UpdateOrderStatus(context.Context, *UpdateOrderStatusRequest) (*UpdateOrderStatusResponse, error)
 	ListPayouts(context.Context, *ListPayoutsRequest) (*ListPayoutsResponse, error)
+	// Order cancellation workflow. Buyer opens a request; seller approves
+	// or rejects. Approval orchestrates Stripe refund + per-payout transfer
+	// reversals + inventory release via Pub/Sub. See
+	// docs/order-cancellation.md for the full flow.
+	RequestOrderCancellation(context.Context, *RequestOrderCancellationRequest) (*RequestOrderCancellationResponse, error)
+	ApproveOrderCancellation(context.Context, *ApproveOrderCancellationRequest) (*ApproveOrderCancellationResponse, error)
+	RejectOrderCancellation(context.Context, *RejectOrderCancellationRequest) (*RejectOrderCancellationResponse, error)
+	ListOrderCancellationRequests(context.Context, *ListOrderCancellationRequestsRequest) (*ListOrderCancellationRequestsResponse, error)
+	GetOrderCancellationRequest(context.Context, *GetOrderCancellationRequestRequest) (*GetOrderCancellationRequestResponse, error)
 	mustEmbedUnimplementedOrderServiceServer()
 }
 
@@ -179,6 +252,21 @@ func (UnimplementedOrderServiceServer) UpdateOrderStatus(context.Context, *Updat
 }
 func (UnimplementedOrderServiceServer) ListPayouts(context.Context, *ListPayoutsRequest) (*ListPayoutsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPayouts not implemented")
+}
+func (UnimplementedOrderServiceServer) RequestOrderCancellation(context.Context, *RequestOrderCancellationRequest) (*RequestOrderCancellationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestOrderCancellation not implemented")
+}
+func (UnimplementedOrderServiceServer) ApproveOrderCancellation(context.Context, *ApproveOrderCancellationRequest) (*ApproveOrderCancellationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApproveOrderCancellation not implemented")
+}
+func (UnimplementedOrderServiceServer) RejectOrderCancellation(context.Context, *RejectOrderCancellationRequest) (*RejectOrderCancellationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RejectOrderCancellation not implemented")
+}
+func (UnimplementedOrderServiceServer) ListOrderCancellationRequests(context.Context, *ListOrderCancellationRequestsRequest) (*ListOrderCancellationRequestsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOrderCancellationRequests not implemented")
+}
+func (UnimplementedOrderServiceServer) GetOrderCancellationRequest(context.Context, *GetOrderCancellationRequestRequest) (*GetOrderCancellationRequestResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOrderCancellationRequest not implemented")
 }
 func (UnimplementedOrderServiceServer) mustEmbedUnimplementedOrderServiceServer() {}
 func (UnimplementedOrderServiceServer) testEmbeddedByValue()                      {}
@@ -327,6 +415,96 @@ func _OrderService_ListPayouts_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OrderService_RequestOrderCancellation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestOrderCancellationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).RequestOrderCancellation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_RequestOrderCancellation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).RequestOrderCancellation(ctx, req.(*RequestOrderCancellationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_ApproveOrderCancellation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveOrderCancellationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).ApproveOrderCancellation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_ApproveOrderCancellation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).ApproveOrderCancellation(ctx, req.(*ApproveOrderCancellationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_RejectOrderCancellation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectOrderCancellationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).RejectOrderCancellation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_RejectOrderCancellation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).RejectOrderCancellation(ctx, req.(*RejectOrderCancellationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_ListOrderCancellationRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOrderCancellationRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).ListOrderCancellationRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_ListOrderCancellationRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).ListOrderCancellationRequests(ctx, req.(*ListOrderCancellationRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_GetOrderCancellationRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrderCancellationRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).GetOrderCancellationRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_GetOrderCancellationRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).GetOrderCancellationRequest(ctx, req.(*GetOrderCancellationRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OrderService_ServiceDesc is the grpc.ServiceDesc for OrderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -361,6 +539,26 @@ var OrderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPayouts",
 			Handler:    _OrderService_ListPayouts_Handler,
+		},
+		{
+			MethodName: "RequestOrderCancellation",
+			Handler:    _OrderService_RequestOrderCancellation_Handler,
+		},
+		{
+			MethodName: "ApproveOrderCancellation",
+			Handler:    _OrderService_ApproveOrderCancellation_Handler,
+		},
+		{
+			MethodName: "RejectOrderCancellation",
+			Handler:    _OrderService_RejectOrderCancellation_Handler,
+		},
+		{
+			MethodName: "ListOrderCancellationRequests",
+			Handler:    _OrderService_ListOrderCancellationRequests_Handler,
+		},
+		{
+			MethodName: "GetOrderCancellationRequest",
+			Handler:    _OrderService_GetOrderCancellationRequest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

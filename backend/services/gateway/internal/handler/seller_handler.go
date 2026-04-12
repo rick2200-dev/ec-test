@@ -133,6 +133,63 @@ func (h *SellerHandler) UpdateStock(w http.ResponseWriter, r *http.Request) {
 	writeRaw(w, status, body)
 }
 
+// ListCancellationRequests proxies to the order service to list cancellation
+// requests scoped to the seller's tenant. Order-svc enforces seller ownership
+// from the tenant context.
+// GET /cancellation-requests
+func (h *SellerHandler) ListCancellationRequests(w http.ResponseWriter, r *http.Request) {
+	body, st, err := h.order.Get(r.Context(), "/cancellation-requests", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, st, body)
+}
+
+// GetCancellationRequest proxies to the order service to fetch a single
+// cancellation request by id.
+// GET /cancellation-requests/{id}
+func (h *SellerHandler) GetCancellationRequest(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	body, st, err := h.order.Get(r.Context(), "/cancellation-requests/"+url.PathEscape(id), "")
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, st, body)
+}
+
+// ApproveCancellationRequest proxies to the order service approve endpoint.
+// Order-svc orchestrates Stripe refund + transfer reversal + DB updates and
+// publishes order.cancellation_approved / order.cancelled events.
+// POST /cancellation-requests/{id}/approve
+func (h *SellerHandler) ApproveCancellationRequest(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	body, st, err := h.order.Post(r.Context(), "/cancellation-requests/"+url.PathEscape(id)+"/approve", r.Body)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, st, body)
+}
+
+// RejectCancellationRequest proxies to the order service reject endpoint.
+// Request body must include a non-empty seller_comment.
+// POST /cancellation-requests/{id}/reject
+func (h *SellerHandler) RejectCancellationRequest(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	body, st, err := h.order.Post(r.Context(), "/cancellation-requests/"+url.PathEscape(id)+"/reject", r.Body)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, st, body)
+}
+
 // ListPlans lists all available subscription plans.
 // GET /plans
 func (h *SellerHandler) ListPlans(w http.ResponseWriter, r *http.Request) {

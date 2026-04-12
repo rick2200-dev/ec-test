@@ -47,6 +47,14 @@ func (s *OrderSubscriber) handleEvent(ctx context.Context, event pubsub.Event) e
 		return s.handleOrderPaid(ctx, event)
 	case "order.shipped":
 		return s.handleOrderShipped(ctx, event)
+	case "order.cancellation_requested":
+		return s.handleCancellationRequested(ctx, event)
+	case "order.cancellation_approved":
+		return s.handleCancellationApproved(ctx, event)
+	case "order.cancellation_rejected":
+		return s.handleCancellationRejected(ctx, event)
+	case "order.cancelled":
+		return s.handleOrderCancelled(ctx, event)
 	default:
 		slog.Warn("unhandled order event type", "event_type", event.Type)
 		return nil
@@ -130,6 +138,101 @@ func (s *OrderSubscriber) handleOrderShipped(ctx context.Context, event pubsub.E
 
 	if err := s.sender.Send(ctx, data.BuyerEmail, subject, body); err != nil {
 		return fmt.Errorf("send shipping notification: %w", err)
+	}
+	return nil
+}
+
+// ─── Cancellation event handlers ─────────────────────────────
+//
+// These four handlers consume events published by the order service's
+// cancellation package. Field names here must stay in sync with
+// backend/services/order/internal/cancellation/events.go — that file is
+// the source of truth for the payload contract.
+//
+// Today the LogSender just logs to stdout, so we use buyer_auth0_id /
+// seller_id as the "to" address. When a real SMTP backend is wired in
+// and user profiles are resolvable, these handlers will need to
+// translate auth0 sub → email, same as the existing order.created
+// handler will.
+
+type cancellationRequestedData struct {
+	OrderID      string `json:"order_id"`
+	SellerID     string `json:"seller_id"`
+	BuyerAuth0ID string `json:"buyer_auth0_id"`
+	Reason       string `json:"reason"`
+}
+
+func (s *OrderSubscriber) handleCancellationRequested(ctx context.Context, event pubsub.Event) error {
+	var data cancellationRequestedData
+	if err := decodeEventData(event.Data, &data); err != nil {
+		return fmt.Errorf("decode order.cancellation_requested data: %w", err)
+	}
+
+	subject, body := templates.OrderCancellationRequested(data.OrderID, data.Reason)
+
+	// The seller is the recipient — they need to act on the request.
+	if err := s.sender.Send(ctx, data.SellerID, subject, body); err != nil {
+		return fmt.Errorf("send cancellation requested notification: %w", err)
+	}
+	return nil
+}
+
+type cancellationApprovedData struct {
+	OrderID      string `json:"order_id"`
+	BuyerAuth0ID string `json:"buyer_auth0_id"`
+	RefundAmount int64  `json:"refund_amount"`
+}
+
+func (s *OrderSubscriber) handleCancellationApproved(ctx context.Context, event pubsub.Event) error {
+	var data cancellationApprovedData
+	if err := decodeEventData(event.Data, &data); err != nil {
+		return fmt.Errorf("decode order.cancellation_approved data: %w", err)
+	}
+
+	subject, body := templates.OrderCancellationApproved(data.OrderID, data.RefundAmount)
+
+	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+		return fmt.Errorf("send cancellation approved notification: %w", err)
+	}
+	return nil
+}
+
+type cancellationRejectedData struct {
+	OrderID       string `json:"order_id"`
+	BuyerAuth0ID  string `json:"buyer_auth0_id"`
+	SellerComment string `json:"seller_comment"`
+}
+
+func (s *OrderSubscriber) handleCancellationRejected(ctx context.Context, event pubsub.Event) error {
+	var data cancellationRejectedData
+	if err := decodeEventData(event.Data, &data); err != nil {
+		return fmt.Errorf("decode order.cancellation_rejected data: %w", err)
+	}
+
+	subject, body := templates.OrderCancellationRejected(data.OrderID, data.SellerComment)
+
+	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+		return fmt.Errorf("send cancellation rejected notification: %w", err)
+	}
+	return nil
+}
+
+type orderCancelledNotificationData struct {
+	OrderID      string `json:"order_id"`
+	BuyerAuth0ID string `json:"buyer_auth0_id"`
+	Reason       string `json:"reason"`
+}
+
+func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub.Event) error {
+	var data orderCancelledNotificationData
+	if err := decodeEventData(event.Data, &data); err != nil {
+		return fmt.Errorf("decode order.cancelled data: %w", err)
+	}
+
+	subject, body := templates.OrderCancelledNotification(data.OrderID, data.Reason)
+
+	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+		return fmt.Errorf("send order cancelled notification: %w", err)
 	}
 	return nil
 }

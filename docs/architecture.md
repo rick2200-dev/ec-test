@@ -89,7 +89,7 @@
 | **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)                | `auth_svc`      |
 | **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                           | `catalog_svc`   |
 | **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                              | `inventory_svc` |
-| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、コミッション計算、売上送金           | `order_svc`     |
+| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金 | `order_svc`     |
 | **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                        | なし (外部)     |
 | **recommend**    | 8086   | レコメンデーション、パーソナライズ                                      | なし (外部)     |
 | **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                        | なし            |
@@ -495,9 +495,12 @@ sequenceDiagram
 
 | トピック                  | パブリッシャー | サブスクライバー        | 説明             |
 | ------------------------- | -------------- | ----------------------- | ---------------- |
-| `order.created`           | order          | notification, inventory | 注文作成時       |
-| `order.paid`              | order          | notification, inventory | 決済完了時       |
-| `order.cancelled`         | order          | notification, inventory | 注文キャンセル時 |
+| `order.created`                  | order          | notification, inventory | 注文作成時       |
+| `order.paid`                     | order          | notification, inventory | 決済完了時       |
+| `order.cancellation_requested`   | order          | notification            | 買い手がキャンセル申請を送信した時 |
+| `order.cancellation_approved`    | order          | notification            | セラーがキャンセル申請を承認し Stripe 返金 + 送金取消が成功した時 |
+| `order.cancellation_rejected`    | order          | notification            | セラーがキャンセル申請を却下した時 |
+| `order.cancelled`                | order          | notification, inventory | 注文キャンセル確定時 (line_items スナップショット同梱。詳細は [注文キャンセル申請設計書](./order-cancellation.md)) |
 | `inventory.low_stock`     | inventory      | notification            | 在庫が閾値以下   |
 | `catalog.product_updated` | catalog        | search                  | 商品情報更新時   |
 | `catalog.product_deleted` | catalog        | search                  | 商品削除時       |

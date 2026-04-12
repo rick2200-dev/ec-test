@@ -1367,6 +1367,686 @@ func (x *ListPayoutsResponse) GetPagination() *v1.PaginationResponse {
 	return nil
 }
 
+// CancellationRequest mirrors order_svc.order_cancellation_requests.
+// The server (order service) is the authority for requested_by_auth0_id
+// and processed_by_seller_id; clients must not trust these fields from
+// request bodies and should rely on the authenticated caller's identity.
+type CancellationRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TenantId           string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	OrderId            string                 `protobuf:"bytes,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	RequestedByAuth0Id string                 `protobuf:"bytes,4,opt,name=requested_by_auth0_id,json=requestedByAuth0Id,proto3" json:"requested_by_auth0_id,omitempty"`
+	Reason             string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Status: pending, approved, rejected, failed.
+	Status              string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	SellerComment       string                 `protobuf:"bytes,7,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"`
+	ProcessedBySellerId string                 `protobuf:"bytes,8,opt,name=processed_by_seller_id,json=processedBySellerId,proto3" json:"processed_by_seller_id,omitempty"`
+	ProcessedAt         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=processed_at,json=processedAt,proto3" json:"processed_at,omitempty"`
+	StripeRefundId      string                 `protobuf:"bytes,10,opt,name=stripe_refund_id,json=stripeRefundId,proto3" json:"stripe_refund_id,omitempty"`
+	FailureReason       string                 `protobuf:"bytes,11,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"`
+	CreatedAt           *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *CancellationRequest) Reset() {
+	*x = CancellationRequest{}
+	mi := &file_order_v1_order_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancellationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancellationRequest) ProtoMessage() {}
+
+func (x *CancellationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancellationRequest.ProtoReflect.Descriptor instead.
+func (*CancellationRequest) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *CancellationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetOrderId() string {
+	if x != nil {
+		return x.OrderId
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetRequestedByAuth0Id() string {
+	if x != nil {
+		return x.RequestedByAuth0Id
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetSellerComment() string {
+	if x != nil {
+		return x.SellerComment
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetProcessedBySellerId() string {
+	if x != nil {
+		return x.ProcessedBySellerId
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetProcessedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ProcessedAt
+	}
+	return nil
+}
+
+func (x *CancellationRequest) GetStripeRefundId() string {
+	if x != nil {
+		return x.StripeRefundId
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetFailureReason() string {
+	if x != nil {
+		return x.FailureReason
+	}
+	return ""
+}
+
+func (x *CancellationRequest) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *CancellationRequest) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type RequestOrderCancellationRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	OrderId  string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	// buyer_auth0_id is resolved server-side from the authenticated
+	// identity. Clients that set this field are ignored.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestOrderCancellationRequest) Reset() {
+	*x = RequestOrderCancellationRequest{}
+	mi := &file_order_v1_order_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestOrderCancellationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestOrderCancellationRequest) ProtoMessage() {}
+
+func (x *RequestOrderCancellationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestOrderCancellationRequest.ProtoReflect.Descriptor instead.
+func (*RequestOrderCancellationRequest) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RequestOrderCancellationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *RequestOrderCancellationRequest) GetOrderId() string {
+	if x != nil {
+		return x.OrderId
+	}
+	return ""
+}
+
+func (x *RequestOrderCancellationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type RequestOrderCancellationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Request       *CancellationRequest   `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestOrderCancellationResponse) Reset() {
+	*x = RequestOrderCancellationResponse{}
+	mi := &file_order_v1_order_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestOrderCancellationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestOrderCancellationResponse) ProtoMessage() {}
+
+func (x *RequestOrderCancellationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestOrderCancellationResponse.ProtoReflect.Descriptor instead.
+func (*RequestOrderCancellationResponse) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *RequestOrderCancellationResponse) GetRequest() *CancellationRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+type ApproveOrderCancellationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                            // cancellation request id
+	SellerComment string                 `protobuf:"bytes,3,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"` // optional
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveOrderCancellationRequest) Reset() {
+	*x = ApproveOrderCancellationRequest{}
+	mi := &file_order_v1_order_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveOrderCancellationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveOrderCancellationRequest) ProtoMessage() {}
+
+func (x *ApproveOrderCancellationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveOrderCancellationRequest.ProtoReflect.Descriptor instead.
+func (*ApproveOrderCancellationRequest) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ApproveOrderCancellationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ApproveOrderCancellationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ApproveOrderCancellationRequest) GetSellerComment() string {
+	if x != nil {
+		return x.SellerComment
+	}
+	return ""
+}
+
+type ApproveOrderCancellationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Request       *CancellationRequest   `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveOrderCancellationResponse) Reset() {
+	*x = ApproveOrderCancellationResponse{}
+	mi := &file_order_v1_order_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveOrderCancellationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveOrderCancellationResponse) ProtoMessage() {}
+
+func (x *ApproveOrderCancellationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveOrderCancellationResponse.ProtoReflect.Descriptor instead.
+func (*ApproveOrderCancellationResponse) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ApproveOrderCancellationResponse) GetRequest() *CancellationRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+type RejectOrderCancellationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                            // cancellation request id
+	SellerComment string                 `protobuf:"bytes,3,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"` // required — shown to the buyer
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectOrderCancellationRequest) Reset() {
+	*x = RejectOrderCancellationRequest{}
+	mi := &file_order_v1_order_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectOrderCancellationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectOrderCancellationRequest) ProtoMessage() {}
+
+func (x *RejectOrderCancellationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectOrderCancellationRequest.ProtoReflect.Descriptor instead.
+func (*RejectOrderCancellationRequest) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *RejectOrderCancellationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *RejectOrderCancellationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RejectOrderCancellationRequest) GetSellerComment() string {
+	if x != nil {
+		return x.SellerComment
+	}
+	return ""
+}
+
+type RejectOrderCancellationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Request       *CancellationRequest   `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectOrderCancellationResponse) Reset() {
+	*x = RejectOrderCancellationResponse{}
+	mi := &file_order_v1_order_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectOrderCancellationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectOrderCancellationResponse) ProtoMessage() {}
+
+func (x *RejectOrderCancellationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectOrderCancellationResponse.ProtoReflect.Descriptor instead.
+func (*RejectOrderCancellationResponse) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RejectOrderCancellationResponse) GetRequest() *CancellationRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+type ListOrderCancellationRequestsRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Optional status filter. Defaults to "pending" server-side when
+	// empty (seller dashboards land on pending-first).
+	Status     string                `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Pagination *v1.PaginationRequest `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	// Seller scope. MUST be set — the server joins order_svc.orders on this
+	// to prevent a multi-seller tenant from reading another seller's
+	// cancellation reasons or buyer identifiers. See docs/order-cancellation.md.
+	SellerId      string `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOrderCancellationRequestsRequest) Reset() {
+	*x = ListOrderCancellationRequestsRequest{}
+	mi := &file_order_v1_order_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOrderCancellationRequestsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOrderCancellationRequestsRequest) ProtoMessage() {}
+
+func (x *ListOrderCancellationRequestsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOrderCancellationRequestsRequest.ProtoReflect.Descriptor instead.
+func (*ListOrderCancellationRequestsRequest) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ListOrderCancellationRequestsRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ListOrderCancellationRequestsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListOrderCancellationRequestsRequest) GetPagination() *v1.PaginationRequest {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+func (x *ListOrderCancellationRequestsRequest) GetSellerId() string {
+	if x != nil {
+		return x.SellerId
+	}
+	return ""
+}
+
+type ListOrderCancellationRequestsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requests      []*CancellationRequest `protobuf:"bytes,1,rep,name=requests,proto3" json:"requests,omitempty"`
+	Pagination    *v1.PaginationResponse `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOrderCancellationRequestsResponse) Reset() {
+	*x = ListOrderCancellationRequestsResponse{}
+	mi := &file_order_v1_order_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOrderCancellationRequestsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOrderCancellationRequestsResponse) ProtoMessage() {}
+
+func (x *ListOrderCancellationRequestsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOrderCancellationRequestsResponse.ProtoReflect.Descriptor instead.
+func (*ListOrderCancellationRequestsResponse) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ListOrderCancellationRequestsResponse) GetRequests() []*CancellationRequest {
+	if x != nil {
+		return x.Requests
+	}
+	return nil
+}
+
+func (x *ListOrderCancellationRequestsResponse) GetPagination() *v1.PaginationResponse {
+	if x != nil {
+		return x.Pagination
+	}
+	return nil
+}
+
+type GetOrderCancellationRequestRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrderCancellationRequestRequest) Reset() {
+	*x = GetOrderCancellationRequestRequest{}
+	mi := &file_order_v1_order_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrderCancellationRequestRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrderCancellationRequestRequest) ProtoMessage() {}
+
+func (x *GetOrderCancellationRequestRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrderCancellationRequestRequest.ProtoReflect.Descriptor instead.
+func (*GetOrderCancellationRequestRequest) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *GetOrderCancellationRequestRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *GetOrderCancellationRequestRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetOrderCancellationRequestResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Request       *CancellationRequest   `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrderCancellationRequestResponse) Reset() {
+	*x = GetOrderCancellationRequestResponse{}
+	mi := &file_order_v1_order_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrderCancellationRequestResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrderCancellationRequestResponse) ProtoMessage() {}
+
+func (x *GetOrderCancellationRequestResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_order_v1_order_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrderCancellationRequestResponse.ProtoReflect.Descriptor instead.
+func (*GetOrderCancellationRequestResponse) Descriptor() ([]byte, []int) {
+	return file_order_v1_order_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetOrderCancellationRequestResponse) GetRequest() *CancellationRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
 var File_order_v1_order_proto protoreflect.FileDescriptor
 
 const file_order_v1_order_proto_rawDesc = "" +
@@ -1493,7 +2173,59 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\apayouts\x18\x01 \x03(\v2\x10.order.v1.PayoutR\apayouts\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination2\xd4\x04\n" +
+	"pagination\"\xa2\x04\n" +
+	"\x13CancellationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x19\n" +
+	"\border_id\x18\x03 \x01(\tR\aorderId\x121\n" +
+	"\x15requested_by_auth0_id\x18\x04 \x01(\tR\x12requestedByAuth0Id\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12%\n" +
+	"\x0eseller_comment\x18\a \x01(\tR\rsellerComment\x123\n" +
+	"\x16processed_by_seller_id\x18\b \x01(\tR\x13processedBySellerId\x12=\n" +
+	"\fprocessed_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vprocessedAt\x12(\n" +
+	"\x10stripe_refund_id\x18\n" +
+	" \x01(\tR\x0estripeRefundId\x12%\n" +
+	"\x0efailure_reason\x18\v \x01(\tR\rfailureReason\x129\n" +
+	"\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"q\n" +
+	"\x1fRequestOrderCancellationRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x19\n" +
+	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"[\n" +
+	" RequestOrderCancellationResponse\x127\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"u\n" +
+	"\x1fApproveOrderCancellationRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12%\n" +
+	"\x0eseller_comment\x18\x03 \x01(\tR\rsellerComment\"[\n" +
+	" ApproveOrderCancellationResponse\x127\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"t\n" +
+	"\x1eRejectOrderCancellationRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12%\n" +
+	"\x0eseller_comment\x18\x03 \x01(\tR\rsellerComment\"Z\n" +
+	"\x1fRejectOrderCancellationResponse\x127\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"\xb6\x01\n" +
+	"$ListOrderCancellationRequestsRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12<\n" +
+	"\n" +
+	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x12\x1b\n" +
+	"\tseller_id\x18\x04 \x01(\tR\bsellerId\"\xa1\x01\n" +
+	"%ListOrderCancellationRequestsResponse\x129\n" +
+	"\brequests\x18\x01 \x03(\v2\x1d.order.v1.CancellationRequestR\brequests\x12=\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
+	"pagination\"Q\n" +
+	"\"GetOrderCancellationRequestRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"^\n" +
+	"#GetOrderCancellationRequestResponse\x127\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest2\xa9\t\n" +
 	"\fOrderService\x12S\n" +
 	"\x0eCreateCheckout\x12\x1f.order.v1.CreateCheckoutRequest\x1a .order.v1.CreateCheckoutResponse\x12O\n" +
 	"\vCreateOrder\x12\x1c.order.v1.CreateOrderRequest\x1a\x1d.order.v1.CreateOrderResponse\"\x03\x88\x02\x01\x12A\n" +
@@ -1501,7 +2233,12 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\x0fListBuyerOrders\x12 .order.v1.ListBuyerOrdersRequest\x1a!.order.v1.ListBuyerOrdersResponse\x12Y\n" +
 	"\x10ListSellerOrders\x12!.order.v1.ListSellerOrdersRequest\x1a\".order.v1.ListSellerOrdersResponse\x12\\\n" +
 	"\x11UpdateOrderStatus\x12\".order.v1.UpdateOrderStatusRequest\x1a#.order.v1.UpdateOrderStatusResponse\x12J\n" +
-	"\vListPayouts\x12\x1c.order.v1.ListPayoutsRequest\x1a\x1d.order.v1.ListPayoutsResponseB6Z4github.com/Riku-KANO/ec-test/gen/go/order/v1;orderv1b\x06proto3"
+	"\vListPayouts\x12\x1c.order.v1.ListPayoutsRequest\x1a\x1d.order.v1.ListPayoutsResponse\x12q\n" +
+	"\x18RequestOrderCancellation\x12).order.v1.RequestOrderCancellationRequest\x1a*.order.v1.RequestOrderCancellationResponse\x12q\n" +
+	"\x18ApproveOrderCancellation\x12).order.v1.ApproveOrderCancellationRequest\x1a*.order.v1.ApproveOrderCancellationResponse\x12n\n" +
+	"\x17RejectOrderCancellation\x12(.order.v1.RejectOrderCancellationRequest\x1a).order.v1.RejectOrderCancellationResponse\x12\x80\x01\n" +
+	"\x1dListOrderCancellationRequests\x12..order.v1.ListOrderCancellationRequestsRequest\x1a/.order.v1.ListOrderCancellationRequestsResponse\x12z\n" +
+	"\x1bGetOrderCancellationRequest\x12,.order.v1.GetOrderCancellationRequestRequest\x1a-.order.v1.GetOrderCancellationRequestResponseB6Z4github.com/Riku-KANO/ec-test/gen/go/order/v1;orderv1b\x06proto3"
 
 var (
 	file_order_v1_order_proto_rawDescOnce sync.Once
@@ -1515,82 +2252,113 @@ func file_order_v1_order_proto_rawDescGZIP() []byte {
 	return file_order_v1_order_proto_rawDescData
 }
 
-var file_order_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_order_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_order_v1_order_proto_goTypes = []any{
-	(*Order)(nil),                     // 0: order.v1.Order
-	(*OrderLine)(nil),                 // 1: order.v1.OrderLine
-	(*Payout)(nil),                    // 2: order.v1.Payout
-	(*CreateOrderRequest)(nil),        // 3: order.v1.CreateOrderRequest
-	(*OrderLineInput)(nil),            // 4: order.v1.OrderLineInput
-	(*CreateOrderResponse)(nil),       // 5: order.v1.CreateOrderResponse
-	(*CreateCheckoutRequest)(nil),     // 6: order.v1.CreateCheckoutRequest
-	(*CheckoutLineInput)(nil),         // 7: order.v1.CheckoutLineInput
-	(*CreateCheckoutResponse)(nil),    // 8: order.v1.CreateCheckoutResponse
-	(*GetOrderRequest)(nil),           // 9: order.v1.GetOrderRequest
-	(*GetOrderResponse)(nil),          // 10: order.v1.GetOrderResponse
-	(*ListBuyerOrdersRequest)(nil),    // 11: order.v1.ListBuyerOrdersRequest
-	(*ListSellerOrdersRequest)(nil),   // 12: order.v1.ListSellerOrdersRequest
-	(*ListBuyerOrdersResponse)(nil),   // 13: order.v1.ListBuyerOrdersResponse
-	(*ListSellerOrdersResponse)(nil),  // 14: order.v1.ListSellerOrdersResponse
-	(*UpdateOrderStatusRequest)(nil),  // 15: order.v1.UpdateOrderStatusRequest
-	(*UpdateOrderStatusResponse)(nil), // 16: order.v1.UpdateOrderStatusResponse
-	(*ListPayoutsRequest)(nil),        // 17: order.v1.ListPayoutsRequest
-	(*ListPayoutsResponse)(nil),       // 18: order.v1.ListPayoutsResponse
-	(*v1.Money)(nil),                  // 19: common.v1.Money
-	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
-	(*v1.PaginationRequest)(nil),      // 21: common.v1.PaginationRequest
-	(*v1.PaginationResponse)(nil),     // 22: common.v1.PaginationResponse
+	(*Order)(nil),                                 // 0: order.v1.Order
+	(*OrderLine)(nil),                             // 1: order.v1.OrderLine
+	(*Payout)(nil),                                // 2: order.v1.Payout
+	(*CreateOrderRequest)(nil),                    // 3: order.v1.CreateOrderRequest
+	(*OrderLineInput)(nil),                        // 4: order.v1.OrderLineInput
+	(*CreateOrderResponse)(nil),                   // 5: order.v1.CreateOrderResponse
+	(*CreateCheckoutRequest)(nil),                 // 6: order.v1.CreateCheckoutRequest
+	(*CheckoutLineInput)(nil),                     // 7: order.v1.CheckoutLineInput
+	(*CreateCheckoutResponse)(nil),                // 8: order.v1.CreateCheckoutResponse
+	(*GetOrderRequest)(nil),                       // 9: order.v1.GetOrderRequest
+	(*GetOrderResponse)(nil),                      // 10: order.v1.GetOrderResponse
+	(*ListBuyerOrdersRequest)(nil),                // 11: order.v1.ListBuyerOrdersRequest
+	(*ListSellerOrdersRequest)(nil),               // 12: order.v1.ListSellerOrdersRequest
+	(*ListBuyerOrdersResponse)(nil),               // 13: order.v1.ListBuyerOrdersResponse
+	(*ListSellerOrdersResponse)(nil),              // 14: order.v1.ListSellerOrdersResponse
+	(*UpdateOrderStatusRequest)(nil),              // 15: order.v1.UpdateOrderStatusRequest
+	(*UpdateOrderStatusResponse)(nil),             // 16: order.v1.UpdateOrderStatusResponse
+	(*ListPayoutsRequest)(nil),                    // 17: order.v1.ListPayoutsRequest
+	(*ListPayoutsResponse)(nil),                   // 18: order.v1.ListPayoutsResponse
+	(*CancellationRequest)(nil),                   // 19: order.v1.CancellationRequest
+	(*RequestOrderCancellationRequest)(nil),       // 20: order.v1.RequestOrderCancellationRequest
+	(*RequestOrderCancellationResponse)(nil),      // 21: order.v1.RequestOrderCancellationResponse
+	(*ApproveOrderCancellationRequest)(nil),       // 22: order.v1.ApproveOrderCancellationRequest
+	(*ApproveOrderCancellationResponse)(nil),      // 23: order.v1.ApproveOrderCancellationResponse
+	(*RejectOrderCancellationRequest)(nil),        // 24: order.v1.RejectOrderCancellationRequest
+	(*RejectOrderCancellationResponse)(nil),       // 25: order.v1.RejectOrderCancellationResponse
+	(*ListOrderCancellationRequestsRequest)(nil),  // 26: order.v1.ListOrderCancellationRequestsRequest
+	(*ListOrderCancellationRequestsResponse)(nil), // 27: order.v1.ListOrderCancellationRequestsResponse
+	(*GetOrderCancellationRequestRequest)(nil),    // 28: order.v1.GetOrderCancellationRequestRequest
+	(*GetOrderCancellationRequestResponse)(nil),   // 29: order.v1.GetOrderCancellationRequestResponse
+	(*v1.Money)(nil),                              // 30: common.v1.Money
+	(*timestamppb.Timestamp)(nil),                 // 31: google.protobuf.Timestamp
+	(*v1.PaginationRequest)(nil),                  // 32: common.v1.PaginationRequest
+	(*v1.PaginationResponse)(nil),                 // 33: common.v1.PaginationResponse
 }
 var file_order_v1_order_proto_depIdxs = []int32{
-	19, // 0: order.v1.Order.subtotal:type_name -> common.v1.Money
-	19, // 1: order.v1.Order.commission:type_name -> common.v1.Money
-	19, // 2: order.v1.Order.total:type_name -> common.v1.Money
+	30, // 0: order.v1.Order.subtotal:type_name -> common.v1.Money
+	30, // 1: order.v1.Order.commission:type_name -> common.v1.Money
+	30, // 2: order.v1.Order.total:type_name -> common.v1.Money
 	1,  // 3: order.v1.Order.lines:type_name -> order.v1.OrderLine
-	20, // 4: order.v1.Order.paid_at:type_name -> google.protobuf.Timestamp
-	20, // 5: order.v1.Order.created_at:type_name -> google.protobuf.Timestamp
-	20, // 6: order.v1.Order.updated_at:type_name -> google.protobuf.Timestamp
-	19, // 7: order.v1.Order.shipping_fee:type_name -> common.v1.Money
-	19, // 8: order.v1.OrderLine.unit_price:type_name -> common.v1.Money
-	19, // 9: order.v1.OrderLine.line_total:type_name -> common.v1.Money
-	19, // 10: order.v1.Payout.amount:type_name -> common.v1.Money
-	20, // 11: order.v1.Payout.created_at:type_name -> google.protobuf.Timestamp
-	20, // 12: order.v1.Payout.completed_at:type_name -> google.protobuf.Timestamp
+	31, // 4: order.v1.Order.paid_at:type_name -> google.protobuf.Timestamp
+	31, // 5: order.v1.Order.created_at:type_name -> google.protobuf.Timestamp
+	31, // 6: order.v1.Order.updated_at:type_name -> google.protobuf.Timestamp
+	30, // 7: order.v1.Order.shipping_fee:type_name -> common.v1.Money
+	30, // 8: order.v1.OrderLine.unit_price:type_name -> common.v1.Money
+	30, // 9: order.v1.OrderLine.line_total:type_name -> common.v1.Money
+	30, // 10: order.v1.Payout.amount:type_name -> common.v1.Money
+	31, // 11: order.v1.Payout.created_at:type_name -> google.protobuf.Timestamp
+	31, // 12: order.v1.Payout.completed_at:type_name -> google.protobuf.Timestamp
 	4,  // 13: order.v1.CreateOrderRequest.lines:type_name -> order.v1.OrderLineInput
 	0,  // 14: order.v1.CreateOrderResponse.order:type_name -> order.v1.Order
 	7,  // 15: order.v1.CreateCheckoutRequest.lines:type_name -> order.v1.CheckoutLineInput
-	19, // 16: order.v1.CheckoutLineInput.unit_price_snapshot:type_name -> common.v1.Money
+	30, // 16: order.v1.CheckoutLineInput.unit_price_snapshot:type_name -> common.v1.Money
 	0,  // 17: order.v1.CreateCheckoutResponse.orders:type_name -> order.v1.Order
-	19, // 18: order.v1.CreateCheckoutResponse.total:type_name -> common.v1.Money
+	30, // 18: order.v1.CreateCheckoutResponse.total:type_name -> common.v1.Money
 	0,  // 19: order.v1.GetOrderResponse.order:type_name -> order.v1.Order
-	21, // 20: order.v1.ListBuyerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
-	21, // 21: order.v1.ListSellerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
+	32, // 20: order.v1.ListBuyerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
+	32, // 21: order.v1.ListSellerOrdersRequest.pagination:type_name -> common.v1.PaginationRequest
 	0,  // 22: order.v1.ListBuyerOrdersResponse.orders:type_name -> order.v1.Order
-	22, // 23: order.v1.ListBuyerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
+	33, // 23: order.v1.ListBuyerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
 	0,  // 24: order.v1.ListSellerOrdersResponse.orders:type_name -> order.v1.Order
-	22, // 25: order.v1.ListSellerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
+	33, // 25: order.v1.ListSellerOrdersResponse.pagination:type_name -> common.v1.PaginationResponse
 	0,  // 26: order.v1.UpdateOrderStatusResponse.order:type_name -> order.v1.Order
-	21, // 27: order.v1.ListPayoutsRequest.pagination:type_name -> common.v1.PaginationRequest
+	32, // 27: order.v1.ListPayoutsRequest.pagination:type_name -> common.v1.PaginationRequest
 	2,  // 28: order.v1.ListPayoutsResponse.payouts:type_name -> order.v1.Payout
-	22, // 29: order.v1.ListPayoutsResponse.pagination:type_name -> common.v1.PaginationResponse
-	6,  // 30: order.v1.OrderService.CreateCheckout:input_type -> order.v1.CreateCheckoutRequest
-	3,  // 31: order.v1.OrderService.CreateOrder:input_type -> order.v1.CreateOrderRequest
-	9,  // 32: order.v1.OrderService.GetOrder:input_type -> order.v1.GetOrderRequest
-	11, // 33: order.v1.OrderService.ListBuyerOrders:input_type -> order.v1.ListBuyerOrdersRequest
-	12, // 34: order.v1.OrderService.ListSellerOrders:input_type -> order.v1.ListSellerOrdersRequest
-	15, // 35: order.v1.OrderService.UpdateOrderStatus:input_type -> order.v1.UpdateOrderStatusRequest
-	17, // 36: order.v1.OrderService.ListPayouts:input_type -> order.v1.ListPayoutsRequest
-	8,  // 37: order.v1.OrderService.CreateCheckout:output_type -> order.v1.CreateCheckoutResponse
-	5,  // 38: order.v1.OrderService.CreateOrder:output_type -> order.v1.CreateOrderResponse
-	10, // 39: order.v1.OrderService.GetOrder:output_type -> order.v1.GetOrderResponse
-	13, // 40: order.v1.OrderService.ListBuyerOrders:output_type -> order.v1.ListBuyerOrdersResponse
-	14, // 41: order.v1.OrderService.ListSellerOrders:output_type -> order.v1.ListSellerOrdersResponse
-	16, // 42: order.v1.OrderService.UpdateOrderStatus:output_type -> order.v1.UpdateOrderStatusResponse
-	18, // 43: order.v1.OrderService.ListPayouts:output_type -> order.v1.ListPayoutsResponse
-	37, // [37:44] is the sub-list for method output_type
-	30, // [30:37] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	33, // 29: order.v1.ListPayoutsResponse.pagination:type_name -> common.v1.PaginationResponse
+	31, // 30: order.v1.CancellationRequest.processed_at:type_name -> google.protobuf.Timestamp
+	31, // 31: order.v1.CancellationRequest.created_at:type_name -> google.protobuf.Timestamp
+	31, // 32: order.v1.CancellationRequest.updated_at:type_name -> google.protobuf.Timestamp
+	19, // 33: order.v1.RequestOrderCancellationResponse.request:type_name -> order.v1.CancellationRequest
+	19, // 34: order.v1.ApproveOrderCancellationResponse.request:type_name -> order.v1.CancellationRequest
+	19, // 35: order.v1.RejectOrderCancellationResponse.request:type_name -> order.v1.CancellationRequest
+	32, // 36: order.v1.ListOrderCancellationRequestsRequest.pagination:type_name -> common.v1.PaginationRequest
+	19, // 37: order.v1.ListOrderCancellationRequestsResponse.requests:type_name -> order.v1.CancellationRequest
+	33, // 38: order.v1.ListOrderCancellationRequestsResponse.pagination:type_name -> common.v1.PaginationResponse
+	19, // 39: order.v1.GetOrderCancellationRequestResponse.request:type_name -> order.v1.CancellationRequest
+	6,  // 40: order.v1.OrderService.CreateCheckout:input_type -> order.v1.CreateCheckoutRequest
+	3,  // 41: order.v1.OrderService.CreateOrder:input_type -> order.v1.CreateOrderRequest
+	9,  // 42: order.v1.OrderService.GetOrder:input_type -> order.v1.GetOrderRequest
+	11, // 43: order.v1.OrderService.ListBuyerOrders:input_type -> order.v1.ListBuyerOrdersRequest
+	12, // 44: order.v1.OrderService.ListSellerOrders:input_type -> order.v1.ListSellerOrdersRequest
+	15, // 45: order.v1.OrderService.UpdateOrderStatus:input_type -> order.v1.UpdateOrderStatusRequest
+	17, // 46: order.v1.OrderService.ListPayouts:input_type -> order.v1.ListPayoutsRequest
+	20, // 47: order.v1.OrderService.RequestOrderCancellation:input_type -> order.v1.RequestOrderCancellationRequest
+	22, // 48: order.v1.OrderService.ApproveOrderCancellation:input_type -> order.v1.ApproveOrderCancellationRequest
+	24, // 49: order.v1.OrderService.RejectOrderCancellation:input_type -> order.v1.RejectOrderCancellationRequest
+	26, // 50: order.v1.OrderService.ListOrderCancellationRequests:input_type -> order.v1.ListOrderCancellationRequestsRequest
+	28, // 51: order.v1.OrderService.GetOrderCancellationRequest:input_type -> order.v1.GetOrderCancellationRequestRequest
+	8,  // 52: order.v1.OrderService.CreateCheckout:output_type -> order.v1.CreateCheckoutResponse
+	5,  // 53: order.v1.OrderService.CreateOrder:output_type -> order.v1.CreateOrderResponse
+	10, // 54: order.v1.OrderService.GetOrder:output_type -> order.v1.GetOrderResponse
+	13, // 55: order.v1.OrderService.ListBuyerOrders:output_type -> order.v1.ListBuyerOrdersResponse
+	14, // 56: order.v1.OrderService.ListSellerOrders:output_type -> order.v1.ListSellerOrdersResponse
+	16, // 57: order.v1.OrderService.UpdateOrderStatus:output_type -> order.v1.UpdateOrderStatusResponse
+	18, // 58: order.v1.OrderService.ListPayouts:output_type -> order.v1.ListPayoutsResponse
+	21, // 59: order.v1.OrderService.RequestOrderCancellation:output_type -> order.v1.RequestOrderCancellationResponse
+	23, // 60: order.v1.OrderService.ApproveOrderCancellation:output_type -> order.v1.ApproveOrderCancellationResponse
+	25, // 61: order.v1.OrderService.RejectOrderCancellation:output_type -> order.v1.RejectOrderCancellationResponse
+	27, // 62: order.v1.OrderService.ListOrderCancellationRequests:output_type -> order.v1.ListOrderCancellationRequestsResponse
+	29, // 63: order.v1.OrderService.GetOrderCancellationRequest:output_type -> order.v1.GetOrderCancellationRequestResponse
+	52, // [52:64] is the sub-list for method output_type
+	40, // [40:52] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_order_v1_order_proto_init() }
@@ -1604,7 +2372,7 @@ func file_order_v1_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_order_v1_order_proto_rawDesc), len(file_order_v1_order_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

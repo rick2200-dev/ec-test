@@ -1,9 +1,14 @@
 import { notFound } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { formatPrice } from "@/lib/mock-data";
-import { fetchAPI } from "@/lib/api";
+import { fetchAPI, getOrderCancellationRequest } from "@/lib/api";
 import StartInquiryButton from "@/components/StartInquiryButton";
+import CancelOrderButton from "@/components/CancelOrderButton";
 import type { OrderDetail, OrderStatus } from "@/lib/types";
+import type {
+  CancellationRequest,
+  CancellationRequestStatus,
+} from "@ec-marketplace/types";
 import {
   OrderDetailPagePresenter,
   type OrderDetailLineItem,
@@ -26,6 +31,27 @@ function canContactSeller(status: OrderStatus): boolean {
     status === "delivered" ||
     status === "completed"
   );
+}
+
+/**
+ * Whether a "cancel this order" button should be shown to the buyer.
+ * Mirrors `canOrderBeCancelled` in
+ * `backend/services/order/internal/cancellation/domain.go`, and also
+ * gates on the current cancellation-request state: a pending or
+ * approved request blocks creating a new one (the partial unique index
+ * would reject pending dupes anyway, and an approved one means the
+ * order is already on its way to cancelled).
+ */
+function canRequestCancellation(
+  status: OrderStatus,
+  existing: CancellationRequest | null,
+): boolean {
+  const statusAllows =
+    status === "pending" || status === "paid" || status === "processing";
+  if (!statusAllows) return false;
+  if (!existing) return true;
+  // rejected / failed terminal states leave the door open for a retry.
+  return existing.status === "rejected" || existing.status === "failed";
 }
 
 /**
@@ -64,6 +90,24 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   };
 
   const contactable = canContactSeller(detail.status);
+
+  // Fetch the latest cancellation request for this order. 404 → null so
+  // we can render the "cancel" button; any other error degrades to null
+  // (the container doesn't want to fail the whole page on a cancel-req
+  // lookup flake).
+  let cancellationRequest: CancellationRequest | null = null;
+  try {
+    cancellationRequest = await getOrderCancellationRequest(detail.id);
+  } catch {
+    cancellationRequest = null;
+  }
+  const cancellable = canRequestCancellation(detail.status, cancellationRequest);
+  const cancellationSection = buildCancellationSection(
+    cancellationRequest,
+    cancellable,
+    detail.id,
+    t,
+  );
 
   const lines: OrderDetailLineItem[] = detail.lines.map((l) => ({
     id: l.id,
@@ -110,8 +154,74 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       totalValue={formatPrice(detail.total_amount, currency)}
       purchaseRequiredNotice={contactable ? undefined : t("orders.purchaseRequiredNotice")}
       lines={lines}
+      cancellation={cancellationSection}
     />
   );
+}
+
+/**
+ * Build the cancellation section prop for the presenter. Mutually
+ * exclusive: if a request is on file we show its banner; otherwise
+ * (and if the order is still cancellable) we show the button.
+ */
+function buildCancellationSection(
+  request: CancellationRequest | null,
+  cancellable: boolean,
+  orderId: string,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+): {
+  banner?: {
+    label: string;
+    note?: string;
+    tone: "pending" | "approved" | "rejected" | "failed";
+  };
+  cancelButton?: React.ReactNode;
+} | undefined {
+  const section: {
+    banner?: {
+      label: string;
+      note?: string;
+      tone: CancellationRequestStatus;
+    };
+    cancelButton?: React.ReactNode;
+  } = {};
+
+  if (request) {
+    const status = request.status;
+    section.banner = {
+      label: t(`orders.cancellation.statusBadge.${status}`),
+      note: cancellationNote(status, request, t),
+      tone: status,
+    };
+  }
+  if (cancellable) {
+    section.cancelButton = <CancelOrderButton orderId={orderId} />;
+  }
+  if (!section.banner && !section.cancelButton) {
+    return undefined;
+  }
+  return section;
+}
+
+function cancellationNote(
+  status: CancellationRequestStatus,
+  request: CancellationRequest,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+): string | undefined {
+  switch (status) {
+    case "pending":
+      return t("orders.cancellation.statusNote.pending");
+    case "approved":
+      return t("orders.cancellation.statusNote.approved");
+    case "rejected":
+      return t("orders.cancellation.statusNote.rejected", {
+        comment: request.seller_comment ?? "",
+      });
+    case "failed":
+      return t("orders.cancellation.statusNote.failed");
+    default:
+      return undefined;
+  }
 }
 
 function statusLabel(

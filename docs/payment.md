@@ -337,9 +337,14 @@ MVP 段階で残っている制約事項:
 
 **あるべき姿**: auth service の `POST /sellers` 完了時に Stripe `account_links.create` を呼び、オンボーディング URL をレスポンスに含める。
 
-### 3. 返金・キャンセルフローが未設計
+### 3. 返金・キャンセルフローの実装範囲
 
-`charge.refunded` や注文キャンセル時の Transfer 巻き戻し (`Transfer.create` の逆、`Transfer Reversal`) が未設計。
+注文キャンセル申請ワークフロー (申請 → 承認 → Stripe Refund + Transfer Reversal + 在庫解放 + 通知) は実装済み。詳細は [注文キャンセル申請設計書](./order-cancellation.md) を参照。
+
+残課題:
+- `charge.refunded` webhook 経由の外部発生リファンド (Stripe 管理画面からの手動返金) の自動反映
+- ディスピュート / チャージバック対応
+- 部分失敗時の自動リトライワーカー (現状はオペレータ手動リコンサイル)
 
 ### 4. 送料の扱いが単純化されている
 

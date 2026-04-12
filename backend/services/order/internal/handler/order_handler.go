@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/pagination"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
@@ -200,10 +201,21 @@ type updateStatusRequest struct {
 }
 
 // UpdateStatus handles PUT /orders/{id}/status.
+//
+// Seller-only endpoint: the caller must have seller context set in the
+// tenant context (SellerID != nil), and the service layer additionally
+// enforces that the seller owns the target order before mutating it.
+// Prior to this handler being tightened, any authenticated tenant
+// caller could advance any order's status — see the parallel fix in
+// service.UpdateOrderStatus.
 func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
+	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
+		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		return
+	}
+	if tc.SellerID == nil {
+		httputil.Error(w, apperrors.Forbidden("seller context required"))
 		return
 	}
 
@@ -220,7 +232,7 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.UpdateOrderStatus(r.Context(), tenantID, id, req.Status); err != nil {
+	if err := h.svc.UpdateOrderStatus(r.Context(), tc.TenantID, *tc.SellerID, id, req.Status); err != nil {
 		httputil.Error(w, err)
 		return
 	}

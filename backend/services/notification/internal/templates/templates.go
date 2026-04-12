@@ -71,6 +71,70 @@ var inquiryNewMessageTmpl = template.Must(template.New("inquiry_new_message").Pa
 </html>
 `))
 
+var orderCancellationRequestedTmpl = template.Must(template.New("order_cancellation_requested").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>注文キャンセル申請を受け付けました</h2>
+<p>出品者様</p>
+<p>以下の注文に対してキャンセル申請が届いています。買い手側の理由をご確認の上、承認または却下してください。</p>
+<table>
+  <tr><td><strong>注文番号:</strong></td><td>{{.OrderID}}</td></tr>
+  <tr><td><strong>申請理由:</strong></td><td>{{.Reason}}</td></tr>
+</table>
+<p>セラーダッシュボードの「キャンセル申請」画面から対応をお願いします。</p>
+</body>
+</html>
+`))
+
+var orderCancellationApprovedTmpl = template.Must(template.New("order_cancellation_approved").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>キャンセル申請が承認されました</h2>
+<p>お客様</p>
+<p>ご申請いただいた注文のキャンセルが承認され、返金処理が完了しました。</p>
+<table>
+  <tr><td><strong>注文番号:</strong></td><td>{{.OrderID}}</td></tr>
+  <tr><td><strong>返金金額:</strong></td><td>¥{{.RefundAmount}}</td></tr>
+</table>
+<p>返金はご利用のクレジットカード会社を通じて数営業日以内に反映されます。</p>
+</body>
+</html>
+`))
+
+var orderCancellationRejectedTmpl = template.Must(template.New("order_cancellation_rejected").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>キャンセル申請について</h2>
+<p>お客様</p>
+<p>恐れ入りますが、ご申請いただいた注文のキャンセルは出品者により却下されました。</p>
+<table>
+  <tr><td><strong>注文番号:</strong></td><td>{{.OrderID}}</td></tr>
+  <tr><td><strong>出品者からのコメント:</strong></td><td>{{.SellerComment}}</td></tr>
+</table>
+<p>ご不明な点があれば、出品者へ直接お問い合わせください。</p>
+</body>
+</html>
+`))
+
+var orderCancelledTmpl = template.Must(template.New("order_cancelled").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>注文がキャンセルされました</h2>
+<p>お客様</p>
+<p>以下の注文がキャンセルされました。</p>
+<table>
+  <tr><td><strong>注文番号:</strong></td><td>{{.OrderID}}</td></tr>
+  <tr><td><strong>キャンセル理由:</strong></td><td>{{.Reason}}</td></tr>
+</table>
+<p>ご利用ありがとうございました。</p>
+</body>
+</html>
+`))
+
 var lowStockAlertTmpl = template.Must(template.New("low_stock").Parse(`
 <!DOCTYPE html>
 <html>
@@ -136,6 +200,57 @@ func InquiryNewMessageNotification(recipientLabel, senderLabel, subjectText, pro
 		"BodyPreview":    bodyPreview,
 	}
 	body = render(inquiryNewMessageTmpl, data)
+	return subject, body
+}
+
+// OrderCancellationRequested generates a seller email notifying them
+// that a buyer has opened a cancellation request against one of their
+// orders.
+func OrderCancellationRequested(orderID, reason string) (subject, body string) {
+	subject = fmt.Sprintf("【キャンセル申請】注文番号: %s", orderID)
+	data := map[string]any{
+		"OrderID": orderID,
+		"Reason":  reason,
+	}
+	body = render(orderCancellationRequestedTmpl, data)
+	return subject, body
+}
+
+// OrderCancellationApproved generates a buyer email confirming a
+// cancellation has been approved and the refund has been issued.
+func OrderCancellationApproved(orderID string, refundAmount int64) (subject, body string) {
+	subject = fmt.Sprintf("【キャンセル承認】注文番号: %s", orderID)
+	data := map[string]any{
+		"OrderID":      orderID,
+		"RefundAmount": refundAmount,
+	}
+	body = render(orderCancellationApprovedTmpl, data)
+	return subject, body
+}
+
+// OrderCancellationRejected generates a buyer email telling them the
+// seller rejected their cancellation request, with the seller's comment.
+func OrderCancellationRejected(orderID, sellerComment string) (subject, body string) {
+	subject = fmt.Sprintf("【キャンセル却下】注文番号: %s", orderID)
+	data := map[string]any{
+		"OrderID":       orderID,
+		"SellerComment": sellerComment,
+	}
+	body = render(orderCancellationRejectedTmpl, data)
+	return subject, body
+}
+
+// OrderCancelledNotification generates a buyer email as the final
+// confirmation that their order has been cancelled. Fired off after
+// the approval workflow finishes all of its side effects (refund,
+// transfer reversals, stock release).
+func OrderCancelledNotification(orderID, reason string) (subject, body string) {
+	subject = fmt.Sprintf("【キャンセル完了】注文番号: %s", orderID)
+	data := map[string]any{
+		"OrderID": orderID,
+		"Reason":  reason,
+	}
+	body = render(orderCancelledTmpl, data)
 	return subject, body
 }
 

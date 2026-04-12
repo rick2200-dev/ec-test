@@ -18,6 +18,7 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/services/order/internal/cancellation"
 	"github.com/Riku-KANO/ec-test/services/order/internal/config"
 	grpcserver "github.com/Riku-KANO/ec-test/services/order/internal/grpcserver"
 	"github.com/Riku-KANO/ec-test/services/order/internal/handler"
@@ -82,6 +83,14 @@ func main() {
 	// Service
 	orderSvc := service.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, cfg.DefaultShippingFee)
 
+	// Cancellation bounded context — see internal/cancellation/doc.go.
+	// Wired in parallel with (not nested under) the order service so
+	// the cancellation package owns its own repository, HTTP handler,
+	// and error codes without reaching into internal/handler.
+	cancellationRepo := cancellation.NewRepository(pool)
+	cancellationSvc := cancellation.NewService(orderRepo, payoutRepo, cancellationRepo, sc, publisher)
+	cancellationHandler := cancellation.NewHTTPHandler(cancellationSvc)
+
 	// Handlers
 	orderHandler := handler.NewOrderHandler(orderSvc)
 	commissionHandler := handler.NewCommissionHandler(orderSvc)
@@ -105,8 +114,17 @@ func main() {
 	// Stripe webhooks (no auth required, validated by signature)
 	r.Post("/webhooks/stripe", webhookHandler.HandleStripeWebhook)
 
-	// Order endpoints (tenant-scoped)
-	r.Mount("/orders", orderHandler.Routes())
+	// Order endpoints (tenant-scoped).
+	// The cancellation package attaches its buyer-facing /{id}/cancellation-request
+	// routes onto the same subrouter before mounting, because chi does not
+	// allow two Mount() calls at the same prefix. See
+	// cancellation.HTTPHandler.AttachOrderScopedRoutes.
+	ordersRouter := orderHandler.Routes()
+	cancellationHandler.AttachOrderScopedRoutes(ordersRouter)
+	r.Mount("/orders", ordersRouter)
+
+	// Seller-facing cancellation endpoints at their own top-level prefix.
+	r.Mount("/cancellation-requests", cancellationHandler.SellerRoutes())
 
 	// Commission endpoints (tenant-scoped)
 	r.Mount("/commissions", commissionHandler.Routes())

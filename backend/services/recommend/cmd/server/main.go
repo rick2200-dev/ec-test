@@ -150,10 +150,9 @@ func main() {
 	slog.Info("recommend service stopped")
 }
 
-// newGCPSubscriber creates a GCP Pub/Sub subscriber. This is extracted to keep
-// main clean and to allow future replacement with other subscriber backends.
+// newGCPSubscriber creates a GCP Pub/Sub subscriber via the shared
+// pkg/pubsub implementation so every subscriber-owning service sees the
+// same ack/nack/log semantics.
 func newGCPSubscriber(ctx context.Context, projectID string) (pubsub.Subscriber, error) {
-	// The GCP Pub/Sub library currently only provides GCPPublisher in the shared
-	// pkg. We create a minimal subscriber here that wraps the GCP client directly.
-	return newGCPSub(ctx, projectID)
+	return pubsub.NewGCPSubscriber(ctx, projectID)
 }

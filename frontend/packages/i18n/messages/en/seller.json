@@ -8,6 +8,7 @@
     "dashboard": "Dashboard",
     "products": "Products",
     "orders": "Orders",
+    "cancellationRequests": "Cancellation Requests",
     "inventory": "Inventory",
     "inquiries": "Inquiries",
     "notifications": "Notifications",
@@ -247,6 +248,62 @@
       "revokeFailed": "Failed to revoke API token.",
       "nameRequired": "Name is required.",
       "scopeRequired": "Select at least one scope."
+    }
+  },
+  "cancellationRequests": {
+    "title": "Cancellation Requests",
+    "description": "Review buyer cancellation requests and approve or reject them.",
+    "filterLabel": "Status",
+    "filter": {
+      "pending": "Awaiting response",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "empty": "No cancellation requests match this filter",
+    "loading": "Loading...",
+    "columns": {
+      "orderId": "Order ID",
+      "reason": "Reason",
+      "requestedAt": "Requested at",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "statusLabel": {
+      "pending": "Awaiting response",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "action": {
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "approveModal": {
+      "title": "Approve this cancellation?",
+      "description": "Approving will trigger a Stripe refund and release the reserved stock. This action cannot be undone.",
+      "commentLabel": "Comment to buyer (optional)",
+      "commentPlaceholder": "e.g. Sorry for the inconvenience",
+      "submit": "Approve",
+      "submitting": "Processing...",
+      "cancel": "Close"
+    },
+    "rejectModal": {
+      "title": "Reject this cancellation?",
+      "description": "A comment is required so the buyer understands why you are rejecting the request.",
+      "commentLabel": "Reason",
+      "commentPlaceholder": "e.g. The order has already been prepared for shipment",
+      "submit": "Reject",
+      "submitting": "Processing...",
+      "cancel": "Close",
+      "commentRequired": "Please enter a reason"
+    },
+    "errors": {
+      "loadFailed": "Failed to load cancellation requests",
+      "approveFailed": "Failed to approve the request",
+      "rejectFailed": "Failed to reject the request",
+      "refundFailed": "Stripe refund failed. Please contact support",
+      "transferReversalFailed": "Transfer reversal failed. Please contact support"
     }
   }
 }

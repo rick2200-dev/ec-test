@@ -23,6 +23,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/handler"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/repository"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/service"
+	"github.com/Riku-KANO/ec-test/services/inventory/internal/subscriber"
 )
 
 func main() {
@@ -30,10 +31,17 @@ func main() {
 
 	cfg := config.Load()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	// Set emulator host if configured so the GCP client library picks it up.
+	if cfg.PubSubEmulatorHost != "" {
+		if err := os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost); err != nil {
+			slog.Warn("failed to set PUBSUB_EMULATOR_HOST", "error", err)
+		}
+	}
 
-	pool, err := database.NewPool(ctx, database.Config{
+	initCtx, initCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer initCancel()
+
+	pool, err := database.NewPool(initCtx, database.Config{
 		URL:      cfg.DatabaseURL,
 		MaxConns: 20,
 		MinConns: 5,
@@ -46,10 +54,15 @@ func main() {
 
 	slog.Info("connected to database")
 
-	// Pub/Sub publisher
+	// Long-lived context used to drive the Pub/Sub subscriber goroutine.
+	// Cancelled during graceful shutdown so Subscribe() returns cleanly.
+	subCtx, subCancel := context.WithCancel(context.Background())
+	defer subCancel()
+
+	// Pub/Sub publisher (for inventory.* outgoing events).
 	var publisher pubsub.Publisher
 	if cfg.PubSubProjectID != "" {
-		pub, pubErr := pubsub.NewGCPPublisher(ctx, cfg.PubSubProjectID)
+		pub, pubErr := pubsub.NewGCPPublisher(initCtx, cfg.PubSubProjectID)
 		if pubErr != nil {
 			slog.Warn("failed to create pubsub publisher, events will not be published", "error", pubErr)
 		} else {
@@ -70,6 +83,31 @@ func main() {
 
 	// Service
 	inventorySvc := service.NewInventoryService(inventoryRepo, publisher)
+
+	// Pub/Sub subscriber (for incoming order.cancelled events). Created
+	// after the service so the subscriber can be wired with a live
+	// service pointer in a single step. The inventory service can still
+	// run (without stock-release-on-cancel) if the subscriber fails to
+	// initialize — the rest of the service keeps serving requests.
+	if cfg.PubSubProjectID != "" {
+		sub, subErr := pubsub.NewGCPSubscriber(initCtx, cfg.PubSubProjectID)
+		if subErr != nil {
+			slog.Warn("failed to create pubsub subscriber, order.cancelled events will not be consumed", "error", subErr)
+		} else {
+			defer func() {
+				if err := sub.Close(); err != nil {
+					slog.Warn("failed to close pubsub subscriber", "error", err)
+				}
+			}()
+			orderSub := subscriber.NewOrderSubscriber(sub, inventorySvc)
+			go func() {
+				if err := orderSub.Start(subCtx); err != nil && subCtx.Err() == nil {
+					slog.Error("order subscriber error", "error", err)
+				}
+			}()
+			slog.Info("inventory order subscriber started", "project_id", cfg.PubSubProjectID)
+		}
+	}
 
 	// Handlers
 	inventoryHandler := handler.NewInventoryHandler(inventorySvc)
@@ -132,6 +170,10 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-quit
 	slog.Info("shutting down", "signal", sig.String())
+
+	// Stop the Pub/Sub subscriber goroutine so Subscribe() returns
+	// cleanly before we tear down the client via the deferred Close().
+	subCancel()
 
 	grpcSrv.GracefulStop()
 

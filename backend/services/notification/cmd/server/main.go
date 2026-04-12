@@ -12,10 +12,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/config"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/handler"
-	internalpubsub "github.com/Riku-KANO/ec-test/services/notification/internal/pubsub"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/subscriber"
 )
 
@@ -38,7 +38,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sub, err := internalpubsub.NewGCPSubscriber(ctx, cfg.PubSubProjectID)
+	sub, err := pubsub.NewGCPSubscriber(ctx, cfg.PubSubProjectID)
 	if err != nil {
 		slog.Error("failed to create pubsub subscriber", "error", err)
 		os.Exit(1)

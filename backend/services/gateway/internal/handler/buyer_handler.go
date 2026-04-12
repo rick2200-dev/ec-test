@@ -283,6 +283,44 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// RequestOrderCancellation proxies to the order service to open a buyer
+// cancellation request for an order. The buyer's identity and ownership
+// are re-verified inside order-svc using the forwarded tenant headers.
+// POST /orders/{id}/cancellation-request
+func (h *BuyerHandler) RequestOrderCancellation(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "order id required"})
+		return
+	}
+	body, st, err := h.order.Post(r.Context(), "/orders/"+url.PathEscape(id)+"/cancellation-request", r.Body)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, st, body)
+}
+
+// GetOrderCancellationRequest proxies to the order service to fetch the
+// latest cancellation request for the given order. Returns 404 if none
+// exists. Ownership is re-checked inside order-svc.
+// GET /orders/{id}/cancellation-request
+func (h *BuyerHandler) GetOrderCancellationRequest(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "order id required"})
+		return
+	}
+	body, st, err := h.order.Get(r.Context(), "/orders/"+url.PathEscape(id)+"/cancellation-request", "")
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, st, body)
+}
+
 // TrackEvent proxies to the recommend service to record user behavior events.
 // POST /events
 func (h *BuyerHandler) TrackEvent(w http.ResponseWriter, r *http.Request) {

@@ -19,6 +19,11 @@ const navItemDefs: NavItemDef[] = [
   { href: "/", labelKey: "sidebar.dashboard", icon: "grid" },
   { href: "/products", labelKey: "sidebar.products", icon: "package" },
   { href: "/orders", labelKey: "sidebar.orders", icon: "shopping-cart" },
+  {
+    href: "/cancellation-requests",
+    labelKey: "sidebar.cancellationRequests",
+    icon: "x-circle",
+  },
   { href: "/inventory", labelKey: "sidebar.inventory", icon: "warehouse" },
   { href: "/inquiries", labelKey: "sidebar.inquiries", icon: "mail" },
   { href: "/notifications", labelKey: "sidebar.notifications", icon: "bell" },

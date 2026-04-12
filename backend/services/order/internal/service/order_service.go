@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -350,8 +351,21 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 	for i := range orders {
 		order := &orders[i]
 
-		// 1. Mark the order paid.
+		// 1. Mark the order paid. Guarded on status='pending' — see
+		//    repository.ErrOrderNotPending. This is the P1 guardrail
+		//    against a redelivered payment_intent.succeeded webhook
+		//    reverting a cancelled order back to paid (and therefore
+		//    triggering a Stripe Transfer against funds that have
+		//    already been refunded and reversed).
 		if err := s.orderRepo.SetPaid(ctx, order.TenantID, order.ID, now, stripePaymentIntentID); err != nil {
+			if errors.Is(err, repository.ErrOrderNotPending) {
+				slog.Info("skipping payment success for order that is not in pending status",
+					"order_id", order.ID,
+					"order_status", order.Status,
+					"payment_intent", stripePaymentIntentID,
+				)
+				continue
+			}
 			return apperrors.Internal("failed to update order to paid", err)
 		}
 
@@ -363,6 +377,20 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		if payout == nil {
 			slog.Warn("no payout record found for order, skipping transfer",
 				"order_id", order.ID, "payment_intent", stripePaymentIntentID)
+			continue
+		}
+		// 2b. Belt-and-braces payout status guard. The SetPaid guard
+		//     already blocks the main replay path, but if anything slips
+		//     through (e.g. a manual cancellation that did not touch the
+		//     order row) we must not retransfer against a payout that is
+		//     already completed / reversed / failed.
+		if payout.Status != domain.PayoutStatusPending {
+			slog.Info("skipping payment success for non-pending payout",
+				"order_id", order.ID,
+				"payout_id", payout.ID,
+				"payout_status", payout.Status,
+				"payment_intent", stripePaymentIntentID,
+			)
 			continue
 		}
 
@@ -501,14 +529,44 @@ func (s *OrderService) ListSellerOrders(ctx context.Context, tenantID, sellerID 
 	return orders, total, nil
 }
 
-// UpdateOrderStatus updates the status of an order (for seller: processing, shipped, delivered).
-func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, orderID uuid.UUID, status string) error {
+// UpdateOrderStatus updates the status of an order (for seller: processing,
+// shipped, delivered, etc.).
+//
+// Seller ownership is enforced BEFORE any write: the handler passes the
+// authenticated seller id, and this method fetches the order and
+// verifies seller_id matches before delegating to the repository.
+// Mismatches return 404 (not 403) to avoid leaking the existence of
+// another seller's order — same information-leak pattern the buyer
+// ownership checks in the cancellation package use.
+//
+// Note: the cancellation package has its own ownership helpers and a
+// dedicated ApproveCancellation path that already moves orders into
+// `cancelled`. Callers should not use UpdateOrderStatus to cancel
+// orders — doing so skips the Stripe refund / transfer reversal /
+// inventory release orchestration. The `cancelled` case is kept in
+// the allow-list here only to preserve the pre-existing contract
+// while the seller UI is migrated off it.
+func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, sellerID, orderID uuid.UUID, status string) error {
 	// Validate allowed status transitions.
 	switch status {
 	case domain.StatusProcessing, domain.StatusShipped, domain.StatusDelivered, domain.StatusCompleted, domain.StatusCancelled:
 		// valid
 	default:
 		return apperrors.BadRequest(fmt.Sprintf("invalid status: %s", status))
+	}
+
+	// Ownership check: load the order and confirm this seller owns it
+	// before the repository UPDATE. Without this guard, any
+	// authenticated tenant caller could advance any order's status.
+	existing, err := s.orderRepo.GetByID(ctx, tenantID, orderID)
+	if err != nil {
+		return apperrors.Internal("failed to load order", err)
+	}
+	if existing == nil {
+		return apperrors.NotFound("order not found")
+	}
+	if existing.SellerID != sellerID {
+		return apperrors.NotFound("order not found")
 	}
 
 	if err := s.orderRepo.UpdateStatus(ctx, tenantID, orderID, status); err != nil {

@@ -8,6 +8,7 @@
     "dashboard": "ダッシュボード",
     "products": "商品管理",
     "orders": "注文管理",
+    "cancellationRequests": "キャンセル申請",
     "inventory": "在庫管理",
     "inquiries": "お問い合わせ",
     "notifications": "通知",
@@ -247,6 +248,62 @@
       "revokeFailed": "APIトークンの無効化に失敗しました。",
       "nameRequired": "名前を入力してください。",
       "scopeRequired": "1つ以上のスコープを選択してください。"
+    }
+  },
+  "cancellationRequests": {
+    "title": "キャンセル申請",
+    "description": "買い手から届いたキャンセル申請を確認し、承認または却下してください。",
+    "filterLabel": "ステータス",
+    "filter": {
+      "pending": "対応待ち",
+      "approved": "承認済み",
+      "rejected": "却下済み",
+      "failed": "処理失敗"
+    },
+    "empty": "該当するキャンセル申請はありません",
+    "loading": "読み込み中...",
+    "columns": {
+      "orderId": "注文番号",
+      "reason": "理由",
+      "requestedAt": "申請日時",
+      "status": "ステータス",
+      "actions": "操作"
+    },
+    "statusLabel": {
+      "pending": "対応待ち",
+      "approved": "承認済み",
+      "rejected": "却下済み",
+      "failed": "処理失敗"
+    },
+    "action": {
+      "approve": "承認する",
+      "reject": "却下する"
+    },
+    "approveModal": {
+      "title": "キャンセル申請を承認しますか？",
+      "description": "承認すると、Stripe による返金処理と在庫の解放が実行されます。この操作は取り消せません。",
+      "commentLabel": "買い手へのコメント（任意）",
+      "commentPlaceholder": "例: ご不便をおかけして申し訳ありません",
+      "submit": "承認する",
+      "submitting": "処理中...",
+      "cancel": "閉じる"
+    },
+    "rejectModal": {
+      "title": "キャンセル申請を却下しますか？",
+      "description": "却下理由を買い手に伝えるため、コメントの入力が必須です。",
+      "commentLabel": "却下理由",
+      "commentPlaceholder": "例: すでに発送準備が完了しているため",
+      "submit": "却下する",
+      "submitting": "処理中...",
+      "cancel": "閉じる",
+      "commentRequired": "却下理由を入力してください"
+    },
+    "errors": {
+      "loadFailed": "キャンセル申請の一覧を取得できませんでした",
+      "approveFailed": "承認処理に失敗しました",
+      "rejectFailed": "却下処理に失敗しました",
+      "refundFailed": "Stripe 返金処理に失敗しました。運営にお問い合わせください",
+      "transferReversalFailed": "送金取消処理に失敗しました。運営にお問い合わせください"
     }
   }
 }

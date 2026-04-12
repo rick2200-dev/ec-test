@@ -138,6 +138,32 @@
       "delivered": "配達済み",
       "completed": "完了",
       "cancelled": "キャンセル済み"
+    },
+    "cancellation": {
+      "trigger": "注文をキャンセルする",
+      "modalTitle": "注文キャンセル申請",
+      "modalDescription": "キャンセル理由を入力してください。出品者の承認後、返金処理が行われます。",
+      "reasonLabel": "キャンセル理由",
+      "reasonPlaceholder": "例: 誤って購入したため",
+      "submit": "申請する",
+      "submitting": "送信中…",
+      "cancel": "閉じる",
+      "errorEmpty": "キャンセル理由を入力してください",
+      "errorNotCancellable": "この注文はもうキャンセルできません",
+      "errorAlreadyExists": "既にキャンセル申請中です",
+      "errorGeneric": "キャンセル申請の送信に失敗しました",
+      "statusBadge": {
+        "pending": "キャンセル申請中",
+        "approved": "キャンセル承認済み",
+        "rejected": "キャンセル却下",
+        "failed": "キャンセル処理失敗"
+      },
+      "statusNote": {
+        "pending": "出品者の対応をお待ちください",
+        "approved": "返金処理が完了しました",
+        "rejected": "出品者コメント: {comment}",
+        "failed": "処理に失敗しました。運営にお問い合わせください"
+      }
     }
   }
 }

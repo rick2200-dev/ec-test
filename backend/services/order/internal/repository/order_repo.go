@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,6 +13,14 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 )
+
+// ErrOrderNotPending is returned by SetPaid when the target order is not in
+// `pending` status. Callers (HandlePaymentSuccess) treat this as an
+// idempotent no-op: a redelivered payment_intent.succeeded for an already
+// paid order must not create a second Stripe Transfer, and redelivery after
+// the order has been cancelled must never revert the order back to paid
+// and trigger a Transfer against already-reversed funds.
+var ErrOrderNotPending = errors.New("order is not in pending status")
 
 // OrderRepository handles persistence of orders and order lines.
 type OrderRepository struct {
@@ -265,13 +274,15 @@ func (r *OrderRepository) GetByID(ctx context.Context, tenantID, orderID uuid.UU
 		err := tx.QueryRow(ctx,
 			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
+			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
+			        created_at, updated_at
 			 FROM order_svc.orders WHERE id = $1 AND tenant_id = $2`,
 			orderID, tenantID,
 		).Scan(
 			&result.ID, &result.TenantID, &result.SellerID, &result.SellerName, &result.BuyerAuth0ID, &result.Status,
 			&result.SubtotalAmount, &result.ShippingFee, &result.CommissionAmount, &result.TotalAmount, &result.Currency,
-			&result.ShippingAddress, &result.StripePaymentIntentID, &result.PaidAt, &result.CreatedAt, &result.UpdatedAt,
+			&result.ShippingAddress, &result.StripePaymentIntentID, &result.PaidAt, &result.CancelledAt, &result.CancellationReason,
+			&result.CreatedAt, &result.UpdatedAt,
 		)
 		if err == pgx.ErrNoRows {
 			return nil
@@ -381,7 +392,8 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, b
 		rows, err := tx.Query(ctx,
 			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
+			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
+			        created_at, updated_at
 			 FROM order_svc.orders WHERE tenant_id = $1 AND buyer_auth0_id = $2
 			 ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
 			tenantID, buyerAuth0ID, limit, offset,
@@ -396,7 +408,8 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, b
 			if err := rows.Scan(
 				&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
-				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
+				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
+				&o.CreatedAt, &o.UpdatedAt,
 			); err != nil {
 				return fmt.Errorf("scan order: %w", err)
 			}
@@ -434,7 +447,8 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, tenantID, sellerID u
 		query := fmt.Sprintf(
 			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
+			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
+			        created_at, updated_at
 			 FROM order_svc.orders WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 			conditions, argIdx, argIdx+1,
 		)
@@ -451,7 +465,8 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, tenantID, sellerID u
 			if err := rows.Scan(
 				&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
-				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
+				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
+				&o.CreatedAt, &o.UpdatedAt,
 			); err != nil {
 				return fmt.Errorf("scan order: %w", err)
 			}
@@ -483,20 +498,40 @@ func (r *OrderRepository) UpdateStatus(ctx context.Context, tenantID, orderID uu
 	})
 }
 
-// SetPaid marks an order as paid with the payment timestamp and Stripe payment intent ID.
+// SetPaid marks a pending order as paid with the payment timestamp and Stripe
+// payment intent ID. The UPDATE is guarded on status='pending' so a redelivered
+// payment_intent.succeeded webhook (either an idempotent retry on an already
+// paid order, or a replay arriving after the order was cancelled) cannot flip
+// the row. Returns ErrOrderNotPending in that case so HandlePaymentSuccess
+// can skip transfer creation — see the P1 guard in order_service.go.
 func (r *OrderRepository) SetPaid(ctx context.Context, tenantID, orderID uuid.UUID, paidAt time.Time, stripePaymentIntentID string) error {
 	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE order_svc.orders
 			 SET status = $3, paid_at = $4, stripe_payment_intent_id = $5, updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2`,
-			orderID, tenantID, domain.StatusPaid, paidAt, stripePaymentIntentID,
+			 WHERE id = $1 AND tenant_id = $2 AND status = $6`,
+			orderID, tenantID, domain.StatusPaid, paidAt, stripePaymentIntentID, domain.StatusPending,
 		)
 		if err != nil {
 			return fmt.Errorf("set order paid: %w", err)
 		}
 		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("order not found")
+			// Distinguish "row missing" (hard error) from "row present but
+			// not in pending" (idempotent no-op) so the caller can skip
+			// downstream transfer creation without treating replay as a
+			// hard failure.
+			var sentinel int
+			qerr := tx.QueryRow(ctx,
+				`SELECT 1 FROM order_svc.orders WHERE id = $1 AND tenant_id = $2`,
+				orderID, tenantID,
+			).Scan(&sentinel)
+			if errors.Is(qerr, pgx.ErrNoRows) {
+				return fmt.Errorf("order not found")
+			}
+			if qerr != nil {
+				return fmt.Errorf("check order existence after SetPaid no-op: %w", qerr)
+			}
+			return ErrOrderNotPending
 		}
 		return nil
 	})
@@ -511,13 +546,15 @@ func (r *OrderRepository) GetByStripePaymentIntentID(ctx context.Context, tenant
 		err := tx.QueryRow(ctx,
 			`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-			        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
+			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
+			        created_at, updated_at
 			 FROM order_svc.orders WHERE stripe_payment_intent_id = $1 AND tenant_id = $2`,
 			paymentIntentID, tenantID,
 		).Scan(
 			&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
-			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
+			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
+			&o.CreatedAt, &o.UpdatedAt,
 		)
 		if err == pgx.ErrNoRows {
 			return nil
@@ -544,13 +581,15 @@ func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, payme
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-		        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
+		        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
+		        created_at, updated_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1`,
 		paymentIntentID,
 	).Scan(
 		&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 		&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
-		&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
+		&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
+		&o.CreatedAt, &o.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -568,7 +607,8 @@ func (r *OrderRepository) FindAllByStripePaymentIntentID(ctx context.Context, pa
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
 		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-		        shipping_address, stripe_payment_intent_id, paid_at, created_at, updated_at
+		        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
+		        created_at, updated_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1
 		 ORDER BY created_at ASC`,
 		paymentIntentID,
@@ -584,7 +624,8 @@ func (r *OrderRepository) FindAllByStripePaymentIntentID(ctx context.Context, pa
 		if err := rows.Scan(
 			&o.ID, &o.TenantID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
 			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
-			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CreatedAt, &o.UpdatedAt,
+			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
+			&o.CreatedAt, &o.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
