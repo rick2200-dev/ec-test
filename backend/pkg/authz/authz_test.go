@@ -1,13 +1,18 @@
 package authz_test
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/authz"
+	"github.com/Riku-KANO/ec-test/pkg/tenant"
 )
 
 func TestSellerRole_Rank(t *testing.T) {
@@ -125,5 +130,362 @@ func TestCacheKeys(t *testing.T) {
 
 	if got := authz.PlatformAdminCacheKey(tid, sub); got == "" {
 		t.Error("PlatformAdminCacheKey returned empty string")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TTLCache capacity / eviction
+// ---------------------------------------------------------------------------
+
+func TestTTLCache_CapacityEviction(t *testing.T) {
+	const maxSize = 5
+	c := authz.NewTTLCache(10*time.Second, maxSize)
+
+	// Fill to capacity.
+	for i := 0; i < maxSize; i++ {
+		c.Set(fmt.Sprintf("k%d", i), fmt.Sprintf("v%d", i))
+	}
+
+	// Add a 6th entry — should trigger eviction.
+	c.Set("k5", "v5")
+
+	// Count how many of k0..k5 are still retrievable.
+	hits := 0
+	for i := 0; i <= maxSize; i++ {
+		if _, err := c.Get(fmt.Sprintf("k%d", i)); err == nil {
+			hits++
+		}
+	}
+	if hits > maxSize {
+		t.Errorf("expected at most %d entries after eviction, but found %d", maxSize, hits)
+	}
+}
+
+func TestTTLCache_SweepExpired(t *testing.T) {
+	const maxSize = 5
+	c := authz.NewTTLCache(20*time.Millisecond, maxSize)
+
+	// Fill with entries that will expire quickly.
+	for i := 0; i < maxSize; i++ {
+		c.Set(fmt.Sprintf("k%d", i), fmt.Sprintf("v%d", i))
+	}
+
+	// Wait for all entries to expire.
+	time.Sleep(40 * time.Millisecond)
+
+	// Add a new entry — sweep should clear all expired entries.
+	c.Set("fresh", "value")
+
+	// The fresh entry must be present.
+	v, err := c.Get("fresh")
+	if err != nil {
+		t.Fatalf("expected fresh entry to be present, got %v", err)
+	}
+	if v != "value" {
+		t.Errorf("fresh entry = %q, want %q", v, "value")
+	}
+
+	// All old entries should have been swept.
+	for i := 0; i < maxSize; i++ {
+		if _, err := c.Get(fmt.Sprintf("k%d", i)); !errors.Is(err, authz.ErrCacheMiss) {
+			t.Errorf("expected ErrCacheMiss for expired k%d, got %v", i, err)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Mock loaders
+// ---------------------------------------------------------------------------
+
+type mockSellerRoleLoader struct {
+	role authz.SellerRole
+	err  error
+}
+
+func (m *mockSellerRoleLoader) LoadSellerRole(_ context.Context, _, _ uuid.UUID, _ string) (authz.SellerRole, error) {
+	return m.role, m.err
+}
+func (m *mockSellerRoleLoader) EvictSellerRole(_, _ uuid.UUID, _ string) {}
+
+type mockPlatformAdminRoleLoader struct {
+	role authz.PlatformAdminRole
+	err  error
+}
+
+func (m *mockPlatformAdminRoleLoader) LoadPlatformAdminRole(_ context.Context, _ uuid.UUID, _ string) (authz.PlatformAdminRole, error) {
+	return m.role, m.err
+}
+func (m *mockPlatformAdminRoleLoader) EvictPlatformAdminRole(_ uuid.UUID, _ string) {}
+
+// helper to build an *http.Request with tenant context injected.
+func requestWithTenant(tc tenant.Context) *http.Request {
+	ctx := tenant.WithContext(context.Background(), tc)
+	return httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
+}
+
+// noopHandler records whether it was called.
+type noopHandler struct{ called bool }
+
+func (h *noopHandler) ServeHTTP(http.ResponseWriter, *http.Request) { h.called = true }
+
+// ---------------------------------------------------------------------------
+// RequireSellerRole middleware
+// ---------------------------------------------------------------------------
+
+func TestRequireSellerRole_NoTenantContext(t *testing.T) {
+	loader := &mockSellerRoleLoader{role: authz.SellerRoleOwner}
+	mw := authz.RequireSellerRole(loader, authz.SellerRoleMember)
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	// Request with no tenant context at all.
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if next.called {
+		t.Error("next handler should not have been called")
+	}
+}
+
+func TestRequireSellerRole_NoSellerID(t *testing.T) {
+	loader := &mockSellerRoleLoader{role: authz.SellerRoleOwner}
+	mw := authz.RequireSellerRole(loader, authz.SellerRoleMember)
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	// Tenant context present but SellerID is nil (e.g. a buyer).
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+		SellerID: nil,
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if next.called {
+		t.Error("next handler should not have been called")
+	}
+}
+
+func TestRequireSellerRole_InsufficientRole(t *testing.T) {
+	loader := &mockSellerRoleLoader{role: authz.SellerRoleMember}
+	mw := authz.RequireSellerRole(loader, authz.SellerRoleAdmin) // require admin
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	sid := uuid.New()
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+		SellerID: &sid,
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+	if next.called {
+		t.Error("next handler should not have been called")
+	}
+}
+
+func TestRequireSellerRole_SufficientRole(t *testing.T) {
+	loader := &mockSellerRoleLoader{role: authz.SellerRoleAdmin}
+	mw := authz.RequireSellerRole(loader, authz.SellerRoleMember)
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	sid := uuid.New()
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+		SellerID: &sid,
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if !next.called {
+		t.Error("next handler should have been called")
+	}
+}
+
+func TestRequireSellerRole_LoaderError(t *testing.T) {
+	loader := &mockSellerRoleLoader{err: errors.New("db down")}
+	mw := authz.RequireSellerRole(loader, authz.SellerRoleMember)
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	sid := uuid.New()
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+		SellerID: &sid,
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	if next.called {
+		t.Error("next handler should not have been called")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RequirePlatformAdminRole middleware
+// ---------------------------------------------------------------------------
+
+func TestRequirePlatformAdminRole_NoTenantContext(t *testing.T) {
+	loader := &mockPlatformAdminRoleLoader{role: authz.PlatformAdminRoleSuperAdmin}
+	mw := authz.RequirePlatformAdminRole(loader, authz.PlatformAdminRoleSupport)
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if next.called {
+		t.Error("next handler should not have been called")
+	}
+}
+
+func TestRequirePlatformAdminRole_InsufficientRole(t *testing.T) {
+	loader := &mockPlatformAdminRoleLoader{role: authz.PlatformAdminRoleSupport}
+	mw := authz.RequirePlatformAdminRole(loader, authz.PlatformAdminRoleAdmin) // require admin
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+	if next.called {
+		t.Error("next handler should not have been called")
+	}
+}
+
+func TestRequirePlatformAdminRole_SufficientRole(t *testing.T) {
+	loader := &mockPlatformAdminRoleLoader{role: authz.PlatformAdminRoleSuperAdmin}
+	mw := authz.RequirePlatformAdminRole(loader, authz.PlatformAdminRoleSupport)
+
+	next := &noopHandler{}
+	handler := mw(next)
+
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if !next.called {
+		t.Error("next handler should have been called")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// CurrentSellerRole / CurrentPlatformAdminRole context helpers
+// ---------------------------------------------------------------------------
+
+func TestCurrentSellerRole_Set(t *testing.T) {
+	// Simulate what the middleware does: set up tenant context, then run
+	// the middleware so it stores the role in context, and verify inside
+	// the next handler.
+	loader := &mockSellerRoleLoader{role: authz.SellerRoleOwner}
+	mw := authz.RequireSellerRole(loader, authz.SellerRoleMember)
+
+	sid := uuid.New()
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+		SellerID: &sid,
+	})
+
+	var gotRole authz.SellerRole
+	var gotOK bool
+	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		gotRole, gotOK = authz.CurrentSellerRole(r.Context())
+	})
+
+	rec := httptest.NewRecorder()
+	mw(inner).ServeHTTP(rec, req)
+
+	if !gotOK {
+		t.Fatal("CurrentSellerRole returned ok=false, want true")
+	}
+	if gotRole != authz.SellerRoleOwner {
+		t.Errorf("CurrentSellerRole = %q, want %q", gotRole, authz.SellerRoleOwner)
+	}
+}
+
+func TestCurrentSellerRole_NotSet(t *testing.T) {
+	_, ok := authz.CurrentSellerRole(context.Background())
+	if ok {
+		t.Error("CurrentSellerRole on empty context should return ok=false")
+	}
+}
+
+func TestCurrentPlatformAdminRole_Set(t *testing.T) {
+	loader := &mockPlatformAdminRoleLoader{role: authz.PlatformAdminRoleAdmin}
+	mw := authz.RequirePlatformAdminRole(loader, authz.PlatformAdminRoleSupport)
+
+	req := requestWithTenant(tenant.Context{
+		TenantID: uuid.New(),
+		UserID:   "auth0|user1",
+	})
+
+	var gotRole authz.PlatformAdminRole
+	var gotOK bool
+	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		gotRole, gotOK = authz.CurrentPlatformAdminRole(r.Context())
+	})
+
+	rec := httptest.NewRecorder()
+	mw(inner).ServeHTTP(rec, req)
+
+	if !gotOK {
+		t.Fatal("CurrentPlatformAdminRole returned ok=false, want true")
+	}
+	if gotRole != authz.PlatformAdminRoleAdmin {
+		t.Errorf("CurrentPlatformAdminRole = %q, want %q", gotRole, authz.PlatformAdminRoleAdmin)
+	}
+}
+
+func TestCurrentPlatformAdminRole_NotSet(t *testing.T) {
+	_, ok := authz.CurrentPlatformAdminRole(context.Background())
+	if ok {
+		t.Error("CurrentPlatformAdminRole on empty context should return ok=false")
 	}
 }
