@@ -15,8 +15,7 @@
  * time — Next.js inlines `NEXT_PUBLIC_*` variables when the app is
  * compiled, so this evaluates to a plain string in the final bundle.
  */
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 /**
  * ApiError carries the HTTP status alongside the parsed error body so
@@ -35,12 +34,7 @@ export class ApiError extends Error {
   readonly code?: string;
   readonly body: unknown;
 
-  constructor(
-    status: number,
-    message: string,
-    body: unknown = null,
-    code?: string,
-  ) {
+  constructor(status: number, message: string, body: unknown = null, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -54,10 +48,7 @@ export class ApiError extends Error {
  * default JSON content type. Returns the raw `Response` so callers
  * can decide how to handle it (usually `jsonOrThrow`).
  */
-export async function fetchAPI(
-  path: string,
-  options?: RequestInit,
-): Promise<Response> {
+export async function fetchAPI(path: string, options?: RequestInit): Promise<Response> {
   return fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -97,12 +88,7 @@ export async function jsonOrThrow<T>(res: Response): Promise<T> {
     } catch {
       // response wasn't JSON — fall back to status-based message
     }
-    throw new ApiError(
-      res.status,
-      detail || `request failed: ${res.status}`,
-      parsed,
-      code,
-    );
+    throw new ApiError(res.status, detail || `request failed: ${res.status}`, parsed, code);
   }
   if (res.status === 204) {
     return undefined as T;

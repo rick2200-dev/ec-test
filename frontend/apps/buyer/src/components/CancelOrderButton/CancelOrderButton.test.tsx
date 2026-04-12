@@ -51,9 +51,7 @@ describe("CancelOrderButtonPresenter", () => {
 
   it("calls onClose when cancel button is clicked", async () => {
     const onClose = vi.fn();
-    render(
-      <CancelOrderButtonPresenter {...baseProps} open={true} onClose={onClose} />
-    );
+    render(<CancelOrderButtonPresenter {...baseProps} open={true} onClose={onClose} />);
     await userEvent.click(screen.getByText("戻る"));
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -61,11 +59,7 @@ describe("CancelOrderButtonPresenter", () => {
   it("calls onReasonChange when textarea is typed into", async () => {
     const onReasonChange = vi.fn();
     render(
-      <CancelOrderButtonPresenter
-        {...baseProps}
-        open={true}
-        onReasonChange={onReasonChange}
-      />
+      <CancelOrderButtonPresenter {...baseProps} open={true} onReasonChange={onReasonChange} />
     );
     const textarea = screen.getByPlaceholderText("理由を入力...");
     await userEvent.type(textarea, "a");
@@ -78,22 +72,14 @@ describe("CancelOrderButtonPresenter", () => {
   });
 
   it("shows submitting label and disables button when submitting", () => {
-    render(
-      <CancelOrderButtonPresenter {...baseProps} open={true} submitting={true} />
-    );
+    render(<CancelOrderButtonPresenter {...baseProps} open={true} submitting={true} />);
     const submitBtn = screen.getByText("送信中...");
     expect(submitBtn).toBeInTheDocument();
     expect(submitBtn).toBeDisabled();
   });
 
   it("displays error message when error is set", () => {
-    render(
-      <CancelOrderButtonPresenter
-        {...baseProps}
-        open={true}
-        error="キャンセルできません"
-      />
-    );
+    render(<CancelOrderButtonPresenter {...baseProps} open={true} error="キャンセルできません" />);
     expect(screen.getByRole("alert")).toHaveTextContent("キャンセルできません");
   });
 

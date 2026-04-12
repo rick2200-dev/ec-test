@@ -77,6 +77,7 @@ Steps:
 4. Check `backend/services/gateway/internal/handler/router.go` for route organization and consistency.
 
 **Red flags:**
+
 - Shared response messages across different RPCs
 - Services still using HTTP proxy where gRPC is expected
 - Inconsistent proto naming or missing common type imports
@@ -109,6 +110,7 @@ Steps:
 5. Check if event schemas/types are defined in proto files or Go structs, and whether they're consistent.
 
 **Red flags:**
+
 - Circular event chains between services
 - Fat events with full entity payloads (>10 fields in event body)
 - Subscribers calling back synchronously to publisher service
@@ -128,18 +130,23 @@ For each issue:
 
 ```markdown
 ## Summary
+
 {1-2 sentence description of the architectural concern}
 
 ## Findings
+
 {Specific files, line numbers, and evidence — include code snippets or event flow diagrams where helpful}
 
 ## Impact
+
 {Why this matters — what breaks or degrades if left unaddressed}
 
 ## Recommendation
+
 {Concrete, actionable steps achievable within a sprint}
 
 ## Trend
+
 {New issue, recurring, or improving? Reference prior architecture review issues if found.}
 ```
 

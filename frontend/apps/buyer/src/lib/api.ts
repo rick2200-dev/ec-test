@@ -27,14 +27,12 @@ export async function trackEvent(eventType: string, productId: string) {
 
 /** List the current buyer's inquiry threads. */
 export async function listBuyerInquiries(
-  params: { limit?: number; offset?: number } = {},
+  params: { limit?: number; offset?: number } = {}
 ): Promise<InquiryListResponse> {
   const qs = new URLSearchParams();
   if (params.limit != null) qs.set("limit", String(params.limit));
   if (params.offset != null) qs.set("offset", String(params.offset));
-  const res = await fetchAPI(
-    `/api/v1/buyer/inquiries${qs.toString() ? `?${qs}` : ""}`,
-  );
+  const res = await fetchAPI(`/api/v1/buyer/inquiries${qs.toString() ? `?${qs}` : ""}`);
   return jsonOrThrow<InquiryListResponse>(res);
 }
 
@@ -59,10 +57,7 @@ export async function createInquiry(input: {
 }
 
 /** Append a buyer reply to an existing thread. */
-export async function postBuyerInquiryMessage(
-  id: string,
-  body: string,
-): Promise<InquiryMessage> {
+export async function postBuyerInquiryMessage(id: string, body: string): Promise<InquiryMessage> {
   const res = await fetchAPI(`/api/v1/buyer/inquiries/${id}/messages`, {
     method: "POST",
     body: JSON.stringify({ body }),
@@ -85,15 +80,12 @@ export async function markBuyerInquiryRead(id: string): Promise<Inquiry> {
  */
 export async function requestOrderCancellation(
   orderId: string,
-  reason: string,
+  reason: string
 ): Promise<CancellationRequest> {
-  const res = await fetchAPI(
-    `/api/v1/buyer/orders/${orderId}/cancellation-request`,
-    {
-      method: "POST",
-      body: JSON.stringify({ reason }),
-    },
-  );
+  const res = await fetchAPI(`/api/v1/buyer/orders/${orderId}/cancellation-request`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
   return jsonOrThrow<CancellationRequest>(res);
 }
 
@@ -103,11 +95,9 @@ export async function requestOrderCancellation(
  * which we translate to null so callers can branch cleanly).
  */
 export async function getOrderCancellationRequest(
-  orderId: string,
+  orderId: string
 ): Promise<CancellationRequest | null> {
-  const res = await fetchAPI(
-    `/api/v1/buyer/orders/${orderId}/cancellation-request`,
-  );
+  const res = await fetchAPI(`/api/v1/buyer/orders/${orderId}/cancellation-request`);
   if (res.status === 404) {
     return null;
   }
@@ -121,24 +111,20 @@ export async function getOrderCancellationRequest(
 /** List reviews for a product with pagination. */
 export async function listProductReviews(
   productId: string,
-  params: { limit?: number; offset?: number } = {},
+  params: { limit?: number; offset?: number } = {}
 ): Promise<ReviewListResponse> {
   const qs = new URLSearchParams();
   if (params.limit != null) qs.set("limit", String(params.limit));
   if (params.offset != null) qs.set("offset", String(params.offset));
   const res = await fetchAPI(
-    `/api/v1/buyer/products/${productId}/reviews${qs.toString() ? `?${qs}` : ""}`,
+    `/api/v1/buyer/products/${productId}/reviews${qs.toString() ? `?${qs}` : ""}`
   );
   return jsonOrThrow<ReviewListResponse>(res);
 }
 
 /** Get the aggregate rating for a product. */
-export async function getProductRating(
-  productId: string,
-): Promise<ProductRating> {
-  const res = await fetchAPI(
-    `/api/v1/buyer/products/${productId}/rating`,
-  );
+export async function getProductRating(productId: string): Promise<ProductRating> {
+  const res = await fetchAPI(`/api/v1/buyer/products/${productId}/rating`);
   return jsonOrThrow<ProductRating>(res);
 }
 
@@ -159,7 +145,7 @@ export async function createReview(input: {
 /** Update an existing review. */
 export async function updateReview(
   id: string,
-  input: { rating?: number; title?: string; body?: string },
+  input: { rating?: number; title?: string; body?: string }
 ): Promise<Review> {
   const res = await fetchAPI(`/api/v1/buyer/reviews/${id}`, {
     method: "PUT",

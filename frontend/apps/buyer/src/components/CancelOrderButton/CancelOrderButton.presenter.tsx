@@ -61,15 +61,9 @@ export function CancelOrderButtonPresenter({
           aria-modal="true"
           aria-labelledby="cancel-order-modal-title"
         >
-          <form
-            onSubmit={onSubmit}
-            className="w-full max-w-lg rounded-lg bg-white shadow-xl"
-          >
+          <form onSubmit={onSubmit} className="w-full max-w-lg rounded-lg bg-white shadow-xl">
             <header className="border-b border-gray-200 px-5 py-3">
-              <h2
-                id="cancel-order-modal-title"
-                className="text-base font-semibold text-gray-900"
-              >
+              <h2 id="cancel-order-modal-title" className="text-base font-semibold text-gray-900">
                 {modalTitle}
               </h2>
               <p className="mt-1 text-xs text-gray-500">{modalDescription}</p>
@@ -77,9 +71,7 @@ export function CancelOrderButtonPresenter({
 
             <div className="space-y-3 px-5 py-4">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  {reasonLabel}
-                </span>
+                <span className="text-sm font-medium text-gray-700">{reasonLabel}</span>
                 <textarea
                   value={reasonValue}
                   onChange={(e) => onReasonChange(e.target.value)}

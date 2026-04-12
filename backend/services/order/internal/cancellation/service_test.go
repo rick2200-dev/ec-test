@@ -105,11 +105,11 @@ type fakeRequestsStore struct {
 	approveTxFn    func(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
 
 	// Call capture for assertions.
-	markFailedCalls     int
-	lastFailedReason    string
-	approveTxInputs     []ApprovalTxInput
-	lastListSellerID    uuid.UUID
-	listByStatusCalls   int
+	markFailedCalls   int
+	lastFailedReason  string
+	approveTxInputs   []ApprovalTxInput
+	lastListSellerID  uuid.UUID
+	listByStatusCalls int
 }
 
 func (f *fakeRequestsStore) Create(ctx context.Context, tenantID uuid.UUID, req *CancellationRequest) error {

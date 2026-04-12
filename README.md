@@ -47,8 +47,8 @@
 | ---------------------------- | -------------------------- | --------------------------------- |
 | バックエンド                 | Go                         | 1.25                              |
 | フロントエンド               | Next.js (App Router)       | latest                            |
-| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                        |
-| モノレポ管理 (Backend)       | Go Workspaces              | go.work                          |
+| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                         |
+| モノレポ管理 (Backend)       | Go Workspaces              | go.work                           |
 | データベース                 | PostgreSQL                 | 16 (RLS によるマルチテナント分離) |
 | キャッシュ                   | Redis                      | 7                                 |
 | メッセージング               | Cloud Pub/Sub              | GCP                               |

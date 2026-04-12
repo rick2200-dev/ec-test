@@ -4,17 +4,17 @@ import "github.com/google/uuid"
 
 // SearchRequest represents a product search query.
 type SearchRequest struct {
-	Query      string    `json:"q"`
-	TenantID   uuid.UUID `json:"tenant_id"`
+	Query      string     `json:"q"`
+	TenantID   uuid.UUID  `json:"tenant_id"`
 	SellerID   *uuid.UUID `json:"seller_id,omitempty"`
 	CategoryID *uuid.UUID `json:"category_id,omitempty"`
-	MinPrice   *float64  `json:"min_price,omitempty"`
-	MaxPrice   *float64  `json:"max_price,omitempty"`
-	Status     string    `json:"status,omitempty"`
-	SortBy     string    `json:"sort_by,omitempty"`
-	SortOrder  string    `json:"sort_order,omitempty"`
-	Limit      int       `json:"limit"`
-	Offset     int       `json:"offset"`
+	MinPrice   *float64   `json:"min_price,omitempty"`
+	MaxPrice   *float64   `json:"max_price,omitempty"`
+	Status     string     `json:"status,omitempty"`
+	SortBy     string     `json:"sort_by,omitempty"`
+	SortOrder  string     `json:"sort_order,omitempty"`
+	Limit      int        `json:"limit"`
+	Offset     int        `json:"offset"`
 }
 
 // SearchResult holds the response from a search query.

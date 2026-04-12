@@ -18,14 +18,14 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/httpclient"
-	"github.com/Riku-KANO/ec-test/services/order/internal/cancellation"
-	"github.com/Riku-KANO/ec-test/services/order/internal/config"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/grpc"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/postgres"
 	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/adapter/stripe"
 	"github.com/Riku-KANO/ec-test/services/order/internal/app"
+	"github.com/Riku-KANO/ec-test/services/order/internal/cancellation"
+	"github.com/Riku-KANO/ec-test/services/order/internal/config"
 )
 
 func main() {

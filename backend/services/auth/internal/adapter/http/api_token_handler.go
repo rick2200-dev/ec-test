@@ -48,11 +48,11 @@ func (h *APITokenHandler) Mount(r chi.Router) {
 // RateLimitRPS / RateLimitBurst are optional per-token overrides; if
 // omitted the gateway falls back to the env-configured default.
 type issueAPITokenRequest struct {
-	Name           string                  `json:"name"`
-	Scopes         []domain.APITokenScope  `json:"scopes"`
-	ExpiresAt      *time.Time              `json:"expires_at,omitempty"`
-	RateLimitRPS   *int                    `json:"rate_limit_rps,omitempty"`
-	RateLimitBurst *int                    `json:"rate_limit_burst,omitempty"`
+	Name           string                 `json:"name"`
+	Scopes         []domain.APITokenScope `json:"scopes"`
+	ExpiresAt      *time.Time             `json:"expires_at,omitempty"`
+	RateLimitRPS   *int                   `json:"rate_limit_rps,omitempty"`
+	RateLimitBurst *int                   `json:"rate_limit_burst,omitempty"`
 }
 
 // issueAPITokenResponse embeds the persisted record and adds the plaintext

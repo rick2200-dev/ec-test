@@ -1,10 +1,6 @@
 import Link from "next/link";
 
-export type NotificationCategory =
-  | "order"
-  | "inventory"
-  | "inquiry"
-  | "account";
+export type NotificationCategory = "order" | "inventory" | "inquiry" | "account";
 
 export interface NotificationCardItem {
   id: string;
@@ -37,12 +33,9 @@ const CATEGORY_ICONS: Record<NotificationCategory, string> = {
   // Path shapes chosen to match the seller app's icon vocabulary (stroke-only SVGs).
   order:
     "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  inventory:
-    "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
-  inquiry:
-    "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
-  account:
-    "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+  inventory: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
+  inquiry: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  account: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
 };
 
 /**
@@ -85,12 +78,10 @@ export function NotificationsPagePresenter({
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1 border-b border-border" role="tablist">
-        {(
-          [
-            { key: "all" as const, label: filterAllLabel },
-            { key: "unread" as const, label: filterUnreadLabel },
-          ]
-        ).map((tab) => (
+        {[
+          { key: "all" as const, label: filterAllLabel },
+          { key: "unread" as const, label: filterUnreadLabel },
+        ].map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -122,9 +113,7 @@ export function NotificationsPagePresenter({
             const card = (
               <div
                 className={`flex items-start gap-4 rounded-lg border p-4 transition-shadow ${
-                  n.unread
-                    ? "border-accent/30 bg-accent/5"
-                    : "border-border bg-white"
+                  n.unread ? "border-accent/30 bg-accent/5" : "border-border bg-white"
                 } ${n.href ? "hover:shadow-sm" : ""}`}
               >
                 <div

@@ -31,8 +31,14 @@
 
 body {
   font-family:
-    "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo",
-    system-ui, -apple-system, sans-serif;
+    "Hiragino Kaku Gothic ProN",
+    "Hiragino Sans",
+    "Noto Sans JP",
+    "Yu Gothic",
+    "Meiryo",
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

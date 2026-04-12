@@ -6,12 +6,7 @@
  * `src/lib/types.ts`.
  */
 
-export type {
-  Inquiry,
-  InquiryMessage,
-  InquiryWithMessages,
-  InquiryListResponse,
-} from "./inquiry";
+export type { Inquiry, InquiryMessage, InquiryWithMessages, InquiryListResponse } from "./inquiry";
 
 export type { PlanFeatures } from "./subscription";
 
@@ -23,9 +18,4 @@ export type {
   CancellationRequestListResponse,
 } from "./cancellation";
 
-export type {
-  Review,
-  ReviewReply,
-  ProductRating,
-  ReviewListResponse,
-} from "./review";
+export type { Review, ReviewReply, ProductRating, ReviewListResponse } from "./review";

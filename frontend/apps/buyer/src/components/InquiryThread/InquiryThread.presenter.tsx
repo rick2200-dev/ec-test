@@ -51,9 +51,7 @@ export function InquiryThreadPresenter({
           </div>
           <span
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              statusTone === "open"
-                ? "bg-green-100 text-green-800"
-                : "bg-gray-100 text-gray-600"
+              statusTone === "open" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
             }`}
           >
             {statusLabel}
@@ -63,10 +61,7 @@ export function InquiryThreadPresenter({
 
       <div className="space-y-3" role="log" aria-live="polite">
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.mine ? "justify-end" : "justify-start"}`}
-          >
+          <div key={msg.id} className={`flex ${msg.mine ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-2.5 shadow-sm ${
                 msg.mine
@@ -74,11 +69,7 @@ export function InquiryThreadPresenter({
                   : "bg-white text-gray-900 border border-gray-200"
               }`}
             >
-              <div
-                className={`text-xs mb-1 ${
-                  msg.mine ? "text-blue-100" : "text-gray-500"
-                }`}
-              >
+              <div className={`text-xs mb-1 ${msg.mine ? "text-blue-100" : "text-gray-500"}`}>
                 <span className="font-semibold">{msg.senderLabel}</span>
                 <span className="ml-2">{msg.timestamp}</span>
               </div>

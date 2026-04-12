@@ -53,7 +53,6 @@ export const WithReviews: Story = {
   args: {
     ...base,
     reviews: [sampleReview, reviewWithReply],
-    total: 5,
     loading: false,
     hasMore: true,
     onLoadMore: () => {},
@@ -64,7 +63,6 @@ export const Empty: Story = {
   args: {
     ...base,
     reviews: [],
-    total: 0,
     loading: false,
     hasMore: false,
     onLoadMore: () => {},
@@ -75,7 +73,6 @@ export const Loading: Story = {
   args: {
     ...base,
     reviews: [],
-    total: 0,
     loading: true,
     hasMore: false,
     onLoadMore: () => {},

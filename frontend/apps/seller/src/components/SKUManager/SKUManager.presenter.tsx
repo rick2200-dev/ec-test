@@ -18,15 +18,19 @@ export function SKUManagerPresenter({ skus, onAdd, onRemove, onUpdate }: SKUMana
   return (
     <div className="bg-white rounded-lg border border-border shadow-sm p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-text-primary">
-          SKU（バリエーション）
-        </h3>
+        <h3 className="text-lg font-semibold text-text-primary">SKU（バリエーション）</h3>
         <button
           type="button"
           onClick={onAdd}
           className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-hover font-medium"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           SKUを追加
@@ -34,14 +38,9 @@ export function SKUManagerPresenter({ skus, onAdd, onRemove, onUpdate }: SKUMana
       </div>
 
       {skus.map((sku, index) => (
-        <div
-          key={index}
-          className="border border-border rounded-lg p-4 space-y-3"
-        >
+        <div key={index} className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-text-secondary">
-              SKU #{index + 1}
-            </span>
+            <span className="text-sm font-medium text-text-secondary">SKU #{index + 1}</span>
             {skus.length > 1 && (
               <button
                 type="button"
@@ -54,7 +53,10 @@ export function SKUManagerPresenter({ skus, onAdd, onRemove, onUpdate }: SKUMana
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor={`sku-code-${index}`} className="block text-xs font-medium text-text-secondary mb-1">
+              <label
+                htmlFor={`sku-code-${index}`}
+                className="block text-xs font-medium text-text-secondary mb-1"
+              >
                 SKUコード <span className="text-danger">*</span>
               </label>
               <input
@@ -69,7 +71,10 @@ export function SKUManagerPresenter({ skus, onAdd, onRemove, onUpdate }: SKUMana
               />
             </div>
             <div>
-              <label htmlFor={`sku-price-${index}`} className="block text-xs font-medium text-text-secondary mb-1">
+              <label
+                htmlFor={`sku-price-${index}`}
+                className="block text-xs font-medium text-text-secondary mb-1"
+              >
                 価格（税込） <span className="text-danger">*</span>
               </label>
               <input
@@ -85,7 +90,10 @@ export function SKUManagerPresenter({ skus, onAdd, onRemove, onUpdate }: SKUMana
               />
             </div>
             <div>
-              <label htmlFor={`sku-color-${index}`} className="block text-xs font-medium text-text-secondary mb-1">
+              <label
+                htmlFor={`sku-color-${index}`}
+                className="block text-xs font-medium text-text-secondary mb-1"
+              >
                 カラー
               </label>
               <input
@@ -98,7 +106,10 @@ export function SKUManagerPresenter({ skus, onAdd, onRemove, onUpdate }: SKUMana
               />
             </div>
             <div>
-              <label htmlFor={`sku-size-${index}`} className="block text-xs font-medium text-text-secondary mb-1">
+              <label
+                htmlFor={`sku-size-${index}`}
+                className="block text-xs font-medium text-text-secondary mb-1"
+              >
                 サイズ
               </label>
               <input

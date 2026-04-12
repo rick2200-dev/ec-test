@@ -13,15 +13,13 @@ export { fetchAPI, ApiError } from "@ec-marketplace/api-client";
 
 /** List inquiry threads for the current seller. */
 export async function listSellerInquiries(
-  params: { limit?: number; offset?: number; status?: "open" | "closed" } = {},
+  params: { limit?: number; offset?: number; status?: "open" | "closed" } = {}
 ): Promise<InquiryListResponse> {
   const qs = new URLSearchParams();
   if (params.limit != null) qs.set("limit", String(params.limit));
   if (params.offset != null) qs.set("offset", String(params.offset));
   if (params.status) qs.set("status", params.status);
-  const res = await fetchAPI(
-    `/api/v1/seller/inquiries${qs.toString() ? `?${qs}` : ""}`,
-  );
+  const res = await fetchAPI(`/api/v1/seller/inquiries${qs.toString() ? `?${qs}` : ""}`);
   return jsonOrThrow<InquiryListResponse>(res);
 }
 
@@ -30,10 +28,7 @@ export async function getSellerInquiry(id: string): Promise<InquiryWithMessages>
   return jsonOrThrow<InquiryWithMessages>(res);
 }
 
-export async function postSellerInquiryMessage(
-  id: string,
-  body: string,
-): Promise<InquiryMessage> {
+export async function postSellerInquiryMessage(id: string, body: string): Promise<InquiryMessage> {
   const res = await fetchAPI(`/api/v1/seller/inquiries/${id}/messages`, {
     method: "POST",
     body: JSON.stringify({ body }),
@@ -61,22 +56,20 @@ export async function listSellerCancellationRequests(
     status?: CancellationRequestStatus;
     limit?: number;
     offset?: number;
-  } = {},
+  } = {}
 ): Promise<CancellationRequestListResponse> {
   const qs = new URLSearchParams();
   if (params.status) qs.set("status", params.status);
   if (params.limit != null) qs.set("limit", String(params.limit));
   if (params.offset != null) qs.set("offset", String(params.offset));
   const res = await fetchAPI(
-    `/api/v1/seller/cancellation-requests${qs.toString() ? `?${qs}` : ""}`,
+    `/api/v1/seller/cancellation-requests${qs.toString() ? `?${qs}` : ""}`
   );
   return jsonOrThrow<CancellationRequestListResponse>(res);
 }
 
 /** Fetch a single cancellation request by id. */
-export async function getSellerCancellationRequest(
-  id: string,
-): Promise<CancellationRequest> {
+export async function getSellerCancellationRequest(id: string): Promise<CancellationRequest> {
   const res = await fetchAPI(`/api/v1/seller/cancellation-requests/${id}`);
   return jsonOrThrow<CancellationRequest>(res);
 }
@@ -89,15 +82,12 @@ export async function getSellerCancellationRequest(
  */
 export async function approveCancellationRequest(
   id: string,
-  sellerComment?: string,
+  sellerComment?: string
 ): Promise<CancellationRequest> {
-  const res = await fetchAPI(
-    `/api/v1/seller/cancellation-requests/${id}/approve`,
-    {
-      method: "POST",
-      body: JSON.stringify({ seller_comment: sellerComment ?? "" }),
-    },
-  );
+  const res = await fetchAPI(`/api/v1/seller/cancellation-requests/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify({ seller_comment: sellerComment ?? "" }),
+  });
   return jsonOrThrow<CancellationRequest>(res);
 }
 
@@ -107,14 +97,11 @@ export async function approveCancellationRequest(
  */
 export async function rejectCancellationRequest(
   id: string,
-  sellerComment: string,
+  sellerComment: string
 ): Promise<CancellationRequest> {
-  const res = await fetchAPI(
-    `/api/v1/seller/cancellation-requests/${id}/reject`,
-    {
-      method: "POST",
-      body: JSON.stringify({ seller_comment: sellerComment }),
-    },
-  );
+  const res = await fetchAPI(`/api/v1/seller/cancellation-requests/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ seller_comment: sellerComment }),
+  });
   return jsonOrThrow<CancellationRequest>(res);
 }

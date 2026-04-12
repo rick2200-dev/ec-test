@@ -27,14 +27,10 @@ export function ProductRatingSummaryPresenter({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" aria-label={ratingLabel}>
       <StarRatingPresenter rating={averageRating} size="sm" />
-      <span className="text-sm font-medium text-gray-900">
-        {averageRating.toFixed(1)}
-      </span>
-      <span className="text-sm text-gray-500">
-        ({reviewCountLabel})
-      </span>
+      <span className="text-sm font-medium text-gray-900">{averageRating.toFixed(1)}</span>
+      <span className="text-sm text-gray-500">({reviewCountLabel})</span>
     </div>
   );
 }

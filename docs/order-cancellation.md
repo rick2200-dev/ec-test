@@ -52,20 +52,20 @@
 
 [`infra/db/migrations/000016_create_order_cancellation_requests.up.sql`](../infra/db/migrations/000016_create_order_cancellation_requests.up.sql)
 
-| カラム | 型 | 用途 |
-| --- | --- | --- |
-| `id` | UUID PK | 申請 ID |
-| `tenant_id` | UUID NOT NULL | RLS + マルチテナント境界 |
-| `order_id` | UUID NOT NULL | 対象注文 (FK) |
-| `requested_by_auth0_id` | VARCHAR(255) NOT NULL | 申請した買い手の Auth0 sub |
-| `reason` | TEXT NOT NULL | 買い手が入力した申請理由 |
-| `status` | VARCHAR(20) NOT NULL | `pending` / `approved` / `rejected` / `failed` |
-| `seller_comment` | TEXT NULL | セラーが記入するコメント (却下時は必須) |
-| `processed_by_seller_id` | UUID NULL | 処理したセラー ID |
-| `processed_at` | TIMESTAMPTZ NULL | 処理日時 |
-| `stripe_refund_id` | VARCHAR(255) NULL | 承認成功時の Stripe Refund ID |
-| `failure_reason` | TEXT NULL | `failed` 時のエラー詳細 |
-| `created_at` / `updated_at` | TIMESTAMPTZ NOT NULL | |
+| カラム                      | 型                    | 用途                                           |
+| --------------------------- | --------------------- | ---------------------------------------------- |
+| `id`                        | UUID PK               | 申請 ID                                        |
+| `tenant_id`                 | UUID NOT NULL         | RLS + マルチテナント境界                       |
+| `order_id`                  | UUID NOT NULL         | 対象注文 (FK)                                  |
+| `requested_by_auth0_id`     | VARCHAR(255) NOT NULL | 申請した買い手の Auth0 sub                     |
+| `reason`                    | TEXT NOT NULL         | 買い手が入力した申請理由                       |
+| `status`                    | VARCHAR(20) NOT NULL  | `pending` / `approved` / `rejected` / `failed` |
+| `seller_comment`            | TEXT NULL             | セラーが記入するコメント (却下時は必須)        |
+| `processed_by_seller_id`    | UUID NULL             | 処理したセラー ID                              |
+| `processed_at`              | TIMESTAMPTZ NULL      | 処理日時                                       |
+| `stripe_refund_id`          | VARCHAR(255) NULL     | 承認成功時の Stripe Refund ID                  |
+| `failure_reason`            | TEXT NULL             | `failed` 時のエラー詳細                        |
+| `created_at` / `updated_at` | TIMESTAMPTZ NOT NULL  |                                                |
 
 ### インデックス / 制約
 
@@ -75,17 +75,17 @@
 
 ### `orders` テーブルへの追加カラム
 
-| カラム | 型 | 用途 |
-| --- | --- | --- |
-| `cancelled_at` | TIMESTAMPTZ NULL | 承認時にタイムスタンプを保存 |
-| `cancellation_reason` | TEXT NULL | 申請理由を注文行にコピー |
+| カラム                | 型               | 用途                         |
+| --------------------- | ---------------- | ---------------------------- |
+| `cancelled_at`        | TIMESTAMPTZ NULL | 承認時にタイムスタンプを保存 |
+| `cancellation_reason` | TEXT NULL        | 申請理由を注文行にコピー     |
 
 ### `payouts` テーブルへの追加カラム
 
-| カラム | 型 | 用途 |
-| --- | --- | --- |
-| `reversed_at` | TIMESTAMPTZ NULL | Transfer Reversal 実行時刻 |
-| `stripe_reversal_id` | VARCHAR(255) NULL | Stripe が返す reversal id |
+| カラム               | 型                | 用途                       |
+| -------------------- | ----------------- | -------------------------- |
+| `reversed_at`        | TIMESTAMPTZ NULL  | Transfer Reversal 実行時刻 |
+| `stripe_reversal_id` | VARCHAR(255) NULL | Stripe が返す reversal id  |
 
 また `domain.PayoutStatus*` 定数に `PayoutStatusReversed = "reversed"` を追加している。
 
@@ -262,16 +262,16 @@ sequenceDiagram
 
 全コードは `backend/services/order/internal/cancellation/errors.go` に定義。フロントエンドは `ApiError.code` で switch し、メッセージ翻訳を選択する。コードは公開 API 契約の一部であり、リネームは breaking change。
 
-| Code | HTTP | 意味 |
-| --- | --- | --- |
-| `ORDER_NOT_CANCELLABLE` | 409 | 注文ステータスがキャンセル可能な範囲外 |
-| `CANCELLATION_REQUEST_NOT_FOUND` | 404 | 申請 ID が存在しない / テナント違い |
-| `CANCELLATION_REQUEST_ALREADY_EXISTS` | 409 | pending 申請が既に存在 |
-| `CANCELLATION_REQUEST_ALREADY_PROCESSED` | 409 | 既に承認 / 却下 / 失敗済み |
-| `REFUND_FAILED` | 502 | Stripe CreateRefund が失敗 |
-| `TRANSFER_REVERSAL_FAILED` | 502 | Stripe ReverseTransfer が失敗 (Refund は既に完了) |
-| `NOT_ORDER_BUYER` | 404 | 呼び出し元が買い手ではない (情報漏洩対策で 404 wrap) |
-| `NOT_ORDER_SELLER` | 404 | 呼び出し元がセラーではない |
+| Code                                     | HTTP | 意味                                                 |
+| ---------------------------------------- | ---- | ---------------------------------------------------- |
+| `ORDER_NOT_CANCELLABLE`                  | 409  | 注文ステータスがキャンセル可能な範囲外               |
+| `CANCELLATION_REQUEST_NOT_FOUND`         | 404  | 申請 ID が存在しない / テナント違い                  |
+| `CANCELLATION_REQUEST_ALREADY_EXISTS`    | 409  | pending 申請が既に存在                               |
+| `CANCELLATION_REQUEST_ALREADY_PROCESSED` | 409  | 既に承認 / 却下 / 失敗済み                           |
+| `REFUND_FAILED`                          | 502  | Stripe CreateRefund が失敗                           |
+| `TRANSFER_REVERSAL_FAILED`               | 502  | Stripe ReverseTransfer が失敗 (Refund は既に完了)    |
+| `NOT_ORDER_BUYER`                        | 404  | 呼び出し元が買い手ではない (情報漏洩対策で 404 wrap) |
+| `NOT_ORDER_SELLER`                       | 404  | 呼び出し元がセラーではない                           |
 
 ---
 
@@ -280,14 +280,14 @@ sequenceDiagram
 ### 注文ステータスの許可マトリクス
 
 | 注文ステータス | 申請可 | 承認時再チェック通過 |
-| --- | :---: | :---: |
-| `pending` | ✅ | ✅ |
-| `paid` | ✅ | ✅ |
-| `processing` | ✅ | ✅ |
-| `shipped` | ❌ | ❌ |
-| `delivered` | ❌ | ❌ |
-| `completed` | ❌ | ❌ |
-| `cancelled` | ❌ | ❌ |
+| -------------- | :----: | :------------------: |
+| `pending`      |   ✅   |          ✅          |
+| `paid`         |   ✅   |          ✅          |
+| `processing`   |   ✅   |          ✅          |
+| `shipped`      |   ❌   |          ❌          |
+| `delivered`    |   ❌   |          ❌          |
+| `completed`    |   ❌   |          ❌          |
+| `cancelled`    |   ❌   |          ❌          |
 
 `canOrderBeCancelled(status string) bool` ([service.go](../backend/services/order/internal/cancellation/service.go)) が単一ソース。呼ばれる箇所:
 
@@ -313,10 +313,10 @@ sequenceDiagram
 
 ### 使う API
 
-| 操作 | Stripe API | 対象 |
-| --- | --- | --- |
-| 返金 | `POST /v1/refunds` | `payment_intent` (プラットフォーム課金) |
-| 送金取消 | `POST /v1/transfers/{id}/reversals` | 各セラーへの Transfer |
+| 操作     | Stripe API                          | 対象                                    |
+| -------- | ----------------------------------- | --------------------------------------- |
+| 返金     | `POST /v1/refunds`                  | `payment_intent` (プラットフォーム課金) |
+| 送金取消 | `POST /v1/transfers/{id}/reversals` | 各セラーへの Transfer                   |
 
 ### なぜ常に部分返金か
 
@@ -349,12 +349,12 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
 
 ### イベント型
 
-| Type | Subscriber | 用途 |
-| --- | --- | --- |
-| `order.cancellation_requested` | notification | セラーに「申請が来ました」メール |
-| `order.cancellation_rejected` | notification | 買い手に「却下されました」メール |
-| `order.cancellation_approved` | notification | 買い手に「承認されました」メール (返金額付き) |
-| `order.cancelled` | notification, **inventory** | 買い手に最終メール、inventory が在庫解放 |
+| Type                           | Subscriber                  | 用途                                          |
+| ------------------------------ | --------------------------- | --------------------------------------------- |
+| `order.cancellation_requested` | notification                | セラーに「申請が来ました」メール              |
+| `order.cancellation_rejected`  | notification                | 買い手に「却下されました」メール              |
+| `order.cancellation_approved`  | notification                | 買い手に「承認されました」メール (返金額付き) |
+| `order.cancelled`              | notification, **inventory** | 買い手に最終メール、inventory が在庫解放      |
 
 ### `order.cancelled` のペイロード
 
@@ -369,9 +369,7 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
   "request_id": "uuid",
   "reason": "changed my mind",
   "cancelled_at": "2026-04-12T12:34:56Z",
-  "line_items": [
-    { "sku_id": "uuid", "product_name": "...", "sku_code": "...", "quantity": 2 }
-  ]
+  "line_items": [{ "sku_id": "uuid", "product_name": "...", "sku_code": "...", "quantity": 2 }]
 }
 ```
 
@@ -379,10 +377,10 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
 
 ### Subscription 配線
 
-| Subscription | Consumer | 出典 |
-| --- | --- | --- |
+| Subscription                | Consumer     | 出典                                                                  |
+| --------------------------- | ------------ | --------------------------------------------------------------------- |
 | `order-events-notification` | notification | 既存。cancellation 4 イベントをハンドリングするために switch 文へ追加 |
-| `order-events-inventory` | inventory | **本 PR で新規追加**。`ReleaseStockForOrderCancellation` を呼ぶ |
+| `order-events-inventory`    | inventory    | **本 PR で新規追加**。`ReleaseStockForOrderCancellation` を呼ぶ       |
 
 Pub/Sub subscription 自体のプロビジョニングは `infra/` 側に TODO として残っている。ローカル/本番デプロイ時に `gcloud pubsub subscriptions create order-events-inventory --topic=order-events` を実行するか、Terraform に追加すること。
 

@@ -88,6 +88,7 @@ Steps:
    - Shared utilities (date formatting, currency formatting, validation) duplicated
 
 **Red flags:**
+
 - Same component existing in 2+ apps with >70% similarity
 - Different API client patterns across apps
 - Shared types defined independently in each app's `lib/types.ts`
@@ -122,6 +123,7 @@ Steps:
    - Flag migrations that are destructive without a safe rollback path
 
 **Red flags:**
+
 - Services missing from Kubernetes overlays
 - Missing health check endpoints or probes
 - Inconsistent resource allocation (no requests/limits)
@@ -142,18 +144,23 @@ For each issue:
 
 ```markdown
 ## Summary
+
 {1-2 sentence description of the concern}
 
 ## Findings
+
 {Specific files and evidence — for frontend duplication, show the similar code in each app}
 
 ## Impact
+
 {Why this matters for platform maintainability}
 
 ## Recommendation
+
 {Concrete, actionable steps achievable within a sprint}
 
 ## Trend
+
 {New issue, recurring, or improving? Reference prior architecture review issues if found.}
 ```
 

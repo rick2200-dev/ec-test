@@ -13,10 +13,7 @@ function formatCurrency(amount: number): string {
   return `¥${amount.toLocaleString()}`;
 }
 
-function statusToBadge(
-  status: StatusType,
-  t: (key: string) => string,
-): StatusBadgePresenterProps {
+function statusToBadge(status: StatusType, t: (key: string) => string): StatusBadgePresenterProps {
   const toneMap: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
     active: "success",
     archived: "neutral",

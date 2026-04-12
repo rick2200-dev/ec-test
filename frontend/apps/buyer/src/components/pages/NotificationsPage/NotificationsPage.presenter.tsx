@@ -68,9 +68,7 @@ export function NotificationsPagePresenter({
             const card = (
               <div
                 className={`rounded-lg border p-4 transition-shadow ${
-                  n.unread
-                    ? "border-blue-200 bg-blue-50/40"
-                    : "border-gray-200 bg-white"
+                  n.unread ? "border-blue-200 bg-blue-50/40" : "border-gray-200 bg-white"
                 } ${n.href ? "hover:shadow-md" : ""}`}
               >
                 <div className="flex items-start gap-3">

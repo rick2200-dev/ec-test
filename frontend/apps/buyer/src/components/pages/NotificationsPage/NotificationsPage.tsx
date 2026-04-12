@@ -10,11 +10,7 @@ import {
  * renders a hard-coded mock list for now. Replace `mockNotifications` with a
  * real `fetchAPI("/api/v1/buyer/notifications")` call once the endpoint ships.
  */
-type MockNotificationType =
-  | "orderPaid"
-  | "orderShipped"
-  | "orderDelivered"
-  | "inquiryReplied";
+type MockNotificationType = "orderPaid" | "orderShipped" | "orderDelivered" | "inquiryReplied";
 
 interface MockNotification {
   id: string;
@@ -110,11 +106,7 @@ function titleForType(type: MockNotificationType, t: T): string {
   }
 }
 
-function bodyForType(
-  type: MockNotificationType,
-  vars: Record<string, string>,
-  t: T,
-): string {
+function bodyForType(type: MockNotificationType, vars: Record<string, string>, t: T): string {
   switch (type) {
     case "orderPaid":
       return t("notifications.body.orderPaid", { orderId: vars.orderId ?? "" });

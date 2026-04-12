@@ -36,9 +36,7 @@ export const MultipleSKUs: Story = {
 };
 
 function InteractiveStory() {
-  const [skus, setSkus] = useState<SKUInput[]>([
-    { code: "", price: "", color: "", size: "" },
-  ]);
+  const [skus, setSkus] = useState<SKUInput[]>([{ code: "", price: "", color: "", size: "" }]);
   return (
     <SKUManagerPresenter
       skus={skus}

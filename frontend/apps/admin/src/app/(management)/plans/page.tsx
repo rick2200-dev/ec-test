@@ -69,7 +69,9 @@ export default async function PlansPage() {
                   <td className="px-6 py-4 text-sm text-text-primary">
                     {formatPrice(plan.price_amount)}
                   </td>
-                  <td className="px-6 py-4 text-sm text-text-primary">x{plan.features.search_boost}</td>
+                  <td className="px-6 py-4 text-sm text-text-primary">
+                    x{plan.features.search_boost}
+                  </td>
                   <td className="px-6 py-4 text-sm text-text-primary">
                     {formatMaxProducts(plan.features.max_products)}
                   </td>

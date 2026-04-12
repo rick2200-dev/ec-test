@@ -45,6 +45,7 @@ infra/
 ```
 
 Key design decisions:
+
 - Multi-tenant isolation via PostgreSQL RLS (Row-Level Security)
 - External: REST/JSON, Internal: gRPC, Async: Cloud Pub/Sub
 - Auth0 for identity, Stripe Connect for payments
@@ -60,12 +61,14 @@ analyze them, and collect findings. At the end, produce a structured report.
 **Goal:** Detect violations of service boundaries where one service depends on another's internals.
 
 Steps:
+
 1. For each service in `backend/services/*/`, examine its `go.mod` for import dependencies.
 2. Check if any service imports another service's internal packages directly (e.g., `services/catalog/internal` imported by `services/order`). This is a boundary violation.
 3. Review the gateway's `internal/grpcclient/` and `internal/proxy/` to assess how services are called. Flag any service-to-service calls that bypass the gateway without using gRPC or Pub/Sub.
 4. Check `backend/pkg/` for packages that contain domain-specific logic that should live in a single service instead.
 
 **Red flags:**
+
 - Direct `import "...services/X/internal/..."` from service Y
 - Shared packages in `pkg/` that reference service-specific domain types
 - Services making HTTP calls to each other directly instead of using gRPC or Pub/Sub
@@ -75,6 +78,7 @@ Steps:
 **Goal:** Ensure shared packages remain truly cross-cutting and don't become a dumping ground.
 
 Steps:
+
 1. Read each package under `backend/pkg/` and classify it:
    - **Cross-cutting concern** (correct): database, middleware, errors, httputil, pagination, pubsub, tenant
    - **Domain-specific** (incorrect): anything that models or operates on a specific service's domain
@@ -83,6 +87,7 @@ Steps:
 4. Check if `pkg/` packages have appropriate tests.
 
 **Red flags:**
+
 - A `pkg/` package that imports from a specific service
 - A single package file exceeding ~500 lines (potential god-package)
 - Shared types that embed or reference service-specific entities
@@ -92,6 +97,7 @@ Steps:
 **Goal:** Ensure gRPC service definitions follow consistent patterns across all services.
 
 Steps:
+
 1. Read all `.proto` files under `backend/proto/`.
 2. Verify consistent patterns:
    - Each RPC uses its own Request/Response messages (no reuse across RPCs)
@@ -101,6 +107,7 @@ Steps:
 4. Flag any service that has HTTP handlers but no gRPC definition yet.
 
 **Red flags:**
+
 - Services still using HTTP proxy calls where gRPC is expected
 - Inconsistent error code mapping between REST and gRPC
 - Missing or incomplete proto definitions for services that should have them
@@ -110,12 +117,14 @@ Steps:
 **Goal:** Verify that tenant isolation is enforced consistently and cannot be bypassed.
 
 Steps:
+
 1. Check that every service that accesses PostgreSQL sets the RLS tenant context via `backend/pkg/database/` or `backend/pkg/tenant/`.
 2. Verify that all DB queries go through the established patterns (no raw SQL that bypasses RLS).
 3. Check migration files in `infra/db/` to ensure all tables with tenant-scoped data have RLS policies.
 4. Verify that the gateway always resolves and propagates tenant context before forwarding requests.
 
 **Red flags:**
+
 - DB queries that don't set `app.current_tenant` before execution
 - Tables missing RLS policies for tenant-scoped data
 - Endpoints that skip tenant resolution middleware
@@ -126,6 +135,7 @@ Steps:
 **Goal:** Ensure Pub/Sub usage follows consistent patterns and doesn't create hidden coupling.
 
 Steps:
+
 1. Identify all Pub/Sub publishers and subscribers across services.
 2. Map the event flow: which service publishes what topic, and who subscribes.
 3. Check for:
@@ -135,6 +145,7 @@ Steps:
 4. Verify that event schemas are documented or defined in proto files.
 
 **Red flags:**
+
 - Circular event chains (A publishes -> B subscribes -> B publishes -> A subscribes)
 - Fat events with full entity payloads instead of references
 - Subscribers that make synchronous calls back to the publisher
@@ -145,6 +156,7 @@ Steps:
 **Goal:** Assess Go module and Node.js package health across the monorepo.
 
 Steps:
+
 1. Check `go.work` to ensure all modules are listed.
 2. For each `go.mod`, check for:
    - Outdated major dependencies
@@ -156,6 +168,7 @@ Steps:
    - Missing or incorrect peer dependencies
 
 **Red flags:**
+
 - Different services using different versions of the same dependency
 - Replace directives pointing to local paths that should be proper modules
 - Frontend apps with divergent React/Next.js versions
@@ -165,6 +178,7 @@ Steps:
 **Goal:** Evaluate frontend monorepo structure and cross-app consistency.
 
 Steps:
+
 1. Review `turbo.json` task pipeline for correctness and caching.
 2. Check shared packages under `frontend/packages/` for reuse opportunities.
 3. Assess whether the 3 apps (buyer, seller, admin) share components appropriately or have significant duplication.
@@ -172,6 +186,7 @@ Steps:
 5. Check for shared API client patterns or data fetching strategies.
 
 **Red flags:**
+
 - Duplicated components across apps that should be in a shared package
 - Inconsistent data fetching patterns (mixing different approaches)
 - Missing shared types for API responses
@@ -182,6 +197,7 @@ Steps:
 **Goal:** Verify that infrastructure configuration is consistent and follows best practices.
 
 Steps:
+
 1. Review Kubernetes manifests in `infra/deploy/` for consistency across services.
 2. Check that all services have:
    - Health check endpoints
@@ -191,6 +207,7 @@ Steps:
 4. Check migration files for naming consistency and safe rollback patterns.
 
 **Red flags:**
+
 - Services missing health checks or probes
 - Inconsistent resource allocation
 - Missing environment overlays for a service
@@ -206,35 +223,41 @@ The issue should follow this format:
 ## Weekly Architecture Review — {YYYY-MM-DD}
 
 ### Executive Summary
+
 {2-3 sentences summarizing the overall health and most critical findings}
 
 ### Critical Issues (Action Required)
+
 {Issues that pose immediate risk to data integrity, security, or system stability}
 
 - **[Area N] Title**: Description and recommended action
 
 ### Architectural Debt
+
 {Issues that won't break things today but will compound over time}
 
 - **[Area N] Title**: Description, impact assessment, and suggested approach
 
 ### Improvement Opportunities
+
 {Non-urgent opportunities to improve consistency, performance, or DX}
 
 - **[Area N] Title**: Description and potential benefit
 
 ### Metrics Snapshot
-| Metric | Value | Trend |
-|--------|-------|-------|
-| Total Go services | N | - |
-| Services with gRPC | N/N | - |
-| Proto definitions | N | - |
-| Shared pkg/ packages | N | - |
-| Frontend shared packages | N | - |
-| DB migrations | N | - |
-| Cross-service dependencies | N | up/down/stable |
+
+| Metric                     | Value | Trend          |
+| -------------------------- | ----- | -------------- |
+| Total Go services          | N     | -              |
+| Services with gRPC         | N/N   | -              |
+| Proto definitions          | N     | -              |
+| Shared pkg/ packages       | N     | -              |
+| Frontend shared packages   | N     | -              |
+| DB migrations              | N     | -              |
+| Cross-service dependencies | N     | up/down/stable |
 
 ### Next Review
+
 Scheduled for: {next week's date}
 ```
 

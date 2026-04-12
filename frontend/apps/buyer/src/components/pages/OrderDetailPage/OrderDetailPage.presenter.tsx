@@ -122,9 +122,7 @@ export function OrderDetailPagePresenter({
           role="note"
         >
           <p className="font-semibold">{cancellation.banner.label}</p>
-          {cancellation.banner.note && (
-            <p className="mt-1 text-xs">{cancellation.banner.note}</p>
-          )}
+          {cancellation.banner.note && <p className="mt-1 text-xs">{cancellation.banner.note}</p>}
         </div>
       )}
 
@@ -165,9 +163,7 @@ export function OrderDetailPagePresenter({
   );
 }
 
-function cancellationBannerClasses(
-  tone: "pending" | "approved" | "rejected" | "failed",
-): string {
+function cancellationBannerClasses(tone: "pending" | "approved" | "rejected" | "failed"): string {
   switch (tone) {
     case "pending":
       return "border-amber-200 bg-amber-50 text-amber-800";

@@ -176,41 +176,27 @@ export function APITokensPagePresenter(props: APITokensPagePresenterProps) {
             <tbody className="divide-y divide-border">
               {table.rows.length === 0 && !props.isLoading && (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-12 text-center text-sm text-text-secondary"
-                  >
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-text-secondary">
                     {table.emptyLabel}
                   </td>
                 </tr>
               )}
               {props.isLoading && (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-12 text-center text-sm text-text-secondary"
-                  >
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-text-secondary">
                     {props.loadingLabel}
                   </td>
                 </tr>
               )}
               {table.rows.map((row) => (
                 <tr key={row.id} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                    {row.name}
-                  </td>
+                  <td className="px-6 py-4 text-sm font-medium text-text-primary">{row.name}</td>
                   <td className="px-6 py-4 text-xs font-mono text-text-secondary">
                     {row.scopesLabel}
                   </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">
-                    {row.lastUsedLabel}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">
-                    {row.createdAtLabel}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">
-                    {row.expiresAtLabel}
-                  </td>
+                  <td className="px-6 py-4 text-sm text-text-secondary">{row.lastUsedLabel}</td>
+                  <td className="px-6 py-4 text-sm text-text-secondary">{row.createdAtLabel}</td>
+                  <td className="px-6 py-4 text-sm text-text-secondary">{row.expiresAtLabel}</td>
                   <td className="px-6 py-4">
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${row.statusClassName}`}
@@ -249,21 +235,14 @@ export function APITokensPagePresenter(props: APITokensPagePresenterProps) {
 // of i18n prop bundles the container has to assemble.
 // ----------------------------------------------------------------------------
 
-function CreateAPITokenDialog({
-  dialog,
-}: {
-  dialog: APITokensPagePresenterProps["createDialog"];
-}) {
+function CreateAPITokenDialog({ dialog }: { dialog: APITokensPagePresenterProps["createDialog"] }) {
   if (!dialog.open) return null;
   return (
     <DialogShell title={dialog.title} onClose={dialog.onCancel}>
       <p className="text-sm text-text-secondary">{dialog.description}</p>
 
       <div className="space-y-2">
-        <label
-          htmlFor="create-token-name"
-          className="block text-sm font-medium text-text-primary"
-        >
+        <label htmlFor="create-token-name" className="block text-sm font-medium text-text-primary">
           {dialog.nameLabel}
         </label>
         <input
@@ -277,9 +256,7 @@ function CreateAPITokenDialog({
       </div>
 
       <div className="space-y-2">
-        <p className="block text-sm font-medium text-text-primary">
-          {dialog.scopesLabel}
-        </p>
+        <p className="block text-sm font-medium text-text-primary">{dialog.scopesLabel}</p>
         <div className="grid grid-cols-2 gap-2">
           {dialog.scopeOptions.map((scope) => {
             const checked = dialog.form.selectedScopes.includes(scope.value);
@@ -359,9 +336,7 @@ function PlaintextRevealDialog({
       </div>
 
       <div className="space-y-2">
-        <p className="block text-sm font-medium text-text-primary">
-          {dialog.plaintextLabel}
-        </p>
+        <p className="block text-sm font-medium text-text-primary">{dialog.plaintextLabel}</p>
         <div className="flex gap-2">
           <code className="flex-1 block px-3 py-2 bg-surface border border-border rounded-lg text-xs font-mono text-text-primary break-all">
             {dialog.plaintextValue}

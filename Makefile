@@ -87,20 +87,20 @@ dev-admin:
 
 # ─── Build & Test ──────────────────────────────────────────────
 build-all:
-	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry; do \
+	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry review; do \
 		echo "Building $$svc..."; \
 		cd backend/services/$$svc && go build -o ../../../bin/$$svc ./cmd/server && cd ../../..; \
 	done
 
 lint-go:
-	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry; do \
+	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry review; do \
 		echo "Linting $$svc..."; \
 		cd backend/services/$$svc && golangci-lint run ./... && cd ../../..; \
 	done
 	cd backend/pkg && golangci-lint run ./...
 
 test-go:
-	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry; do \
+	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry review; do \
 		echo "Testing $$svc..."; \
 		cd backend/services/$$svc && go test ./... && cd ../../..; \
 	done

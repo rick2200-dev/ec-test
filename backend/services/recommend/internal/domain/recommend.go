@@ -10,9 +10,9 @@ import (
 type RecommendationType string
 
 const (
-	Popular                RecommendationType = "popular"
-	Similar                RecommendationType = "similar"
-	PersonalizedForYou     RecommendationType = "for_you"
+	Popular                  RecommendationType = "popular"
+	Similar                  RecommendationType = "similar"
+	PersonalizedForYou       RecommendationType = "for_you"
 	FrequentlyBoughtTogether RecommendationType = "frequently_bought_together"
 )
 

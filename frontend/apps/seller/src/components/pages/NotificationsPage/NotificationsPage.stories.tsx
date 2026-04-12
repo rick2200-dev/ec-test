@@ -72,11 +72,7 @@ const sampleNotifications: NotificationCardItem[] = [
   },
 ];
 
-const Interactive = ({
-  initial,
-}: {
-  initial: NotificationCardItem[];
-}) => {
+const Interactive = ({ initial }: { initial: NotificationCardItem[] }) => {
   const [items, setItems] = useState(initial);
   const [filter, setFilter] = useState<NotificationFilter>("all");
 
@@ -102,7 +98,5 @@ export const Empty: Story = {
 };
 
 export const AllRead: Story = {
-  render: () => (
-    <Interactive initial={sampleNotifications.map((n) => ({ ...n, unread: false }))} />
-  ),
+  render: () => <Interactive initial={sampleNotifications.map((n) => ({ ...n, unread: false }))} />,
 };

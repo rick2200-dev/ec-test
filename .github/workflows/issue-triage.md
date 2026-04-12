@@ -82,6 +82,7 @@ An issue is "already resolved" if **any** of the following is true:
 4. The issue references a package, file, or feature that has been removed or renamed such that the complaint no longer applies.
 
 **Red flags that mean the issue is NOT resolved** (do not close):
+
 - The issue describes a general concern without specific file references, and you cannot definitively confirm the concern is gone.
 - The referenced file exists and still contains the problematic pattern.
 - There are open comments from humans disagreeing with closure.
@@ -89,7 +90,7 @@ An issue is "already resolved" if **any** of the following is true:
 
 **Action for Bucket A:**
 
-1. Post a comment explaining *why* you believe the issue is resolved, citing:
+1. Post a comment explaining _why_ you believe the issue is resolved, citing:
    - The specific file(s) you checked
    - The current state of the code
    - Any referenced PR/commit
@@ -135,6 +136,7 @@ Comment template:
 **Classification**: Actionable — scope is clear and bounded.
 
 **Proposed plan**:
+
 1. {file path} — {what to change}
 2. {file path} — {what to change}
 
@@ -169,6 +171,7 @@ Comment template:
 **Classification**: Requires human judgment before work can start.
 
 **Open questions**:
+
 - {specific question 1}
 - {specific question 2}
 
@@ -196,12 +199,12 @@ After processing all issues, post a **single summary comment** on the most recen
 ```markdown
 ### Issue Triage Summary — {date}
 
-| Bucket | Count | Action |
-|--------|-------|--------|
-| A. Already resolved | X | Closed |
-| B. Actionable | Y | Labeled `triage:ready` |
-| C. Needs discussion | Z | Labeled `triage:needs-discussion` |
-| Skipped | W | See skip rules |
+| Bucket              | Count | Action                            |
+| ------------------- | ----- | --------------------------------- |
+| A. Already resolved | X     | Closed                            |
+| B. Actionable       | Y     | Labeled `triage:ready`            |
+| C. Needs discussion | Z     | Labeled `triage:needs-discussion` |
+| Skipped             | W     | See skip rules                    |
 
 **Total open issues at start of run**: N
 **Issues processed**: N − W

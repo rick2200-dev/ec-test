@@ -191,7 +191,11 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       <div className="mt-12 border-t border-gray-200 pt-8">
         <div className="flex items-center justify-between">
           <ProductRatingSummary productId={product.id} refreshKey={reviewVersion} />
-          <WriteReviewButton productId={product.id} productName={product.name} onSuccess={() => setReviewVersion((v) => v + 1)} />
+          <WriteReviewButton
+            productId={product.id}
+            productName={product.name}
+            onSuccess={() => setReviewVersion((v) => v + 1)}
+          />
         </div>
         <div className="mt-6">
           <ReviewList productId={product.id} refreshKey={reviewVersion} />

@@ -5,7 +5,6 @@ import { StarRatingPresenter } from "@/components/StarRating/StarRating.presente
 
 export interface ReviewListPresenterProps {
   reviews: Review[];
-  total: number;
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
@@ -18,7 +17,6 @@ export interface ReviewListPresenterProps {
 
 export function ReviewListPresenter({
   reviews,
-  total,
   loading,
   hasMore,
   onLoadMore,
@@ -63,9 +61,7 @@ export function ReviewListPresenter({
         ))}
       </div>
 
-      {loading && (
-        <p className="mt-4 text-center text-sm text-gray-500">{loadingLabel}</p>
-      )}
+      {loading && <p className="mt-4 text-center text-sm text-gray-500">{loadingLabel}</p>}
 
       {hasMore && !loading && (
         <div className="mt-4 text-center">

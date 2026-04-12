@@ -2,10 +2,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import type { OrderListResponse, OrderSummary, OrderStatus } from "@/lib/types";
 import { formatPrice } from "@/lib/mock-data";
 import { fetchAPI } from "@/lib/api";
-import {
-  OrderHistoryPagePresenter,
-  type OrderHistoryCardItem,
-} from "./OrderHistoryPage.presenter";
+import { OrderHistoryPagePresenter, type OrderHistoryCardItem } from "./OrderHistoryPage.presenter";
 
 /**
  * Server component wrapper around OrderHistoryPagePresenter. Calls the
@@ -60,10 +57,7 @@ export async function OrderHistoryPage() {
   );
 }
 
-function statusLabel(
-  status: OrderStatus,
-  t: Awaited<ReturnType<typeof getTranslations>>,
-): string {
+function statusLabel(status: OrderStatus, t: Awaited<ReturnType<typeof getTranslations>>): string {
   // next-intl types are strict about message keys; use a typed map so
   // unknown statuses fall back to the raw value instead of throwing.
   switch (status) {

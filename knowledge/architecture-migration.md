@@ -143,13 +143,13 @@ if quantity <= 0 {
 
 ### 0b. 漏洩していた型をドメインへ移動
 
-| 移行前の場所 | 移行後 | サービス |
-|------------|--------|----------|
-| `repository.ProductFilter` | `domain.ProductFilter` | catalog |
-| `repository.CheckoutBatchItem` | `domain.CheckoutBatchItem` | order |
-| `repository.PurchaseSKURecord` | `domain.PurchaseSKURecord` | order |
-| `repository.ErrOrderNotPending` | `domain.ErrOrderNotPending` | order |
-| `repository.CancellationLine` | `domain.CancellationLine` | inventory |
+| 移行前の場所                    | 移行後                      | サービス  |
+| ------------------------------- | --------------------------- | --------- |
+| `repository.ProductFilter`      | `domain.ProductFilter`      | catalog   |
+| `repository.CheckoutBatchItem`  | `domain.CheckoutBatchItem`  | order     |
+| `repository.PurchaseSKURecord`  | `domain.PurchaseSKURecord`  | order     |
+| `repository.ErrOrderNotPending` | `domain.ErrOrderNotPending` | order     |
+| `repository.CancellationLine`   | `domain.CancellationLine`   | inventory |
 
 ### 0c. ハンドラーにエラーマッピング追加
 
@@ -284,17 +284,18 @@ type CartHandler struct { svc port.CartUseCase }
 
 **目的**: 名前が設計を反映するようにする。純粋にコスメティックな変更。
 
-| 移行前 | 移行後 | 意図 |
-|--------|--------|------|
-| `internal/service/` | `internal/app/` | 「サービス」は曖昧。アプリケーション層であることを明示 |
-| `internal/handler/` | `internal/adapter/http/` | HTTPアダプターの1つ。技術が名前に現れる |
+| 移行前                 | 移行後                       | 意図                                                    |
+| ---------------------- | ---------------------------- | ------------------------------------------------------- |
+| `internal/service/`    | `internal/app/`              | 「サービス」は曖昧。アプリケーション層であることを明示  |
+| `internal/handler/`    | `internal/adapter/http/`     | HTTPアダプターの1つ。技術が名前に現れる                 |
 | `internal/repository/` | `internal/adapter/postgres/` | PostgreSQL アダプター。別DBに変えたとき名前が正直になる |
-| `internal/grpcserver/` | `internal/adapter/grpc/` | gRPC アダプター |
-| `internal/redis/` | `internal/adapter/redis/` | Redis アダプター |
-| `internal/stripe/` | `internal/adapter/stripe/` | Stripe アダプター |
-| `internal/subscriber/` | `internal/adapter/pubsub/` | Pub/Sub アダプター |
+| `internal/grpcserver/` | `internal/adapter/grpc/`     | gRPC アダプター                                         |
+| `internal/redis/`      | `internal/adapter/redis/`    | Redis アダプター                                        |
+| `internal/stripe/`     | `internal/adapter/stripe/`   | Stripe アダプター                                       |
+| `internal/subscriber/` | `internal/adapter/pubsub/`   | Pub/Sub アダプター                                      |
 
 **実施順序**: シンプルなサービスから複雑なサービスへ。
+
 1. search → recommend → notification（Pub/Subのみ）
 2. cart → inventory → inquiry（小規模）
 3. catalog → order → auth（複雑）
@@ -427,7 +428,8 @@ recommend/
 `engine.go` のインターフェースは他サービスの `port/store.go` に相当する役割を果たしますが、  
 「検索・推薦エンジン」という独自の概念なのでパッケージ名に技術名を使っています。
 
-**Phase 0 補足内容**:  
+**Phase 0 補足内容**:
+
 - `domain/errors.go` 追加（recommend: 5種、search: 1種）
 - `app/` 層の `apperrors.BadRequest()` をドメインエラーに置き換え
 - `adapter/http/errors.go` 追加（mapError 関数）

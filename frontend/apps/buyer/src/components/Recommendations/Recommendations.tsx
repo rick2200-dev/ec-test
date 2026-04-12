@@ -9,10 +9,7 @@ import {
   getLowestPrice,
   getSellerById,
 } from "@/lib/mock-data";
-import {
-  RecommendationsPresenter,
-  type RecommendationsItem,
-} from "./Recommendations.presenter";
+import { RecommendationsPresenter, type RecommendationsItem } from "./Recommendations.presenter";
 
 interface RecommendationsProps {
   type: "popular" | "similar" | "for_you";

@@ -117,7 +117,9 @@ export function AdminDashboardPagePresenter({
         {/* Platform health */}
         <div className="bg-white rounded-lg border border-border shadow-sm">
           <div className="px-6 py-4 border-b border-border">
-            <h3 className="text-lg font-semibold text-text-primary">{serviceHealthSection.title}</h3>
+            <h3 className="text-lg font-semibold text-text-primary">
+              {serviceHealthSection.title}
+            </h3>
           </div>
           <div className="p-6 space-y-4">
             {serviceHealthSection.services.map((service) => (

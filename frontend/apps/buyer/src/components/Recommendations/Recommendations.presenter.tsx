@@ -13,11 +13,7 @@ export interface RecommendationsPresenterProps {
   items: RecommendationsItem[];
 }
 
-export function RecommendationsPresenter({
-  title,
-  loading,
-  items,
-}: RecommendationsPresenterProps) {
+export function RecommendationsPresenter({ title, loading, items }: RecommendationsPresenterProps) {
   if (loading) {
     return (
       <section

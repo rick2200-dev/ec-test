@@ -169,23 +169,29 @@ For each issue:
 
 ```markdown
 ## Summary
+
 {1-2 sentence description of the architectural concern}
 
 ## Findings
+
 {Specific files, line numbers, and evidence}
 
 ## Impact
+
 {Why this matters — what breaks or degrades if left unaddressed}
 
 ## Recommendation
+
 {Concrete, actionable steps achievable within a sprint}
 
 ## Metrics
-| Metric | Current | Expected |
-|--------|---------|----------|
+
+| Metric            | Current | Expected |
+| ----------------- | ------- | -------- |
 | {relevant metric} | {value} | {target} |
 
 ## Trend
+
 {Is this a new issue, recurring, or improving? Reference prior architecture review issues if found.}
 ```
 

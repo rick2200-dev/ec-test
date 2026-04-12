@@ -9,9 +9,9 @@ import (
 
 // Config holds database connection configuration.
 type Config struct {
-	URL             string
-	MaxConns        int32
-	MinConns        int32
+	URL      string
+	MaxConns int32
+	MinConns int32
 }
 
 // NewPool creates a new PostgreSQL connection pool.

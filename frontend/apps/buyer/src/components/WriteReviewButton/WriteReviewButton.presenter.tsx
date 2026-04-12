@@ -75,10 +75,7 @@ export function WriteReviewButtonPresenter({
           aria-modal="true"
           aria-labelledby="review-modal-title"
         >
-          <form
-            onSubmit={onSubmit}
-            className="w-full max-w-lg rounded-lg bg-white shadow-xl"
-          >
+          <form onSubmit={onSubmit} className="w-full max-w-lg rounded-lg bg-white shadow-xl">
             <header className="border-b border-gray-200 px-5 py-3">
               <h2 id="review-modal-title" className="text-base font-semibold text-gray-900">
                 {modalTitle}

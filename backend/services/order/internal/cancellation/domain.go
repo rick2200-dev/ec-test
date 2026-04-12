@@ -34,19 +34,19 @@ const (
 // request. One request is created per buyer click, and at most one
 // request per order is in the `pending` state at any given moment.
 type CancellationRequest struct {
-	ID                   uuid.UUID  `json:"id"`
-	TenantID             uuid.UUID  `json:"tenant_id"`
-	OrderID              uuid.UUID  `json:"order_id"`
-	RequestedByAuth0ID   string     `json:"requested_by_auth0_id"`
-	Reason               string     `json:"reason"`
-	Status               Status     `json:"status"`
-	SellerComment        *string    `json:"seller_comment,omitempty"`
-	ProcessedBySellerID  *uuid.UUID `json:"processed_by_seller_id,omitempty"`
-	ProcessedAt          *time.Time `json:"processed_at,omitempty"`
-	StripeRefundID       *string    `json:"stripe_refund_id,omitempty"`
-	FailureReason        *string    `json:"failure_reason,omitempty"`
-	CreatedAt            time.Time  `json:"created_at"`
-	UpdatedAt            time.Time  `json:"updated_at"`
+	ID                  uuid.UUID  `json:"id"`
+	TenantID            uuid.UUID  `json:"tenant_id"`
+	OrderID             uuid.UUID  `json:"order_id"`
+	RequestedByAuth0ID  string     `json:"requested_by_auth0_id"`
+	Reason              string     `json:"reason"`
+	Status              Status     `json:"status"`
+	SellerComment       *string    `json:"seller_comment,omitempty"`
+	ProcessedBySellerID *uuid.UUID `json:"processed_by_seller_id,omitempty"`
+	ProcessedAt         *time.Time `json:"processed_at,omitempty"`
+	StripeRefundID      *string    `json:"stripe_refund_id,omitempty"`
+	FailureReason       *string    `json:"failure_reason,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 // canOrderBeCancelled reports whether an order in the given status can

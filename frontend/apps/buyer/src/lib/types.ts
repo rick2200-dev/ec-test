@@ -1,8 +1,4 @@
-import type {
-  OrderStatus,
-  ProductStatus,
-  SellerStatus,
-} from "@ec-marketplace/types";
+import type { OrderStatus, ProductStatus, SellerStatus } from "@ec-marketplace/types";
 
 export type { ProductStatus, SellerStatus, OrderStatus };
 

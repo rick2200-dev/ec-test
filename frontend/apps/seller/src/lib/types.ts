@@ -89,4 +89,3 @@ export interface SellerSubscription {
   status: "active" | "past_due" | "canceled" | "trialing";
   current_period_end: string | null;
 }
-

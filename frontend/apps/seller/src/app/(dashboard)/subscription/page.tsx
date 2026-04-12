@@ -115,15 +115,21 @@ export default function SubscriptionPage() {
                 </li>
                 <li className="flex justify-between text-sm">
                   <span className="text-text-secondary">{t("subscription.searchBoost")}</span>
-                  <span className="font-medium text-text-primary">x{plan.features.search_boost}</span>
+                  <span className="font-medium text-text-primary">
+                    x{plan.features.search_boost}
+                  </span>
                 </li>
                 <li className="flex justify-between text-sm">
                   <span className="text-text-secondary">{t("subscription.featuredSlots")}</span>
-                  <span className="font-medium text-text-primary">{plan.features.featured_slots}</span>
+                  <span className="font-medium text-text-primary">
+                    {plan.features.featured_slots}
+                  </span>
                 </li>
                 <li className="flex justify-between text-sm">
                   <span className="text-text-secondary">{t("subscription.promotedResults")}</span>
-                  <span className="font-medium text-text-primary">{plan.features.promoted_results}</span>
+                  <span className="font-medium text-text-primary">
+                    {plan.features.promoted_results}
+                  </span>
                 </li>
               </ul>
 

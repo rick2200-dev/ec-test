@@ -13,10 +13,10 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/notification/internal/config"
-	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/adapter/pubsub"
+	"github.com/Riku-KANO/ec-test/services/notification/internal/config"
+	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 )
 
 func main() {

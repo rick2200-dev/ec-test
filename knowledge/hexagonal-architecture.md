@@ -171,13 +171,13 @@ domain/  ←  port/  ←  app/  ←  adapter/*  ←  cmd/server/
 
 各レイヤーは**内側のレイヤーのみ**を参照できます。外側への参照は禁止です。
 
-| レイヤー | 参照可能 | 参照禁止 |
-|----------|----------|----------|
-| `domain/` | 標準ライブラリ、`uuid`、`json` のみ | pkg/ 以外の全て |
-| `port/` | `domain/` | adapter, app, pgx, net/http |
-| `app/` | `domain/`, `port/`, `pkg/errors` | pgx, net/http, Stripe SDK |
-| `adapter/*` | 全レイヤー + 外部ライブラリ | — |
-| `cmd/` | 全レイヤー | — |
+| レイヤー    | 参照可能                            | 参照禁止                    |
+| ----------- | ----------------------------------- | --------------------------- |
+| `domain/`   | 標準ライブラリ、`uuid`、`json` のみ | pkg/ 以外の全て             |
+| `port/`     | `domain/`                           | adapter, app, pgx, net/http |
+| `app/`      | `domain/`, `port/`, `pkg/errors`    | pgx, net/http, Stripe SDK   |
+| `adapter/*` | 全レイヤー + 外部ライブラリ         | —                           |
+| `cmd/`      | 全レイヤー                          | —                           |
 
 ---
 
@@ -278,6 +278,7 @@ type OrderCreatedEvent struct {
 ```
 
 **domain/ に入るもの**:
+
 - エンティティ構造体とそのメソッド（`Order`, `Cart`, `Product` など）
 - ドメインセンチネルエラー（`errors.New()` のみ）
 - ビジネスルールの述語（`order.CanBeCancelled() bool` など）
@@ -285,6 +286,7 @@ type OrderCreatedEvent struct {
 - ドメイン固有フィルター型（`ProductFilter` など）
 
 **domain/ に入れてはいけないもの**:
+
 - pgx, net/http, Stripe など外部ライブラリへの参照
 - リポジトリ呼び出し（DBアクセス）
 - HTTP クライアント呼び出し
@@ -323,6 +325,7 @@ type OrderUseCase interface {
 ```
 
 **port/ に入るもの**:
+
 - `XxxUseCase` インターフェース（driving port）
 - リポジトリ・外部クライアントインターフェース（driven port）
 - `TxRunner` インターフェース
@@ -364,6 +367,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 ```
 
 **エラー返却の原則**:
+
 - ビジネスルール違反 → `domain.ErrXxx`（`apperrors` を使わない）
 - インフラ障害（DB, HTTP, Stripe の失敗）→ `apperrors.Internal("文脈", err)`
 
@@ -464,11 +468,11 @@ handler := orderhandler.NewOrderHandler(orderSvc)
 
 エラーは「何を表しているか」によって型を使い分けます。
 
-| エラーの種類 | 使う型 | 発生場所 |
-|------------|--------|----------|
-| ビジネスルール違反（見つからない、不正な状態） | `domain.ErrXxx`（sentinel） | `domain/`, `app/` |
-| インフラ障害（DB失敗、HTTP失敗） | `apperrors.Internal(msg, err)` | `app/`, `adapter/` |
-| HTTPレスポンスへのマッピング | `apperrors.NotFound()` 等 | `adapter/http/error_mapper.go` のみ |
+| エラーの種類                                   | 使う型                         | 発生場所                            |
+| ---------------------------------------------- | ------------------------------ | ----------------------------------- |
+| ビジネスルール違反（見つからない、不正な状態） | `domain.ErrXxx`（sentinel）    | `domain/`, `app/`                   |
+| インフラ障害（DB失敗、HTTP失敗）               | `apperrors.Internal(msg, err)` | `app/`, `adapter/`                  |
+| HTTPレスポンスへのマッピング                   | `apperrors.NotFound()` 等      | `adapter/http/error_mapper.go` のみ |
 
 この設計により `app/` は HTTP の知識を持たずに済みます。  
 「ビジネス的に何が起きたか」と「それをどう HTTP に伝えるか」が分離されています。
@@ -603,6 +607,7 @@ func (s *AuthService) AddSellerUser(ctx context.Context, tenantID uuid.UUID, ...
 ```
 
 この設計の利点：
+
 - `port/` インターフェースに pgx の型が漏れない
 - リポジトリメソッドはトランザクション内外で同じシグネチャ
 - ネストしたサービス呼び出しも context 伝播で自然に同一トランザクションに参加できる
@@ -638,11 +643,11 @@ sequenceDiagram
 
 詳細は `knowledge/architecture-migration.md` および `service-boundaries.md`（skills）を参照。
 
-| 通信方式 | 使う場面 |
-|----------|----------|
-| gRPC | gateway → downstream、または確立した永続APIサーフェス |
+| 通信方式 | 使う場面                                                   |
+| -------- | ---------------------------------------------------------- |
+| gRPC     | gateway → downstream、または確立した永続APIサーフェス      |
 | 内部HTTP | gRPC未整備のサービス間（cart→catalog, inquiry→order など） |
-| Pub/Sub | 非同期でよい場合、または複数サービスへのファンアウト |
+| Pub/Sub  | 非同期でよい場合、または複数サービスへのファンアウト       |
 
 内部HTTP では `X-Internal-Token` ヘッダーで認証します（サービス固有のシークレット）。  
 呼び出し側は `adapter/httpclient/` にクライアントを置き、`port/store.go` のインターフェースを実装します。

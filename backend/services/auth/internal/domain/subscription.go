@@ -8,10 +8,10 @@ import (
 
 // PlanFeatures describes the capabilities granted by a subscription plan.
 type PlanFeatures struct {
-	MaxProducts    int     `json:"max_products"`
-	SearchBoost    float64 `json:"search_boost"`
-	FeaturedSlots  int     `json:"featured_slots"`
-	PromotedResults int    `json:"promoted_results"`
+	MaxProducts     int     `json:"max_products"`
+	SearchBoost     float64 `json:"search_boost"`
+	FeaturedSlots   int     `json:"featured_slots"`
+	PromotedResults int     `json:"promoted_results"`
 }
 
 // SubscriptionPlan represents a plan tier available within a tenant.

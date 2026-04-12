@@ -77,6 +77,7 @@
 ```
 
 **補足**:
+
 - `Cart` サービスはチェックアウト時に内部 HTTP で `Order` サービスを呼び出す (図中の `Cart → Order` 矢印)。両サービスを跨る通信パターンの詳細は [通信パターン](#通信パターン) と [カート・チェックアウトと決済](#カートチェックアウトと決済) を参照。
 - `Inquiry` サービスはスレッド作成時に内部 HTTP で `Order` サービスの購入検証エンドポイントを呼び出し、買い手がその SKU を購入済み (paid 以降) であることを確認する。
 - `Review` サービスはレビュー作成時に `Catalog` サービスの内部 API で商品の SKU 一覧を取得し、`Order` サービスの購入検証エンドポイントで購入確認を行う。集計評価は `product_ratings` テーブルで非正規化管理。
@@ -85,18 +86,18 @@
 
 ## サービス一覧
 
-| サービス         | ポート | 役割                                                                    | DB スキーマ     |
-| ---------------- | ------ | ----------------------------------------------------------------------- | --------------- |
-| **gateway**      | 8080   | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限 | なし            |
-| **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)                | `auth_svc`      |
-| **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                           | `catalog_svc`   |
-| **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                              | `inventory_svc` |
-| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金 | `order_svc`     |
-| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                        | なし (外部)     |
-| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                      | なし (外部)     |
-| **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                        | なし            |
-| **cart**         | 8088   | カート管理 (Redis 永続化)、マルチセラーチェックアウトのオーケストレーション | なし (Redis)    |
-| **inquiry**      | 8090   | 買い手→売り手お問い合わせスレッド (購入済み SKU 単位)、order サービスへの購入検証内部呼び出し | `inquiry_svc`   |
+| サービス         | ポート | 役割                                                                                                     | DB スキーマ     |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------- |
+| **gateway**      | 8080   | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限                                  | なし            |
+| **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)                                                 | `auth_svc`      |
+| **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                                                            | `catalog_svc`   |
+| **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                                                               | `inventory_svc` |
+| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金          | `order_svc`     |
+| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                                                         | なし (外部)     |
+| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                                                       | なし (外部)     |
+| **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                                                         | なし            |
+| **cart**         | 8088   | カート管理 (Redis 永続化)、マルチセラーチェックアウトのオーケストレーション                              | なし (Redis)    |
+| **inquiry**      | 8090   | 買い手→売り手お問い合わせスレッド (購入済み SKU 単位)、order サービスへの購入検証内部呼び出し            | `inquiry_svc`   |
 | **review**       | 8091   | 商品レビュー・評価 (購入検証付き)、セラー返信、商品別集計評価 (非正規化)、catalog/order への内部呼び出し | `review_svc`    |
 
 ---
@@ -388,15 +389,15 @@ Amazon 型のカート UX では 1 つのチェックアウトで複数セラー
 
 買い手の購入履歴画面 (`/orders`, `/orders/{id}`) は、チェックアウトから数ヶ月〜数年経った注文も参照できる必要があります。商品や販売者はこの間に削除/アーカイブされ得るため、表示に必要な情報の一部を **スナップショット** として永続化し、残りは **クエリ時に catalog から再取得** します。
 
-| 項目           | 保存方針               | 保存場所                                                |
-| -------------- | ---------------------- | ------------------------------------------------------- |
-| `seller_name`  | スナップショット       | `order_svc.orders.seller_name` (checkout 時に固定)      |
-| `product_name` | スナップショット       | `order_svc.order_lines.product_name` (既存)             |
-| `sku_code`     | スナップショット       | `order_svc.order_lines.sku_code` (既存)                 |
-| `unit_price`   | スナップショット       | `order_svc.order_lines.unit_price` (既存)               |
-| `product_id`   | スナップショット       | `order_svc.order_lines.product_id` (catalog 参照キー)   |
-| `image_url`    | クエリ時エンリッチ     | `catalog_svc.products.image_url` を gRPC で取得         |
-| 商品の生存判定 | クエリ時エンリッチ     | catalog `GetProduct` が NotFound / `status=archived`    |
+| 項目           | 保存方針           | 保存場所                                              |
+| -------------- | ------------------ | ----------------------------------------------------- |
+| `seller_name`  | スナップショット   | `order_svc.orders.seller_name` (checkout 時に固定)    |
+| `product_name` | スナップショット   | `order_svc.order_lines.product_name` (既存)           |
+| `sku_code`     | スナップショット   | `order_svc.order_lines.sku_code` (既存)               |
+| `unit_price`   | スナップショット   | `order_svc.order_lines.unit_price` (既存)             |
+| `product_id`   | スナップショット   | `order_svc.order_lines.product_id` (catalog 参照キー) |
+| `image_url`    | クエリ時エンリッチ | `catalog_svc.products.image_url` を gRPC で取得       |
+| 商品の生存判定 | クエリ時エンリッチ | catalog `GetProduct` が NotFound / `status=archived`  |
 
 **スナップショット時の解決**: `POST /internal/checkouts` の DB Tx #1 (`orders` + `order_lines` を INSERT するトランザクション) の先頭で、`order_svc` repository が cross-schema クエリを 2 本実行します:
 
@@ -531,25 +532,25 @@ sequenceDiagram
 
 ### トピック一覧
 
-| トピック                  | パブリッシャー | サブスクライバー        | 説明             |
-| ------------------------- | -------------- | ----------------------- | ---------------- |
-| `order.created`                  | order          | notification, inventory | 注文作成時       |
-| `order.paid`                     | order          | notification, inventory | 決済完了時       |
-| `order.cancellation_requested`   | order          | notification            | 買い手がキャンセル申請を送信した時 |
-| `order.cancellation_approved`    | order          | notification            | セラーがキャンセル申請を承認し Stripe 返金 + 送金取消が成功した時 |
-| `order.cancellation_rejected`    | order          | notification            | セラーがキャンセル申請を却下した時 |
-| `order.cancelled`                | order          | notification, inventory | 注文キャンセル確定時 (line_items スナップショット同梱。詳細は [注文キャンセル申請設計書](./order-cancellation.md)) |
-| `inventory.low_stock`     | inventory      | notification            | 在庫が閾値以下   |
-| `catalog.product_updated` | catalog        | search                  | 商品情報更新時   |
-| `catalog.product_deleted` | catalog        | search                  | 商品削除時       |
-| `seller.registered`       | auth           | notification            | セラー新規登録時 |
-| `payout.completed`        | order          | notification            | 売上送金完了時   |
-| `cart.checked_out`        | cart           | recommend               | カートチェックアウト完了時 (マルチセラー注文作成後) |
-| `inquiry.message_created` | inquiry        | notification            | お問い合わせに新着メッセージが投稿された時 (買い手/売り手どちらの投稿でも発行) |
-| `review.created`          | review         | notification            | バイヤーが新しいレビューを投稿した時 (セラーへ通知) |
-| `review.updated`          | review         | (予約)                  | レビュー内容が更新された時 |
-| `review.deleted`          | review         | (予約)                  | レビューが削除された時 |
-| `review.replied`          | review         | notification            | セラーがレビューに返信した時 (バイヤーへ通知) |
+| トピック                       | パブリッシャー | サブスクライバー        | 説明                                                                                                               |
+| ------------------------------ | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `order.created`                | order          | notification, inventory | 注文作成時                                                                                                         |
+| `order.paid`                   | order          | notification, inventory | 決済完了時                                                                                                         |
+| `order.cancellation_requested` | order          | notification            | 買い手がキャンセル申請を送信した時                                                                                 |
+| `order.cancellation_approved`  | order          | notification            | セラーがキャンセル申請を承認し Stripe 返金 + 送金取消が成功した時                                                  |
+| `order.cancellation_rejected`  | order          | notification            | セラーがキャンセル申請を却下した時                                                                                 |
+| `order.cancelled`              | order          | notification, inventory | 注文キャンセル確定時 (line_items スナップショット同梱。詳細は [注文キャンセル申請設計書](./order-cancellation.md)) |
+| `inventory.low_stock`          | inventory      | notification            | 在庫が閾値以下                                                                                                     |
+| `catalog.product_updated`      | catalog        | search                  | 商品情報更新時                                                                                                     |
+| `catalog.product_deleted`      | catalog        | search                  | 商品削除時                                                                                                         |
+| `seller.registered`            | auth           | notification            | セラー新規登録時                                                                                                   |
+| `payout.completed`             | order          | notification            | 売上送金完了時                                                                                                     |
+| `cart.checked_out`             | cart           | recommend               | カートチェックアウト完了時 (マルチセラー注文作成後)                                                                |
+| `inquiry.message_created`      | inquiry        | notification            | お問い合わせに新着メッセージが投稿された時 (買い手/売り手どちらの投稿でも発行)                                     |
+| `review.created`               | review         | notification            | バイヤーが新しいレビューを投稿した時 (セラーへ通知)                                                                |
+| `review.updated`               | review         | (予約)                  | レビュー内容が更新された時                                                                                         |
+| `review.deleted`               | review         | (予約)                  | レビューが削除された時                                                                                             |
+| `review.replied`               | review         | notification            | セラーがレビューに返信した時 (バイヤーへ通知)                                                                      |
 
 ### メッセージフォーマット
 

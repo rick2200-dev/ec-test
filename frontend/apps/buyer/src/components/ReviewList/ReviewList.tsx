@@ -28,9 +28,7 @@ export default function ReviewList({ productId, refreshKey }: ReviewListProps) {
           limit: PAGE_SIZE,
           offset: currentOffset,
         });
-        setReviews((prev) =>
-          currentOffset === 0 ? data.items : [...prev, ...data.items],
-        );
+        setReviews((prev) => (currentOffset === 0 ? data.items : [...prev, ...data.items]));
         setTotal(data.total);
       } catch {
         // Silently fail — the section simply stays empty.
@@ -38,13 +36,12 @@ export default function ReviewList({ productId, refreshKey }: ReviewListProps) {
         setLoading(false);
       }
     },
-    [productId],
+    [productId]
   );
 
   useEffect(() => {
     setOffset(0);
     load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshKey triggers a full reload
   }, [load, refreshKey]);
 
   const handleLoadMore = () => {
@@ -56,7 +53,6 @@ export default function ReviewList({ productId, refreshKey }: ReviewListProps) {
   return (
     <ReviewListPresenter
       reviews={reviews}
-      total={total}
       loading={loading}
       hasMore={reviews.length < total}
       onLoadMore={handleLoadMore}

@@ -74,9 +74,7 @@ export async function listAPITokens(): Promise<APIToken[]> {
   return resp.items;
 }
 
-export async function createAPIToken(
-  req: CreateAPITokenRequest,
-): Promise<CreateAPITokenResponse> {
+export async function createAPIToken(req: CreateAPITokenRequest): Promise<CreateAPITokenResponse> {
   return request<CreateAPITokenResponse>("/api/v1/seller/api-tokens", {
     method: "POST",
     body: JSON.stringify(req),
@@ -88,4 +86,3 @@ export async function revokeAPIToken(id: string): Promise<void> {
     method: "DELETE",
   });
 }
-

@@ -436,4 +436,3 @@ func loadMessagesTx(ctx context.Context, tx pgx.Tx, tenantID, inquiryID uuid.UUI
 	}
 	return out, rows.Err()
 }
-

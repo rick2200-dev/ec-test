@@ -15,8 +15,8 @@ import (
 // ---- test double ----
 
 type mockSearchEngine struct {
-	searchFn       func(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error)
-	indexProductFn func(ctx context.Context, product domain.ProductEvent) error
+	searchFn        func(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error)
+	indexProductFn  func(ctx context.Context, product domain.ProductEvent) error
 	deleteProductFn func(ctx context.Context, tenantID, productID uuid.UUID) error
 }
 

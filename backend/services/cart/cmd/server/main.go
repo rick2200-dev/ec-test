@@ -14,12 +14,12 @@ import (
 
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/httpclient"
-	"github.com/Riku-KANO/ec-test/services/cart/internal/config"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/http"
-	cartredis "github.com/Riku-KANO/ec-test/services/cart/internal/adapter/redis"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/adapter/postgres"
+	cartredis "github.com/Riku-KANO/ec-test/services/cart/internal/adapter/redis"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/app"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/config"
 )
 
 func main() {

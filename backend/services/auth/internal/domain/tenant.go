@@ -30,25 +30,25 @@ type Tenant struct {
 type SellerStatus string
 
 const (
-	SellerStatusPending  SellerStatus = "pending"
-	SellerStatusApproved SellerStatus = "approved"
-	SellerStatusRejected SellerStatus = "rejected"
+	SellerStatusPending   SellerStatus = "pending"
+	SellerStatusApproved  SellerStatus = "approved"
+	SellerStatusRejected  SellerStatus = "rejected"
 	SellerStatusSuspended SellerStatus = "suspended"
 )
 
 // Seller represents a seller within a tenant marketplace.
 type Seller struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         uuid.UUID       `json:"tenant_id"`
-	Auth0OrgID       string          `json:"auth0_org_id"`
-	Name             string          `json:"name"`
-	Slug             string          `json:"slug"`
-	Status           SellerStatus    `json:"status"`
-	StripeAccountID  string          `json:"stripe_account_id,omitempty"`
-	CommissionRateBPS int            `json:"commission_rate_bps"`
-	Settings         json.RawMessage `json:"settings,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	UpdatedAt        time.Time       `json:"updated_at"`
+	ID                uuid.UUID       `json:"id"`
+	TenantID          uuid.UUID       `json:"tenant_id"`
+	Auth0OrgID        string          `json:"auth0_org_id"`
+	Name              string          `json:"name"`
+	Slug              string          `json:"slug"`
+	Status            SellerStatus    `json:"status"`
+	StripeAccountID   string          `json:"stripe_account_id,omitempty"`
+	CommissionRateBPS int             `json:"commission_rate_bps"`
+	Settings          json.RawMessage `json:"settings,omitempty"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
 }
 
 // SellerUserRole represents the role of a user within a seller organization.

@@ -7,10 +7,10 @@ import (
 
 // Config holds all configuration for the search service.
 type Config struct {
-	DatabaseURL    string
-	HTTPPort       string
+	DatabaseURL     string
+	HTTPPort        string
 	VertexAIEnabled bool
-	GCPProjectID   string
+	GCPProjectID    string
 	PubSubProjectID string
 }
 

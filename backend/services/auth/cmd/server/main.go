@@ -15,10 +15,10 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/config"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/adapter/postgres"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/app"
+	"github.com/Riku-KANO/ec-test/services/auth/internal/config"
 )
 
 func main() {

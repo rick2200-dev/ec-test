@@ -142,9 +142,9 @@ on:
 ```yaml
 on:
   schedule:
-    - cron: "0 0 * * 1"                         # Monday 00:00 UTC
+    - cron: "0 0 * * 1" # Monday 00:00 UTC
     - cron: "30 9 * * 1-5"
-      timezone: "Asia/Tokyo"                     # 9:30 AM JST weekdays
+      timezone: "Asia/Tokyo" # 9:30 AM JST weekdays
 ```
 
 **Shorthand** — `on: daily` auto-expands to include `workflow_dispatch`.
@@ -163,13 +163,13 @@ permissions:
 
 safe-outputs:
   create-issue:
-    max: 5                                       # Max issues to create
-    title-prefix: "[My Prefix] "                 # Required prefix
-    labels: ["my-label"]                         # Auto-applied labels
-  update-issue:                                  # Enable updating existing issues
-    status:                                      # Enable status changes (open/closed) — value MUST be empty (null)
-    title:                                       # Enable title changes — value MUST be empty (null)
-    body:                                        # Enable body changes — value MUST be empty (null)
+    max: 5 # Max issues to create
+    title-prefix: "[My Prefix] " # Required prefix
+    labels: ["my-label"] # Auto-applied labels
+  update-issue: # Enable updating existing issues
+    status: # Enable status changes (open/closed) — value MUST be empty (null)
+    title: # Enable title changes — value MUST be empty (null)
+    body: # Enable body changes — value MUST be empty (null)
     # allowed-repos: ["owner/repo"]              # Optional: restrict which repos can be updated
     # NOTE: update-issue does NOT accept `max:` — the schema rejects it.
     # NOTE: each sub-field (status/title/body) is a toggle — presence enables it, value must be null.
@@ -213,7 +213,7 @@ runtimes:
 ```yaml
 tools:
   github:
-    toolsets: [repos, issues, pull_requests]    # GitHub MCP toolsets
+    toolsets: [repos, issues, pull_requests] # GitHub MCP toolsets
   bash:
     - grep
     - find
@@ -253,14 +253,14 @@ jobs:
 
 ```yaml
 run-name: "Custom run name"
-runs-on: ubuntu-latest                           # ubuntu-latest, ubuntu-24.04, ubuntu-24.04-arm
-max-turns: 20                                    # AI chat iterations (Claude-specific)
+runs-on: ubuntu-latest # ubuntu-latest, ubuntu-24.04, ubuntu-24.04-arm
+max-turns: 20 # AI chat iterations (Claude-specific)
 checkout:
-  fetch-depth: 0                                 # Or checkout: false
-if: github.event_name == 'push'                  # Conditional execution
-environment: production                          # Deployment protection
+  fetch-depth: 0 # Or checkout: false
+if: github.event_name == 'push' # Conditional execution
+environment: production # Deployment protection
 env:
-  CUSTOM_VAR: "value"                            # WARNING: visible to AI model
+  CUSTOM_VAR: "value" # WARNING: visible to AI model
 secrets:
   API_TOKEN: ${{ secrets.API_TOKEN }}
 ```
@@ -270,6 +270,7 @@ secrets:
 ### Step 1: Define the Purpose
 
 Determine:
+
 - **What** the agent should analyze or do
 - **When** it should run (schedule, trigger event, manual)
 - **What outputs** it needs (create issues, comments, PRs)
@@ -278,6 +279,7 @@ Determine:
 ### Step 2: Write the Frontmatter
 
 Follow this checklist:
+
 - [ ] `name` and `description` are clear and concise
 - [ ] `on` trigger is appropriate (prefer fuzzy schedules for scheduled tasks)
 - [ ] `concurrency` group prevents parallel runs
@@ -300,6 +302,7 @@ Structure the instructions clearly:
 8. **Execution summary** — How to summarize results
 
 Best practices for the body:
+
 - Be specific about file paths and patterns to check
 - Define red flags explicitly
 - Set limits (e.g., "create at most 5 issues")
@@ -310,18 +313,18 @@ Best practices for the body:
 
 Check `.github/workflows/*.md` for overlapping concerns. This monorepo already has:
 
-| Workflow | Schedule | Focus |
-|----------|----------|-------|
-| `health-check-refactoring.md` | Weekly Monday | Naming, long functions, code clarity |
-| `health-check-testing.md` | Weekly (other day) | Test hygiene, coverage, flaky tests |
-| `health-check-static-analysis.md` | Weekly (other day) | Linting, deprecated APIs, dead code |
-| `health-check-documentation.md` | Weekly (other day) | README, comments, rationale docs |
-| `repo-health-check.md` | Manual only | Full audit across all 4 health-check areas |
-| `architect-review.md` | Manual only | Full architecture review (all 8 areas) |
-| `architect-review-backend.md` | Weekly Monday 9am JST | Service boundaries, shared packages |
-| `architect-review-api.md` | Weekly Tuesday 9am JST | API/Proto consistency, event-driven |
-| `architect-review-security.md` | Weekly Wednesday 9am JST | Multi-tenant isolation, dependencies |
-| `architect-review-platform.md` | Weekly Thursday 9am JST | Frontend architecture, infrastructure |
+| Workflow                          | Schedule                 | Focus                                      |
+| --------------------------------- | ------------------------ | ------------------------------------------ |
+| `health-check-refactoring.md`     | Weekly Monday            | Naming, long functions, code clarity       |
+| `health-check-testing.md`         | Weekly (other day)       | Test hygiene, coverage, flaky tests        |
+| `health-check-static-analysis.md` | Weekly (other day)       | Linting, deprecated APIs, dead code        |
+| `health-check-documentation.md`   | Weekly (other day)       | README, comments, rationale docs           |
+| `repo-health-check.md`            | Manual only              | Full audit across all 4 health-check areas |
+| `architect-review.md`             | Manual only              | Full architecture review (all 8 areas)     |
+| `architect-review-backend.md`     | Weekly Monday 9am JST    | Service boundaries, shared packages        |
+| `architect-review-api.md`         | Weekly Tuesday 9am JST   | API/Proto consistency, event-driven        |
+| `architect-review-security.md`    | Weekly Wednesday 9am JST | Multi-tenant isolation, dependencies       |
+| `architect-review-platform.md`    | Weekly Thursday 9am JST  | Frontend architecture, infrastructure      |
 
 Ensure the new workflow doesn't duplicate existing concerns.
 

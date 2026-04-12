@@ -148,8 +148,7 @@ export const PendingOrder: Story = {
   args: {
     ...baseArgs,
     statusLabel: "支払い待ち",
-    purchaseRequiredNotice:
-      "出品者への問い合わせは、購入済み（入金後）の注文のみ可能です",
+    purchaseRequiredNotice: "出品者への問い合わせは、購入済み（入金後）の注文のみ可能です",
     lines: [
       {
         id: "l1",

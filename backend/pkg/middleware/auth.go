@@ -28,7 +28,7 @@ type JWTConfig struct {
 
 // JWTMiddleware validates Auth0 JWT tokens and extracts tenant context.
 type JWTMiddleware struct {
-	config  JWTConfig
+	config   JWTConfig
 	keyCache *jwk.Cache
 }
 

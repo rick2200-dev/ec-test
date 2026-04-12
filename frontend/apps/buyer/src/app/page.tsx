@@ -1,10 +1,4 @@
-import {
-  products,
-  categories,
-  formatPrice,
-  getLowestPrice,
-  getSellerById,
-} from "@/lib/mock-data";
+import { products, categories, formatPrice, getLowestPrice, getSellerById } from "@/lib/mock-data";
 import { getTranslations } from "next-intl/server";
 import { Recommendations } from "@/components/Recommendations";
 import {

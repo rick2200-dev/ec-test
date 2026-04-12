@@ -3,16 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-  closeSellerInquiry,
-  markSellerInquiryRead,
-  postSellerInquiryMessage,
-} from "@/lib/api";
+import { closeSellerInquiry, markSellerInquiryRead, postSellerInquiryMessage } from "@/lib/api";
 import type { InquiryMessage, InquiryWithMessages } from "@/lib/types";
-import {
-  InquiryThreadPresenter,
-  type InquiryThreadMessage,
-} from "./InquiryThread.presenter";
+import { InquiryThreadPresenter, type InquiryThreadMessage } from "./InquiryThread.presenter";
 
 export interface InquiryThreadProps {
   initial: InquiryWithMessages;
@@ -29,9 +22,7 @@ export default function InquiryThread({ initial, backHref, locale }: InquiryThre
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const hasUnread = thread.messages.some(
-      (m) => m.sender_type === "buyer" && !m.read_at,
-    );
+    const hasUnread = thread.messages.some((m) => m.sender_type === "buyer" && !m.read_at);
     if (!hasUnread) return;
     void markSellerInquiryRead(thread.id).catch(() => {
       // best-effort

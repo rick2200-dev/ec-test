@@ -15,9 +15,7 @@ export default function NewProductPage() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [status, setStatus] = useState<"draft" | "active">("draft");
-  const [skus, setSkus] = useState<SKUInput[]>([
-    { code: "", price: "", color: "", size: "" },
-  ]);
+  const [skus, setSkus] = useState<SKUInput[]>([{ code: "", price: "", color: "", size: "" }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,12 +112,7 @@ export default function NewProductPage() {
           onStatusChange={setStatus}
         />
 
-        <SKUManager
-          skus={skus}
-          onAdd={addSku}
-          onRemove={removeSku}
-          onUpdate={updateSku}
-        />
+        <SKUManager skus={skus} onAdd={addSku} onRemove={removeSku} onUpdate={updateSku} />
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-3">

@@ -102,11 +102,11 @@ type Payout struct {
 
 // CreateOrderInput holds the data needed to create a new order.
 type CreateOrderInput struct {
-	SellerID        uuid.UUID       `json:"seller_id"`
-	BuyerAuth0ID    string          `json:"buyer_auth0_id"`
+	SellerID        uuid.UUID        `json:"seller_id"`
+	BuyerAuth0ID    string           `json:"buyer_auth0_id"`
 	Lines           []OrderLineInput `json:"lines"`
-	ShippingAddress json.RawMessage `json:"shipping_address"`
-	Currency        string          `json:"currency"`
+	ShippingAddress json.RawMessage  `json:"shipping_address"`
+	Currency        string           `json:"currency"`
 }
 
 // OrderLineInput holds the data for a single line when creating an order.

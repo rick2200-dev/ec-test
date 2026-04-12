@@ -1,10 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import {
-  SKUManagerPresenter,
-  type SKUInput,
-} from "./SKUManager.presenter";
+import { SKUManagerPresenter, type SKUInput } from "./SKUManager.presenter";
 
 const emptySKU: SKUInput = { code: "", price: "", color: "", size: "" };
 
@@ -87,12 +84,7 @@ describe("SKUManagerPresenter", () => {
   it("calls onAdd when add button is clicked", async () => {
     const onAdd = vi.fn();
     render(
-      <SKUManagerPresenter
-        skus={[emptySKU]}
-        onAdd={onAdd}
-        onRemove={vi.fn()}
-        onUpdate={vi.fn()}
-      />
+      <SKUManagerPresenter skus={[emptySKU]} onAdd={onAdd} onRemove={vi.fn()} onUpdate={vi.fn()} />
     );
     await userEvent.click(screen.getByText("SKUを追加"));
     expect(onAdd).toHaveBeenCalledOnce();
@@ -149,12 +141,7 @@ describe("SKUManagerPresenter", () => {
       size: "M",
     };
     render(
-      <SKUManagerPresenter
-        skus={[sku]}
-        onAdd={vi.fn()}
-        onRemove={vi.fn()}
-        onUpdate={vi.fn()}
-      />
+      <SKUManagerPresenter skus={[sku]} onAdd={vi.fn()} onRemove={vi.fn()} onUpdate={vi.fn()} />
     );
     expect(screen.getByDisplayValue("OCT-WHT-M")).toBeInTheDocument();
     expect(screen.getByDisplayValue("3980")).toBeInTheDocument();

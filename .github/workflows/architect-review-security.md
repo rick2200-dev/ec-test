@@ -86,6 +86,7 @@ Steps:
 6. Check for hardcoded tenant IDs anywhere in the codebase (search for UUID-like patterns in non-test, non-seed files).
 
 **Red flags:**
+
 - DB queries that don't set `app.current_tenant` before execution
 - Tables with `tenant_id` column but no RLS policy
 - Endpoints that skip tenant resolution middleware
@@ -113,6 +114,7 @@ Steps:
 5. Check if `pnpm-lock.yaml` exists and is committed (lockfile hygiene).
 
 **Red flags:**
+
 - Different services using different versions of the same Go dependency
 - Security-sensitive dependencies (pgx, crypto, jwt) at different versions
 - Replace directives pointing to paths that don't exist or should be published modules
@@ -132,21 +134,27 @@ For each issue:
 
 ```markdown
 ## Summary
+
 {1-2 sentence description of the concern}
 
 ## Severity
+
 {CRITICAL for tenant isolation issues, HIGH for dependency inconsistencies in security-sensitive packages, MEDIUM for general dependency drift}
 
 ## Findings
+
 {Specific files, line numbers, and evidence — for tenant isolation issues, include the code path that is vulnerable}
 
 ## Impact
+
 {What could go wrong — be specific about data exposure risk for tenant isolation issues}
 
 ## Recommendation
+
 {Concrete, actionable steps achievable within a sprint}
 
 ## Trend
+
 {New issue, recurring, or improving? Reference prior architecture review issues if found.}
 ```
 

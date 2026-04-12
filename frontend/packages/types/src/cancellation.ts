@@ -13,11 +13,7 @@
  * the Go `Status` type in the cancellation package and the CHECK
  * constraint in migration 000016.
  */
-export type CancellationRequestStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "failed";
+export type CancellationRequestStatus = "pending" | "approved" | "rejected" | "failed";
 
 /** One order cancellation request row. */
 export interface CancellationRequest {

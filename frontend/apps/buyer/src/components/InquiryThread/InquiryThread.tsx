@@ -5,10 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { markBuyerInquiryRead, postBuyerInquiryMessage } from "@/lib/api";
 import type { InquiryMessage, InquiryWithMessages } from "@/lib/types";
-import {
-  InquiryThreadPresenter,
-  type InquiryThreadMessage,
-} from "./InquiryThread.presenter";
+import { InquiryThreadPresenter, type InquiryThreadMessage } from "./InquiryThread.presenter";
 
 export interface InquiryThreadProps {
   /** Initial thread data fetched server-side. */
@@ -27,9 +24,7 @@ export default function InquiryThread({ initial, backHref, locale }: InquiryThre
 
   // Mark any unread seller messages as read on mount.
   useEffect(() => {
-    const hasUnread = thread.messages.some(
-      (m) => m.sender_type === "seller" && !m.read_at,
-    );
+    const hasUnread = thread.messages.some((m) => m.sender_type === "seller" && !m.read_at);
     if (!hasUnread) return;
     void markBuyerInquiryRead(thread.id).catch(() => {
       // best-effort; not fatal for the UI

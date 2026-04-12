@@ -4,8 +4,8 @@ import "os"
 
 // Config holds all configuration for the review service.
 type Config struct {
-	DatabaseURL    string
-	HTTPPort       string
+	DatabaseURL     string
+	HTTPPort        string
 	PubSubProjectID string
 
 	// CatalogServiceURL is the base URL of the catalog service for

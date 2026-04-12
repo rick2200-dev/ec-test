@@ -149,10 +149,10 @@ func (s *CartService) ClearCart(ctx context.Context, tenantID uuid.UUID, buyerAu
 }
 
 // Checkout converts the cart into orders. Flow:
-//   1. Load cart (must be non-empty)
-//   2. POST /internal/checkouts on the order service with all items + shipping
-//   3. On success: delete cart, publish cart.checked_out, return result
-//   4. On failure: leave cart intact, propagate error
+//  1. Load cart (must be non-empty)
+//  2. POST /internal/checkouts on the order service with all items + shipping
+//  3. On success: delete cart, publish cart.checked_out, return result
+//  4. On failure: leave cart intact, propagate error
 //
 // The order service is responsible for grouping by seller, creating one
 // Order per seller in a single TenantTx, and calling Stripe exactly once.

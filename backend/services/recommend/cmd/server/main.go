@@ -15,11 +15,11 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/recommend/internal/config"
-	"github.com/Riku-KANO/ec-test/services/recommend/internal/engine"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/app"
+	"github.com/Riku-KANO/ec-test/services/recommend/internal/config"
+	"github.com/Riku-KANO/ec-test/services/recommend/internal/engine"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/repository"
 )
 

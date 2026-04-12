@@ -13,10 +13,7 @@ export interface PromotedBannerPresenterProps {
   sponsoredLabel: string;
 }
 
-export function PromotedBannerPresenter({
-  items,
-  sponsoredLabel,
-}: PromotedBannerPresenterProps) {
+export function PromotedBannerPresenter({ items, sponsoredLabel }: PromotedBannerPresenterProps) {
   if (items.length === 0) return null;
 
   return (

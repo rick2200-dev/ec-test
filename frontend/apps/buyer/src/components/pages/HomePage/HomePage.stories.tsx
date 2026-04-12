@@ -101,11 +101,7 @@ export const Default: Story = {
       products: sampleProducts,
     },
     recommendationsSlot: (
-      <RecommendationsPresenter
-        title="あなたへのおすすめ"
-        loading={false}
-        items={sampleProducts}
-      />
+      <RecommendationsPresenter title="あなたへのおすすめ" loading={false} items={sampleProducts} />
     ),
   },
 };

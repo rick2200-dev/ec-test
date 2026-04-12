@@ -47,9 +47,7 @@ export default function SellerInquiryDetailPage({ id }: SellerInquiryDetailPageP
   } else if (!thread) {
     threadSlot = <div className="text-sm text-text-secondary">...</div>;
   } else {
-    threadSlot = (
-      <InquiryThread initial={thread} backHref="/inquiries" locale={locale} />
-    );
+    threadSlot = <InquiryThread initial={thread} backHref="/inquiries" locale={locale} />;
   }
 
   return <SellerInquiryDetailPagePresenter threadSlot={threadSlot} />;

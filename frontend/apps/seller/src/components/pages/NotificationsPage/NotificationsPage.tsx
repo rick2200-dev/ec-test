@@ -97,7 +97,7 @@ export default function NotificationsPage() {
         hour: "2-digit",
         minute: "2-digit",
       }),
-    [locale],
+    [locale]
   );
 
   const cards: NotificationCardItem[] = useMemo(() => {
@@ -151,11 +151,7 @@ function titleForType(type: MockNotificationType, t: T): string {
   }
 }
 
-function bodyForType(
-  type: MockNotificationType,
-  vars: Record<string, string>,
-  t: T,
-): string {
+function bodyForType(type: MockNotificationType, vars: Record<string, string>, t: T): string {
   switch (type) {
     case "orderCreated":
       return t("body.orderCreated", {

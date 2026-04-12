@@ -58,12 +58,12 @@ func (h *BuyerSubscriptionHandler) ListBuyerPlans(w http.ResponseWriter, r *http
 }
 
 type createBuyerPlanRequest struct {
-	Name          string                  `json:"name"`
-	Slug          string                  `json:"slug"`
-	PriceAmount   int64                   `json:"price_amount"`
-	PriceCurrency string                  `json:"price_currency"`
+	Name          string                   `json:"name"`
+	Slug          string                   `json:"slug"`
+	PriceAmount   int64                    `json:"price_amount"`
+	PriceCurrency string                   `json:"price_currency"`
 	Features      domain.BuyerPlanFeatures `json:"features"`
-	StripePriceID string                  `json:"stripe_price_id"`
+	StripePriceID string                   `json:"stripe_price_id"`
 }
 
 // CreateBuyerPlan handles POST /buyer-plans.
@@ -121,13 +121,13 @@ func (h *BuyerSubscriptionHandler) GetBuyerPlan(w http.ResponseWriter, r *http.R
 }
 
 type updateBuyerPlanRequest struct {
-	Name          string                  `json:"name"`
-	Slug          string                  `json:"slug"`
-	PriceAmount   int64                   `json:"price_amount"`
-	PriceCurrency string                  `json:"price_currency"`
+	Name          string                   `json:"name"`
+	Slug          string                   `json:"slug"`
+	PriceAmount   int64                    `json:"price_amount"`
+	PriceCurrency string                   `json:"price_currency"`
 	Features      domain.BuyerPlanFeatures `json:"features"`
-	StripePriceID string                  `json:"stripe_price_id"`
-	Status        string                  `json:"status"`
+	StripePriceID string                   `json:"stripe_price_id"`
+	Status        string                   `json:"status"`
 }
 
 // UpdateBuyerPlan handles PUT /buyer-plans/{id}.

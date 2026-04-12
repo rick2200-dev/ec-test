@@ -3,11 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-  SidebarPresenter,
-  type SidebarIconKey,
-  type SidebarNavItem,
-} from "./Sidebar.presenter";
+import { SidebarPresenter, type SidebarIconKey, type SidebarNavItem } from "./Sidebar.presenter";
 
 interface NavItemDef {
   href: string;

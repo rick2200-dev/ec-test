@@ -5,14 +5,8 @@ import { fetchAPI, getOrderCancellationRequest } from "@/lib/api";
 import StartInquiryButton from "@/components/StartInquiryButton";
 import CancelOrderButton from "@/components/CancelOrderButton";
 import type { OrderDetail, OrderStatus } from "@/lib/types";
-import type {
-  CancellationRequest,
-  CancellationRequestStatus,
-} from "@ec-marketplace/types";
-import {
-  OrderDetailPagePresenter,
-  type OrderDetailLineItem,
-} from "./OrderDetailPage.presenter";
+import type { CancellationRequest, CancellationRequestStatus } from "@ec-marketplace/types";
+import { OrderDetailPagePresenter, type OrderDetailLineItem } from "./OrderDetailPage.presenter";
 
 interface OrderDetailPageProps {
   orderId: string;
@@ -44,10 +38,9 @@ function canContactSeller(status: OrderStatus): boolean {
  */
 function canRequestCancellation(
   status: OrderStatus,
-  existing: CancellationRequest | null,
+  existing: CancellationRequest | null
 ): boolean {
-  const statusAllows =
-    status === "pending" || status === "paid" || status === "processing";
+  const statusAllows = status === "pending" || status === "paid" || status === "processing";
   if (!statusAllows) return false;
   if (!existing) return true;
   // rejected / failed terminal states leave the door open for a retry.
@@ -106,7 +99,7 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
     cancellationRequest,
     cancellable,
     detail.id,
-    t,
+    t
   );
 
   const lines: OrderDetailLineItem[] = detail.lines.map((l) => ({
@@ -168,15 +161,17 @@ function buildCancellationSection(
   request: CancellationRequest | null,
   cancellable: boolean,
   orderId: string,
-  t: Awaited<ReturnType<typeof getTranslations>>,
-): {
-  banner?: {
-    label: string;
-    note?: string;
-    tone: "pending" | "approved" | "rejected" | "failed";
-  };
-  cancelButton?: React.ReactNode;
-} | undefined {
+  t: Awaited<ReturnType<typeof getTranslations>>
+):
+  | {
+      banner?: {
+        label: string;
+        note?: string;
+        tone: "pending" | "approved" | "rejected" | "failed";
+      };
+      cancelButton?: React.ReactNode;
+    }
+  | undefined {
   const section: {
     banner?: {
       label: string;
@@ -206,7 +201,7 @@ function buildCancellationSection(
 function cancellationNote(
   status: CancellationRequestStatus,
   request: CancellationRequest,
-  t: Awaited<ReturnType<typeof getTranslations>>,
+  t: Awaited<ReturnType<typeof getTranslations>>
 ): string | undefined {
   switch (status) {
     case "pending":
@@ -224,10 +219,7 @@ function cancellationNote(
   }
 }
 
-function statusLabel(
-  status: OrderStatus,
-  t: Awaited<ReturnType<typeof getTranslations>>,
-): string {
+function statusLabel(status: OrderStatus, t: Awaited<ReturnType<typeof getTranslations>>): string {
   switch (status) {
     case "pending":
       return t("orders.status.pending");

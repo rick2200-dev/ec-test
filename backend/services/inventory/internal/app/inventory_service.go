@@ -69,7 +69,7 @@ func (s *InventoryService) UpdateStock(ctx context.Context, tenantID uuid.UUID, 
 
 	s.publishEvent(ctx, tenantID, "inventory.updated", "inventory-events", map[string]any{
 		"sku_id":             inv.SKUID.String(),
-		"seller_id":         inv.SellerID.String(),
+		"seller_id":          inv.SellerID.String(),
 		"quantity_available": inv.QuantityAvailable,
 		"quantity_reserved":  inv.QuantityReserved,
 	})
@@ -104,7 +104,7 @@ func (s *InventoryService) ReserveStock(ctx context.Context, tenantID, skuID uui
 	if invErr == nil && inv != nil {
 		eventData := map[string]any{
 			"sku_id":             inv.SKUID.String(),
-			"seller_id":         inv.SellerID.String(),
+			"seller_id":          inv.SellerID.String(),
 			"quantity_available": inv.QuantityAvailable,
 			"quantity_reserved":  inv.QuantityReserved,
 		}

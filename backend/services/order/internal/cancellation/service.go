@@ -249,11 +249,11 @@ func (s *Service) RejectCancellation(ctx context.Context, tenantID, requestID, s
 //     any Stripe call).
 //  2. Stripe phase (connection-free):
 //     - CreateRefund for order.TotalAmount (partial refund against
-//       the shared PaymentIntent). Failure → MarkFailed + error.
+//     the shared PaymentIntent). Failure → MarkFailed + error.
 //     - ReverseTransfer for each completed payout with a transfer id.
-//       Failure mid-loop → MarkFailed + error. Refunds that already
-//       succeeded stay on Stripe; the deterministic idempotency keys
-//       make the failed request safe to retry after operator reconcile.
+//     Failure mid-loop → MarkFailed + error. Refunds that already
+//     succeeded stay on Stripe; the deterministic idempotency keys
+//     make the failed request safe to retry after operator reconcile.
 //  3. Write phase (repository.ApproveTx): single tenant transaction
 //     that flips the request, order, and payout rows with WHERE
 //     guards so a concurrent writer loses cleanly.

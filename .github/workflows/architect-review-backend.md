@@ -70,6 +70,7 @@ Steps:
 5. Check `backend/pkg/` for packages that contain domain-specific logic belonging to a single service (e.g., order-specific types in a shared package).
 
 **Red flags:**
+
 - Direct `import "...services/X/internal/..."` from service Y
 - Shared packages in `pkg/` that reference service-specific domain types
 - Services making HTTP calls to each other directly
@@ -96,6 +97,7 @@ Steps:
 6. Check if each package has test files. Flag packages with complex logic but no tests.
 
 **Red flags:**
+
 - A `pkg/` package importing from any specific service
 - God-packages (>500 lines in a single file)
 - Circular dependencies
@@ -115,18 +117,23 @@ For each issue:
 
 ```markdown
 ## Summary
+
 {1-2 sentence description of the architectural concern}
 
 ## Findings
+
 {Specific files, line numbers, and evidence — include code snippets where helpful}
 
 ## Impact
+
 {Why this matters — what breaks or degrades if left unaddressed}
 
 ## Recommendation
+
 {Concrete, actionable steps achievable within a sprint}
 
 ## Trend
+
 {New issue, recurring, or improving? Reference prior architecture review issues if found.}
 ```
 

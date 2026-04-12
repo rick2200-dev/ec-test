@@ -3,10 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import type {
-  CancellationRequest,
-  CancellationRequestStatus,
-} from "@ec-marketplace/types";
+import type { CancellationRequest, CancellationRequestStatus } from "@ec-marketplace/types";
 
 import {
   ApiError,
@@ -21,12 +18,7 @@ import {
   type CancellationRequestRow,
 } from "./CancellationRequestsPage.presenter";
 
-const FILTER_VALUES: CancellationRequestStatus[] = [
-  "pending",
-  "approved",
-  "rejected",
-  "failed",
-];
+const FILTER_VALUES: CancellationRequestStatus[] = ["pending", "approved", "rejected", "failed"];
 
 type ActionKind = "approve" | "reject";
 
@@ -73,14 +65,12 @@ export default function CancellationRequestsPage() {
         setItems(res.items ?? []);
       } catch (err) {
         setItems([]);
-        setListError(
-          err instanceof Error ? err.message : t("errors.loadFailed"),
-        );
+        setListError(err instanceof Error ? err.message : t("errors.loadFailed"));
       } finally {
         setLoading(false);
       }
     },
-    [t],
+    [t]
   );
 
   useEffect(() => {
@@ -225,7 +215,7 @@ export default function CancellationRequestsPage() {
 function buildErrorMessage(
   err: unknown,
   action: ActionKind,
-  t: ReturnType<typeof useTranslations>,
+  t: ReturnType<typeof useTranslations>
 ): string {
   if (err instanceof ApiError) {
     switch (err.code) {

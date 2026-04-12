@@ -67,7 +67,10 @@ export function ProductFormPresenter({
       </div>
 
       <div>
-        <label htmlFor="product-description" className="block text-sm font-medium text-text-primary mb-1">
+        <label
+          htmlFor="product-description"
+          className="block text-sm font-medium text-text-primary mb-1"
+        >
           説明
         </label>
         <textarea
@@ -82,7 +85,10 @@ export function ProductFormPresenter({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="product-category" className="block text-sm font-medium text-text-primary mb-1">
+          <label
+            htmlFor="product-category"
+            className="block text-sm font-medium text-text-primary mb-1"
+          >
             カテゴリ <span className="text-danger">*</span>
           </label>
           <select
@@ -103,7 +109,10 @@ export function ProductFormPresenter({
         </div>
 
         <div>
-          <label htmlFor="product-status" className="block text-sm font-medium text-text-primary mb-1">
+          <label
+            htmlFor="product-status"
+            className="block text-sm font-medium text-text-primary mb-1"
+          >
             ステータス
           </label>
           <select

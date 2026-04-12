@@ -18,11 +18,11 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/catalog/internal/config"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/grpc"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/postgres"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/app"
+	"github.com/Riku-KANO/ec-test/services/catalog/internal/config"
 )
 
 func main() {

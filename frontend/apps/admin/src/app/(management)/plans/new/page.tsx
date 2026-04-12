@@ -92,7 +92,10 @@ export default function NewPlanPage() {
           </div>
 
           <div>
-            <label htmlFor="priceAmount" className="block text-sm font-medium text-text-primary mb-1">
+            <label
+              htmlFor="priceAmount"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
               {t("newPlan.priceAmount")}
             </label>
             <input
@@ -110,7 +113,10 @@ export default function NewPlanPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="searchBoost" className="block text-sm font-medium text-text-primary mb-1">
+            <label
+              htmlFor="searchBoost"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
               {t("newPlan.searchBoost")}
             </label>
             <input
@@ -127,7 +133,10 @@ export default function NewPlanPage() {
           </div>
 
           <div>
-            <label htmlFor="maxProducts" className="block text-sm font-medium text-text-primary mb-1">
+            <label
+              htmlFor="maxProducts"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
               {t("newPlan.maxProducts")}
             </label>
             <input
@@ -145,7 +154,10 @@ export default function NewPlanPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="featuredSlots" className="block text-sm font-medium text-text-primary mb-1">
+            <label
+              htmlFor="featuredSlots"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
               {t("newPlan.featuredSlots")}
             </label>
             <input
@@ -161,7 +173,10 @@ export default function NewPlanPage() {
           </div>
 
           <div>
-            <label htmlFor="promotedResults" className="block text-sm font-medium text-text-primary mb-1">
+            <label
+              htmlFor="promotedResults"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
               {t("newPlan.promotedResults")}
             </label>
             <input
@@ -178,7 +193,10 @@ export default function NewPlanPage() {
         </div>
 
         <div>
-          <label htmlFor="stripePriceId" className="block text-sm font-medium text-text-primary mb-1">
+          <label
+            htmlFor="stripePriceId"
+            className="block text-sm font-medium text-text-primary mb-1"
+          >
             {t("newPlan.stripePriceId")}
           </label>
           <input

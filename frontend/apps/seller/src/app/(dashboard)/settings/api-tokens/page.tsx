@@ -46,10 +46,7 @@ const ALL_SCOPES = [
 
 // formatDateTime renders timestamps in the same locale the rest of the
 // seller app uses. Returns the fallback string on null/undefined.
-function formatDateTime(
-  iso: string | null | undefined,
-  fallback: string,
-): string {
+function formatDateTime(iso: string | null | undefined, fallback: string): string {
   if (!iso) return fallback;
   try {
     return new Date(iso).toLocaleString("ja-JP", {
@@ -93,7 +90,7 @@ export default function APITokensPage() {
         value,
         label: t(`apiTokens.scopeLabels.${value}`),
       })),
-    [t],
+    [t]
   );
 
   // Token list + top-level loading/error state.
@@ -130,11 +127,7 @@ export default function APITokensPage() {
       const items = await listAPITokens();
       setTokens(items);
     } catch (err) {
-      setListError(
-        err instanceof APIError
-          ? err.message
-          : t("apiTokens.errors.loadFailed"),
-      );
+      setListError(err instanceof APIError ? err.message : t("apiTokens.errors.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -193,9 +186,7 @@ export default function APITokensPage() {
       const req: CreateAPITokenRequest = {
         name: createForm.name.trim(),
         scopes: createForm.selectedScopes,
-        expires_at: createForm.expiresAt
-          ? new Date(createForm.expiresAt).toISOString()
-          : null,
+        expires_at: createForm.expiresAt ? new Date(createForm.expiresAt).toISOString() : null,
       };
       const resp = await createAPIToken(req);
       setCreateOpen(false);
@@ -207,11 +198,7 @@ export default function APITokensPage() {
       const { token: _plain, ...persisted } = resp;
       setTokens((prev) => [persisted, ...prev]);
     } catch (err) {
-      setCreateError(
-        err instanceof APIError
-          ? err.message
-          : t("apiTokens.errors.createFailed"),
-      );
+      setCreateError(err instanceof APIError ? err.message : t("apiTokens.errors.createFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -239,7 +226,7 @@ export default function APITokensPage() {
       setRevokeTarget(target);
       setConfirmInput("");
     },
-    [tokens],
+    [tokens]
   );
 
   const handleConfirmRevoke = useCallback(async () => {
@@ -253,11 +240,7 @@ export default function APITokensPage() {
       // revoked_at timestamp and keeps the client in lock-step.
       await loadTokens();
     } catch (err) {
-      setListError(
-        err instanceof APIError
-          ? err.message
-          : t("apiTokens.errors.revokeFailed"),
-      );
+      setListError(err instanceof APIError ? err.message : t("apiTokens.errors.revokeFailed"));
       setRevokeTarget(null);
     } finally {
       setIsRevoking(false);

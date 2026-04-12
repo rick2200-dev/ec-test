@@ -14,10 +14,10 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
-	"github.com/Riku-KANO/ec-test/services/search/internal/config"
-	"github.com/Riku-KANO/ec-test/services/search/internal/engine"
 	"github.com/Riku-KANO/ec-test/services/search/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/search/internal/app"
+	"github.com/Riku-KANO/ec-test/services/search/internal/config"
+	"github.com/Riku-KANO/ec-test/services/search/internal/engine"
 )
 
 func main() {

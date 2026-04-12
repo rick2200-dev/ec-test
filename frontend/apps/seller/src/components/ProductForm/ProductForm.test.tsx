@@ -1,10 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import {
-  ProductFormPresenter,
-  type ProductFormPresenterProps,
-} from "./ProductForm.presenter";
+import { ProductFormPresenter, type ProductFormPresenterProps } from "./ProductForm.presenter";
 
 const categories = [
   { id: "cat-1", name: "ファッション", slug: "fashion", parentId: null },
@@ -80,33 +77,21 @@ describe("ProductFormPresenter", () => {
 
   it("calls onDescriptionChange when description is typed", async () => {
     const onDescriptionChange = vi.fn();
-    render(
-      <ProductFormPresenter
-        {...baseProps}
-        onDescriptionChange={onDescriptionChange}
-      />
-    );
+    render(<ProductFormPresenter {...baseProps} onDescriptionChange={onDescriptionChange} />);
     await userEvent.type(screen.getByLabelText(/説明/), "z");
     expect(onDescriptionChange).toHaveBeenCalled();
   });
 
   it("calls onCategoryChange when category is selected", async () => {
     const onCategoryChange = vi.fn();
-    render(
-      <ProductFormPresenter
-        {...baseProps}
-        onCategoryChange={onCategoryChange}
-      />
-    );
+    render(<ProductFormPresenter {...baseProps} onCategoryChange={onCategoryChange} />);
     await userEvent.selectOptions(screen.getByLabelText(/カテゴリ/), "cat-2");
     expect(onCategoryChange).toHaveBeenCalledWith("cat-2");
   });
 
   it("calls onStatusChange when status is selected", async () => {
     const onStatusChange = vi.fn();
-    render(
-      <ProductFormPresenter {...baseProps} onStatusChange={onStatusChange} />
-    );
+    render(<ProductFormPresenter {...baseProps} onStatusChange={onStatusChange} />);
     await userEvent.selectOptions(screen.getByLabelText(/ステータス/), "active");
     expect(onStatusChange).toHaveBeenCalledWith("active");
   });
