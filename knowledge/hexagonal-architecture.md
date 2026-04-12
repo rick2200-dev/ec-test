@@ -203,7 +203,7 @@ services/{name}/
         {entity}_repo.go
       http/                   #   chiハンドラー（旧 handler/）
         {name}_handler.go
-        error_mapper.go       #   ドメインエラー → HTTPステータスのマッピング
+        errors.go             #   ドメインエラー → HTTPステータスのマッピング（mapError関数）
       grpc/                   #   gRPCサーバー実装（旧 grpcserver/）
         server.go
         convert.go            #   proto ↔ domain 型変換
@@ -400,8 +400,12 @@ func (h *OrderHandler) handleGetOrder(w http.ResponseWriter, r *http.Request) {
     httputil.JSON(w, http.StatusOK, order)
 }
 
-// adapter/http/error_mapper.go
-func mapError(err error) *apperrors.AppError {
+// adapter/http/errors.go
+func mapError(err error) error {
+    var appErr *apperrors.AppError
+    if errors.As(err, &appErr) {
+        return appErr  // AppError はそのままスルー
+    }
     switch {
     case errors.Is(err, domain.ErrOrderNotFound):
         return apperrors.NotFound(err.Error())

@@ -405,6 +405,36 @@ Go では `import "path/to/adapter/http"` と書いたとき、参照名は `pac
 テストを変更せずに済む最小変更として「ラッパーに変える」を選びました。  
 テストをドメインメソッドに向け直すリファクタリングは次の機会で十分です。
 
+### recommend・search サービスが初期移行から外れた理由
+
+recommend と search は他のサービスと構造が異なるため、Phase 0 を別コミットで実施しました。
+
+**engine パターン**:  
+これらのサービスは `adapter/postgres/` を持ちません。その代わり `internal/engine/` というパッケージに  
+バックエンドを抽象化するインターフェースを置き、PostgreSQL 全文検索・Vertex AI などを実装として差し替えられる構造になっています。
+
+```
+recommend/
+  internal/
+    engine/
+      engine.go      # RecommendEngine インターフェース
+      postgres.go    # PostgreSQL マテリアライズドビュー実装
+      vertexai.go    # Vertex AI 実装
+    repository/
+      view_refresher.go  # マテリアライズドビュー更新（app層のインターフェース経由で注入）
+```
+
+`engine.go` のインターフェースは他サービスの `port/store.go` に相当する役割を果たしますが、  
+「検索・推薦エンジン」という独自の概念なのでパッケージ名に技術名を使っています。
+
+**Phase 0 補足内容**:  
+- `domain/errors.go` 追加（recommend: 5種、search: 1種）
+- `app/` 層の `apperrors.BadRequest()` をドメインエラーに置き換え
+- `adapter/http/errors.go` 追加（mapError 関数）
+- `adapter/http/*_handler.go` でサービスエラーを `mapError(err)` 経由にする
+
+---
+
 ### バッチ処理について
 
 現時点でバッチジョブはありません。`recommend.RefreshPopularProducts()` が  
