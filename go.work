@@ -12,5 +12,6 @@ use (
 	./backend/services/notification
 	./backend/services/order
 	./backend/services/recommend
+	./backend/services/review
 	./backend/services/search
 )

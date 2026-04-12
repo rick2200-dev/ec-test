@@ -111,6 +111,30 @@
       "inquiryReplied": "「{subject}」のスレッドに新しい返信があります。"
     }
   },
+  "reviews": {
+    "title": "レビュー",
+    "rating": "評価",
+    "reviewCount": "{count}件のレビュー",
+    "noReviews": "レビューはまだありません",
+    "loadMore": "もっと見る",
+    "loading": "読み込み中...",
+    "sellerReply": "出品者からの返信",
+    "write": "レビューを書く",
+    "writeTitle": "レビューを投稿",
+    "ratingLabel": "評価",
+    "titleLabel": "タイトル",
+    "titlePlaceholder": "例：音質が素晴らしい",
+    "bodyLabel": "レビュー内容",
+    "bodyPlaceholder": "商品の感想を書いてください",
+    "submit": "投稿する",
+    "submitting": "送信中...",
+    "cancel": "キャンセル",
+    "errorNoRating": "評価を選択してください",
+    "errorEmpty": "タイトルとレビュー内容を入力してください",
+    "errorPurchaseRequired": "この商品を購入していないため、レビューを投稿できません",
+    "errorAlreadyReviewed": "この商品にはすでにレビューを投稿済みです",
+    "errorGeneric": "通信エラーが発生しました。時間をおいて再度お試しください"
+  },
   "orders": {
     "pageTitle": "購入履歴",
     "empty": "まだ購入履歴はありません",

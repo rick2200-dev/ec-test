@@ -20,6 +20,7 @@ type Services struct {
 	Recommend *ServiceClient
 	Cart      *ServiceClient
 	Inquiry   *ServiceClient
+	Review    *ServiceClient
 
 	// CatalogGRPC is used by the buyer read path (ListProducts, GetProduct).
 	// Other catalog routes still go through the HTTP Catalog client above.
@@ -37,5 +38,6 @@ func NewServices(cfg config.Config) *Services {
 		Recommend: NewServiceClient(cfg.RecommendServiceURL),
 		Cart:      NewServiceClient(cfg.CartServiceURL),
 		Inquiry:   NewServiceClient(cfg.InquiryServiceURL),
+		Review:    NewServiceClient(cfg.ReviewServiceURL),
 	}
 }

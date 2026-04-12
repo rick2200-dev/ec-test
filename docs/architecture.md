@@ -47,12 +47,13 @@
     │    ┌────────┘ │ │ │ └───────┐       │
     │    │   ┌──────┘ │ └──┐      │       │
     ▼    ▼   ▼        ▼    ▼      ▼       ▼       ▼
-┌─────┐┌─────┐┌──────┐┌─────┐┌─────┐┌──────┐┌──────┐┌───────┐
-│Auth ││Cata-││Inven-││Order││Cart ││Search││Recom-││Inquiry│
-│     ││log  ││tory  ││     ││     ││      ││mend  ││       │
-│:8081││:8082││:8084 ││:8083││:8088││:8085 ││:8086 ││:8090  │
-└──┬──┘└──┬──┘└──┬───┘└──┬──┘└──┬──┘└──┬───┘└──────┘└───┬───┘
-   │      │      │       │▲     │      │                │
+┌─────┐┌─────┐┌──────┐┌─────┐┌─────┐┌──────┐┌──────┐┌───────┐┌──────┐
+│Auth ││Cata-││Inven-││Order││Cart ││Search││Recom-││Inquiry││Review│
+│     ││log  ││tory  ││     ││     ││      ││mend  ││       ││      │
+│:8081││:8082││:8084 ││:8083││:8088││:8085 ││:8086 ││:8090  ││:8091 │
+└──┬──┘└──┬──┘└──┬───┘└──┬──┘└──┬──┘└──┬───┘└──────┘└───┬───┘└──┬───┘
+   │      │▲     │       │▲     │      │                │       │
+   │      │└─────┼───────┼──────┼──────┼────────────────┼───────┘
    │      │      │       │└─────┤      │  ┌────────────┐│
    │      │      │       │▲     │      │  │Notification││
    │      │      │       │└─────┼──────┼──│  :8087     │◄┘
@@ -78,6 +79,7 @@
 **補足**:
 - `Cart` サービスはチェックアウト時に内部 HTTP で `Order` サービスを呼び出す (図中の `Cart → Order` 矢印)。両サービスを跨る通信パターンの詳細は [通信パターン](#通信パターン) と [カート・チェックアウトと決済](#カートチェックアウトと決済) を参照。
 - `Inquiry` サービスはスレッド作成時に内部 HTTP で `Order` サービスの購入検証エンドポイントを呼び出し、買い手がその SKU を購入済み (paid 以降) であることを確認する。
+- `Review` サービスはレビュー作成時に `Catalog` サービスの内部 API で商品の SKU 一覧を取得し、`Order` サービスの購入検証エンドポイントで購入確認を行う。集計評価は `product_ratings` テーブルで非正規化管理。
 
 ---
 
@@ -95,6 +97,7 @@
 | **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                        | なし            |
 | **cart**         | 8088   | カート管理 (Redis 永続化)、マルチセラーチェックアウトのオーケストレーション | なし (Redis)    |
 | **inquiry**      | 8090   | 買い手→売り手お問い合わせスレッド (購入済み SKU 単位)、order サービスへの購入検証内部呼び出し | `inquiry_svc`   |
+| **review**       | 8091   | 商品レビュー・評価 (購入検証付き)、セラー返信、商品別集計評価 (非正規化)、catalog/order への内部呼び出し | `review_svc`    |
 
 ---
 
@@ -124,6 +127,8 @@ Order Service   ──gRPC──▶  Inventory Service (在庫引当)
 Cart Service    ──HTTP──▶  Catalog Service (POST /internal/sku-lookup で価格・名称取得)
 Cart Service    ──HTTP──▶  Order Service   (POST /internal/checkouts でマルチセラー注文作成)
 Inquiry Service ──HTTP──▶  Order Service   (POST /internal/purchase-check で買い手の SKU 購入有無を検証)
+Review Service  ──HTTP──▶  Catalog Service (GET /internal/products/{id} で商品の SKU 一覧を取得)
+Review Service  ──HTTP──▶  Order Service   (POST /internal/purchase-check で買い手の SKU 購入有無を検証)
 ```
 
 - Proto 定義: `backend/proto/` ディレクトリ
@@ -166,6 +171,10 @@ erDiagram
     sellers ||--o{ inquiries : "receives"
     skus ||--o{ inquiries : "referenced by"
     inquiries ||--o{ inquiry_messages : "has many"
+    products ||--o{ reviews : "has many"
+    sellers ||--o{ reviews : "receives"
+    reviews ||--o| review_replies : "has one"
+    products ||--o| product_ratings : "has one"
 
     tenants {
         uuid id PK
@@ -322,6 +331,34 @@ erDiagram
         text body
         timestamptz read_at
     }
+
+    reviews {
+        uuid id PK
+        uuid tenant_id FK
+        varchar buyer_auth0_id
+        uuid product_id FK
+        uuid seller_id FK
+        varchar product_name
+        smallint rating
+        varchar title
+        text body
+    }
+
+    review_replies {
+        uuid id PK
+        uuid tenant_id FK
+        uuid review_id FK
+        varchar seller_auth0_id
+        text body
+    }
+
+    product_ratings {
+        uuid tenant_id PK
+        uuid product_id PK
+        numeric average_rating
+        int review_count
+        int rating_sum
+    }
 ```
 
 ### DB スキーマ構成
@@ -335,6 +372,7 @@ PostgreSQL のスキーマ機能を利用し、サービスごとにスキーマ
 | `inventory_svc` | inventory    | `inventory`, `stock_movements`                         |
 | `order_svc`     | order        | `orders`, `order_lines`, `commission_rules`, `payouts` |
 | `inquiry_svc`   | inquiry      | `inquiries`, `inquiry_messages`                        |
+| `review_svc`    | review       | `reviews`, `review_replies`, `product_ratings`         |
 
 ### マルチセラー注文のグルーピング
 
@@ -508,6 +546,10 @@ sequenceDiagram
 | `payout.completed`        | order          | notification            | 売上送金完了時   |
 | `cart.checked_out`        | cart           | recommend               | カートチェックアウト完了時 (マルチセラー注文作成後) |
 | `inquiry.message_created` | inquiry        | notification            | お問い合わせに新着メッセージが投稿された時 (買い手/売り手どちらの投稿でも発行) |
+| `review.created`          | review         | notification            | バイヤーが新しいレビューを投稿した時 (セラーへ通知) |
+| `review.updated`          | review         | (予約)                  | レビュー内容が更新された時 |
+| `review.deleted`          | review         | (予約)                  | レビューが削除された時 |
+| `review.replied`          | review         | notification            | セラーがレビューに返信した時 (バイヤーへ通知) |
 
 ### メッセージフォーマット
 
@@ -665,6 +707,7 @@ Stripe ──▶ POST /webhooks/stripe (order service)
                           │ │ notify   │ │
                           │ │ cart     │ │
                           │ │ inquiry  │ │
+                          │ │ review   │ │
                           │ └──────────┘ │
                           └──────────────┘
 ```
@@ -722,7 +765,8 @@ infra/deploy/
 │   ├── recommend    :8086
 │   ├── notification :8087
 │   ├── cart         :8088  ← Redis を使用
-│   └── inquiry      :8090  ← order サービスへ購入検証 HTTP 呼び出し
+│   ├── inquiry      :8090  ← order サービスへ購入検証 HTTP 呼び出し
+│   └── review       :8091  ← catalog + order サービスへ内部 HTTP 呼び出し
 │
 └── Next.js Apps (pnpm)
     ├── buyer        :3000

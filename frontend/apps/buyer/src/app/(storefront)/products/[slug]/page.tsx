@@ -6,6 +6,9 @@ import { getProductWithSKUs, formatPrice } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
 import { use } from "react";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
+import ProductRatingSummary from "@/components/ProductRatingSummary";
+import ReviewList from "@/components/ReviewList";
+import WriteReviewButton from "@/components/WriteReviewButton";
 import { useTranslations } from "next-intl";
 
 interface ProductDetailPageProps {
@@ -41,6 +44,9 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     });
     attrOptions[key] = Array.from(values);
   });
+
+  // Incremented after a review mutation so child components re-fetch data.
+  const [reviewVersion, setReviewVersion] = useState(0);
 
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
     const defaults: Record<string, string> = {};
@@ -178,6 +184,17 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Reviews section */}
+      <div className="mt-12 border-t border-gray-200 pt-8">
+        <div className="flex items-center justify-between">
+          <ProductRatingSummary productId={product.id} refreshKey={reviewVersion} />
+          <WriteReviewButton productId={product.id} productName={product.name} onSuccess={() => setReviewVersion((v) => v + 1)} />
+        </div>
+        <div className="mt-6">
+          <ReviewList productId={product.id} refreshKey={reviewVersion} />
         </div>
       </div>
     </div>

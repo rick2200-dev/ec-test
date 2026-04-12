@@ -22,3 +22,10 @@ export type {
   CancellationRequestStatus,
   CancellationRequestListResponse,
 } from "./cancellation";
+
+export type {
+  Review,
+  ReviewReply,
+  ProductRating,
+  ReviewListResponse,
+} from "./review";

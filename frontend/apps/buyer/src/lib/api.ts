@@ -5,6 +5,9 @@ import type {
   InquiryListResponse,
   InquiryMessage,
   InquiryWithMessages,
+  ProductRating,
+  Review,
+  ReviewListResponse,
 } from "@ec-marketplace/types";
 
 // Re-export the shared primitives so existing call sites that import
@@ -109,4 +112,66 @@ export async function getOrderCancellationRequest(
     return null;
   }
   return jsonOrThrow<CancellationRequest>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+
+/** List reviews for a product with pagination. */
+export async function listProductReviews(
+  productId: string,
+  params: { limit?: number; offset?: number } = {},
+): Promise<ReviewListResponse> {
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const res = await fetchAPI(
+    `/api/v1/buyer/products/${productId}/reviews${qs.toString() ? `?${qs}` : ""}`,
+  );
+  return jsonOrThrow<ReviewListResponse>(res);
+}
+
+/** Get the aggregate rating for a product. */
+export async function getProductRating(
+  productId: string,
+): Promise<ProductRating> {
+  const res = await fetchAPI(
+    `/api/v1/buyer/products/${productId}/rating`,
+  );
+  return jsonOrThrow<ProductRating>(res);
+}
+
+/** Create a review for a product. */
+export async function createReview(input: {
+  product_id: string;
+  rating: number;
+  title: string;
+  body: string;
+}): Promise<Review> {
+  const res = await fetchAPI(`/api/v1/buyer/reviews`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<Review>(res);
+}
+
+/** Update an existing review. */
+export async function updateReview(
+  id: string,
+  input: { rating?: number; title?: string; body?: string },
+): Promise<Review> {
+  const res = await fetchAPI(`/api/v1/buyer/reviews/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<Review>(res);
+}
+
+/** Delete a review. */
+export async function deleteReview(id: string): Promise<void> {
+  const res = await fetchAPI(`/api/v1/buyer/reviews/${id}`, {
+    method: "DELETE",
+  });
+  await jsonOrThrow<void>(res);
 }

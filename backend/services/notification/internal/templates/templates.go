@@ -267,6 +267,64 @@ func LowStockAlert(skuCode, productName string, currentStock, threshold int) (su
 	return subject, body
 }
 
+// ReviewCreatedNotification generates a seller email notifying them
+// that a buyer posted a new review on one of their products.
+func ReviewCreatedNotification(productName string, rating int, title string) (subject, body string) {
+	subject = fmt.Sprintf("【レビュー】新着レビュー: %s", productName)
+	data := map[string]any{
+		"ProductName": productName,
+		"Rating":      rating,
+		"Title":       title,
+	}
+	body = render(reviewCreatedTmpl, data)
+	return subject, body
+}
+
+// ReviewRepliedNotification generates a buyer email notifying them
+// that a seller has replied to their review.
+func ReviewRepliedNotification(productName, replyPreview string) (subject, body string) {
+	subject = fmt.Sprintf("【レビュー返信】%s", productName)
+	data := map[string]any{
+		"ProductName":  productName,
+		"ReplyPreview": replyPreview,
+	}
+	body = render(reviewRepliedTmpl, data)
+	return subject, body
+}
+
+var reviewCreatedTmpl = template.Must(template.New("review_created").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>新着レビューのお知らせ</h2>
+<p>出品者 様</p>
+<p>あなたの商品にレビューが投稿されました。</p>
+<table>
+  <tr><td><strong>商品名:</strong></td><td>{{.ProductName}}</td></tr>
+  <tr><td><strong>評価:</strong></td><td>{{.Rating}} / 5</td></tr>
+  <tr><td><strong>タイトル:</strong></td><td>{{.Title}}</td></tr>
+</table>
+<p>詳細はセラーダッシュボードからご確認いただけます。</p>
+</body>
+</html>
+`))
+
+var reviewRepliedTmpl = template.Must(template.New("review_replied").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>レビュー返信のお知らせ</h2>
+<p>購入者 様</p>
+<p>あなたのレビューに出品者から返信がありました。</p>
+<table>
+  <tr><td><strong>商品名:</strong></td><td>{{.ProductName}}</td></tr>
+  <tr><td><strong>返信内容:</strong></td><td>{{.ReplyPreview}}</td></tr>
+</table>
+<p>詳細は商品ページからご確認いただけます。</p>
+</body>
+</html>
+`))
+
 func render(tmpl *template.Template, data any) string {
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {

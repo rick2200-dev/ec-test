@@ -35,10 +35,10 @@
     │   isolation)    │  └────────┘  └────────┘
     └─────────────────┘
 
-         ┌─────────┐  ┌──────────┐
-         │  Cart   │  │ Inquiry  │
-         │  :8088  │  │  :8090   │
-         └─────────┘  └──────────┘
+         ┌─────────┐  ┌──────────┐  ┌──────────┐
+         │  Cart   │  │ Inquiry  │  │ Review   │
+         │  :8088  │  │  :8090   │  │  :8091   │
+         └─────────┘  └──────────┘  └──────────┘
 ```
 
 ## 技術スタック
@@ -98,6 +98,7 @@ make dev-inventory    # Inventory     → :8083
 make dev-order        # Order         → :8084
 make dev-cart         # Cart          → :8088
 make dev-inquiry      # Inquiry       → :8090
+make dev-review       # Review        → :8091
 
 # 6. フロントエンドを起動 (別ターミナルで)
 pnpm install
@@ -132,7 +133,8 @@ ec-test/
 │   │   ├── recommend/       #     レコメンデーション
 │   │   ├── notification/    #     通知 (メール・プッシュ)
 │   │   ├── cart/            #     カート・チェックアウトオーケストレーション (Redis)
-│   │   └── inquiry/         #     買い手→売り手お問い合わせ (購入済み SKU 単位)
+│   │   ├── inquiry/         #     買い手→売り手お問い合わせ (購入済み SKU 単位)
+│   │   └── review/          #     商品レビュー・評価・セラー返信
 │   ├── pkg/                 #   Go 共有パッケージ
 │   │   ├── tenant/          #     テナントコンテキスト管理
 │   │   ├── database/        #     DB 接続プール・RLS 設定

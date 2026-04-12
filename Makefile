@@ -1,5 +1,5 @@
 .PHONY: help deps-up deps-down migrate seed proto-gen openapi-gen \
-       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart dev-inquiry \
+       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart dev-inquiry dev-review \
        dev-buyer dev-seller dev-admin \
        build-all lint-go test-go
 
@@ -71,6 +71,9 @@ dev-cart:
 
 dev-inquiry:
 	cd backend/services/inquiry && air
+
+dev-review:
+	cd backend/services/review && air
 
 # ─── Frontend ──────────────────────────────────────────────────
 dev-buyer:

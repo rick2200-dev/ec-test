@@ -111,6 +111,30 @@
       "inquiryReplied": "There is a new reply in the thread \"{subject}\"."
     }
   },
+  "reviews": {
+    "title": "Reviews",
+    "rating": "Rating",
+    "reviewCount": "{count} reviews",
+    "noReviews": "No reviews yet",
+    "loadMore": "Load more",
+    "loading": "Loading...",
+    "sellerReply": "Seller reply",
+    "write": "Write a review",
+    "writeTitle": "Write a review",
+    "ratingLabel": "Rating",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g., Great sound quality",
+    "bodyLabel": "Review",
+    "bodyPlaceholder": "Share your experience with this product",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "cancel": "Cancel",
+    "errorNoRating": "Please select a rating",
+    "errorEmpty": "Please enter both a title and a review",
+    "errorPurchaseRequired": "You must purchase this product before writing a review",
+    "errorAlreadyReviewed": "You have already reviewed this product",
+    "errorGeneric": "A network error occurred. Please try again later."
+  },
   "orders": {
     "pageTitle": "Purchase history",
     "empty": "You haven't placed any orders yet",

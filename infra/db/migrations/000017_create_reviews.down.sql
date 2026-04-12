@@ -1,0 +1,1 @@
+DROP SCHEMA IF EXISTS review_svc CASCADE;

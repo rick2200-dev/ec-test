@@ -69,6 +69,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 		buyer := NewBuyerHandler(svc)
 		cart := NewCartHandler(svc)
 		inquiry := NewInquiryHandler(svc)
+		review := NewReviewHandler(svc)
 		api.Route("/buyer", func(br chi.Router) {
 			br.Use(jwtMW.VerifyJWT)
 			br.Get("/products", buyer.ListProducts)
@@ -104,6 +105,16 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 				ir.Post("/{id}/messages", inquiry.BuyerPostMessage)
 				ir.Post("/{id}/read", inquiry.BuyerMarkRead)
 			})
+
+			// Product reviews (buyer can create/update/delete own reviews).
+			br.Route("/reviews", func(rr chi.Router) {
+				rr.Post("/", review.BuyerCreate)
+				rr.Get("/{id}", review.BuyerGet)
+				rr.Put("/{id}", review.BuyerUpdate)
+				rr.Delete("/{id}", review.BuyerDelete)
+			})
+			br.Get("/products/{productId}/reviews", review.ListByProduct)
+			br.Get("/products/{productId}/rating", review.GetProductRating)
 		})
 
 		// Seller routes — JWT (dashboard) OR API token (sk_live_*).
@@ -181,6 +192,16 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 					ir.Post("/{id}/messages", inquiry.SellerPostMessage)
 					ir.Post("/{id}/read", inquiry.SellerMarkRead)
 					ir.Post("/{id}/close", inquiry.SellerClose)
+				})
+
+				// Product reviews (seller view + reply management).
+				ui.Route("/reviews", func(rr chi.Router) {
+					rr.Use(pkgauthz.RequireSellerRole(rbacLoader, pkgauthz.SellerRoleMember))
+					rr.Get("/", review.SellerList)
+					rr.Get("/{id}", review.SellerGet)
+					rr.Post("/{id}/reply", review.SellerCreateReply)
+					rr.Put("/{id}/reply", review.SellerUpdateReply)
+					rr.Delete("/{id}/reply", review.SellerDeleteReply)
 				})
 
 				// Seller team management. Reads (List/Me) require any team

@@ -55,6 +55,7 @@ func main() {
 	orderSub := subscriber.NewOrderSubscriber(sub, sender)
 	inventorySub := subscriber.NewInventorySubscriber(sub, sender)
 	inquirySub := subscriber.NewInquirySubscriber(sub, sender)
+	reviewSub := subscriber.NewReviewSubscriber(sub, sender)
 
 	go func() {
 		if err := orderSub.Start(ctx); err != nil {
@@ -71,6 +72,12 @@ func main() {
 	go func() {
 		if err := inquirySub.Start(ctx); err != nil {
 			slog.Error("inquiry subscriber error", "error", err)
+		}
+	}()
+
+	go func() {
+		if err := reviewSub.Start(ctx); err != nil {
+			slog.Error("review subscriber error", "error", err)
 		}
 	}()
 
