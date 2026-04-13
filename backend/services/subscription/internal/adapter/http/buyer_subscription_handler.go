@@ -8,21 +8,20 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
+	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
+	"github.com/Riku-KANO/ec-test/services/subscription/internal/port"
 )
 
 // BuyerSubscriptionHandler handles HTTP requests for buyer plan and subscription operations.
 type BuyerSubscriptionHandler struct {
-	svc port.AuthUseCase
+	svc port.SubscriptionUseCase
 }
 
 // NewBuyerSubscriptionHandler creates a new BuyerSubscriptionHandler.
-func NewBuyerSubscriptionHandler(svc port.AuthUseCase) *BuyerSubscriptionHandler {
+func NewBuyerSubscriptionHandler(svc port.SubscriptionUseCase) *BuyerSubscriptionHandler {
 	return &BuyerSubscriptionHandler{svc: svc}
 }
 
-// BuyerPlanRoutes returns the chi router for buyer plan management endpoints.
 func (h *BuyerSubscriptionHandler) BuyerPlanRoutes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.ListBuyerPlans)
@@ -32,7 +31,6 @@ func (h *BuyerSubscriptionHandler) BuyerPlanRoutes() chi.Router {
 	return r
 }
 
-// BuyerSubscriptionRoutes returns the chi router for buyer subscription endpoints.
 func (h *BuyerSubscriptionHandler) BuyerSubscriptionRoutes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/buyers/{buyerAuth0ID}", h.GetBuyerSubscription)
@@ -40,7 +38,6 @@ func (h *BuyerSubscriptionHandler) BuyerSubscriptionRoutes() chi.Router {
 	return r
 }
 
-// ListBuyerPlans handles GET /buyer-plans.
 func (h *BuyerSubscriptionHandler) ListBuyerPlans(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -66,7 +63,6 @@ type createBuyerPlanRequest struct {
 	StripePriceID string                   `json:"stripe_price_id"`
 }
 
-// CreateBuyerPlan handles POST /buyer-plans.
 func (h *BuyerSubscriptionHandler) CreateBuyerPlan(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -97,7 +93,6 @@ func (h *BuyerSubscriptionHandler) CreateBuyerPlan(w http.ResponseWriter, r *htt
 	httputil.JSON(w, http.StatusCreated, plan)
 }
 
-// GetBuyerPlan handles GET /buyer-plans/{id}.
 func (h *BuyerSubscriptionHandler) GetBuyerPlan(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -130,7 +125,6 @@ type updateBuyerPlanRequest struct {
 	Status        string                   `json:"status"`
 }
 
-// UpdateBuyerPlan handles PUT /buyer-plans/{id}.
 func (h *BuyerSubscriptionHandler) UpdateBuyerPlan(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -169,7 +163,6 @@ func (h *BuyerSubscriptionHandler) UpdateBuyerPlan(w http.ResponseWriter, r *htt
 	httputil.JSON(w, http.StatusOK, plan)
 }
 
-// GetBuyerSubscription handles GET /buyer-subscriptions/buyers/{buyerAuth0ID}.
 func (h *BuyerSubscriptionHandler) GetBuyerSubscription(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -196,7 +189,6 @@ type subscribeBuyerRequest struct {
 	PlanID string `json:"plan_id"`
 }
 
-// SubscribeBuyer handles POST /buyer-subscriptions/buyers/{buyerAuth0ID}.
 func (h *BuyerSubscriptionHandler) SubscribeBuyer(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {

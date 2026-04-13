@@ -14,12 +14,22 @@ type Config struct {
 	StripeWebhookSecret string
 	PubSubProjectID     string
 	AuthServiceURL      string
-	DefaultShippingFee  int64
+	// SubscriptionServiceGRPCAddr is the dial target for the subscription
+	// service's gRPC listener. The order service uses it to look up buyer
+	// free-shipping entitlements during checkout.
+	SubscriptionServiceGRPCAddr string
+	DefaultShippingFee          int64
 
 	// Shared secret required on every request to /internal/*. Must match
 	// the value set on in-cluster callers (cart, inquiry). Empty value
 	// causes the middleware to fail closed with 503.
 	InternalToken string
+
+	// Outbound shared secret presented to the subscription service on the
+	// gRPC free-shipping lookup. Must match SUBSCRIPTION_INTERNAL_TOKEN
+	// on the subscription service; without it every HasFreeShipping call
+	// will fail Unauthenticated.
+	SubscriptionInternalToken string
 }
 
 // Load reads configuration from environment variables.
@@ -31,9 +41,11 @@ func Load() Config {
 		StripeSecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		PubSubProjectID:     getEnv("PUBSUB_PROJECT_ID", ""),
-		AuthServiceURL:      getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
-		DefaultShippingFee:  getEnvInt64("DEFAULT_SHIPPING_FEE", 500),
-		InternalToken:       getEnv("ORDER_INTERNAL_TOKEN", ""),
+		AuthServiceURL:              getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
+		SubscriptionServiceGRPCAddr: getEnv("SUBSCRIPTION_SERVICE_GRPC_ADDR", "localhost:50058"),
+		DefaultShippingFee:          getEnvInt64("DEFAULT_SHIPPING_FEE", 500),
+		InternalToken:             getEnv("ORDER_INTERNAL_TOKEN", ""),
+		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
 	}
 }
 

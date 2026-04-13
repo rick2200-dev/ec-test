@@ -9,9 +9,21 @@ import (
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 )
 
-// AuthUseCase is the driving port (inbound) for auth operations.
-// Handlers depend on this interface; *service.AuthService satisfies it.
-type AuthUseCase interface {
+// The driving ports (inbound use cases) are split along domain boundaries so
+// handlers depend only on the surface they actually need. A later extraction
+// (e.g. moving subscription/credential out of this service) can change one
+// interface without touching the others.
+//
+// *app.IdentityService, *app.RBACService, and *app.CredentialService each
+// satisfy the corresponding interface here. *app.AuthService (a composite
+// facade) satisfies all three, which is handy for main.go and tests that
+// want a single wiring point.
+
+// IdentityUseCase covers tenant lifecycle and seller registration/approval.
+// Buyer profile upsert lives on a separate local interface in the handler
+// package because Auth0 is the source of truth for buyer identity and the
+// repo only caches display fields.
+type IdentityUseCase interface {
 	// Tenant operations
 
 	// CreateTenant creates a new tenant and provisions its schema.
@@ -31,38 +43,13 @@ type AuthUseCase interface {
 	ListSellers(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.Seller, int, error)
 	// ApproveSeller transitions a seller's status from pending to active.
 	ApproveSeller(ctx context.Context, tenantID, id uuid.UUID) error
+}
 
-	// Seller subscription / plan operations
-
-	// CreatePlan creates a new seller subscription plan.
-	CreatePlan(ctx context.Context, tenantID uuid.UUID, plan *domain.SubscriptionPlan) error
-	// ListPlans returns all seller subscription plans for the tenant.
-	ListPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.SubscriptionPlan, error)
-	// GetPlan retrieves a seller subscription plan by its UUID.
-	GetPlan(ctx context.Context, tenantID, planID uuid.UUID) (*domain.SubscriptionPlan, error)
-	// UpdatePlan persists changes to an existing seller subscription plan.
-	UpdatePlan(ctx context.Context, tenantID uuid.UUID, plan *domain.SubscriptionPlan) error
-	// GetSellerSubscription retrieves a seller's current subscription and plan details.
-	GetSellerSubscription(ctx context.Context, tenantID, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error)
-	// SubscribeSeller assigns a subscription plan to a seller.
-	SubscribeSeller(ctx context.Context, tenantID, sellerID, planID uuid.UUID) (*domain.SellerSubscription, error)
-
-	// Buyer subscription / plan operations
-
-	// CreateBuyerPlan creates a new buyer subscription plan.
-	CreateBuyerPlan(ctx context.Context, tenantID uuid.UUID, plan *domain.BuyerPlan) error
-	// ListBuyerPlans returns all buyer subscription plans for the tenant.
-	ListBuyerPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error)
-	// GetBuyerPlan retrieves a buyer subscription plan by its UUID.
-	GetBuyerPlan(ctx context.Context, tenantID, planID uuid.UUID) (*domain.BuyerPlan, error)
-	// UpdateBuyerPlan persists changes to an existing buyer subscription plan.
-	UpdateBuyerPlan(ctx context.Context, tenantID uuid.UUID, plan *domain.BuyerPlan) error
-	// GetBuyerSubscription retrieves a buyer's current subscription and plan details.
-	GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error)
-	// SubscribeBuyer assigns a subscription plan to a buyer.
-	SubscribeBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, planID uuid.UUID) (*domain.BuyerSubscription, error)
-
-	// RBAC — seller team
+// RBACUseCase covers seller-team and platform-admin role management plus the
+// audit trail. The read-only role lookups are also here because the gateway's
+// authorization middleware consults them on every request.
+type RBACUseCase interface {
+	// Seller team
 
 	// LookupSellerRole returns the actor's role within the seller org,
 	// or "" if the actor is not a member of the seller.
@@ -79,7 +66,7 @@ type AuthUseCase interface {
 	// the current owner is downgraded to admin.
 	TransferSellerOwnership(ctx context.Context, tenantID, sellerID, newOwnerID uuid.UUID) error
 
-	// RBAC — platform admins
+	// Platform admins
 
 	// LookupPlatformAdminRole returns the actor's platform admin role,
 	// or "" if the actor is not an admin.
@@ -92,14 +79,17 @@ type AuthUseCase interface {
 	UpdatePlatformAdminRole(ctx context.Context, tenantID, targetID uuid.UUID, newRole domain.PlatformAdminRole) error
 	// RevokePlatformAdmin removes platform admin status from a user.
 	RevokePlatformAdmin(ctx context.Context, tenantID, targetID uuid.UUID) error
+
+	// Audit log
+
 	// ListRBACAuditLog returns a paginated list of RBAC audit events for the tenant.
 	ListRBACAuditLog(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.RBACAuditEntry, int, error)
-	// BootstrapSuperAdmin grants super-admin role to the given user;
-	// intended for initial tenant setup only.
-	BootstrapSuperAdmin(ctx context.Context, tenantID uuid.UUID, auth0UserID string) error
+}
 
-	// API tokens
-
+// CredentialUseCase covers seller API access token lifecycle. The gateway
+// calls LookupAPIToken on every uncached API-token request, so this
+// interface is part of the request hot path.
+type CredentialUseCase interface {
 	// IssueAPIToken generates a new seller API token with the given scopes and optional expiry.
 	// Returns the token record and the plaintext secret — the secret is shown only once and not stored.
 	IssueAPIToken(

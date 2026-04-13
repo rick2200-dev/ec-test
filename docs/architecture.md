@@ -47,11 +47,11 @@
     │    ┌────────┘ │ │ │ └───────┐       │
     │    │   ┌──────┘ │ └──┐      │       │
     ▼    ▼   ▼        ▼    ▼      ▼       ▼       ▼
-┌─────┐┌─────┐┌──────┐┌─────┐┌─────┐┌──────┐┌──────┐┌───────┐┌──────┐
-│Auth ││Cata-││Inven-││Order││Cart ││Search││Recom-││Inquiry││Review│
-│     ││log  ││tory  ││     ││     ││      ││mend  ││       ││      │
-│:8081││:8082││:8084 ││:8083││:8088││:8085 ││:8086 ││:8090  ││:8091 │
-└──┬──┘└──┬──┘└──┬───┘└──┬──┘└──┬──┘└──┬───┘└──────┘└───┬───┘└──┬───┘
+┌─────┐┌─────┐┌─────┐┌──────┐┌─────┐┌─────┐┌──────┐┌──────┐┌───────┐┌──────┐
+│Auth ││Subs-││Cata-││Inven-││Order││Cart ││Search││Recom-││Inquiry││Review│
+│     ││crip ││log  ││tory  ││     ││     ││      ││mend  ││       ││      │
+│:8081││:8089││:8082││:8084 ││:8083││:8088││:8085 ││:8086 ││:8090  ││:8091 │
+└──┬──┘└──┬──┘└──┬──┘└──┬───┘└──┬──┘└──┬──┘└──┬───┘└──────┘└───┬───┘└──┬───┘
    │      │▲     │       │▲     │      │                │       │
    │      │└─────┼───────┼──────┼──────┼────────────────┼───────┘
    │      │      │       │└─────┤      │  ┌────────────┐│
@@ -81,6 +81,7 @@
 - `Cart` サービスはチェックアウト時に内部 HTTP で `Order` サービスを呼び出す (図中の `Cart → Order` 矢印)。両サービスを跨る通信パターンの詳細は [通信パターン](#通信パターン) と [カート・チェックアウトと決済](#カートチェックアウトと決済) を参照。
 - `Inquiry` サービスはスレッド作成時に内部 HTTP で `Order` サービスの購入検証エンドポイントを呼び出し、買い手がその SKU を購入済み (paid 以降) であることを確認する。
 - `Review` サービスはレビュー作成時に `Catalog` サービスの内部 API で商品の SKU 一覧を取得し、`Order` サービスの購入検証エンドポイントで購入確認を行う。集計評価は `product_ratings` テーブルで非正規化管理。
+- `Order` サービスはチェックアウト時に `Subscription` サービス (gRPC) を呼び出し、買い手の加入プラン (例: 送料無料特典) を取得する。Phase 2 で `auth` から分離されたサービスで、`subscription_svc` スキーマを所有する。
 
 ---
 
@@ -89,7 +90,8 @@
 | サービス         | ポート | 役割                                                                                                     | DB スキーマ     |
 | ---------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------- |
 | **gateway**      | 8080   | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限                                  | なし            |
-| **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)                                                 | `auth_svc`      |
+| **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)、RBAC・API トークン                            | `auth_svc`      |
+| **subscription** | 8089   | セラー/バイヤーのサブスクリプションプラン・加入状態管理 (Phase 2 で auth から分離)                      | `subscription_svc` |
 | **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                                                            | `catalog_svc`   |
 | **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                                                               | `inventory_svc` |
 | **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金          | `order_svc`     |
@@ -125,6 +127,7 @@ Client  ──HTTP/JSON──▶  Gateway  ──HTTP/JSON──▶  各サー�
 ```
 Order Service   ──gRPC──▶  Catalog Service (商品情報取得)
 Order Service   ──gRPC──▶  Inventory Service (在庫引当)
+Order Service   ──gRPC──▶  Subscription Service (買い手プラン取得: GetBuyerSubscription)
 Cart Service    ──HTTP──▶  Catalog Service (POST /internal/sku-lookup で価格・名称取得)
 Cart Service    ──HTTP──▶  Order Service   (POST /internal/checkouts でマルチセラー注文作成)
 Inquiry Service ──HTTP──▶  Order Service   (POST /internal/purchase-check で買い手の SKU 購入有無を検証)
@@ -368,7 +371,8 @@ PostgreSQL のスキーマ機能を利用し、サービスごとにスキーマ
 
 | スキーマ        | 担当サービス | テーブル                                               |
 | --------------- | ------------ | ------------------------------------------------------ |
-| `auth_svc`      | auth         | `tenants`, `sellers`, `seller_users`                   |
+| `auth_svc`      | auth         | `tenants`, `sellers`, `seller_users`, `buyers`         |
+| `subscription_svc` | subscription | `subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions` |
 | `catalog_svc`   | catalog      | `categories`, `products`, `skus`, `product_categories` |
 | `inventory_svc` | inventory    | `inventory`, `stock_movements`                         |
 | `order_svc`     | order        | `orders`, `order_lines`, `commission_rules`, `payouts` |
@@ -759,6 +763,7 @@ infra/deploy/
 ├── Go Services (各 make dev-<service>)
 │   ├── gateway      :8080  ← air (ホットリロード)
 │   ├── auth         :8081
+│   ├── subscription :8089  ← order サービスから gRPC (:50058) で呼び出される
 │   ├── catalog      :8082
 │   ├── inventory    :8083
 │   ├── order        :8084

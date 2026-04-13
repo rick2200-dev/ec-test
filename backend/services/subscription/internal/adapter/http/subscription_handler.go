@@ -8,17 +8,17 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
-	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
+	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
+	"github.com/Riku-KANO/ec-test/services/subscription/internal/port"
 )
 
-// SubscriptionHandler handles HTTP requests for subscription plan operations.
+// SubscriptionHandler handles HTTP requests for seller plan and subscription operations.
 type SubscriptionHandler struct {
-	svc port.AuthUseCase
+	svc port.SubscriptionUseCase
 }
 
 // NewSubscriptionHandler creates a new SubscriptionHandler.
-func NewSubscriptionHandler(svc port.AuthUseCase) *SubscriptionHandler {
+func NewSubscriptionHandler(svc port.SubscriptionUseCase) *SubscriptionHandler {
 	return &SubscriptionHandler{svc: svc}
 }
 
@@ -40,7 +40,6 @@ func (h *SubscriptionHandler) SubscriptionRoutes() chi.Router {
 	return r
 }
 
-// ListPlans handles GET /plans.
 func (h *SubscriptionHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -67,7 +66,6 @@ type createPlanRequest struct {
 	StripePriceID string              `json:"stripe_price_id"`
 }
 
-// CreatePlan handles POST /plans.
 func (h *SubscriptionHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -99,7 +97,6 @@ func (h *SubscriptionHandler) CreatePlan(w http.ResponseWriter, r *http.Request)
 	httputil.JSON(w, http.StatusCreated, plan)
 }
 
-// GetPlan handles GET /plans/{id}.
 func (h *SubscriptionHandler) GetPlan(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -133,7 +130,6 @@ type updatePlanRequest struct {
 	Status        string              `json:"status"`
 }
 
-// UpdatePlan handles PUT /plans/{id}.
 func (h *SubscriptionHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -173,7 +169,6 @@ func (h *SubscriptionHandler) UpdatePlan(w http.ResponseWriter, r *http.Request)
 	httputil.JSON(w, http.StatusOK, plan)
 }
 
-// GetSellerSubscription handles GET /subscriptions/sellers/{sellerID}.
 func (h *SubscriptionHandler) GetSellerSubscription(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -200,7 +195,6 @@ type subscribeRequest struct {
 	PlanID string `json:"plan_id"`
 }
 
-// SubscribeSeller handles POST /subscriptions/sellers/{sellerID}.
 func (h *SubscriptionHandler) SubscribeSeller(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {

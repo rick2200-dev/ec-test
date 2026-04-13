@@ -14,11 +14,11 @@ import (
 
 // TenantHandler handles HTTP requests for tenant operations.
 type TenantHandler struct {
-	svc port.AuthUseCase
+	svc port.IdentityUseCase
 }
 
 // NewTenantHandler creates a new TenantHandler.
-func NewTenantHandler(svc port.AuthUseCase) *TenantHandler {
+func NewTenantHandler(svc port.IdentityUseCase) *TenantHandler {
 	return &TenantHandler{svc: svc}
 }
 

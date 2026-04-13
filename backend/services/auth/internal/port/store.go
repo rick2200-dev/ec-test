@@ -102,42 +102,6 @@ type RBACAuditStore interface {
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.RBACAuditEntry, int, error)
 }
 
-// SubscriptionStore is the driven port for seller subscription persistence.
-// *repository.SubscriptionRepository satisfies this interface.
-type SubscriptionStore interface {
-	// CreatePlan persists a new seller subscription plan.
-	CreatePlan(ctx context.Context, tenantID uuid.UUID, p *domain.SubscriptionPlan) error
-	// GetPlanByID retrieves a seller subscription plan by its UUID.
-	GetPlanByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.SubscriptionPlan, error)
-	// ListPlans returns all seller subscription plans for the tenant.
-	ListPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.SubscriptionPlan, error)
-	// UpdatePlan persists changes to an existing seller subscription plan.
-	UpdatePlan(ctx context.Context, tenantID uuid.UUID, p *domain.SubscriptionPlan) error
-	// GetSellerSubscription retrieves a seller's active subscription together with its plan details.
-	GetSellerSubscription(ctx context.Context, tenantID, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error)
-	// UpsertSellerSubscription inserts or updates a seller's subscription record.
-	UpsertSellerSubscription(ctx context.Context, tenantID uuid.UUID, sub *domain.SellerSubscription) error
-	// RefreshPlanBoostView refreshes the materialized view used to compute search-ranking boost scores from seller plans.
-	RefreshPlanBoostView(ctx context.Context) error
-}
-
-// BuyerSubscriptionStore is the driven port for buyer subscription persistence.
-// *repository.BuyerSubscriptionRepository satisfies this interface.
-type BuyerSubscriptionStore interface {
-	// CreateBuyerPlan persists a new buyer subscription plan.
-	CreateBuyerPlan(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error
-	// GetBuyerPlanByID retrieves a buyer subscription plan by its UUID.
-	GetBuyerPlanByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.BuyerPlan, error)
-	// ListBuyerPlans returns all buyer subscription plans for the tenant.
-	ListBuyerPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error)
-	// UpdateBuyerPlan persists changes to an existing buyer subscription plan.
-	UpdateBuyerPlan(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error
-	// GetBuyerSubscription retrieves a buyer's active subscription together with its plan details.
-	GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error)
-	// UpsertBuyerSubscription inserts or updates a buyer's subscription record.
-	UpsertBuyerSubscription(ctx context.Context, tenantID uuid.UUID, sub *domain.BuyerSubscription) error
-}
-
 // APITokenStore is the driven port for seller API token persistence.
 // *repository.APITokenRepository satisfies this interface.
 type APITokenStore interface {

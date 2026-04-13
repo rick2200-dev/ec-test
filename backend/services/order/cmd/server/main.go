@@ -19,8 +19,8 @@ import (
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/grpc"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/grpcclient"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/http"
-	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/postgres"
 	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/adapter/stripe"
 	"github.com/Riku-KANO/ec-test/services/order/internal/app"
@@ -78,8 +78,14 @@ func main() {
 	commissionRepo := repository.NewCommissionRepository(pool)
 	payoutRepo := repository.NewPayoutRepository(pool)
 
-	// Buyer subscription client (for checking free shipping eligibility)
-	buyerSubClient := httpclient.NewBuyerSubscriptionClient(cfg.AuthServiceURL)
+	// Buyer subscription client (for checking free shipping eligibility).
+	// Talks to the dedicated subscription service over gRPC.
+	buyerSubClient, err := grpcclient.NewBuyerSubscriptionClient(cfg.SubscriptionServiceGRPCAddr, cfg.SubscriptionInternalToken)
+	if err != nil {
+		slog.Error("failed to create subscription client", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = buyerSubClient.Close() }()
 
 	// Service
 	orderSvc := app.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, cfg.DefaultShippingFee)

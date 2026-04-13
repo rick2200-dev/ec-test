@@ -20,7 +20,8 @@ type Services struct {
 	Recommend *ServiceClient
 	Cart      *ServiceClient
 	Inquiry   *ServiceClient
-	Review    *ServiceClient
+	Review       *ServiceClient
+	Subscription *ServiceClient
 
 	// CatalogGRPC is used by the buyer read path (ListProducts, GetProduct).
 	// Other catalog routes still go through the HTTP Catalog client above.
@@ -38,6 +39,13 @@ func NewServices(cfg config.Config) *Services {
 		Recommend: NewServiceClient(cfg.RecommendServiceURL),
 		Cart:      NewServiceClient(cfg.CartServiceURL),
 		Inquiry:   NewServiceClient(cfg.InquiryServiceURL),
-		Review:    NewServiceClient(cfg.ReviewServiceURL),
+		Review: NewServiceClient(cfg.ReviewServiceURL),
+		// Subscription service gates every non-health route behind the
+		// shared X-Internal-Token secret. Attach it at client
+		// construction so every call from the gateway carries it — the
+		// header is forwarded verbatim over WithHeader's copy-on-write
+		// clone so handler-level clones keep it.
+		Subscription: NewServiceClient(cfg.SubscriptionServiceURL).
+			WithHeader("X-Internal-Token", cfg.SubscriptionInternalToken),
 	}
 }

@@ -1,0 +1,248 @@
+syntax = "proto3";
+
+package subscription.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/gen/go/subscription/v1;subscriptionv1";
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// SubscriptionService owns seller and buyer subscription plans and
+// subscriptions. It was extracted from auth in Phase 2 of the long-term
+// refactor so that plan/subscription lifecycle (including future Stripe
+// webhook handling) lives in a dedicated deployable.
+service SubscriptionService {
+  // --- Seller plans ---
+  rpc ListSellerPlans(ListSellerPlansRequest) returns (ListSellerPlansResponse);
+  rpc GetSellerPlan(GetSellerPlanRequest) returns (GetSellerPlanResponse);
+  rpc CreateSellerPlan(CreateSellerPlanRequest) returns (CreateSellerPlanResponse);
+  rpc UpdateSellerPlan(UpdateSellerPlanRequest) returns (UpdateSellerPlanResponse);
+
+  // --- Seller subscriptions ---
+  rpc GetSellerSubscription(GetSellerSubscriptionRequest) returns (GetSellerSubscriptionResponse);
+  rpc SubscribeSeller(SubscribeSellerRequest) returns (SubscribeSellerResponse);
+
+  // --- Buyer plans ---
+  rpc ListBuyerPlans(ListBuyerPlansRequest) returns (ListBuyerPlansResponse);
+  rpc GetBuyerPlan(GetBuyerPlanRequest) returns (GetBuyerPlanResponse);
+  rpc CreateBuyerPlan(CreateBuyerPlanRequest) returns (CreateBuyerPlanResponse);
+  rpc UpdateBuyerPlan(UpdateBuyerPlanRequest) returns (UpdateBuyerPlanResponse);
+
+  // --- Buyer subscriptions ---
+  // GetBuyerSubscription is on the order service hot path — order calls it
+  // during order creation to decide whether to waive the shipping fee.
+  rpc GetBuyerSubscription(GetBuyerSubscriptionRequest) returns (GetBuyerSubscriptionResponse);
+  rpc SubscribeBuyer(SubscribeBuyerRequest) returns (SubscribeBuyerResponse);
+}
+
+// ─── Domain Messages ─────────────────────────────────────────
+
+// PlanFeatures describes the seller-plan capabilities granted to a seller.
+// Kept as concrete fields (not a map) so clients get type-checked access to
+// the search-boost value that the search service relies on.
+message PlanFeatures {
+  int32 max_products = 1;
+  double search_boost = 2;
+  int32 featured_slots = 3;
+  int32 promoted_results = 4;
+}
+
+message SellerPlan {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string slug = 4;
+  int32 tier = 5;
+  common.v1.Money price = 6;
+  PlanFeatures features = 7;
+  string stripe_price_id = 8;
+  string status = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message SellerSubscription {
+  string id = 1;
+  string tenant_id = 2;
+  string seller_id = 3;
+  string plan_id = 4;
+  string stripe_subscription_id = 5;
+  string stripe_customer_id = 6;
+  string status = 7;
+  google.protobuf.Timestamp current_period_start = 8;
+  google.protobuf.Timestamp current_period_end = 9;
+  google.protobuf.Timestamp canceled_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+
+  // Plan summary fields, joined server-side so callers don't round-trip.
+  string plan_name = 13;
+  string plan_slug = 14;
+  int32 plan_tier = 15;
+}
+
+// BuyerPlanFeatures intentionally mirrors only the flags we ship today.
+// Grow this as new flags get added.
+message BuyerPlanFeatures {
+  bool free_shipping = 1;
+}
+
+message BuyerPlan {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string slug = 4;
+  common.v1.Money price = 5;
+  BuyerPlanFeatures features = 6;
+  string stripe_price_id = 7;
+  string status = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message BuyerSubscription {
+  string id = 1;
+  string tenant_id = 2;
+  string buyer_auth0_id = 3;
+  string plan_id = 4;
+  string stripe_subscription_id = 5;
+  string stripe_customer_id = 6;
+  string status = 7;
+  google.protobuf.Timestamp current_period_start = 8;
+  google.protobuf.Timestamp current_period_end = 9;
+  google.protobuf.Timestamp canceled_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+
+  string plan_name = 13;
+  string plan_slug = 14;
+  BuyerPlanFeatures features = 15;
+}
+
+// ─── Seller plan RPCs ────────────────────────────────────────
+
+message ListSellerPlansRequest {
+  string tenant_id = 1;
+}
+message ListSellerPlansResponse {
+  repeated SellerPlan plans = 1;
+}
+
+message GetSellerPlanRequest {
+  string tenant_id = 1;
+  string plan_id = 2;
+}
+message GetSellerPlanResponse {
+  SellerPlan plan = 1;
+}
+
+message CreateSellerPlanRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string slug = 3;
+  int32 tier = 4;
+  common.v1.Money price = 5;
+  PlanFeatures features = 6;
+  string stripe_price_id = 7;
+  string status = 8;
+}
+message CreateSellerPlanResponse {
+  SellerPlan plan = 1;
+}
+
+message UpdateSellerPlanRequest {
+  string tenant_id = 1;
+  string plan_id = 2;
+  string name = 3;
+  string slug = 4;
+  int32 tier = 5;
+  common.v1.Money price = 6;
+  PlanFeatures features = 7;
+  string stripe_price_id = 8;
+  string status = 9;
+}
+message UpdateSellerPlanResponse {
+  SellerPlan plan = 1;
+}
+
+// ─── Seller subscription RPCs ────────────────────────────────
+
+message GetSellerSubscriptionRequest {
+  string tenant_id = 1;
+  string seller_id = 2;
+}
+message GetSellerSubscriptionResponse {
+  SellerSubscription subscription = 1;
+}
+
+message SubscribeSellerRequest {
+  string tenant_id = 1;
+  string seller_id = 2;
+  string plan_id = 3;
+}
+message SubscribeSellerResponse {
+  SellerSubscription subscription = 1;
+}
+
+// ─── Buyer plan RPCs ─────────────────────────────────────────
+
+message ListBuyerPlansRequest {
+  string tenant_id = 1;
+}
+message ListBuyerPlansResponse {
+  repeated BuyerPlan plans = 1;
+}
+
+message GetBuyerPlanRequest {
+  string tenant_id = 1;
+  string plan_id = 2;
+}
+message GetBuyerPlanResponse {
+  BuyerPlan plan = 1;
+}
+
+message CreateBuyerPlanRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string slug = 3;
+  common.v1.Money price = 4;
+  BuyerPlanFeatures features = 5;
+  string stripe_price_id = 6;
+  string status = 7;
+}
+message CreateBuyerPlanResponse {
+  BuyerPlan plan = 1;
+}
+
+message UpdateBuyerPlanRequest {
+  string tenant_id = 1;
+  string plan_id = 2;
+  string name = 3;
+  string slug = 4;
+  common.v1.Money price = 5;
+  BuyerPlanFeatures features = 6;
+  string stripe_price_id = 7;
+  string status = 8;
+}
+message UpdateBuyerPlanResponse {
+  BuyerPlan plan = 1;
+}
+
+// ─── Buyer subscription RPCs ─────────────────────────────────
+
+message GetBuyerSubscriptionRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+}
+message GetBuyerSubscriptionResponse {
+  BuyerSubscription subscription = 1;
+}
+
+message SubscribeBuyerRequest {
+  string tenant_id = 1;
+  string buyer_auth0_id = 2;
+  string plan_id = 3;
+}
+message SubscribeBuyerResponse {
+  BuyerSubscription subscription = 1;
+}

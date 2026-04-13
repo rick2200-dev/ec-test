@@ -35,10 +35,10 @@
     │   isolation)    │  └────────┘  └────────┘
     └─────────────────┘
 
-         ┌─────────┐  ┌──────────┐  ┌──────────┐
-         │  Cart   │  │ Inquiry  │  │ Review   │
-         │  :8088  │  │  :8090   │  │  :8091   │
-         └─────────┘  └──────────┘  └──────────┘
+         ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐
+         │  Cart   │  │ Inquiry  │  │ Review   │  │ Subscription │
+         │  :8088  │  │  :8090   │  │  :8091   │  │   :8089      │
+         └─────────┘  └──────────┘  └──────────┘  └──────────────┘
 ```
 
 ## 技術スタック
@@ -93,6 +93,7 @@ make seed
 # 5. 各サービスを起動 (別ターミナルで)
 make dev-gateway      # API Gateway   → :8080
 make dev-auth         # Auth Service  → :8081
+make dev-subscription # Subscription  → :8089
 make dev-catalog      # Catalog       → :8082
 make dev-inventory    # Inventory     → :8083
 make dev-order        # Order         → :8084
@@ -126,6 +127,7 @@ ec-test/
 │   ├── services/            #   Go マイクロサービス群
 │   │   ├── gateway/         #     API Gateway (認証・ルーティング)
 │   │   ├── auth/            #     テナント・セラー・ユーザー管理
+│   │   ├── subscription/    #     セラー/バイヤーのサブスクリプションプラン・加入状態
 │   │   ├── catalog/         #     商品・SKU・カテゴリ管理
 │   │   ├── inventory/       #     在庫管理・在庫移動
 │   │   ├── order/           #     注文・決済・コミッション

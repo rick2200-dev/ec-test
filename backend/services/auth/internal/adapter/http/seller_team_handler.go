@@ -15,11 +15,11 @@ import (
 // SellerTeamHandler handles HTTP requests for seller team (seller_users)
 // management. Mounted at /sellers/{sellerID}/team.
 type SellerTeamHandler struct {
-	svc port.AuthUseCase
+	svc port.RBACUseCase
 }
 
 // NewSellerTeamHandler creates a new SellerTeamHandler.
-func NewSellerTeamHandler(svc port.AuthUseCase) *SellerTeamHandler {
+func NewSellerTeamHandler(svc port.RBACUseCase) *SellerTeamHandler {
 	return &SellerTeamHandler{svc: svc}
 }
 

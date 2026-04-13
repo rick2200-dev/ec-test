@@ -57,7 +57,7 @@ Multi-tenant marketplace EC platform:
 ## Pre-flight: Duplicate & Trend Check
 
 1. Search open Discussions in the `Architecture` category for titles starting with `[Architecture Longevity]`. Read the most recent one (last ~4 weeks) to identify still-open items, improvements, and regressions.
-2. Search open issues with the `architecture` label — those are the short-term findings from the other architect-review workflows. **Do not re-surface them.** Instead, look for *patterns across them* that suggest a systemic quality-attribute problem.
+2. Search open issues with the `architecture` label — those are the short-term findings from the other architect-review workflows. **Do not re-surface them.** Instead, look for _patterns across them_ that suggest a systemic quality-attribute problem.
 3. If you find a still-open Discussion from the last 2 weeks covering the same ground with no material changes since, add a short follow-up comment to it instead of creating a new Discussion.
 
 ---
@@ -74,13 +74,14 @@ Steps:
 2. For every table defined in the migrations, check:
    - Is `tenant_id` present and indexed?
    - Does it have RLS enabled (`ENABLE ROW LEVEL SECURITY`) and a policy, OR is it intentionally a global table?
-   - `000015_force_rls.up.sql` enabled FORCE RLS — are all tables added *after* that migration (e.g., `purchase_history`, `seller_api_tokens`, `order_cancellation_requests`, `reviews`) consistently covered?
+   - `000015_force_rls.up.sql` enabled FORCE RLS — are all tables added _after_ that migration (e.g., `purchase_history`, `seller_api_tokens`, `order_cancellation_requests`, `reviews`) consistently covered?
 3. Look for index coverage gaps: columns appearing in frequent `WHERE`/`JOIN` clauses (grep service code) without indexes in the schema.
 4. Detect destructive migrations without safe rollback paths (e.g., `DROP COLUMN`, `DROP TABLE` in `.up.sql` with no way to restore data from `.down.sql`).
 5. Detect N+1 risk patterns in service code: loops over result sets that call another query per row (grep for `for _, ... := range` followed by `.Query(` or `.Get(`).
 6. Check schema-level normalization smells: repeated JSONB blobs that could be relational, or wide tables with many nullable columns that suggest mixed responsibilities.
 
 **Red flags:**
+
 - Missing `.down.sql` or empty/asymmetric rollback
 - Tables without `tenant_id` that store per-tenant data
 - RLS gaps after migration `000015`
@@ -104,6 +105,7 @@ Steps:
 6. Check `infra/deploy/` overlays for HPA (HorizontalPodAutoscaler) presence on services that actually need to scale (gateway, catalog, search).
 
 **Red flags:**
+
 - Sync gRPC chain depth ≥ 4
 - Handler with ≥ 5 sequential DB queries (candidate for batching or join)
 - Read-heavy endpoint without cache layer
@@ -129,6 +131,7 @@ Steps:
 5. For a hypothetical "add a new service" exercise (pick one plausible next service — e.g., `shipping` or `returns`): enumerate the files that would need to change (gateway proxy/router, authz policies, proto, k8s overlays, docker-compose, migrations). Is that number reasonable, or is the ceremony excessive?
 
 **Red flags:**
+
 - Overlapping domain concepts with no clear owning service
 - `pkg/` packages leaking domain-specific names
 - Features routinely requiring coordinated changes across ≥ 3 services
@@ -152,6 +155,7 @@ Steps:
 7. Check `.down.sql` files for data-loss risk: reversing a migration that added a column with data in production would silently lose data — this should be documented.
 
 **Red flags:**
+
 - Services without the shared middleware stack (observability gaps)
 - gRPC clients without explicit timeouts
 - Liveness and readiness probes identical (or missing)
@@ -176,12 +180,15 @@ Create **at most 1 Discussion** per run in the `Architecture` category (fallback
 ## 1. DB Design Health
 
 ### Findings
+
 {Evidence with file:line references from `infra/db/migrations/`}
 
 ### Impact
+
 {What breaks or degrades over time}
 
 ### Recommendation
+
 {Concrete, sprint-sized next steps}
 
 ## 2. Scalability & Performance
@@ -198,13 +205,13 @@ Create **at most 1 Discussion** per run in the `Architecture` category (fallback
 
 ## Metrics (vs. previous review)
 
-| Metric | This review | Previous | Trend |
-| --- | --- | --- | --- |
-| Sync gRPC max chain depth | … | … | ↑/↓/→ |
-| RLS-uncovered tables (post-000015) | … | … | ↑/↓/→ |
-| Migrations missing `.down.sql` | … | … | ↑/↓/→ |
-| Services w/o shared middleware | … | … | ↑/↓/→ |
-| Hottest handler DB round-trips | … | … | ↑/↓/→ |
+| Metric                             | This review | Previous | Trend |
+| ---------------------------------- | ----------- | -------- | ----- |
+| Sync gRPC max chain depth          | …           | …        | ↑/↓/→ |
+| RLS-uncovered tables (post-000015) | …           | …        | ↑/↓/→ |
+| Migrations missing `.down.sql`     | …           | …        | ↑/↓/→ |
+| Services w/o shared middleware     | …           | …        | ↑/↓/→ |
+| Hottest handler DB round-trips     | …           | …        | ↑/↓/→ |
 
 > If this is the first run, leave Previous blank and set Trend as `baseline`.
 

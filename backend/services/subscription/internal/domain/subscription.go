@@ -1,3 +1,7 @@
+// Package domain contains subscription service domain types. These mirror
+// the types previously held in services/auth/internal/domain/subscription.go
+// — the extraction preserved them verbatim so the on-the-wire JSON shape
+// used by the gateway proxy and order-service consumer is unchanged.
 package domain
 
 import (
@@ -6,7 +10,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// PlanFeatures describes the capabilities granted by a subscription plan.
+// PlanFeatures describes the capabilities granted by a seller subscription
+// plan. Concrete fields (rather than a map) keep the search service's
+// search_boost access type-checked at the DB boundary.
 type PlanFeatures struct {
 	MaxProducts     int     `json:"max_products"`
 	SearchBoost     float64 `json:"search_boost"`
@@ -14,7 +20,7 @@ type PlanFeatures struct {
 	PromotedResults int     `json:"promoted_results"`
 }
 
-// SubscriptionPlan represents a plan tier available within a tenant.
+// SubscriptionPlan represents a seller plan tier available within a tenant.
 type SubscriptionPlan struct {
 	ID            uuid.UUID    `json:"id"`
 	TenantID      uuid.UUID    `json:"tenant_id"`
@@ -30,7 +36,7 @@ type SubscriptionPlan struct {
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
-// SubscriptionStatus represents the lifecycle state of a seller subscription.
+// SubscriptionStatus represents the lifecycle state of a subscription.
 type SubscriptionStatus string
 
 const (

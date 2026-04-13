@@ -19,6 +19,7 @@ COPY backend/services/order/go.mod backend/services/order/go.sum ./backend/servi
 COPY backend/services/recommend/go.mod backend/services/recommend/go.sum ./backend/services/recommend/
 COPY backend/services/review/go.mod backend/services/review/go.sum ./backend/services/review/
 COPY backend/services/search/go.mod backend/services/search/go.sum ./backend/services/search/
+COPY backend/services/subscription/go.mod backend/services/subscription/go.sum ./backend/services/subscription/
 
 # Download dependencies.
 WORKDIR /src/backend/services/search

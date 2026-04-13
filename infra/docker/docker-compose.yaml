@@ -19,6 +19,9 @@ services:
       CART_SERVICE_URL: http://cart:8088
       INQUIRY_SERVICE_URL: http://inquiry:8090
       REVIEW_SERVICE_URL: http://review:8091
+      SUBSCRIPTION_SERVICE_URL: http://subscription:8089
+      # Must match SUBSCRIPTION_INTERNAL_TOKEN on the subscription service.
+      SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
       # DB 8 is the API-token rate limiter's namespace; cart owns DB 7.
       REDIS_URL: redis://redis:6379/8
       # Must match auth service API_TOKEN_PREFIX.
@@ -35,6 +38,8 @@ services:
       catalog:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      subscription:
         condition: service_healthy
     networks:
       - backend
@@ -114,6 +119,9 @@ services:
       INVENTORY_SERVICE_URL: http://inventory:8084
       CATALOG_SERVICE_URL: http://catalog:8082
       NOTIFICATION_SERVICE_URL: http://notification:8087
+      SUBSCRIPTION_SERVICE_GRPC_ADDR: subscription:50058
+      # Must match SUBSCRIPTION_INTERNAL_TOKEN on the subscription service.
+      SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
       # Must match cart/inquiry ORDER_INTERNAL_TOKEN.
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
@@ -122,6 +130,8 @@ services:
       redis:
         condition: service_healthy
       inventory:
+        condition: service_healthy
+      subscription:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8083/healthz"]
@@ -297,6 +307,38 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  subscription:
+    build:
+      context: ../..
+      dockerfile: backend/services/subscription/Dockerfile
+    # Intentionally not publishing host ports: the subscription service is
+    # reached only by gateway (HTTP) and order (gRPC) over the backend
+    # docker network. Exposing 8089/50058 to the host bypassed the
+    # X-Internal-Token shared-secret gate and was the root cause of
+    # Phase 2's auth-boundary regression.
+    expose:
+      - "8089"
+      - "50058"
+    environment:
+      HTTP_PORT: "8089"
+      GRPC_PORT: "50058"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Must match SUBSCRIPTION_INTERNAL_TOKEN on gateway + order.
+      SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8089/healthz"]
       interval: 10s
       timeout: 3s
       retries: 5

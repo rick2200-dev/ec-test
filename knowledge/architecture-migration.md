@@ -14,6 +14,7 @@
 - [Phase 2: ポート抽出 + HTTPクライアント移動](#phase-2-ポート抽出--httpクライアント移動)
 - [Phase 3: ディレクトリリネーム](#phase-3-ディレクトリリネーム)
 - [Phase 4: ドメイン層の充実](#phase-4-ドメイン層の充実)
+- [Phase 5: auth モノリスの分解と subscription サービス抽出](#phase-5-auth-モノリスの分解と-subscription-サービス抽出)
 - [設計上の判断メモ](#設計上の判断メモ)
 
 ---
@@ -374,6 +375,115 @@ pubsub.PublishEvent(ctx, s.publisher, tenantID, domain.EventTypeOrderPaid, "orde
 
 イベントタイプ文字列も定数化（`domain.EventTypeOrderPaid`）したことで、  
 文字列ベースの switch 文で定数以外の値を使ってしまうミスを防げます。
+
+---
+
+## Phase 5: auth モノリスの分解と subscription サービス抽出
+
+**目的**: 8,000 LOC 超に肥大化していた auth サービスを責務ごとに分解し、境界の明確になった subscription 機能を独立サービスに切り出す。
+
+### 背景
+
+auth は Phase 3 完了時点で最大のサービスになっていました。`AuthService` という god struct が 9 ストアに依存し、identity（tenant / seller / buyer）・RBAC・API Token・subscription（seller tier / buyer free-shipping）を一手に抱えていました。`docs/architecture.md` が定義する auth のスコープは「テナント管理、セラー登録・管理、ユーザー認証連携」であり、subscription は本来オフスコープです。さらに order サービスが `httpclient.BuyerSubscriptionClient` 経由で auth の `/buyer-subscriptions/...` を呼んでおり、論理境界はすでに露出していました。
+
+### 5a. Phase 1 — auth 内部の責務分離（破壊的変更なし）
+
+デプロイ単位は auth のままで、`internal/app` を責務別パッケージに切り分けました。
+
+```
+app/identity.go     — Tenant, Seller, SellerUser, Buyer プロフィール
+app/rbac.go         — 役割ルックアップ、監査ログ、platform admin 管理
+app/subscription.go — seller/buyer プラン + 購読（後で切り出す単位）
+app/credential.go   — API Token lifecycle
+```
+
+`AuthService` は 4 つの Service をポインタ埋め込みする facade に縮退させ、既存の呼び出し側を壊さないようにしました。`port/service.go` も責務別に分割し、ハンドラは対応する narrow interface（`IdentityUseCase`, `RBACUseCase`, `SubscriptionUseCase`, `CredentialUseCase`）に依存する形に変更しました。
+
+**原則**:
+
+- パブリック HTTP API は無変更（gateway・order・frontend への影響ゼロ）
+- DB スキーマ無変更（`auth_svc.*` テーブルはそのまま）
+
+### 5b. Phase 2 — subscription サービスの gRPC 抽出
+
+分離済みの `app/subscription.go` を独立サービス `backend/services/subscription` として切り出し、gRPC + HTTP のデュアル公開にしました。
+
+**Proto 定義** (`backend/proto/subscription/v1/subscription.proto`):
+
+- `service SubscriptionService` に 12 RPC（`ListSellerPlans`, `GetSellerSubscription`, `SubscribeSeller`, `ListBuyerPlans`, `GetBuyerSubscription`, `SubscribeBuyer` ほか）
+- 既存の `buyerSubscriptionResponse`（order 側）の互換フィールド（`status`, `plan_slug`, `features.free_shipping`）を過不足なくカバー
+
+**ポート割り当て**: HTTP 8089 / gRPC 50058（既存の採番規則の次を取る）。
+
+**DB 戦略**: 新スキーマ `subscription_svc` を作成し、4 テーブル（`subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions`）を物理移管。跨サービスの RDB FK は張らず、`auth_svc.sellers.subscription_id` は論理 FK に格下げ。マイグレーション 000019 がデータコピーと旧テーブル DROP を一括で実行します。
+
+**呼び出し側の変更**:
+
+- **order**: `httpclient.BuyerSubscriptionClient` を削除し、`grpcclient.BuyerSubscriptionClient` で置換。`port.BuyerSubscriptionChecker` インターフェースは維持して実装差し替えのみ（DI 境界は変えない）。
+- **gateway**: `/buyer-subscriptions/*`, `/seller-subscription-plans/*` の upstream を auth → subscription に切替。REST パスは維持して外部 API 互換を保つ。
+- **auth**: subscription 関連コード（handler / port / repo / app / domain）を完全撤去。
+
+### 5c. レビュー指摘で後から入れた 2 つの修正
+
+最初の切り出しでは、gateway の認可に依存しすぎた boundary と、RLS × materialized view の設計ミスが残りました。長期運用に直結するため、000019 migration への統合と `pkg/middleware` の追加で補正しました（当初 000020 で追加した BYPASSRLS ロール + SECURITY DEFINER 関数は、000019 自体が FORCE RLS 下の `CREATE MATERIALIZED VIEW` で失敗して 000020 に到達しない順序バグがあったため、最終的に 000019 本体へ吸収しました）。
+
+#### 修正 1 — FORCE RLS と materialized view の衝突
+
+`catalog_svc.seller_plan_boost` は `subscription_svc.seller_subscriptions` / `subscription_plans` を join する projection ですが、000019 でこれらに `FORCE ROW LEVEL SECURITY` を付けた結果、アプリロールからの `REFRESH MATERIALIZED VIEW CONCURRENTLY` が `current_setting('app.current_tenant_id')` で弾かれるようになりました。migration 時の `CREATE MATERIALIZED VIEW` も `ecmarket` ロールで走ると同じ問題を踏みます。
+
+**解決策**: 000019 内で `BYPASSRLS` 権限を持つ `ecmarket_rls_bypass` ロールを作り、マテビューの所有者をそのロールに付け替え、`catalog_svc.refresh_seller_plan_boost()` という `SECURITY DEFINER` 関数で refresh をラップしました。アプリは `REFRESH` ではなく `SELECT catalog_svc.refresh_seller_plan_boost()` を呼びます。FORCE RLS 有効化 → bypass ロール作成 → MV 作成（`SET LOCAL ROLE` 下）の順序を同一 migration に畳み込むことで、中間状態で migration が失敗する窓を潰しました。
+
+```sql
+-- 000019_move_subscriptions_to_subscription_svc.up.sql の要旨
+CREATE ROLE ecmarket_rls_bypass BYPASSRLS;
+GRANT ecmarket_rls_bypass TO ecmarket;  -- SET LOCAL ROLE を可能にする
+
+DO $$ BEGIN
+    SET LOCAL ROLE ecmarket_rls_bypass;
+    DROP MATERIALIZED VIEW IF EXISTS catalog_svc.seller_plan_boost;
+    CREATE MATERIALIZED VIEW catalog_svc.seller_plan_boost AS ... ;
+END $$;
+
+CREATE FUNCTION catalog_svc.refresh_seller_plan_boost()
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog
+AS $$ REFRESH MATERIALIZED VIEW CONCURRENTLY catalog_svc.seller_plan_boost; $$;
+
+GRANT EXECUTE ON FUNCTION catalog_svc.refresh_seller_plan_boost() TO ecmarket;
+```
+
+**教訓**: マルチテナント RLS と全テナント横断のマテビューは同居できません。単一ロールで migration もアプリも回す構成では、マテビュー所有者を RLS をバイパスする別ロールに分離し、refresh は `SECURITY DEFINER` 経由で呼び出し元に権限だけ渡すのが正解です。`SET row_security = off` はスーパーユーザーしか使えないので、単一ロール運用では `SET LOCAL ROLE` + `BYPASSRLS` の組み合わせの方が汎用的です。
+
+#### 修正 2 — 各サービス自身の認証境界
+
+subscription サービスは最初、`InternalContext` ミドルウェア（ヘッダ `X-Tenant-ID` を読むだけ）に依存しており、gRPC サーバーには何の認可もありませんでした。しかも docker-compose でホストポート 8089/50058 を publish していたため、直接叩いて `X-Tenant-ID` を偽装すれば plan 作成や subscribe の mutation を通せる状態でした。
+
+**解決策**:
+
+- **HTTP**: 全ての非ヘルスエンドポイントに `X-Internal-Token` を要求するミドルウェア。環境変数は per-service 命名（`SUBSCRIPTION_INTERNAL_TOKEN`, `AUTH_INTERNAL_TOKEN`）とし、サービスごとに別シークレットを持たせる。
+- **gRPC**: `pkg/middleware/grpc_internal_token.go` に再利用可能な `UnaryInternalTokenInterceptor` を新設。`x-internal-token` metadata を検証し、`/grpc.health.*` と `/grpc.reflection.*` はスキップ、空シークレット時は fail-closed。
+- **gateway / order**: gateway は `ServiceClient.WithHeader` で、order の gRPC クライアントは `grpc.WithPerRPCCredentials` + 小さな creds struct でトークンを付与。
+- **docker-compose**: `ports:` を `expose:` に変更し、ホストから直接到達できないようにした。
+
+**教訓**: 「gateway で認可する」は必要条件であって十分条件ではありません。新サービスを立てたら、そのサービスの HTTP/gRPC 入口にも **サービスごとの** shared secret を要求する境界を置くのがデフォルトです。ローカル compose でも host port publish を避けることで「開発時は楽だが本番で想定外に到達できる」という事故を防げます。
+
+#### 修正 3 — ホットパスのタイムアウトとログ
+
+order サービスの `HasFreeShipping` は checkout hot path にいます。subscription サービスが遅延・停止したときに order 全体が引きずられるのを避けるため、以下を入れました。
+
+- `context.WithTimeout(ctx, 500 * time.Millisecond)` を call-site で必ずラップ
+- 失敗時は `slog.Warn("buyer subscription lookup failed", "error", err, "duration_ms", ...)` で deadline exceeded と hard RPC error を区別できるように記録
+- 呼び出し側は error を受けても「送料不明 → 標準送料を請求」という safe default に倒す
+
+**教訓**: gRPC 化自体が信頼性を上げるわけではなく、「タイムアウト + safe default + 観測ログ」の 3 点セットが揃って初めてホットパスの依存として健全になります。
+
+### 5d. Phase 5 全体で得た教訓
+
+- **god struct の解体は facade 経由で段階的に**: Phase 1 で内部分離だけ先にやることで、Phase 2 のサービス境界切り出しは「既に分かれているものを物理分離するだけ」になり、レビューと動作確認が 1 軸ずつ進められました。
+- **論理 FK で跨サービス参照を許す**: subscription 側は seller/buyer の存在確認をせず、ID 整合はアプリ層（gateway の認可）で保証する方針。これにより subscription サービスが auth に逆依存することを避けられました。
+- **REST パスを変えずに upstream だけ差し替える**: 外部 API 互換を保ったまま内部構造を変えられるのは、gateway が proxy 役を担っているからこそのメリット。サービス境界を動かすリファクタリングは、gateway ルーティングを先に書き換え→新サービス起動→旧サービスを削除、の順で段階実行できます。
+- **DB スキーマ移管は「コピー → 参照先切替 → 旧 DROP」を一度のマイグレーションに詰め込める**: 000019 はこの 3 ステップを atomic に実行しています。中間状態（新旧両スキーマが並存する）を露出させないほうが、むしろ運用が楽になるケースがありました。
+- **proto は RPC ごとに Request/Response を別メッセージにする**: 同じレスポンス型を複数 RPC で再利用すると buf lint の STANDARD ルールで弾かれます。最初から 1:1 で切っておくと後から楽。
+- **migration は単独で valid な状態まで畳み込む**: 「不足分は次の migration で直す」という分割は、前の migration が先に失敗すると後続に到達しないため成立しません。FORCE RLS 有効化と BYPASSRLS ロール導入のような、相互依存する DDL 変更は同一 migration に入れるのが安全です。down 側も対称に作り、中間状態（RLS 有効だが MV の所有者がまだ app role）を露出させないこと。
 
 ---
 

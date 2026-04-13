@@ -23,14 +23,14 @@ import (
 // or issuing a stronger sibling token). The gateway enforces this via
 // BlockAPIToken middleware on the /api-tokens subtree.
 type APITokenHandler struct {
-	svc    port.AuthUseCase
+	svc    port.CredentialUseCase
 	prefix string
 }
 
 // NewAPITokenHandler creates a new APITokenHandler. The token prefix is
 // the env-configured label threaded through to the generator (e.g.
 // "sk_live_"); callers should pass cfg.APITokenPrefix.
-func NewAPITokenHandler(svc port.AuthUseCase, prefix string) *APITokenHandler {
+func NewAPITokenHandler(svc port.CredentialUseCase, prefix string) *APITokenHandler {
 	return &APITokenHandler{svc: svc, prefix: prefix}
 }
 

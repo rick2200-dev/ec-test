@@ -10,7 +10,33 @@ import (
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
+	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
 )
+
+// RBACService owns all role-management concerns: seller team membership,
+// platform admin roles, and the audit trail. It also exposes the two
+// read-only role lookups the gateway hits on every request.
+type RBACService struct {
+	db             port.TxRunner
+	sellerUsers    port.SellerUserStore
+	platformAdmins port.PlatformAdminStore
+	rbacAudit      port.RBACAuditStore
+}
+
+// NewRBACService constructs an RBACService.
+func NewRBACService(
+	db port.TxRunner,
+	sellerUsers port.SellerUserStore,
+	platformAdmins port.PlatformAdminStore,
+	rbacAudit port.RBACAuditStore,
+) *RBACService {
+	return &RBACService{
+		db:             db,
+		sellerUsers:    sellerUsers,
+		platformAdmins: platformAdmins,
+		rbacAudit:      rbacAudit,
+	}
+}
 
 // ============================================================================
 // Role lookup (read-only) — used by the gateway's authorization layer.
@@ -18,7 +44,7 @@ import (
 
 // LookupSellerRole returns the role of the given Auth0 user in a seller
 // organization, or a zero string if the user is not a member of that seller.
-func (s *AuthService) LookupSellerRole(ctx context.Context, tenantID, sellerID uuid.UUID, auth0UserID string) (domain.SellerUserRole, error) {
+func (s *RBACService) LookupSellerRole(ctx context.Context, tenantID, sellerID uuid.UUID, auth0UserID string) (domain.SellerUserRole, error) {
 	su, err := s.sellerUsers.GetByAuth0ID(ctx, tenantID, sellerID, auth0UserID)
 	if err != nil {
 		return "", apperrors.Internal("failed to lookup seller role", err)
@@ -32,7 +58,7 @@ func (s *AuthService) LookupSellerRole(ctx context.Context, tenantID, sellerID u
 // LookupPlatformAdminRole returns the role of the given Auth0 user as a
 // platform admin in the tenant, or a zero string if the user is not a
 // platform admin.
-func (s *AuthService) LookupPlatformAdminRole(ctx context.Context, tenantID uuid.UUID, auth0UserID string) (domain.PlatformAdminRole, error) {
+func (s *RBACService) LookupPlatformAdminRole(ctx context.Context, tenantID uuid.UUID, auth0UserID string) (domain.PlatformAdminRole, error) {
 	pa, err := s.platformAdmins.GetByAuth0ID(ctx, tenantID, auth0UserID)
 	if err != nil {
 		return "", apperrors.Internal("failed to lookup platform admin role", err)
@@ -49,7 +75,7 @@ func (s *AuthService) LookupPlatformAdminRole(ctx context.Context, tenantID uuid
 
 // ListSellerTeam returns all seller users for the given seller organization.
 // The caller must have at least member role — the handler enforces this.
-func (s *AuthService) ListSellerTeam(ctx context.Context, tenantID, sellerID uuid.UUID) ([]domain.SellerUser, error) {
+func (s *RBACService) ListSellerTeam(ctx context.Context, tenantID, sellerID uuid.UUID) ([]domain.SellerUser, error) {
 	users, err := s.sellerUsers.ListBySeller(ctx, tenantID, sellerID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list seller team", err)
@@ -60,7 +86,7 @@ func (s *AuthService) ListSellerTeam(ctx context.Context, tenantID, sellerID uui
 // AddSellerUser grants a new Auth0 user a role in a seller organization.
 // Only owners may add new users. The new role must not be owner — use
 // TransferSellerOwnership to change the owner.
-func (s *AuthService) AddSellerUser(ctx context.Context, tenantID, sellerID uuid.UUID, newAuth0UserID string, role domain.SellerUserRole) (*domain.SellerUser, error) {
+func (s *RBACService) AddSellerUser(ctx context.Context, tenantID, sellerID uuid.UUID, newAuth0UserID string, role domain.SellerUserRole) (*domain.SellerUser, error) {
 	if !role.Valid() {
 		return nil, apperrors.BadRequest("invalid role")
 	}
@@ -79,7 +105,7 @@ func (s *AuthService) AddSellerUser(ctx context.Context, tenantID, sellerID uuid
 	var created domain.SellerUser
 	err = s.db.RunTenantTx(ctx, tenantID, func(txCtx context.Context) error {
 		// Only owners may add users.
-		if err := s.requireSellerRoleAtLeast(txCtx, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
 
@@ -126,7 +152,7 @@ func (s *AuthService) AddSellerUser(ctx context.Context, tenantID, sellerID uuid
 // owners may call this. The new role must not be owner (use transfer
 // ownership). Actors cannot change their own role, and the last owner of a
 // seller cannot be demoted.
-func (s *AuthService) UpdateSellerUserRole(ctx context.Context, tenantID, sellerID, targetID uuid.UUID, newRole domain.SellerUserRole) error {
+func (s *RBACService) UpdateSellerUserRole(ctx context.Context, tenantID, sellerID, targetID uuid.UUID, newRole domain.SellerUserRole) error {
 	if !newRole.Valid() {
 		return apperrors.BadRequest("invalid role")
 	}
@@ -140,7 +166,7 @@ func (s *AuthService) UpdateSellerUserRole(ctx context.Context, tenantID, seller
 	}
 
 	err = s.db.RunTenantTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := s.requireSellerRoleAtLeast(txCtx, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
 
@@ -195,14 +221,14 @@ func (s *AuthService) UpdateSellerUserRole(ctx context.Context, tenantID, seller
 // RemoveSellerUser removes a user from a seller organization. Only owners may
 // call this. Actors cannot remove themselves, and the last owner cannot be
 // removed.
-func (s *AuthService) RemoveSellerUser(ctx context.Context, tenantID, sellerID, targetID uuid.UUID) error {
+func (s *RBACService) RemoveSellerUser(ctx context.Context, tenantID, sellerID, targetID uuid.UUID) error {
 	tc, err := tenant.FromContext(ctx)
 	if err != nil || tc.UserID == "" {
 		return apperrors.Unauthorized("caller identity required")
 	}
 
 	err = s.db.RunTenantTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := s.requireSellerRoleAtLeast(txCtx, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
 
@@ -251,7 +277,7 @@ func (s *AuthService) RemoveSellerUser(ctx context.Context, tenantID, sellerID, 
 // TransferSellerOwnership promotes an existing admin/member to owner and
 // atomically demotes the current owner to admin. Only the current owner may
 // call this. The new owner must already be a member of the seller team.
-func (s *AuthService) TransferSellerOwnership(ctx context.Context, tenantID, sellerID, newOwnerID uuid.UUID) error {
+func (s *RBACService) TransferSellerOwnership(ctx context.Context, tenantID, sellerID, newOwnerID uuid.UUID) error {
 	tc, err := tenant.FromContext(ctx)
 	if err != nil || tc.UserID == "" {
 		return apperrors.Unauthorized("caller identity required")
@@ -322,8 +348,11 @@ func (s *AuthService) TransferSellerOwnership(ctx context.Context, tenantID, sel
 
 // requireSellerRoleAtLeast returns ErrInsufficientRole if the actor does
 // not have at least the minimum role in the seller organization.
-func (s *AuthService) requireSellerRoleAtLeast(ctx context.Context, tenantID, sellerID uuid.UUID, actorAuth0UserID string, min domain.SellerUserRole) error {
-	role, err := s.sellerUsers.CheckRole(ctx, tenantID, sellerID, actorAuth0UserID)
+//
+// Package-level helper (not a method) so CredentialService — which also
+// gatekeeps on seller roles — can reuse it without depending on RBACService.
+func requireSellerRoleAtLeast(ctx context.Context, store port.SellerUserStore, tenantID, sellerID uuid.UUID, actorAuth0UserID string, min domain.SellerUserRole) error {
+	role, err := store.CheckRole(ctx, tenantID, sellerID, actorAuth0UserID)
 	if err != nil {
 		return err
 	}
@@ -338,7 +367,7 @@ func (s *AuthService) requireSellerRoleAtLeast(ctx context.Context, tenantID, se
 // ============================================================================
 
 // ListPlatformAdmins returns all platform admins in the tenant.
-func (s *AuthService) ListPlatformAdmins(ctx context.Context, tenantID uuid.UUID) ([]domain.PlatformAdmin, error) {
+func (s *RBACService) ListPlatformAdmins(ctx context.Context, tenantID uuid.UUID) ([]domain.PlatformAdmin, error) {
 	admins, err := s.platformAdmins.List(ctx, tenantID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list platform admins", err)
@@ -348,7 +377,7 @@ func (s *AuthService) ListPlatformAdmins(ctx context.Context, tenantID uuid.UUID
 
 // GrantPlatformAdmin grants a new Auth0 user a platform admin role in the
 // tenant. Only super_admins may call this.
-func (s *AuthService) GrantPlatformAdmin(ctx context.Context, tenantID uuid.UUID, newAuth0UserID string, role domain.PlatformAdminRole) (*domain.PlatformAdmin, error) {
+func (s *RBACService) GrantPlatformAdmin(ctx context.Context, tenantID uuid.UUID, newAuth0UserID string, role domain.PlatformAdminRole) (*domain.PlatformAdmin, error) {
 	if !role.Valid() {
 		return nil, apperrors.BadRequest("invalid role")
 	}
@@ -403,7 +432,7 @@ func (s *AuthService) GrantPlatformAdmin(ctx context.Context, tenantID uuid.UUID
 // UpdatePlatformAdminRole changes the role of an existing platform admin.
 // Only super_admins may call this. Actors cannot change their own role, and
 // the last super_admin cannot be demoted.
-func (s *AuthService) UpdatePlatformAdminRole(ctx context.Context, tenantID, targetID uuid.UUID, newRole domain.PlatformAdminRole) error {
+func (s *RBACService) UpdatePlatformAdminRole(ctx context.Context, tenantID, targetID uuid.UUID, newRole domain.PlatformAdminRole) error {
 	if !newRole.Valid() {
 		return apperrors.BadRequest("invalid role")
 	}
@@ -463,7 +492,7 @@ func (s *AuthService) UpdatePlatformAdminRole(ctx context.Context, tenantID, tar
 // RevokePlatformAdmin removes a platform admin. Only super_admins may call
 // this. Actors cannot revoke themselves, and the last super_admin cannot be
 // revoked.
-func (s *AuthService) RevokePlatformAdmin(ctx context.Context, tenantID, targetID uuid.UUID) error {
+func (s *RBACService) RevokePlatformAdmin(ctx context.Context, tenantID, targetID uuid.UUID) error {
 	tc, err := tenant.FromContext(ctx)
 	if err != nil || tc.UserID == "" {
 		return apperrors.Unauthorized("caller identity required")
@@ -513,7 +542,7 @@ func (s *AuthService) RevokePlatformAdmin(ctx context.Context, tenantID, targetI
 
 // ListRBACAuditLog returns a paginated list of RBAC audit entries for the
 // tenant.
-func (s *AuthService) ListRBACAuditLog(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.RBACAuditEntry, int, error) {
+func (s *RBACService) ListRBACAuditLog(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.RBACAuditEntry, int, error) {
 	entries, total, err := s.rbacAudit.ListByTenant(ctx, tenantID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list audit log", err)
@@ -523,7 +552,7 @@ func (s *AuthService) ListRBACAuditLog(ctx context.Context, tenantID uuid.UUID, 
 
 // requirePlatformAdminAtLeast returns ErrInsufficientRole if the actor is
 // not at least the minimum platform admin role in the tenant.
-func (s *AuthService) requirePlatformAdminAtLeast(ctx context.Context, tenantID uuid.UUID, actorAuth0UserID string, min domain.PlatformAdminRole) error {
+func (s *RBACService) requirePlatformAdminAtLeast(ctx context.Context, tenantID uuid.UUID, actorAuth0UserID string, min domain.PlatformAdminRole) error {
 	role, err := s.platformAdmins.CheckRole(ctx, tenantID, actorAuth0UserID)
 	if err != nil {
 		return err
@@ -541,7 +570,7 @@ func (s *AuthService) requirePlatformAdminAtLeast(ctx context.Context, tenantID 
 // BootstrapSuperAdmin ensures at least one super_admin exists for the given
 // tenant. It is idempotent: if a super_admin already exists the call is a
 // no-op. Used at service startup.
-func (s *AuthService) BootstrapSuperAdmin(ctx context.Context, tenantID uuid.UUID, auth0UserID string) error {
+func (s *RBACService) BootstrapSuperAdmin(ctx context.Context, tenantID uuid.UUID, auth0UserID string) error {
 	if auth0UserID == "" {
 		return apperrors.BadRequest("bootstrap auth0_user_id is required")
 	}
@@ -585,7 +614,7 @@ func (s *AuthService) BootstrapSuperAdmin(ctx context.Context, tenantID uuid.UUI
 
 // mapRBACError converts domain sentinel errors into apperrors AppError values
 // so handlers surface correct HTTP status codes. Other errors are wrapped as
-// internal.
+// internal. Package-level so CredentialService's mapper can share the shape.
 func mapRBACError(err error, internalMsg string) error {
 	if err == nil {
 		return nil

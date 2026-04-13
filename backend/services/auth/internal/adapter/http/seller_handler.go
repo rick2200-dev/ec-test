@@ -15,7 +15,7 @@ import (
 
 // SellerHandler handles HTTP requests for seller operations.
 type SellerHandler struct {
-	svc       port.AuthUseCase
+	svc       port.IdentityUseCase
 	team      *SellerTeamHandler
 	apiTokens *APITokenHandler
 }
@@ -24,7 +24,7 @@ type SellerHandler struct {
 // handlers are mounted as nested subroutes under /{sellerID} so the
 // /sellers prefix can own the entire seller subtree. apiTokens may be nil
 // in tests that don't exercise the token surface.
-func NewSellerHandler(svc port.AuthUseCase, team *SellerTeamHandler, apiTokens *APITokenHandler) *SellerHandler {
+func NewSellerHandler(svc port.IdentityUseCase, team *SellerTeamHandler, apiTokens *APITokenHandler) *SellerHandler {
 	return &SellerHandler{svc: svc, team: team, apiTokens: apiTokens}
 }
 

@@ -16,11 +16,11 @@ import (
 // PlatformAdminHandler handles HTTP requests for platform admin
 // (platform_admins) management and RBAC audit log retrieval.
 type PlatformAdminHandler struct {
-	svc port.AuthUseCase
+	svc port.RBACUseCase
 }
 
 // NewPlatformAdminHandler creates a new PlatformAdminHandler.
-func NewPlatformAdminHandler(svc port.AuthUseCase) *PlatformAdminHandler {
+func NewPlatformAdminHandler(svc port.RBACUseCase) *PlatformAdminHandler {
 	return &PlatformAdminHandler{svc: svc}
 }
 

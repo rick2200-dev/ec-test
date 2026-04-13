@@ -21,6 +21,7 @@ type Config struct {
 	CartServiceURL         string
 	InquiryServiceURL      string
 	ReviewServiceURL       string
+	SubscriptionServiceURL string
 
 	// JWT / Auth0 settings
 	JWTIssuer   string
@@ -30,6 +31,12 @@ type Config struct {
 	// Shared secret used to call the auth service /internal/authz/* endpoints.
 	// Must match AUTH_INTERNAL_TOKEN on the auth service.
 	AuthInternalToken string
+
+	// Shared secret used to call the subscription service. Every non-health
+	// route on the subscription service requires this header, so the
+	// gateway attaches it at client construction time. Must match
+	// SUBSCRIPTION_INTERNAL_TOKEN on the subscription service.
+	SubscriptionInternalToken string
 
 	// gRPC service addresses (host:port)
 	CatalogGRPCAddr   string
@@ -67,12 +74,14 @@ func Load() Config {
 		CartServiceURL:         getEnv("CART_SERVICE_URL", "http://localhost:8088"),
 		InquiryServiceURL:      getEnv("INQUIRY_SERVICE_URL", "http://localhost:8090"),
 		ReviewServiceURL:       getEnv("REVIEW_SERVICE_URL", "http://localhost:8091"),
+		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8089"),
 
 		JWTIssuer:   getEnv("JWT_ISSUER", "https://ecmarket.example.com/"),
 		JWTAudience: getEnv("JWT_AUDIENCE", "https://api.ecmarket.example.com"),
 		JWKSURL:     getEnv("JWKS_URL", "https://ecmarket.example.com/.well-known/jwks.json"),
 
-		AuthInternalToken: getEnv("AUTH_INTERNAL_TOKEN", ""),
+		AuthInternalToken:         getEnv("AUTH_INTERNAL_TOKEN", ""),
+		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
 
 		// Note: catalog's GRPC_PORT default is 50052 (see
 		// backend/services/catalog/internal/config/config.go). Keep this in

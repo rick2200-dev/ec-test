@@ -12,19 +12,21 @@ import (
 
 // SellerHandler handles seller-facing routes.
 type SellerHandler struct {
-	catalog   *proxy.ServiceClient
-	order     *proxy.ServiceClient
-	inventory *proxy.ServiceClient
-	auth      *proxy.ServiceClient
+	catalog      *proxy.ServiceClient
+	order        *proxy.ServiceClient
+	inventory    *proxy.ServiceClient
+	auth         *proxy.ServiceClient
+	subscription *proxy.ServiceClient
 }
 
 // NewSellerHandler creates a new SellerHandler.
 func NewSellerHandler(svc *proxy.Services) *SellerHandler {
 	return &SellerHandler{
-		catalog:   svc.Catalog,
-		order:     svc.Order,
-		inventory: svc.Inventory,
-		auth:      svc.Auth,
+		catalog:      svc.Catalog,
+		order:        svc.Order,
+		inventory:    svc.Inventory,
+		auth:         svc.Auth,
+		subscription: svc.Subscription,
 	}
 }
 
@@ -193,10 +195,10 @@ func (h *SellerHandler) RejectCancellationRequest(w http.ResponseWriter, r *http
 // ListPlans lists all available subscription plans.
 // GET /plans
 func (h *SellerHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
-	body, status, pErr := h.auth.Get(r.Context(), "/plans", r.URL.RawQuery)
+	body, status, pErr := h.subscription.Get(r.Context(), "/plans", r.URL.RawQuery)
 	if pErr != nil {
-		slog.Error("proxy to auth failed", "error", pErr)
-		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		slog.Error("proxy to subscription failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "subscription service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)
@@ -210,10 +212,10 @@ func (h *SellerHandler) GetSubscription(w http.ResponseWriter, r *http.Request) 
 		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "seller context required"})
 		return
 	}
-	body, status, pErr := h.auth.Get(r.Context(), "/subscriptions/sellers/"+tc.SellerID.String(), "")
+	body, status, pErr := h.subscription.Get(r.Context(), "/subscriptions/sellers/"+tc.SellerID.String(), "")
 	if pErr != nil {
-		slog.Error("proxy to auth failed", "error", pErr)
-		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		slog.Error("proxy to subscription failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "subscription service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)
@@ -227,10 +229,10 @@ func (h *SellerHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "seller context required"})
 		return
 	}
-	body, status, pErr := h.auth.Post(r.Context(), "/subscriptions/sellers/"+tc.SellerID.String(), r.Body)
+	body, status, pErr := h.subscription.Post(r.Context(), "/subscriptions/sellers/"+tc.SellerID.String(), r.Body)
 	if pErr != nil {
-		slog.Error("proxy to auth failed", "error", pErr)
-		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		slog.Error("proxy to subscription failed", "error", pErr)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "subscription service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)

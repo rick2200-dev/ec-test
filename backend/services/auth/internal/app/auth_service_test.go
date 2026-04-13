@@ -240,104 +240,6 @@ func (m *mockRBACAuditStore) ListByTenant(ctx context.Context, tenantID uuid.UUI
 	return nil, 0, nil
 }
 
-type mockSubscriptionStore struct {
-	CreatePlanFn              func(ctx context.Context, tenantID uuid.UUID, p *domain.SubscriptionPlan) error
-	GetPlanByIDFn             func(ctx context.Context, tenantID, id uuid.UUID) (*domain.SubscriptionPlan, error)
-	ListPlansFn               func(ctx context.Context, tenantID uuid.UUID) ([]domain.SubscriptionPlan, error)
-	UpdatePlanFn              func(ctx context.Context, tenantID uuid.UUID, p *domain.SubscriptionPlan) error
-	GetSellerSubscriptionFn   func(ctx context.Context, tenantID, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error)
-	UpsertSellerSubscriptionFn func(ctx context.Context, tenantID uuid.UUID, sub *domain.SellerSubscription) error
-	RefreshPlanBoostViewFn    func(ctx context.Context) error
-}
-
-func (m *mockSubscriptionStore) CreatePlan(ctx context.Context, tenantID uuid.UUID, p *domain.SubscriptionPlan) error {
-	if m.CreatePlanFn != nil {
-		return m.CreatePlanFn(ctx, tenantID, p)
-	}
-	return nil
-}
-func (m *mockSubscriptionStore) GetPlanByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.SubscriptionPlan, error) {
-	if m.GetPlanByIDFn != nil {
-		return m.GetPlanByIDFn(ctx, tenantID, id)
-	}
-	return nil, nil
-}
-func (m *mockSubscriptionStore) ListPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.SubscriptionPlan, error) {
-	if m.ListPlansFn != nil {
-		return m.ListPlansFn(ctx, tenantID)
-	}
-	return nil, nil
-}
-func (m *mockSubscriptionStore) UpdatePlan(ctx context.Context, tenantID uuid.UUID, p *domain.SubscriptionPlan) error {
-	if m.UpdatePlanFn != nil {
-		return m.UpdatePlanFn(ctx, tenantID, p)
-	}
-	return nil
-}
-func (m *mockSubscriptionStore) GetSellerSubscription(ctx context.Context, tenantID, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error) {
-	if m.GetSellerSubscriptionFn != nil {
-		return m.GetSellerSubscriptionFn(ctx, tenantID, sellerID)
-	}
-	return nil, nil
-}
-func (m *mockSubscriptionStore) UpsertSellerSubscription(ctx context.Context, tenantID uuid.UUID, sub *domain.SellerSubscription) error {
-	if m.UpsertSellerSubscriptionFn != nil {
-		return m.UpsertSellerSubscriptionFn(ctx, tenantID, sub)
-	}
-	return nil
-}
-func (m *mockSubscriptionStore) RefreshPlanBoostView(ctx context.Context) error {
-	if m.RefreshPlanBoostViewFn != nil {
-		return m.RefreshPlanBoostViewFn(ctx)
-	}
-	return nil
-}
-
-type mockBuyerSubscriptionStore struct {
-	CreateBuyerPlanFn         func(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error
-	GetBuyerPlanByIDFn        func(ctx context.Context, tenantID, id uuid.UUID) (*domain.BuyerPlan, error)
-	ListBuyerPlansFn          func(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error)
-	UpdateBuyerPlanFn         func(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error
-	GetBuyerSubscriptionFn    func(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error)
-	UpsertBuyerSubscriptionFn func(ctx context.Context, tenantID uuid.UUID, sub *domain.BuyerSubscription) error
-}
-
-func (m *mockBuyerSubscriptionStore) CreateBuyerPlan(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error {
-	if m.CreateBuyerPlanFn != nil {
-		return m.CreateBuyerPlanFn(ctx, tenantID, p)
-	}
-	return nil
-}
-func (m *mockBuyerSubscriptionStore) GetBuyerPlanByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.BuyerPlan, error) {
-	if m.GetBuyerPlanByIDFn != nil {
-		return m.GetBuyerPlanByIDFn(ctx, tenantID, id)
-	}
-	return nil, nil
-}
-func (m *mockBuyerSubscriptionStore) ListBuyerPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error) {
-	if m.ListBuyerPlansFn != nil {
-		return m.ListBuyerPlansFn(ctx, tenantID)
-	}
-	return nil, nil
-}
-func (m *mockBuyerSubscriptionStore) UpdateBuyerPlan(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error {
-	if m.UpdateBuyerPlanFn != nil {
-		return m.UpdateBuyerPlanFn(ctx, tenantID, p)
-	}
-	return nil
-}
-func (m *mockBuyerSubscriptionStore) GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
-	if m.GetBuyerSubscriptionFn != nil {
-		return m.GetBuyerSubscriptionFn(ctx, tenantID, buyerAuth0ID)
-	}
-	return nil, nil
-}
-func (m *mockBuyerSubscriptionStore) UpsertBuyerSubscription(ctx context.Context, tenantID uuid.UUID, sub *domain.BuyerSubscription) error {
-	if m.UpsertBuyerSubscriptionFn != nil {
-		return m.UpsertBuyerSubscriptionFn(ctx, tenantID, sub)
-	}
-	return nil
-}
 
 type mockAPITokenStore struct {
 	CreateFn        func(ctx context.Context, t *domain.SellerAPIToken) error
@@ -398,8 +300,6 @@ func newService(
 	sellerUsers *mockSellerUserStore,
 	platformAdmins *mockPlatformAdminStore,
 	rbacAudit *mockRBACAuditStore,
-	subscriptions *mockSubscriptionStore,
-	buyerSubscriptions *mockBuyerSubscriptionStore,
 	apiTokens *mockAPITokenStore,
 ) *app.AuthService {
 	if db == nil {
@@ -420,21 +320,15 @@ func newService(
 	if rbacAudit == nil {
 		rbacAudit = &mockRBACAuditStore{}
 	}
-	if subscriptions == nil {
-		subscriptions = &mockSubscriptionStore{}
-	}
-	if buyerSubscriptions == nil {
-		buyerSubscriptions = &mockBuyerSubscriptionStore{}
-	}
 	if apiTokens == nil {
 		apiTokens = &mockAPITokenStore{}
 	}
-	return app.NewAuthService(db, tenants, sellers, sellerUsers, platformAdmins, rbacAudit, subscriptions, buyerSubscriptions, apiTokens)
+	return app.NewAuthService(db, tenants, sellers, sellerUsers, platformAdmins, rbacAudit, apiTokens)
 }
 
 // requireAppError asserts the error is an *apperrors.AppError with the expected
 // HTTP status code and returns it.
-func requireAppError(t *testing.T, err error, wantStatus int) *apperrors.AppError {
+func requireAppError(t *testing.T, err error, wantStatus int) {
 	t.Helper()
 	if err == nil {
 		t.Fatalf("expected error with status %d, got nil", wantStatus)
@@ -446,7 +340,6 @@ func requireAppError(t *testing.T, err error, wantStatus int) *apperrors.AppErro
 	if appErr.Status != wantStatus {
 		t.Fatalf("status = %d, want %d (message: %s)", appErr.Status, wantStatus, appErr.Message)
 	}
-	return appErr
 }
 
 // ctxWithUser returns a context enriched with tenant context for the given
@@ -475,7 +368,7 @@ func TestCreateTenant_Success(t *testing.T) {
 			}
 			return nil
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	err := svc.CreateTenant(context.Background(), &domain.Tenant{Name: "Test", Slug: "test"})
 	if err != nil {
@@ -491,7 +384,7 @@ func TestCreateTenant_SlugConflict(t *testing.T) {
 		GetBySlugFn: func(_ context.Context, slug string) (*domain.Tenant, error) {
 			return &domain.Tenant{Slug: slug}, nil // existing tenant
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	err := svc.CreateTenant(context.Background(), &domain.Tenant{Name: "Test", Slug: "test"})
 	requireAppError(t, err, http.StatusConflict)
@@ -510,7 +403,7 @@ func TestGetTenant_Success(t *testing.T) {
 			}
 			return &domain.Tenant{ID: id, Name: "T"}, nil
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	got, err := svc.GetTenant(context.Background(), id)
 	if err != nil {
@@ -526,7 +419,7 @@ func TestGetTenant_NotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Tenant, error) {
 			return nil, nil
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	_, err := svc.GetTenant(context.Background(), uuid.New())
 	requireAppError(t, err, http.StatusNotFound)
@@ -545,7 +438,7 @@ func TestListTenants_Success(t *testing.T) {
 			}
 			return want, 2, nil
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	got, total, err := svc.ListTenants(context.Background(), 10, 0)
 	if err != nil {
@@ -570,7 +463,7 @@ func TestGetSeller_Success(t *testing.T) {
 		GetByIDFn: func(_ context.Context, tenantID, id uuid.UUID) (*domain.Seller, error) {
 			return &domain.Seller{ID: sid, TenantID: tenantID}, nil
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	got, err := svc.GetSeller(context.Background(), tid, sid)
 	if err != nil {
@@ -586,7 +479,7 @@ func TestGetSeller_NotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Seller, error) {
 			return nil, nil
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	_, err := svc.GetSeller(context.Background(), uuid.New(), uuid.New())
 	requireAppError(t, err, http.StatusNotFound)
@@ -603,7 +496,7 @@ func TestListSellers_Success(t *testing.T) {
 		ListFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]domain.Seller, int, error) {
 			return want, 2, nil
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	got, total, err := svc.ListSellers(context.Background(), tid, 20, 0)
 	if err != nil {
@@ -633,7 +526,7 @@ func TestApproveSeller_Success(t *testing.T) {
 			statusUpdated = true
 			return nil
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	err := svc.ApproveSeller(context.Background(), tid, sid)
 	if err != nil {
@@ -649,7 +542,7 @@ func TestApproveSeller_NotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Seller, error) {
 			return nil, nil
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	err := svc.ApproveSeller(context.Background(), uuid.New(), uuid.New())
 	requireAppError(t, err, http.StatusNotFound)
@@ -660,446 +553,12 @@ func TestApproveSeller_NotPending(t *testing.T) {
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Seller, error) {
 			return &domain.Seller{Status: domain.SellerStatusApproved}, nil
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	err := svc.ApproveSeller(context.Background(), uuid.New(), uuid.New())
 	requireAppError(t, err, http.StatusBadRequest)
 }
 
-// ============================================================================
-// 7. CreatePlan
-// ============================================================================
-
-func TestCreatePlan_Success(t *testing.T) {
-	tid := uuid.New()
-	var created bool
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		CreatePlanFn: func(_ context.Context, _ uuid.UUID, p *domain.SubscriptionPlan) error {
-			if p.Status != "active" {
-				t.Errorf("default status = %q, want active", p.Status)
-			}
-			if p.PriceCurrency != "JPY" {
-				t.Errorf("default currency = %q, want JPY", p.PriceCurrency)
-			}
-			created = true
-			return nil
-		},
-	}, nil, nil)
-
-	plan := &domain.SubscriptionPlan{Name: "Pro", Slug: "pro"}
-	err := svc.CreatePlan(context.Background(), tid, plan)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !created {
-		t.Fatal("CreatePlan was not called")
-	}
-}
-
-// ============================================================================
-// 8. GetPlan
-// ============================================================================
-
-func TestGetPlan_Success(t *testing.T) {
-	tid := uuid.New()
-	pid := uuid.New()
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		GetPlanByIDFn: func(_ context.Context, _, id uuid.UUID) (*domain.SubscriptionPlan, error) {
-			return &domain.SubscriptionPlan{ID: id, Name: "Pro"}, nil
-		},
-	}, nil, nil)
-
-	got, err := svc.GetPlan(context.Background(), tid, pid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.ID != pid {
-		t.Errorf("ID = %v, want %v", got.ID, pid)
-	}
-}
-
-func TestGetPlan_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		GetPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SubscriptionPlan, error) {
-			return nil, nil
-		},
-	}, nil, nil)
-
-	_, err := svc.GetPlan(context.Background(), uuid.New(), uuid.New())
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 9. ListPlans
-// ============================================================================
-
-func TestListPlans_Success(t *testing.T) {
-	tid := uuid.New()
-	want := []domain.SubscriptionPlan{{Name: "Free"}, {Name: "Pro"}}
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		ListPlansFn: func(_ context.Context, _ uuid.UUID) ([]domain.SubscriptionPlan, error) {
-			return want, nil
-		},
-	}, nil, nil)
-
-	got, err := svc.ListPlans(context.Background(), tid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(got) != 2 {
-		t.Errorf("len = %d, want 2", len(got))
-	}
-}
-
-// ============================================================================
-// 10. UpdatePlan
-// ============================================================================
-
-func TestUpdatePlan_Success(t *testing.T) {
-	tid := uuid.New()
-	pid := uuid.New()
-	var updated bool
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		GetPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SubscriptionPlan, error) {
-			return &domain.SubscriptionPlan{ID: pid}, nil
-		},
-		UpdatePlanFn: func(_ context.Context, _ uuid.UUID, p *domain.SubscriptionPlan) error {
-			updated = true
-			return nil
-		},
-	}, nil, nil)
-
-	err := svc.UpdatePlan(context.Background(), tid, &domain.SubscriptionPlan{ID: pid, Name: "Pro+"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !updated {
-		t.Fatal("UpdatePlan was not called")
-	}
-}
-
-func TestUpdatePlan_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		GetPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SubscriptionPlan, error) {
-			return nil, nil
-		},
-	}, nil, nil)
-
-	err := svc.UpdatePlan(context.Background(), uuid.New(), &domain.SubscriptionPlan{ID: uuid.New()})
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 11. GetSellerSubscription
-// ============================================================================
-
-func TestGetSellerSubscription_Success(t *testing.T) {
-	tid := uuid.New()
-	sid := uuid.New()
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		GetSellerSubscriptionFn: func(_ context.Context, _, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error) {
-			return &domain.SellerSubscriptionWithPlan{
-				SellerSubscription: domain.SellerSubscription{SellerID: sellerID},
-				PlanName:           "Pro",
-			}, nil
-		},
-	}, nil, nil)
-
-	got, err := svc.GetSellerSubscription(context.Background(), tid, sid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.SellerID != sid {
-		t.Errorf("SellerID = %v, want %v", got.SellerID, sid)
-	}
-}
-
-func TestGetSellerSubscription_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, &mockSubscriptionStore{
-		GetSellerSubscriptionFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerSubscriptionWithPlan, error) {
-			return nil, nil
-		},
-	}, nil, nil)
-
-	_, err := svc.GetSellerSubscription(context.Background(), uuid.New(), uuid.New())
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 12. SubscribeSeller
-// ============================================================================
-
-func TestSubscribeSeller_Success(t *testing.T) {
-	tid := uuid.New()
-	sid := uuid.New()
-	pid := uuid.New()
-	var upserted bool
-
-	svc := newService(nil, nil, &mockSellerStore{
-		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Seller, error) {
-			return &domain.Seller{ID: sid}, nil
-		},
-	}, nil, nil, nil, &mockSubscriptionStore{
-		GetPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SubscriptionPlan, error) {
-			return &domain.SubscriptionPlan{ID: pid}, nil
-		},
-		UpsertSellerSubscriptionFn: func(_ context.Context, _ uuid.UUID, sub *domain.SellerSubscription) error {
-			if sub.Status != domain.SubscriptionStatusActive {
-				t.Errorf("status = %v, want active", sub.Status)
-			}
-			if sub.PlanID != pid {
-				t.Errorf("planID = %v, want %v", sub.PlanID, pid)
-			}
-			upserted = true
-			return nil
-		},
-		RefreshPlanBoostViewFn: func(_ context.Context) error { return nil },
-	}, nil, nil)
-
-	sub, err := svc.SubscribeSeller(context.Background(), tid, sid, pid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !upserted {
-		t.Fatal("UpsertSellerSubscription was not called")
-	}
-	if sub.PlanID != pid {
-		t.Errorf("returned sub.PlanID = %v, want %v", sub.PlanID, pid)
-	}
-}
-
-func TestSubscribeSeller_SellerNotFound(t *testing.T) {
-	svc := newService(nil, nil, &mockSellerStore{
-		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Seller, error) {
-			return nil, nil
-		},
-	}, nil, nil, nil, nil, nil, nil)
-
-	_, err := svc.SubscribeSeller(context.Background(), uuid.New(), uuid.New(), uuid.New())
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-func TestSubscribeSeller_PlanNotFound(t *testing.T) {
-	svc := newService(nil, nil, &mockSellerStore{
-		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Seller, error) {
-			return &domain.Seller{}, nil
-		},
-	}, nil, nil, nil, &mockSubscriptionStore{
-		GetPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SubscriptionPlan, error) {
-			return nil, nil
-		},
-	}, nil, nil)
-
-	_, err := svc.SubscribeSeller(context.Background(), uuid.New(), uuid.New(), uuid.New())
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 13. CreateBuyerPlan
-// ============================================================================
-
-func TestCreateBuyerPlan_Success(t *testing.T) {
-	tid := uuid.New()
-	var created bool
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		CreateBuyerPlanFn: func(_ context.Context, _ uuid.UUID, p *domain.BuyerPlan) error {
-			if p.Status != "active" {
-				t.Errorf("default status = %q, want active", p.Status)
-			}
-			if p.PriceCurrency != "JPY" {
-				t.Errorf("default currency = %q, want JPY", p.PriceCurrency)
-			}
-			created = true
-			return nil
-		},
-	}, nil)
-
-	err := svc.CreateBuyerPlan(context.Background(), tid, &domain.BuyerPlan{Name: "Basic"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !created {
-		t.Fatal("CreateBuyerPlan was not called")
-	}
-}
-
-// ============================================================================
-// 14. GetBuyerPlan
-// ============================================================================
-
-func TestGetBuyerPlan_Success(t *testing.T) {
-	tid := uuid.New()
-	pid := uuid.New()
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerPlanByIDFn: func(_ context.Context, _, id uuid.UUID) (*domain.BuyerPlan, error) {
-			return &domain.BuyerPlan{ID: id, Name: "Basic"}, nil
-		},
-	}, nil)
-
-	got, err := svc.GetBuyerPlan(context.Background(), tid, pid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.ID != pid {
-		t.Errorf("ID = %v, want %v", got.ID, pid)
-	}
-}
-
-func TestGetBuyerPlan_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.BuyerPlan, error) {
-			return nil, nil
-		},
-	}, nil)
-
-	_, err := svc.GetBuyerPlan(context.Background(), uuid.New(), uuid.New())
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 15. ListBuyerPlans
-// ============================================================================
-
-func TestListBuyerPlans_Success(t *testing.T) {
-	tid := uuid.New()
-	want := []domain.BuyerPlan{{Name: "Basic"}, {Name: "Premium"}}
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		ListBuyerPlansFn: func(_ context.Context, _ uuid.UUID) ([]domain.BuyerPlan, error) {
-			return want, nil
-		},
-	}, nil)
-
-	got, err := svc.ListBuyerPlans(context.Background(), tid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(got) != 2 {
-		t.Errorf("len = %d, want 2", len(got))
-	}
-}
-
-// ============================================================================
-// 16. UpdateBuyerPlan
-// ============================================================================
-
-func TestUpdateBuyerPlan_Success(t *testing.T) {
-	tid := uuid.New()
-	pid := uuid.New()
-	var updated bool
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.BuyerPlan, error) {
-			return &domain.BuyerPlan{ID: pid}, nil
-		},
-		UpdateBuyerPlanFn: func(_ context.Context, _ uuid.UUID, p *domain.BuyerPlan) error {
-			updated = true
-			return nil
-		},
-	}, nil)
-
-	err := svc.UpdateBuyerPlan(context.Background(), tid, &domain.BuyerPlan{ID: pid, Name: "Premium+"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !updated {
-		t.Fatal("UpdateBuyerPlan was not called")
-	}
-}
-
-func TestUpdateBuyerPlan_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.BuyerPlan, error) {
-			return nil, nil
-		},
-	}, nil)
-
-	err := svc.UpdateBuyerPlan(context.Background(), uuid.New(), &domain.BuyerPlan{ID: uuid.New()})
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 17. GetBuyerSubscription
-// ============================================================================
-
-func TestGetBuyerSubscription_Success(t *testing.T) {
-	tid := uuid.New()
-	buyerID := "auth0|buyer1"
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerSubscriptionFn: func(_ context.Context, _ uuid.UUID, auth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
-			return &domain.BuyerSubscriptionWithPlan{
-				BuyerSubscription: domain.BuyerSubscription{BuyerAuth0ID: auth0ID},
-				PlanName:          "Basic",
-			}, nil
-		},
-	}, nil)
-
-	got, err := svc.GetBuyerSubscription(context.Background(), tid, buyerID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.BuyerAuth0ID != buyerID {
-		t.Errorf("BuyerAuth0ID = %q, want %q", got.BuyerAuth0ID, buyerID)
-	}
-}
-
-func TestGetBuyerSubscription_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerSubscriptionFn: func(_ context.Context, _ uuid.UUID, _ string) (*domain.BuyerSubscriptionWithPlan, error) {
-			return nil, nil
-		},
-	}, nil)
-
-	_, err := svc.GetBuyerSubscription(context.Background(), uuid.New(), "auth0|nobody")
-	requireAppError(t, err, http.StatusNotFound)
-}
-
-// ============================================================================
-// 18. SubscribeBuyer
-// ============================================================================
-
-func TestSubscribeBuyer_Success(t *testing.T) {
-	tid := uuid.New()
-	pid := uuid.New()
-	buyerID := "auth0|buyer1"
-	var upserted bool
-
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.BuyerPlan, error) {
-			return &domain.BuyerPlan{ID: pid}, nil
-		},
-		UpsertBuyerSubscriptionFn: func(_ context.Context, _ uuid.UUID, sub *domain.BuyerSubscription) error {
-			if sub.Status != domain.SubscriptionStatusActive {
-				t.Errorf("status = %v, want active", sub.Status)
-			}
-			if sub.BuyerAuth0ID != buyerID {
-				t.Errorf("BuyerAuth0ID = %q, want %q", sub.BuyerAuth0ID, buyerID)
-			}
-			upserted = true
-			return nil
-		},
-	}, nil)
-
-	sub, err := svc.SubscribeBuyer(context.Background(), tid, buyerID, pid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !upserted {
-		t.Fatal("UpsertBuyerSubscription was not called")
-	}
-	if sub.PlanID != pid {
-		t.Errorf("returned sub.PlanID = %v, want %v", sub.PlanID, pid)
-	}
-}
-
-func TestSubscribeBuyer_PlanNotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, &mockBuyerSubscriptionStore{
-		GetBuyerPlanByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.BuyerPlan, error) {
-			return nil, nil
-		},
-	}, nil)
-
-	_, err := svc.SubscribeBuyer(context.Background(), uuid.New(), "auth0|buyer", uuid.New())
-	requireAppError(t, err, http.StatusNotFound)
-}
 
 // ============================================================================
 // 19. LookupSellerRole
@@ -1112,7 +571,7 @@ func TestLookupSellerRole_Found(t *testing.T) {
 		GetByAuth0IDFn: func(_ context.Context, _, _ uuid.UUID, auth0UserID string) (*domain.SellerUser, error) {
 			return &domain.SellerUser{Role: domain.SellerUserRoleOwner, Auth0UserID: auth0UserID}, nil
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	role, err := svc.LookupSellerRole(context.Background(), tid, sid, "auth0|user1")
 	if err != nil {
@@ -1128,7 +587,7 @@ func TestLookupSellerRole_NotFound(t *testing.T) {
 		GetByAuth0IDFn: func(_ context.Context, _, _ uuid.UUID, _ string) (*domain.SellerUser, error) {
 			return nil, nil
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	role, err := svc.LookupSellerRole(context.Background(), uuid.New(), uuid.New(), "auth0|nobody")
 	if err != nil {
@@ -1149,7 +608,7 @@ func TestLookupPlatformAdminRole_Found(t *testing.T) {
 		GetByAuth0IDFn: func(_ context.Context, _ uuid.UUID, auth0UserID string) (*domain.PlatformAdmin, error) {
 			return &domain.PlatformAdmin{Role: domain.PlatformAdminRoleSuperAdmin}, nil
 		},
-	}, nil, nil, nil, nil)
+	}, nil, nil)
 
 	role, err := svc.LookupPlatformAdminRole(context.Background(), tid, "auth0|admin1")
 	if err != nil {
@@ -1165,7 +624,7 @@ func TestLookupPlatformAdminRole_NotFound(t *testing.T) {
 		GetByAuth0IDFn: func(_ context.Context, _ uuid.UUID, _ string) (*domain.PlatformAdmin, error) {
 			return nil, nil
 		},
-	}, nil, nil, nil, nil)
+	}, nil, nil)
 
 	role, err := svc.LookupPlatformAdminRole(context.Background(), uuid.New(), "auth0|nobody")
 	if err != nil {
@@ -1191,7 +650,7 @@ func TestListSellerTeam_Success(t *testing.T) {
 		ListBySellerFn: func(_ context.Context, _, _ uuid.UUID) ([]domain.SellerUser, error) {
 			return want, nil
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	got, err := svc.ListSellerTeam(context.Background(), tid, sid)
 	if err != nil {
@@ -1216,7 +675,7 @@ func TestListPlatformAdmins_Success(t *testing.T) {
 		ListFn: func(_ context.Context, _ uuid.UUID) ([]domain.PlatformAdmin, error) {
 			return want, nil
 		},
-	}, nil, nil, nil, nil)
+	}, nil, nil)
 
 	got, err := svc.ListPlatformAdmins(context.Background(), tid)
 	if err != nil {
@@ -1244,7 +703,7 @@ func TestListRBACAuditLog_Success(t *testing.T) {
 			}
 			return want, 2, nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	got, total, err := svc.ListRBACAuditLog(context.Background(), tid, 50, 0)
 	if err != nil {
@@ -1295,7 +754,7 @@ func TestBootstrapSuperAdmin_Success(t *testing.T) {
 			auditAppended = true
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	err := svc.BootstrapSuperAdmin(context.Background(), tid, auth0ID)
 	if err != nil {
@@ -1321,7 +780,7 @@ func TestBootstrapSuperAdmin_AlreadyExists(t *testing.T) {
 			createCalled = true
 			return nil
 		},
-	}, nil, nil, nil, nil)
+	}, nil, nil)
 
 	err := svc.BootstrapSuperAdmin(context.Background(), tid, "auth0|bootstrap")
 	if err != nil {
@@ -1333,7 +792,7 @@ func TestBootstrapSuperAdmin_AlreadyExists(t *testing.T) {
 }
 
 func TestBootstrapSuperAdmin_EmptyAuth0ID(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 
 	err := svc.BootstrapSuperAdmin(context.Background(), uuid.New(), "")
 	requireAppError(t, err, http.StatusBadRequest)
@@ -1375,7 +834,7 @@ func TestCreateSeller_Success(t *testing.T) {
 			ownerCreated = true
 			return nil
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	err := svc.CreateSeller(ctx, tid, &domain.Seller{Name: "Shop", Slug: "shop"})
 	if err != nil {
@@ -1396,7 +855,7 @@ func TestCreateSeller_TenantNotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Tenant, error) {
 			return nil, nil
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	err := svc.CreateSeller(ctx, uuid.New(), &domain.Seller{Name: "Shop", Slug: "shop"})
 	requireAppError(t, err, http.StatusNotFound)
@@ -1414,7 +873,7 @@ func TestCreateSeller_SlugConflict(t *testing.T) {
 		GetBySlugFn: func(_ context.Context, _ uuid.UUID, _ string) (*domain.Seller, error) {
 			return &domain.Seller{}, nil // slug already taken
 		},
-	}, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	err := svc.CreateSeller(ctx, tid, &domain.Seller{Name: "Shop", Slug: "shop"})
 	requireAppError(t, err, http.StatusConflict)
@@ -1427,7 +886,7 @@ func TestCreateSeller_NoCallerIdentity(t *testing.T) {
 		GetByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Tenant, error) {
 			return &domain.Tenant{ID: tid}, nil
 		},
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 
 	err := svc.CreateSeller(context.Background(), tid, &domain.Seller{Name: "Shop", Slug: "shop"})
 	requireAppError(t, err, http.StatusUnauthorized)
@@ -1470,7 +929,7 @@ func TestAddSellerUser_Success(t *testing.T) {
 			auditLogged = true
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	created, err := svc.AddSellerUser(ctx, tid, sid, targetID, domain.SellerUserRoleMember)
 	if err != nil {
@@ -1489,7 +948,7 @@ func TestAddSellerUser_Success(t *testing.T) {
 
 func TestAddSellerUser_OwnerRoleRejected(t *testing.T) {
 	ctx := ctxWithUser(uuid.New(), "auth0|owner")
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.AddSellerUser(ctx, uuid.New(), uuid.New(), "auth0|target", domain.SellerUserRoleOwner)
 	requireAppError(t, err, http.StatusBadRequest)
@@ -1497,7 +956,7 @@ func TestAddSellerUser_OwnerRoleRejected(t *testing.T) {
 
 func TestAddSellerUser_InvalidRole(t *testing.T) {
 	ctx := ctxWithUser(uuid.New(), "auth0|owner")
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.AddSellerUser(ctx, uuid.New(), uuid.New(), "auth0|target", domain.SellerUserRole("invalid"))
 	requireAppError(t, err, http.StatusBadRequest)
@@ -1539,7 +998,7 @@ func TestUpdateSellerUserRole_Success(t *testing.T) {
 			auditLogged = true
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	err := svc.UpdateSellerUserRole(ctx, tid, sid, targetID, domain.SellerUserRoleAdmin)
 	if err != nil {
@@ -1572,7 +1031,7 @@ func TestUpdateSellerUserRole_SelfRoleChange(t *testing.T) {
 				Role:        domain.SellerUserRoleOwner,
 			}, nil
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	err := svc.UpdateSellerUserRole(ctx, tid, sid, targetID, domain.SellerUserRoleAdmin)
 	requireAppError(t, err, http.StatusForbidden)
@@ -1600,7 +1059,7 @@ func TestUpdateSellerUserRole_LastOwnerDemotion(t *testing.T) {
 		CountByRoleFn: func(_ context.Context, _, _ uuid.UUID, _ domain.SellerUserRole) (int, error) {
 			return 1, nil // only one owner
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	err := svc.UpdateSellerUserRole(ctx, tid, sid, targetID, domain.SellerUserRoleMember)
 	requireAppError(t, err, http.StatusConflict)
@@ -1642,7 +1101,7 @@ func TestRemoveSellerUser_Success(t *testing.T) {
 			auditLogged = true
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	err := svc.RemoveSellerUser(ctx, tid, sid, targetID)
 	if err != nil {
@@ -1686,7 +1145,7 @@ func TestGrantPlatformAdmin_Success(t *testing.T) {
 			auditLogged = true
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	pa, err := svc.GrantPlatformAdmin(ctx, tid, targetID, domain.PlatformAdminRoleAdmin)
 	if err != nil {
@@ -1721,7 +1180,7 @@ func TestUpdatePlatformAdminRole_SelfRoleChange(t *testing.T) {
 				Role:        domain.PlatformAdminRoleSuperAdmin,
 			}, nil
 		},
-	}, nil, nil, nil, nil)
+	}, nil, nil)
 
 	err := svc.UpdatePlatformAdminRole(ctx, tid, targetID, domain.PlatformAdminRoleAdmin)
 	requireAppError(t, err, http.StatusForbidden)
@@ -1747,7 +1206,7 @@ func TestUpdatePlatformAdminRole_LastSuperAdmin(t *testing.T) {
 		CountByRoleFn: func(_ context.Context, _ uuid.UUID, _ domain.PlatformAdminRole) (int, error) {
 			return 1, nil // last super admin
 		},
-	}, nil, nil, nil, nil)
+	}, nil, nil)
 
 	err := svc.UpdatePlatformAdminRole(ctx, tid, targetID, domain.PlatformAdminRoleAdmin)
 	requireAppError(t, err, http.StatusConflict)
@@ -1787,7 +1246,7 @@ func TestRevokePlatformAdmin_Success(t *testing.T) {
 			auditLogged = true
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	err := svc.RevokePlatformAdmin(ctx, tid, targetID)
 	if err != nil {
@@ -1847,7 +1306,7 @@ func TestTransferSellerOwnership_Success(t *testing.T) {
 			auditCalls++
 			return nil
 		},
-	}, nil, nil, nil)
+	}, nil)
 
 	err := svc.TransferSellerOwnership(ctx, tid, sid, newOwnerID)
 	if err != nil {
@@ -1872,7 +1331,7 @@ func TestTransferSellerOwnership_NotOwner(t *testing.T) {
 				Role: domain.SellerUserRoleMember, // not owner
 			}, nil
 		},
-	}, nil, nil, nil, nil, nil)
+	}, nil, nil, nil)
 
 	err := svc.TransferSellerOwnership(ctx, tid, sid, uuid.New())
 	requireAppError(t, err, http.StatusForbidden)
@@ -1894,7 +1353,7 @@ func TestIssueAPIToken_Success(t *testing.T) {
 				return domain.SellerUserRoleOwner, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 		&mockAPITokenStore{
 			CreateFn: func(_ context.Context, tok *domain.SellerAPIToken) error {
 				createCalled = true
@@ -1970,7 +1429,7 @@ func TestIssueAPIToken_ValidationErrors(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			svc := newService(&mockTxRunner{}, nil, nil, nil, nil, nil, nil, nil, nil)
+			svc := newService(&mockTxRunner{}, nil, nil, nil, nil, nil, nil)
 			name, scopes, rps, burst, exp := c.in()
 			_, _, err := svc.IssueAPIToken(ctx, tid, sid, name, scopes, rps, burst, exp, "sk_live_")
 			requireAppError(t, err, c.wantStatus)
@@ -1979,7 +1438,7 @@ func TestIssueAPIToken_ValidationErrors(t *testing.T) {
 }
 
 func TestIssueAPIToken_Unauthorized(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 	_, _, err := svc.IssueAPIToken(context.Background(), uuid.New(), uuid.New(),
 		"n", []domain.APITokenScope{domain.ScopeProductsRead}, nil, nil, nil, "sk_live_")
 	requireAppError(t, err, http.StatusUnauthorized)
@@ -1996,7 +1455,7 @@ func TestIssueAPIToken_InsufficientRole(t *testing.T) {
 				return domain.SellerUserRoleMember, nil
 			},
 		},
-		nil, nil, nil, nil, nil,
+		nil, nil, nil,
 	)
 
 	_, _, err := svc.IssueAPIToken(ctx, tid, sid, "n",
@@ -2016,7 +1475,7 @@ func TestIssueAPIToken_DeduplicatesScopes(t *testing.T) {
 				return domain.SellerUserRoleOwner, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 		&mockAPITokenStore{
 			CreateFn: func(_ context.Context, tok *domain.SellerAPIToken) error {
 				gotScopes = tok.Scopes
@@ -2044,7 +1503,7 @@ func TestListAPITokens_Success(t *testing.T) {
 	tid := uuid.New()
 	sid := uuid.New()
 	want := []domain.SellerAPIToken{{Name: "t1"}, {Name: "t2"}}
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		ListBySellerFn: func(_ context.Context, _, _ uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
 			if limit != 10 || offset != 0 {
 				t.Errorf("limit=%d offset=%d, want 10,0", limit, offset)
@@ -2063,7 +1522,7 @@ func TestListAPITokens_Success(t *testing.T) {
 }
 
 func TestListAPITokens_StoreError(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		ListBySellerFn: func(_ context.Context, _, _ uuid.UUID, _, _ int) ([]domain.SellerAPIToken, int, error) {
 			return nil, 0, errors.New("boom")
 		},
@@ -2074,7 +1533,7 @@ func TestListAPITokens_StoreError(t *testing.T) {
 
 func TestGetAPIToken_Success(t *testing.T) {
 	tid, sid, id := uuid.New(), uuid.New(), uuid.New()
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, qid uuid.UUID) (*domain.SellerAPIToken, error) {
 			return &domain.SellerAPIToken{ID: qid, SellerID: sid}, nil
 		},
@@ -2090,7 +1549,7 @@ func TestGetAPIToken_Success(t *testing.T) {
 }
 
 func TestGetAPIToken_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 			return nil, nil
 		},
@@ -2100,7 +1559,7 @@ func TestGetAPIToken_NotFound(t *testing.T) {
 }
 
 func TestGetAPIToken_WrongSeller(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 			return &domain.SellerAPIToken{SellerID: uuid.New()}, nil
 		},
@@ -2110,7 +1569,7 @@ func TestGetAPIToken_WrongSeller(t *testing.T) {
 }
 
 func TestGetAPIToken_StoreError(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 			return nil, errors.New("boom")
 		},
@@ -2134,7 +1593,7 @@ func TestRevokeAPIToken_Success(t *testing.T) {
 				return domain.SellerUserRoleOwner, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 		&mockAPITokenStore{
 			GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 				return &domain.SellerAPIToken{
@@ -2162,7 +1621,7 @@ func TestRevokeAPIToken_Success(t *testing.T) {
 }
 
 func TestRevokeAPIToken_Unauthorized(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 	_, _, err := svc.RevokeAPIToken(context.Background(), uuid.New(), uuid.New(), uuid.New())
 	requireAppError(t, err, http.StatusUnauthorized)
 }
@@ -2171,7 +1630,7 @@ func TestRevokeAPIToken_NotFound(t *testing.T) {
 	tid := uuid.New()
 	ctx := ctxWithUser(tid, "auth0|owner")
 
-	svc := newService(&mockTxRunner{}, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(&mockTxRunner{}, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 			return nil, nil
 		},
@@ -2184,7 +1643,7 @@ func TestRevokeAPIToken_WrongSeller(t *testing.T) {
 	tid := uuid.New()
 	ctx := ctxWithUser(tid, "auth0|owner")
 
-	svc := newService(&mockTxRunner{}, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(&mockTxRunner{}, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 			return &domain.SellerAPIToken{SellerID: uuid.New()}, nil
 		},
@@ -2203,7 +1662,7 @@ func TestRevokeAPIToken_InsufficientRole(t *testing.T) {
 				return domain.SellerUserRoleMember, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 		&mockAPITokenStore{
 			GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 				return &domain.SellerAPIToken{SellerID: sid}, nil
@@ -2219,7 +1678,7 @@ func TestRevokeAPIToken_StoreError(t *testing.T) {
 	tid := uuid.New()
 	ctx := ctxWithUser(tid, "auth0|owner")
 
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.SellerAPIToken, error) {
 			return nil, errors.New("boom")
 		},
@@ -2243,7 +1702,7 @@ func TestLookupAPIToken_Success(t *testing.T) {
 	const secret = "my-test-secret"
 	hash := hashSecret(secret)
 
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByLookupFn: func(_ context.Context, prefix, lookup string) (*domain.SellerAPIToken, error) {
 			if prefix != "sk_live_" || lookup != "lkp123" {
 				t.Errorf("prefix=%q lookup=%q", prefix, lookup)
@@ -2262,7 +1721,7 @@ func TestLookupAPIToken_Success(t *testing.T) {
 }
 
 func TestLookupAPIToken_InvalidFormat(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 	_, err := svc.LookupAPIToken(context.Background(), "", "x", "y")
 	if !errors.Is(err, domain.ErrAPITokenInvalidFormat) {
 		t.Errorf("err = %v, want ErrAPITokenInvalidFormat", err)
@@ -2270,7 +1729,7 @@ func TestLookupAPIToken_InvalidFormat(t *testing.T) {
 }
 
 func TestLookupAPIToken_NotFound(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByLookupFn: func(_ context.Context, _, _ string) (*domain.SellerAPIToken, error) {
 			return nil, nil
 		},
@@ -2282,7 +1741,7 @@ func TestLookupAPIToken_NotFound(t *testing.T) {
 }
 
 func TestLookupAPIToken_StoreError(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByLookupFn: func(_ context.Context, _, _ string) (*domain.SellerAPIToken, error) {
 			return nil, errors.New("boom")
 		},
@@ -2293,7 +1752,7 @@ func TestLookupAPIToken_StoreError(t *testing.T) {
 
 func TestLookupAPIToken_SecretMismatch(t *testing.T) {
 	hash := hashSecret("correct-secret")
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByLookupFn: func(_ context.Context, _, _ string) (*domain.SellerAPIToken, error) {
 			return &domain.SellerAPIToken{TokenHash: hash}, nil
 		},
@@ -2309,7 +1768,7 @@ func TestLookupAPIToken_Revoked(t *testing.T) {
 	hash := hashSecret(secret)
 	revokedAt := time.Now()
 
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByLookupFn: func(_ context.Context, _, _ string) (*domain.SellerAPIToken, error) {
 			return &domain.SellerAPIToken{TokenHash: hash, RevokedAt: &revokedAt}, nil
 		},
@@ -2325,7 +1784,7 @@ func TestLookupAPIToken_Expired(t *testing.T) {
 	hash := hashSecret(secret)
 	expired := time.Now().Add(-time.Hour)
 
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
+	svc := newService(nil, nil, nil, nil, nil, nil, &mockAPITokenStore{
 		GetByLookupFn: func(_ context.Context, _, _ string) (*domain.SellerAPIToken, error) {
 			return &domain.SellerAPIToken{TokenHash: hash, ExpiresAt: &expired}, nil
 		},
@@ -2360,7 +1819,7 @@ func TestRemoveSellerUser_LastOwner(t *testing.T) {
 				return 1, nil // last owner
 			},
 		},
-		nil, nil, nil, nil, nil,
+		nil, nil, nil,
 	)
 
 	err := svc.RemoveSellerUser(ctx, tid, sid, targetID)
@@ -2386,7 +1845,7 @@ func TestRevokePlatformAdmin_LastSuperAdmin(t *testing.T) {
 				return 1, nil // last super admin
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 	)
 
 	err := svc.RevokePlatformAdmin(ctx, tid, targetID)
@@ -2409,7 +1868,7 @@ func TestRevokePlatformAdmin_Self(t *testing.T) {
 				}, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 	)
 
 	err := svc.RevokePlatformAdmin(ctx, tid, targetID)
@@ -2429,14 +1888,14 @@ func TestRevokePlatformAdmin_TargetNotFound(t *testing.T) {
 				return nil, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 	)
 	err := svc.RevokePlatformAdmin(ctx, tid, uuid.New())
 	requireAppError(t, err, http.StatusNotFound)
 }
 
 func TestRevokePlatformAdmin_Unauthorized(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 	err := svc.RevokePlatformAdmin(context.Background(), uuid.New(), uuid.New())
 	requireAppError(t, err, http.StatusUnauthorized)
 }
@@ -2451,7 +1910,7 @@ func TestUpdatePlatformAdminRole_InvalidRole(t *testing.T) {
 				return domain.PlatformAdminRoleSuperAdmin, nil
 			},
 		},
-		nil, nil, nil, nil,
+		nil, nil,
 	)
 
 	err := svc.UpdatePlatformAdminRole(ctx, tid, targetID, "bogus_role")
@@ -2459,7 +1918,7 @@ func TestUpdatePlatformAdminRole_InvalidRole(t *testing.T) {
 }
 
 func TestGrantPlatformAdmin_Unauthorized(t *testing.T) {
-	svc := newService(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	svc := newService(nil, nil, nil, nil, nil, nil, nil)
 	_, err := svc.GrantPlatformAdmin(context.Background(), uuid.New(),
 		"auth0|target", domain.PlatformAdminRoleSupport)
 	requireAppError(t, err, http.StatusUnauthorized)

@@ -18,14 +18,18 @@ import (
 // JWT validation. These endpoints are protected by a shared secret and MUST
 // NOT be exposed to end users.
 type InternalAuthzHandler struct {
-	svc    port.AuthUseCase
-	secret string
+	rbac       port.RBACUseCase
+	credential port.CredentialUseCase
+	secret     string
 }
 
 // NewInternalAuthzHandler creates a new InternalAuthzHandler. If secret is
-// empty the handler rejects all requests (safe default).
-func NewInternalAuthzHandler(svc port.AuthUseCase, secret string) *InternalAuthzHandler {
-	return &InternalAuthzHandler{svc: svc, secret: secret}
+// empty the handler rejects all requests (safe default). It takes both the
+// RBAC and credential use-case interfaces because this endpoint fronts two
+// distinct gateway hot paths: role lookup (RBAC) and API token lookup
+// (credential).
+func NewInternalAuthzHandler(rbac port.RBACUseCase, credential port.CredentialUseCase, secret string) *InternalAuthzHandler {
+	return &InternalAuthzHandler{rbac: rbac, credential: credential, secret: secret}
 }
 
 // Routes returns the chi router for internal authz endpoints, protected by
@@ -81,7 +85,7 @@ func (h *InternalAuthzHandler) GetSellerRole(w http.ResponseWriter, r *http.Requ
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid seller_id"})
 		return
 	}
-	role, err := h.svc.LookupSellerRole(r.Context(), tenantID, sellerID, sub)
+	role, err := h.rbac.LookupSellerRole(r.Context(), tenantID, sellerID, sub)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -101,7 +105,7 @@ func (h *InternalAuthzHandler) GetPlatformAdminRole(w http.ResponseWriter, r *ht
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "sub is required"})
 		return
 	}
-	role, err := h.svc.LookupPlatformAdminRole(r.Context(), tenantID, sub)
+	role, err := h.rbac.LookupPlatformAdminRole(r.Context(), tenantID, sub)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -157,7 +161,7 @@ func (h *InternalAuthzHandler) LookupAPIToken(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	tok, err := h.svc.LookupAPIToken(r.Context(), req.Prefix, req.Lookup, req.Secret)
+	tok, err := h.credential.LookupAPIToken(r.Context(), req.Prefix, req.Lookup, req.Secret)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrAPITokenNotFound):

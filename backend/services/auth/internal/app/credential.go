@@ -16,6 +16,7 @@ import (
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
+	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
 )
 
 // ============================================================================
@@ -47,14 +48,37 @@ const (
 	apiTokenSecretChars = 43 // 43 base62 chars → ≈256 bits of secret entropy
 )
 
+// CredentialService owns seller API access token lifecycle. It depends on
+// sellerUsers only to enforce the "owner" role check when issuing/revoking
+// tokens — using the same package-level helper as RBACService so the rule
+// stays DRY without leaking an extra service dependency.
+type CredentialService struct {
+	db          port.TxRunner
+	apiTokens   port.APITokenStore
+	sellerUsers port.SellerUserStore
+}
+
+// NewCredentialService constructs a CredentialService.
+func NewCredentialService(
+	db port.TxRunner,
+	apiTokens port.APITokenStore,
+	sellerUsers port.SellerUserStore,
+) *CredentialService {
+	return &CredentialService{
+		db:          db,
+		apiTokens:   apiTokens,
+		sellerUsers: sellerUsers,
+	}
+}
+
 // IssueAPIToken creates a new seller API access token. Returns the persisted
 // record and the plaintext token (which the caller MUST return to the client
 // exactly once — it is never recoverable afterward).
 //
 // Authorization: caller must be owner on the target seller. Enforced via
-// requireSellerRoleAtLeastTx inside the same transaction that performs the
+// requireSellerRoleAtLeast inside the same transaction that performs the
 // insert, so RBAC checks and the insert are atomic.
-func (s *AuthService) IssueAPIToken(
+func (s *CredentialService) IssueAPIToken(
 	ctx context.Context,
 	tenantID, sellerID uuid.UUID,
 	name string,
@@ -127,7 +151,7 @@ func (s *AuthService) IssueAPIToken(
 		// Only owners may issue tokens. ScopesForSellerRole already enforces
 		// the same rule structurally — we check the actor's live role here
 		// so a member/admin can never issue even via a forged request.
-		if err := s.requireSellerRoleAtLeast(txCtx, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
 		// Double-check the requested scopes are within the set the issuer's
@@ -159,7 +183,7 @@ func (s *AuthService) IssueAPIToken(
 
 // ListAPITokens returns tokens belonging to the given seller, newest first,
 // including revoked/expired rows so the dashboard can display history.
-func (s *AuthService) ListAPITokens(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
+func (s *CredentialService) ListAPITokens(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
 	tokens, total, err := s.apiTokens.ListBySeller(ctx, tenantID, sellerID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list api tokens", err)
@@ -170,7 +194,7 @@ func (s *AuthService) ListAPITokens(ctx context.Context, tenantID, sellerID uuid
 // GetAPIToken retrieves a single token by ID. Returns NotFound if the token
 // does not exist or does not belong to the given seller (same shape either
 // way to avoid leaking existence across sellers).
-func (s *AuthService) GetAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (*domain.SellerAPIToken, error) {
+func (s *CredentialService) GetAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (*domain.SellerAPIToken, error) {
 	t, err := s.apiTokens.GetByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get api token", err)
@@ -191,7 +215,7 @@ func (s *AuthService) GetAPIToken(ctx context.Context, tenantID, sellerID, id uu
 // the alternative (a second round-trip from the handler) would race the
 // eviction against a concurrent Load from another gateway request and
 // defeat the purpose.
-func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (prefix, lookup string, err error) {
+func (s *CredentialService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (prefix, lookup string, err error) {
 	tc, err := tenant.FromContext(ctx)
 	if err != nil || tc.UserID == "" {
 		return "", "", apperrors.Unauthorized("caller identity required")
@@ -208,7 +232,7 @@ func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id
 	}
 
 	err = s.db.RunTenantTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := s.requireSellerRoleAtLeast(txCtx, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
 		return s.apiTokens.Revoke(txCtx, tenantID, id, tc.UserID)
@@ -233,7 +257,7 @@ func (s *AuthService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id
 //
 // Callers must NOT persist the returned token struct beyond the lifetime of
 // a single request; the gateway keeps its own short-TTL cache.
-func (s *AuthService) LookupAPIToken(ctx context.Context, prefix, lookup, secret string) (*domain.SellerAPIToken, error) {
+func (s *CredentialService) LookupAPIToken(ctx context.Context, prefix, lookup, secret string) (*domain.SellerAPIToken, error) {
 	if prefix == "" || lookup == "" || secret == "" {
 		return nil, domain.ErrAPITokenInvalidFormat
 	}

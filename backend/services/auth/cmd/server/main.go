@@ -48,23 +48,17 @@ func main() {
 	sellerUserRepo := repository.NewSellerUserRepository(pool)
 	platformAdminRepo := repository.NewPlatformAdminRepository(pool)
 	rbacAuditRepo := repository.NewRBACAuditRepository(pool)
-	subscriptionRepo := repository.NewSubscriptionRepository(pool)
-	buyerSubRepo := repository.NewBuyerSubscriptionRepository(pool)
 	apiTokenRepo := repository.NewAPITokenRepository(pool)
 	buyerRepo := repository.NewBuyerRepository(pool)
 
-	// Service
-	authSvc := app.NewAuthService(
-		&database.PoolTxRunner{Pool: pool},
-		tenantRepo,
-		sellerRepo,
-		sellerUserRepo,
-		platformAdminRepo,
-		rbacAuditRepo,
-		subscriptionRepo,
-		buyerSubRepo,
-		apiTokenRepo,
-	)
+	// Services — split along domain boundaries so handlers depend only on
+	// the surface they actually need. A future extraction of Subscription
+	// into its own deployable is a matter of dropping the constructor here
+	// and pointing the handlers at a gRPC client instead.
+	txRunner := &database.PoolTxRunner{Pool: pool}
+	identitySvc := app.NewIdentityService(txRunner, tenantRepo, sellerRepo, sellerUserRepo)
+	rbacSvc := app.NewRBACService(txRunner, sellerUserRepo, platformAdminRepo, rbacAuditRepo)
+	credentialSvc := app.NewCredentialService(txRunner, apiTokenRepo, sellerUserRepo)
 	buyerSvc := app.NewBuyerService(buyerRepo)
 
 	// Bootstrap the initial super_admin if requested via environment.
@@ -72,22 +66,20 @@ func main() {
 		bootCtx, bootCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		if tid, parseErr := uuid.Parse(cfg.BootstrapTenantID); parseErr != nil {
 			slog.Error("invalid AUTH_BOOTSTRAP_TENANT_ID, skipping bootstrap", "error", parseErr)
-		} else if bootErr := authSvc.BootstrapSuperAdmin(bootCtx, tid, cfg.BootstrapSuperAdminSub); bootErr != nil {
+		} else if bootErr := rbacSvc.BootstrapSuperAdmin(bootCtx, tid, cfg.BootstrapSuperAdminSub); bootErr != nil {
 			slog.Error("failed to bootstrap super_admin", "error", bootErr)
 		}
 		bootCancel()
 	}
 
 	// Handlers
-	tenantHandler := handler.NewTenantHandler(authSvc)
-	sellerTeamHandler := handler.NewSellerTeamHandler(authSvc)
-	apiTokenHandler := handler.NewAPITokenHandler(authSvc, cfg.APITokenPrefix)
-	sellerHandler := handler.NewSellerHandler(authSvc, sellerTeamHandler, apiTokenHandler)
-	platformAdminHandler := handler.NewPlatformAdminHandler(authSvc)
-	internalAuthzHandler := handler.NewInternalAuthzHandler(authSvc, cfg.InternalToken)
+	tenantHandler := handler.NewTenantHandler(identitySvc)
+	sellerTeamHandler := handler.NewSellerTeamHandler(rbacSvc)
+	apiTokenHandler := handler.NewAPITokenHandler(credentialSvc, cfg.APITokenPrefix)
+	sellerHandler := handler.NewSellerHandler(identitySvc, sellerTeamHandler, apiTokenHandler)
+	platformAdminHandler := handler.NewPlatformAdminHandler(rbacSvc)
+	internalAuthzHandler := handler.NewInternalAuthzHandler(rbacSvc, credentialSvc, cfg.InternalToken)
 	internalBuyerHandler := handler.NewInternalBuyerHandler(buyerSvc, cfg.InternalToken)
-	subscriptionHandler := handler.NewSubscriptionHandler(authSvc)
-	buyerSubHandler := handler.NewBuyerSubscriptionHandler(authSvc)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -123,14 +115,6 @@ func main() {
 	// Internal buyer profile upsert, called by the Next.js BFF on Auth0
 	// callback. Same shared-secret protection as /internal/authz.
 	r.Mount("/internal/buyers", internalBuyerHandler.Routes())
-
-	// Subscription plan endpoints (tenant-scoped)
-	r.Mount("/plans", subscriptionHandler.PlanRoutes())
-	r.Mount("/subscriptions", subscriptionHandler.SubscriptionRoutes())
-
-	// Buyer plan and subscription endpoints (tenant-scoped)
-	r.Mount("/buyer-plans", buyerSubHandler.BuyerPlanRoutes())
-	r.Mount("/buyer-subscriptions", buyerSubHandler.BuyerSubscriptionRoutes())
 
 	// HTTP server
 	addr := ":" + cfg.HTTPPort

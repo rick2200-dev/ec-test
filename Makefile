@@ -1,5 +1,5 @@
 .PHONY: help deps-up deps-down migrate seed proto-gen openapi-gen \
-       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart dev-inquiry dev-review \
+       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart dev-inquiry dev-review dev-subscription \
        dev-buyer dev-seller dev-admin \
        build-all lint-go test-go
 
@@ -75,6 +75,9 @@ dev-inquiry:
 dev-review:
 	cd backend/services/review && air
 
+dev-subscription:
+	cd backend/services/subscription && air
+
 # ─── Frontend ──────────────────────────────────────────────────
 dev-buyer:
 	pnpm --filter buyer dev
@@ -86,25 +89,29 @@ dev-admin:
 	pnpm --filter admin dev
 
 # ─── Build & Test ──────────────────────────────────────────────
+GO_SERVICES := gateway auth catalog inventory order search recommend notification cart inquiry review subscription
+
 build-all:
-	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry review; do \
+	@set -e; for svc in $(GO_SERVICES); do \
 		echo "Building $$svc..."; \
-		cd backend/services/$$svc && go build -o ../../../bin/$$svc ./cmd/server && cd ../../..; \
+		( cd backend/services/$$svc && go build -o ../../../bin/$$svc ./cmd/server ); \
 	done
 
 lint-go:
-	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry review; do \
+	@fail=0; for svc in $(GO_SERVICES); do \
 		echo "Linting $$svc..."; \
-		cd backend/services/$$svc && golangci-lint run ./... && cd ../../..; \
-	done
-	cd backend/pkg && golangci-lint run ./...
+		( cd backend/services/$$svc && golangci-lint run ./... ) || fail=1; \
+	done; \
+	( cd backend/pkg && golangci-lint run ./... ) || fail=1; \
+	exit $$fail
 
 test-go:
-	@for svc in gateway auth catalog inventory order search recommend notification cart inquiry review; do \
+	@fail=0; for svc in $(GO_SERVICES); do \
 		echo "Testing $$svc..."; \
-		cd backend/services/$$svc && go test ./... && cd ../../..; \
-	done
-	cd backend/pkg && go test ./...
+		( cd backend/services/$$svc && go test ./... ) || fail=1; \
+	done; \
+	( cd backend/pkg && go test ./... ) || fail=1; \
+	exit $$fail
 
 # ─── Proto & OpenAPI ──────────────────────────────────────────
 proto-gen:
