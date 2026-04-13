@@ -42,6 +42,11 @@
     "completed": "完了",
     "cancelled": "キャンセル"
   },
+  "auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "loginToReview": "ログインしてレビューを書く"
+  },
   "a11y": {
     "skipToContent": "コンテンツへスキップ",
     "mainNav": "メインナビゲーション",

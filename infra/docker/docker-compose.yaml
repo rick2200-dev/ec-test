@@ -18,10 +18,17 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification:8087
       CART_SERVICE_URL: http://cart:8088
       INQUIRY_SERVICE_URL: http://inquiry:8090
+      REVIEW_SERVICE_URL: http://review:8091
       # DB 8 is the API-token rate limiter's namespace; cart owns DB 7.
       REDIS_URL: redis://redis:6379/8
       # Must match auth service API_TOKEN_PREFIX.
       API_TOKEN_PREFIX: sk_live_
+      # Auth0 JWKS — required for buyer JWT verification. Leave the
+      # variables undefined and the gateway starts without JWT auth.
+      # Populate these in infra/docker/.env from your Auth0 tenant.
+      JWKS_URL: ${JWKS_URL:-}
+      JWT_ISSUER: ${JWT_ISSUER:-}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-}
     depends_on:
       auth:
         condition: service_healthy
@@ -45,6 +52,9 @@ services:
       DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: local-dev-secret-do-not-use-in-production
+      # Shared secret gating /internal/authz and /internal/buyers.
+      # The Next.js BFF calls the upsert endpoint using this token.
+      AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
       postgres:
         condition: service_healthy
@@ -287,6 +297,38 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  review:
+    build:
+      context: ../..
+      dockerfile: backend/services/review/Dockerfile
+    ports:
+      - "8091:8091"
+    environment:
+      HTTP_PORT: "8091"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      CATALOG_SERVICE_URL: http://catalog:8082
+      ORDER_SERVICE_URL: http://order:8083
+      CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
+      ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
+    depends_on:
+      postgres:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      order:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8091/healthz"]
       interval: 10s
       timeout: 3s
       retries: 5

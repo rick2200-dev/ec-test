@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError, createReview } from "@/lib/api";
 import { WriteReviewButtonPresenter } from "./WriteReviewButton.presenter";
@@ -17,6 +17,25 @@ export default function WriteReviewButton({
   onSuccess,
 }: WriteReviewButtonProps) {
   const t = useTranslations("reviews");
+  const tAuth = useTranslations("auth");
+  // Poll /auth/profile once on mount to decide whether to show the
+  // modal trigger or a "log in to review" link. The endpoint is mounted
+  // by the Auth0 SDK middleware and returns 200 w/ the user payload
+  // when a session cookie is present, 204/401 otherwise.
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/auth/profile", { credentials: "include" })
+      .then((res) => {
+        if (!cancelled) setLoggedIn(res.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setLoggedIn(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [ratingHover, setRatingHover] = useState<number | null>(null);
@@ -88,6 +107,24 @@ export default function WriteReviewButton({
       setSubmitting(false);
     }
   };
+
+  // Guest OR still-checking: render the login-to-review link by default.
+  // Showing the normal "write review" button while loggedIn === null would
+  // let a guest open the modal, submit, and see a generic error as the BFF
+  // returns 401. Tilting toward the login link keeps the failure mode
+  // explicit. Once the probe resolves as `true` we swap to the modal.
+  if (loggedIn !== true) {
+    const returnTo = typeof window !== "undefined" ? window.location.pathname : "/";
+    return (
+      <a
+        href={`/auth/login?returnTo=${encodeURIComponent(returnTo)}`}
+        aria-busy={loggedIn === null}
+        className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+      >
+        {tAuth("loginToReview")}
+      </a>
+    );
+  }
 
   return (
     <WriteReviewButtonPresenter

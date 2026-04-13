@@ -51,6 +51,7 @@ func main() {
 	subscriptionRepo := repository.NewSubscriptionRepository(pool)
 	buyerSubRepo := repository.NewBuyerSubscriptionRepository(pool)
 	apiTokenRepo := repository.NewAPITokenRepository(pool)
+	buyerRepo := repository.NewBuyerRepository(pool)
 
 	// Service
 	authSvc := app.NewAuthService(
@@ -64,6 +65,7 @@ func main() {
 		buyerSubRepo,
 		apiTokenRepo,
 	)
+	buyerSvc := app.NewBuyerService(buyerRepo)
 
 	// Bootstrap the initial super_admin if requested via environment.
 	if cfg.BootstrapSuperAdminSub != "" && cfg.BootstrapTenantID != "" {
@@ -83,6 +85,7 @@ func main() {
 	sellerHandler := handler.NewSellerHandler(authSvc, sellerTeamHandler, apiTokenHandler)
 	platformAdminHandler := handler.NewPlatformAdminHandler(authSvc)
 	internalAuthzHandler := handler.NewInternalAuthzHandler(authSvc, cfg.InternalToken)
+	internalBuyerHandler := handler.NewInternalBuyerHandler(buyerSvc, cfg.InternalToken)
 	subscriptionHandler := handler.NewSubscriptionHandler(authSvc)
 	buyerSubHandler := handler.NewBuyerSubscriptionHandler(authSvc)
 	healthHandler := handler.NewHealthHandler(pool)
@@ -116,6 +119,10 @@ func main() {
 	// Internal authz endpoints used by the gateway for fine-grained role
 	// lookups. Protected by a shared secret middleware.
 	r.Mount("/internal/authz", internalAuthzHandler.Routes())
+
+	// Internal buyer profile upsert, called by the Next.js BFF on Auth0
+	// callback. Same shared-secret protection as /internal/authz.
+	r.Mount("/internal/buyers", internalBuyerHandler.Routes())
 
 	// Subscription plan endpoints (tenant-scoped)
 	r.Mount("/plans", subscriptionHandler.PlanRoutes())

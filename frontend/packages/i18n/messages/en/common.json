@@ -42,6 +42,11 @@
     "completed": "Completed",
     "cancelled": "Cancelled"
   },
+  "auth": {
+    "login": "Log in",
+    "logout": "Log out",
+    "loginToReview": "Log in to write a review"
+  },
   "a11y": {
     "skipToContent": "Skip to content",
     "mainNav": "Main navigation",

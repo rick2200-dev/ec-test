@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
+import { auth0 } from "@/lib/auth0";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,6 +13,17 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const t = await getTranslations();
+  // Read the session server-side so login state SSRs without a flash of
+  // "Log in" on first paint. The SDK middleware refreshes this cookie.
+  // Wrap in try/catch because the SDK throws when Auth0 env is missing —
+  // in that case we fall back to logged-out UI rather than crash the page.
+  let user: { email?: string | null; name?: string | null } | null = null;
+  try {
+    const session = await auth0.getSession();
+    user = session?.user ?? null;
+  } catch {
+    user = null;
+  }
 
   return (
     <html lang={locale}>
@@ -69,6 +81,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/products" className="text-sm text-gray-600 hover:text-gray-900">
                     {t("nav.products")}
                   </Link>
+                  {user ? (
+                    <>
+                      <span
+                        className="max-w-[160px] truncate text-sm text-gray-700"
+                        title={user.email ?? undefined}
+                      >
+                        {user.email ?? user.name}
+                      </span>
+                      <a href="/auth/logout" className="text-sm text-gray-600 hover:text-gray-900">
+                        {t("auth.logout")}
+                      </a>
+                    </>
+                  ) : (
+                    <a href="/auth/login" className="text-sm text-gray-600 hover:text-gray-900">
+                      {t("auth.login")}
+                    </a>
+                  )}
                   {/* Notification bell */}
                   <Link
                     href="/notifications"

@@ -14,6 +14,10 @@
  * Base URL for gateway requests. Reads `NEXT_PUBLIC_API_URL` at build
  * time — Next.js inlines `NEXT_PUBLIC_*` variables when the app is
  * compiled, so this evaluates to a plain string in the final bundle.
+ *
+ * Apps that proxy through a BFF (buyer app) set this to `/api/gateway`
+ * in their `.env.local`. Apps that call the gateway directly (seller,
+ * admin) leave it at the default.
  */
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 

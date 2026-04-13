@@ -55,3 +55,7 @@ tmp/
 # Claude Code (local-only runtime files)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Playwright MCP artifacts (ad-hoc screenshots from browser verification)
+.playwright-mcp/
+buyer-review-modal.png
