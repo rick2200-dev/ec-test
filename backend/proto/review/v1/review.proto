@@ -29,48 +29,44 @@ service ReviewService {
 // Review represents a buyer's review of a product.
 message Review {
   string id = 1;
-  string tenant_id = 2;
-  string buyer_auth0_id = 3;
-  string product_id = 4;
-  string seller_id = 5;
-  string product_name = 6;
-  int32 rating = 7;
-  string title = 8;
-  string body = 9;
-  google.protobuf.Timestamp created_at = 10;
-  google.protobuf.Timestamp updated_at = 11;
-  ReviewReply reply = 12; // May be null if no reply exists
+  string buyer_auth0_id = 2;
+  string product_id = 3;
+  string seller_id = 4;
+  string product_name = 5;
+  int32 rating = 6;
+  string title = 7;
+  string body = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  ReviewReply reply = 11; // May be null if no reply exists
 }
 
 // ReviewReply represents a seller's reply to a review.
 message ReviewReply {
   string id = 1;
-  string tenant_id = 2;
-  string review_id = 3;
-  string seller_auth0_id = 4;
-  string body = 5;
-  google.protobuf.Timestamp created_at = 6;
-  google.protobuf.Timestamp updated_at = 7;
+  string review_id = 2;
+  string seller_auth0_id = 3;
+  string body = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
 }
 
 // ProductRating is the aggregate rating for a product.
 message ProductRating {
-  string tenant_id = 1;
-  string product_id = 2;
-  double average_rating = 3;
-  int32 review_count = 4;
-  google.protobuf.Timestamp updated_at = 5;
+  string product_id = 1;
+  double average_rating = 2;
+  int32 review_count = 3;
+  google.protobuf.Timestamp updated_at = 4;
 }
 
 // --- Request / Response messages ---
 
 message CreateReviewRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  string product_id = 3;
-  int32 rating = 4;
-  string title = 5;
-  string body = 6;
+  string buyer_auth0_id = 1;
+  string product_id = 2;
+  int32 rating = 3;
+  string title = 4;
+  string body = 5;
 }
 
 message CreateReviewResponse {
@@ -78,8 +74,7 @@ message CreateReviewResponse {
 }
 
 message GetReviewRequest {
-  string tenant_id = 1;
-  string review_id = 2;
+  string review_id = 1;
 }
 
 message GetReviewResponse {
@@ -87,12 +82,11 @@ message GetReviewResponse {
 }
 
 message UpdateReviewRequest {
-  string tenant_id = 1;
-  string review_id = 2;
-  string buyer_auth0_id = 3;
-  optional int32 rating = 4;
-  optional string title = 5;
-  optional string body = 6;
+  string review_id = 1;
+  string buyer_auth0_id = 2;
+  optional int32 rating = 3;
+  optional string title = 4;
+  optional string body = 5;
 }
 
 message UpdateReviewResponse {
@@ -100,17 +94,15 @@ message UpdateReviewResponse {
 }
 
 message DeleteReviewRequest {
-  string tenant_id = 1;
-  string review_id = 2;
-  string buyer_auth0_id = 3;
+  string review_id = 1;
+  string buyer_auth0_id = 2;
 }
 
 message DeleteReviewResponse {}
 
 message ListProductReviewsRequest {
-  string tenant_id = 1;
-  string product_id = 2;
-  common.v1.PaginationRequest pagination = 3;
+  string product_id = 1;
+  common.v1.PaginationRequest pagination = 2;
 }
 
 message ListProductReviewsResponse {
@@ -119,8 +111,7 @@ message ListProductReviewsResponse {
 }
 
 message GetProductRatingRequest {
-  string tenant_id = 1;
-  string product_id = 2;
+  string product_id = 1;
 }
 
 message GetProductRatingResponse {
@@ -128,9 +119,8 @@ message GetProductRatingResponse {
 }
 
 message ListSellerReviewsRequest {
-  string tenant_id = 1;
-  string seller_id = 2;
-  common.v1.PaginationRequest pagination = 3;
+  string seller_id = 1;
+  common.v1.PaginationRequest pagination = 2;
 }
 
 message ListSellerReviewsResponse {
@@ -139,11 +129,10 @@ message ListSellerReviewsResponse {
 }
 
 message CreateReplyRequest {
-  string tenant_id = 1;
-  string review_id = 2;
-  string seller_auth0_id = 3;
-  string seller_id = 4;
-  string body = 5;
+  string review_id = 1;
+  string seller_auth0_id = 2;
+  string seller_id = 3;
+  string body = 4;
 }
 
 message CreateReplyResponse {
@@ -151,11 +140,10 @@ message CreateReplyResponse {
 }
 
 message UpdateReplyRequest {
-  string tenant_id = 1;
-  string review_id = 2;
-  string seller_auth0_id = 3;
-  string seller_id = 4;
-  string body = 5;
+  string review_id = 1;
+  string seller_auth0_id = 2;
+  string seller_id = 3;
+  string body = 4;
 }
 
 message UpdateReplyResponse {
@@ -163,9 +151,8 @@ message UpdateReplyResponse {
 }
 
 message DeleteReplyRequest {
-  string tenant_id = 1;
-  string review_id = 2;
-  string seller_id = 3;
+  string review_id = 1;
+  string seller_id = 2;
 }
 
 message DeleteReplyResponse {}

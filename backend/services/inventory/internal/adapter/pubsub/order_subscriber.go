@@ -39,7 +39,7 @@ const (
 type CancellationReleaser interface {
 	ReleaseStockForOrderCancellation(
 		ctx context.Context,
-		tenantID, orderID uuid.UUID,
+		orderID uuid.UUID,
 		lines []domain.CancellationLine,
 	) error
 }
@@ -88,7 +88,6 @@ type cancelledLine struct {
 // cancellation.publishOrderCancelled.
 type orderCancelledData struct {
 	OrderID      string          `json:"order_id"`
-	TenantID     string          `json:"tenant_id"`
 	SellerID     string          `json:"seller_id"`
 	BuyerAuth0ID string          `json:"buyer_auth0_id"`
 	RequestID    string          `json:"request_id"`
@@ -102,10 +101,6 @@ func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub
 		return fmt.Errorf("decode order.cancelled data: %w", err)
 	}
 
-	tenantID, err := uuid.Parse(data.TenantID)
-	if err != nil {
-		return fmt.Errorf("invalid tenant_id %q in order.cancelled: %w", data.TenantID, err)
-	}
 	orderID, err := uuid.Parse(data.OrderID)
 	if err != nil {
 		return fmt.Errorf("invalid order_id %q in order.cancelled: %w", data.OrderID, err)
@@ -137,11 +132,10 @@ func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub
 
 	slog.Info("releasing stock for cancelled order",
 		"order_id", data.OrderID,
-		"tenant_id", data.TenantID,
 		"line_count", len(lines),
 	)
 
-	if err := s.svc.ReleaseStockForOrderCancellation(ctx, tenantID, orderID, lines); err != nil {
+	if err := s.svc.ReleaseStockForOrderCancellation(ctx, orderID, lines); err != nil {
 		return fmt.Errorf("release stock for order %s: %w", data.OrderID, err)
 	}
 	return nil

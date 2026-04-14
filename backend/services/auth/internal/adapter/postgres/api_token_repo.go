@@ -24,12 +24,12 @@ func NewAPITokenRepository(pool *pgxpool.Pool) *APITokenRepository {
 }
 
 // withTx uses the transaction from ctx if one was placed there by
-// database.WithTx, otherwise opens a new tenant-scoped transaction.
-func (r *APITokenRepository) withTx(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
+// database.WithTx, otherwise opens a new transaction.
+func (r *APITokenRepository) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return fn(tx)
 	}
-	return database.TenantTx(ctx, r.pool, tenantID, fn)
+	return database.Tx(ctx, r.pool, fn)
 }
 
 // Create inserts a new seller_api_tokens row. The caller is responsible for
@@ -42,17 +42,17 @@ func (r *APITokenRepository) Create(ctx context.Context, t *domain.SellerAPIToke
 		t.ID = uuid.New()
 	}
 	scopes := scopesToStrings(t.Scopes)
-	return r.withTx(ctx, t.TenantID, func(tx pgx.Tx) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO auth_svc.seller_api_tokens (
-			    id, tenant_id, seller_id, name,
+			    id, seller_id, name,
 			    token_prefix, token_lookup, token_hash,
 			    scopes, rate_limit_rps, rate_limit_burst,
 			    issued_by_auth0_user_id, expires_at
 			 )
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			 RETURNING created_at, updated_at`,
-			t.ID, t.TenantID, t.SellerID, t.Name,
+			t.ID, t.SellerID, t.Name,
 			t.TokenPrefix, t.TokenLookup, t.TokenHash,
 			scopes, t.RateLimitRPS, t.RateLimitBurst,
 			t.IssuedByAuth0UserID, t.ExpiresAt,
@@ -60,14 +60,14 @@ func (r *APITokenRepository) Create(ctx context.Context, t *domain.SellerAPIToke
 	})
 }
 
-// GetByID retrieves a token by its primary key within a tenant scope.
+// GetByID retrieves a token by its primary key.
 // Returns (nil, nil) if no row is found.
-func (r *APITokenRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.SellerAPIToken, error) {
+func (r *APITokenRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.SellerAPIToken, error) {
 	var out *domain.SellerAPIToken
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		t, err := scanTokenRow(tx.QueryRow(ctx, selectTokenColumns+`
 		     FROM auth_svc.seller_api_tokens
-		     WHERE id = $1 AND tenant_id = $2`, id, tenantID))
+		     WHERE id = $1`, id))
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil
@@ -86,7 +86,7 @@ func (r *APITokenRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID
 // ListBySeller returns tokens for the given seller ordered by created_at
 // (newest first), along with the total row count for pagination. Includes
 // revoked and expired rows so the dashboard can display history.
-func (r *APITokenRepository) ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
+func (r *APITokenRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -95,21 +95,21 @@ func (r *APITokenRepository) ListBySeller(ctx context.Context, tenantID, sellerI
 	}
 	var tokens []domain.SellerAPIToken
 	var total int
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
 			`SELECT COUNT(*) FROM auth_svc.seller_api_tokens
-			 WHERE tenant_id = $1 AND seller_id = $2`,
-			tenantID, sellerID,
+			 WHERE seller_id = $1`,
+			sellerID,
 		).Scan(&total); err != nil {
 			return err
 		}
 
 		rows, err := tx.Query(ctx, selectTokenColumns+`
 		     FROM auth_svc.seller_api_tokens
-		     WHERE tenant_id = $1 AND seller_id = $2
+		     WHERE seller_id = $1
 		     ORDER BY created_at DESC
-		     LIMIT $3 OFFSET $4`,
-			tenantID, sellerID, limit, offset,
+		     LIMIT $2 OFFSET $3`,
+			sellerID, limit, offset,
 		)
 		if err != nil {
 			return err
@@ -135,15 +135,15 @@ func (r *APITokenRepository) ListBySeller(ctx context.Context, tenantID, sellerI
 // revoked token is a no-op that still returns nil. When ctx carries a
 // transaction it joins that transaction (e.g. to pair an RBAC check with the
 // revoke atomically); otherwise opens its own.
-func (r *APITokenRepository) Revoke(ctx context.Context, tenantID, id uuid.UUID, actorAuth0UserID string) error {
-	return r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+func (r *APITokenRepository) Revoke(ctx context.Context, id uuid.UUID, actorAuth0UserID string) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE auth_svc.seller_api_tokens
 			 SET revoked_at = NOW(),
-			     revoked_by_auth0_user_id = $3,
+			     revoked_by_auth0_user_id = $2,
 			     updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL`,
-			id, tenantID, actorAuth0UserID,
+			 WHERE id = $1 AND revoked_at IS NULL`,
+			id, actorAuth0UserID,
 		)
 		if err != nil {
 			return fmt.Errorf("revoke api token: %w", err)
@@ -156,9 +156,9 @@ func (r *APITokenRepository) Revoke(ctx context.Context, tenantID, id uuid.UUID,
 			if err := tx.QueryRow(ctx,
 				`SELECT EXISTS(
 				    SELECT 1 FROM auth_svc.seller_api_tokens
-				    WHERE id = $1 AND tenant_id = $2
+				    WHERE id = $1
 				 )`,
-				id, tenantID,
+				id,
 			).Scan(&exists); err != nil {
 				return err
 			}
@@ -172,11 +172,7 @@ func (r *APITokenRepository) Revoke(ctx context.Context, tenantID, id uuid.UUID,
 }
 
 // GetByLookup retrieves a token by its (prefix, lookup) pair. This is the
-// gateway hot path: called on every API-token request before the tenant
-// context is known. It intentionally does NOT use TenantTx — in the
-// current single-DB-role deployment the auth service owns the table and
-// bypasses RLS (no FORCE ROW LEVEL SECURITY). See migration 000014 for
-// the hardening note if/when roles split.
+// gateway hot path: called on every API-token request.
 //
 // Returns (nil, nil) if no row is found.
 func (r *APITokenRepository) GetByLookup(ctx context.Context, prefix, lookup string) (*domain.SellerAPIToken, error) {
@@ -196,9 +192,6 @@ func (r *APITokenRepository) GetByLookup(ctx context.Context, prefix, lookup str
 // Called as a best-effort goroutine after a successful gateway lookup;
 // errors are logged but not returned because the debounce ultimately
 // lives in the gateway cache (30 s TTL).
-//
-// Like GetByLookup, this does not set app.current_tenant_id because it
-// runs outside a tenant context and relies on table-owner RLS bypass.
 func (r *APITokenRepository) TouchLastUsedAt(ctx context.Context, id uuid.UUID) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE auth_svc.seller_api_tokens
@@ -215,7 +208,7 @@ func (r *APITokenRepository) TouchLastUsedAt(ctx context.Context, id uuid.UUID) 
 // selectTokenColumns is shared by GetByID/ListBySeller/GetByLookup so the
 // column order stays in sync with scanTokenRow.
 const selectTokenColumns = `SELECT
-    id, tenant_id, seller_id, name,
+    id, seller_id, name,
     token_prefix, token_lookup, token_hash,
     scopes, rate_limit_rps, rate_limit_burst,
     issued_by_auth0_user_id, expires_at, revoked_at,
@@ -233,7 +226,7 @@ func scanTokenRow(row rowScanner) (*domain.SellerAPIToken, error) {
 	var scopes []string
 	var revokedBy *string
 	if err := row.Scan(
-		&t.ID, &t.TenantID, &t.SellerID, &t.Name,
+		&t.ID, &t.SellerID, &t.Name,
 		&t.TokenPrefix, &t.TokenLookup, &t.TokenHash,
 		&scopes, &t.RateLimitRPS, &t.RateLimitBurst,
 		&t.IssuedByAuth0UserID, &t.ExpiresAt, &t.RevokedAt,

@@ -40,7 +40,6 @@ func (p *GCPPublisher) Publish(ctx context.Context, topic string, event Event) e
 		Data: data,
 		Attributes: map[string]string{
 			"event_type": event.Type,
-			"tenant_id":  event.TenantID,
 		},
 	})
 

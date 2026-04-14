@@ -53,10 +53,9 @@ func (h *RecommendHandler) GetRecommendations(w http.ResponseWriter, r *http.Req
 	}
 
 	req := domain.RecommendRequest{
-		TenantID: tc.TenantID,
-		UserID:   tc.UserID,
-		Type:     recType,
-		Limit:    limit,
+		UserID: tc.UserID,
+		Type:   recType,
+		Limit:  limit,
 	}
 
 	if pid := r.URL.Query().Get("product_id"); pid != "" {
@@ -104,7 +103,6 @@ func (h *RecommendHandler) RecordEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event := domain.UserEvent{
-		TenantID:  tc.TenantID,
 		UserID:    tc.UserID,
 		EventType: domain.UserEventType(body.EventType),
 		ProductID: productID,

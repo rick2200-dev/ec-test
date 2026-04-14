@@ -9,7 +9,6 @@ import (
 
 // ProductFilter holds optional filters for listing products.
 type ProductFilter struct {
-	TenantID   uuid.UUID
 	SellerID   *uuid.UUID
 	Status     *ProductStatus
 	CategoryID *uuid.UUID
@@ -24,10 +23,9 @@ const (
 	StatusArchived ProductStatus = "archived"
 )
 
-// Category represents a product category within a tenant.
+// Category represents a product category.
 type Category struct {
 	ID        uuid.UUID  `json:"id"`
-	TenantID  uuid.UUID  `json:"tenant_id"`
 	ParentID  *uuid.UUID `json:"parent_id,omitempty"`
 	Name      string     `json:"name"`
 	Slug      string     `json:"slug"`
@@ -35,10 +33,9 @@ type Category struct {
 	CreatedAt time.Time  `json:"created_at"`
 }
 
-// Product represents a product listing within a tenant marketplace.
+// Product represents a product listing in the marketplace.
 type Product struct {
 	ID          uuid.UUID       `json:"id"`
-	TenantID    uuid.UUID       `json:"tenant_id"`
 	SellerID    uuid.UUID       `json:"seller_id"`
 	CategoryID  *uuid.UUID      `json:"category_id,omitempty"`
 	Name        string          `json:"name"`
@@ -54,7 +51,6 @@ type Product struct {
 // SKU represents a stock-keeping unit (variant) of a product.
 type SKU struct {
 	ID            uuid.UUID       `json:"id"`
-	TenantID      uuid.UUID       `json:"tenant_id"`
 	ProductID     uuid.UUID       `json:"product_id"`
 	SellerID      uuid.UUID       `json:"seller_id"`
 	SKUCode       string          `json:"sku_code"`

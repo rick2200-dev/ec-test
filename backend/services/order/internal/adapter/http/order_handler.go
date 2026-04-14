@@ -103,7 +103,7 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Currency:        req.Currency,
 	}
 
-	order, clientSecret, err := h.svc.CreateOrder(r.Context(), tc.TenantID, input)
+	order, clientSecret, err := h.svc.CreateOrder(r.Context(), input)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -117,12 +117,6 @@ func (h *OrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /orders/{id}.
 func (h *OrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -130,7 +124,7 @@ func (h *OrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.svc.GetOrder(r.Context(), tenantID, id)
+	order, err := h.svc.GetOrder(r.Context(), id)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -149,7 +143,7 @@ func (h *OrderHandler) ListBuyerOrders(w http.ResponseWriter, r *http.Request) {
 
 	p := pagination.FromRequest(r)
 
-	orders, total, err := h.svc.ListBuyerOrders(r.Context(), tc.TenantID, tc.UserID, p.Limit, p.Offset)
+	orders, total, err := h.svc.ListBuyerOrders(r.Context(), tc.UserID, p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -180,7 +174,7 @@ func (h *OrderHandler) ListSellerOrders(w http.ResponseWriter, r *http.Request) 
 	p := pagination.FromRequest(r)
 	status := r.URL.Query().Get("status")
 
-	orders, total, err := h.svc.ListSellerOrders(r.Context(), tc.TenantID, *tc.SellerID, status, p.Limit, p.Offset)
+	orders, total, err := h.svc.ListSellerOrders(r.Context(), *tc.SellerID, status, p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -232,7 +226,7 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.UpdateOrderStatus(r.Context(), tc.TenantID, *tc.SellerID, id, req.Status); err != nil {
+	if err := h.svc.UpdateOrderStatus(r.Context(), *tc.SellerID, id, req.Status); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

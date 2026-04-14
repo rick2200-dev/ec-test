@@ -48,13 +48,11 @@ func newSvc(eng *mockEngine, ref *mockRefresher) *RecommendService {
 // ---- GetRecommendations ----
 
 func TestGetRecommendations_Success(t *testing.T) {
-	tid := uuid.New()
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	resp, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID: tid,
-		Type:     domain.Popular,
-		Limit:    5,
+		Type:  domain.Popular,
+		Limit: 5,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -64,19 +62,7 @@ func TestGetRecommendations_Success(t *testing.T) {
 	}
 }
 
-func TestGetRecommendations_MissingTenantID(t *testing.T) {
-	svc := newSvc(&mockEngine{}, &mockRefresher{})
-
-	_, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		Type: domain.Popular,
-	})
-	if !errors.Is(err, domain.ErrMissingTenantID) {
-		t.Errorf("want ErrMissingTenantID, got %v", err)
-	}
-}
-
 func TestGetRecommendations_LimitClampedToDefault(t *testing.T) {
-	tid := uuid.New()
 	var capturedLimit int
 	eng := &mockEngine{
 		recommendFn: func(_ context.Context, req domain.RecommendRequest) (*domain.RecommendResponse, error) {
@@ -87,18 +73,16 @@ func TestGetRecommendations_LimitClampedToDefault(t *testing.T) {
 	svc := newSvc(eng, &mockRefresher{})
 
 	_, _ = svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID: tid,
-		Type:     domain.Popular,
-		Limit:    0,
+		Type:  domain.Popular,
+		Limit: 0,
 	})
 	if capturedLimit != 10 {
 		t.Errorf("limit = %d, want 10 (default)", capturedLimit)
 	}
 
 	_, _ = svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID: tid,
-		Type:     domain.Popular,
-		Limit:    -5,
+		Type:  domain.Popular,
+		Limit: -5,
 	})
 	if capturedLimit != 10 {
 		t.Errorf("limit = %d, want 10 (negative clamped)", capturedLimit)
@@ -106,7 +90,6 @@ func TestGetRecommendations_LimitClampedToDefault(t *testing.T) {
 }
 
 func TestGetRecommendations_LimitClampedToMax(t *testing.T) {
-	tid := uuid.New()
 	var capturedLimit int
 	eng := &mockEngine{
 		recommendFn: func(_ context.Context, req domain.RecommendRequest) (*domain.RecommendResponse, error) {
@@ -117,9 +100,8 @@ func TestGetRecommendations_LimitClampedToMax(t *testing.T) {
 	svc := newSvc(eng, &mockRefresher{})
 
 	_, _ = svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID: tid,
-		Type:     domain.Popular,
-		Limit:    999,
+		Type:  domain.Popular,
+		Limit: 999,
 	})
 	if capturedLimit != 100 {
 		t.Errorf("limit = %d, want 100 (max)", capturedLimit)
@@ -130,9 +112,8 @@ func TestGetRecommendations_InvalidType(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	_, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID: uuid.New(),
-		Type:     "unknown_type",
-		Limit:    10,
+		Type:  "unknown_type",
+		Limit: 10,
 	})
 	if !errors.Is(err, domain.ErrInvalidRecommendationType) {
 		t.Errorf("want ErrInvalidRecommendationType, got %v", err)
@@ -143,7 +124,6 @@ func TestGetRecommendations_SimilarMissingProductID(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	_, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID:  uuid.New(),
 		Type:      domain.Similar,
 		Limit:     10,
 		ProductID: nil,
@@ -157,7 +137,6 @@ func TestGetRecommendations_FrequentlyBoughtTogetherMissingProductID(t *testing.
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	_, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID:  uuid.New(),
 		Type:      domain.FrequentlyBoughtTogether,
 		Limit:     10,
 		ProductID: nil,
@@ -172,7 +151,6 @@ func TestGetRecommendations_SimilarWithProductID(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	_, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID:  uuid.New(),
 		Type:      domain.Similar,
 		Limit:     5,
 		ProductID: &pid,
@@ -192,9 +170,8 @@ func TestGetRecommendations_EngineError(t *testing.T) {
 	svc := newSvc(eng, &mockRefresher{})
 
 	_, err := svc.GetRecommendations(context.Background(), domain.RecommendRequest{
-		TenantID: uuid.New(),
-		Type:     domain.Popular,
-		Limit:    5,
+		Type:  domain.Popular,
+		Limit: 5,
 	})
 
 	var appErr *apperrors.AppError
@@ -212,7 +189,6 @@ func TestRecordUserEvent_Success(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-		TenantID:  uuid.New(),
 		UserID:    "auth0|u1",
 		ProductID: uuid.New(),
 		EventType: domain.ProductViewed,
@@ -222,24 +198,10 @@ func TestRecordUserEvent_Success(t *testing.T) {
 	}
 }
 
-func TestRecordUserEvent_MissingTenantID(t *testing.T) {
-	svc := newSvc(&mockEngine{}, &mockRefresher{})
-
-	err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-		UserID:    "auth0|u1",
-		ProductID: uuid.New(),
-		EventType: domain.ProductViewed,
-	})
-	if !errors.Is(err, domain.ErrMissingTenantID) {
-		t.Errorf("want ErrMissingTenantID, got %v", err)
-	}
-}
-
 func TestRecordUserEvent_MissingUserID(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-		TenantID:  uuid.New(),
 		ProductID: uuid.New(),
 		EventType: domain.ProductViewed,
 	})
@@ -252,7 +214,6 @@ func TestRecordUserEvent_MissingProductID(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-		TenantID:  uuid.New(),
 		UserID:    "auth0|u1",
 		EventType: domain.ProductViewed,
 	})
@@ -265,7 +226,6 @@ func TestRecordUserEvent_InvalidEventType(t *testing.T) {
 	svc := newSvc(&mockEngine{}, &mockRefresher{})
 
 	err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-		TenantID:  uuid.New(),
 		UserID:    "auth0|u1",
 		ProductID: uuid.New(),
 		EventType: "unknown_event",
@@ -280,7 +240,6 @@ func TestRecordUserEvent_AllValidEventTypes(t *testing.T) {
 
 	for _, et := range []domain.UserEventType{domain.ProductViewed, domain.AddedToCart, domain.Purchased} {
 		err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-			TenantID:  uuid.New(),
 			UserID:    "auth0|u1",
 			ProductID: uuid.New(),
 			EventType: et,
@@ -300,7 +259,6 @@ func TestRecordUserEvent_EngineError(t *testing.T) {
 	svc := newSvc(eng, &mockRefresher{})
 
 	err := svc.RecordUserEvent(context.Background(), domain.UserEvent{
-		TenantID:  uuid.New(),
 		UserID:    "auth0|u1",
 		ProductID: uuid.New(),
 		EventType: domain.ProductViewed,

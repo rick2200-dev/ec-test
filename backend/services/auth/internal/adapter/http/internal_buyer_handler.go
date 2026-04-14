@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
@@ -14,7 +13,7 @@ import (
 // BuyerUpsertUseCase is the driving port required by InternalBuyerHandler.
 // Kept local so the handler is not coupled to the full BuyerService struct.
 type BuyerUpsertUseCase interface {
-	UpsertBuyer(ctx context.Context, tenantID uuid.UUID, auth0Sub, email, displayName string) (*domain.Buyer, error)
+	UpsertBuyer(ctx context.Context, auth0Sub, email, displayName string) (*domain.Buyer, error)
 }
 
 // InternalBuyerHandler exposes the buyer profile upsert endpoint used by
@@ -54,10 +53,7 @@ func (h *InternalBuyerHandler) requireSharedSecret(next http.Handler) http.Handl
 }
 
 // buyerUpsertRequest is the JSON body for POST /internal/buyers/upsert.
-// tenant_id is included explicitly because the BFF knows it from env
-// (single-tenant MVP) — this keeps the handler stateless.
 type buyerUpsertRequest struct {
-	TenantID    string `json:"tenant_id"`
 	Auth0Sub    string `json:"auth0_sub"`
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name,omitempty"`
@@ -70,12 +66,7 @@ func (h *InternalBuyerHandler) Upsert(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, err)
 		return
 	}
-	tenantID, err := uuid.Parse(req.TenantID)
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid tenant_id"})
-		return
-	}
-	buyer, err := h.svc.UpsertBuyer(r.Context(), tenantID, req.Auth0Sub, req.Email, req.DisplayName)
+	buyer, err := h.svc.UpsertBuyer(r.Context(), req.Auth0Sub, req.Email, req.DisplayName)
 	if err != nil {
 		httputil.Error(w, err)
 		return

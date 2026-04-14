@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
@@ -43,7 +42,6 @@ func main() {
 	slog.Info("connected to database")
 
 	// Repositories
-	tenantRepo := repository.NewTenantRepository(pool)
 	sellerRepo := repository.NewSellerRepository(pool)
 	sellerUserRepo := repository.NewSellerUserRepository(pool)
 	platformAdminRepo := repository.NewPlatformAdminRepository(pool)
@@ -56,24 +54,21 @@ func main() {
 	// into its own deployable is a matter of dropping the constructor here
 	// and pointing the handlers at a gRPC client instead.
 	txRunner := &database.PoolTxRunner{Pool: pool}
-	identitySvc := app.NewIdentityService(txRunner, tenantRepo, sellerRepo, sellerUserRepo)
+	identitySvc := app.NewIdentityService(txRunner, sellerRepo, sellerUserRepo)
 	rbacSvc := app.NewRBACService(txRunner, sellerUserRepo, platformAdminRepo, rbacAuditRepo)
 	credentialSvc := app.NewCredentialService(txRunner, apiTokenRepo, sellerUserRepo)
 	buyerSvc := app.NewBuyerService(buyerRepo)
 
 	// Bootstrap the initial super_admin if requested via environment.
-	if cfg.BootstrapSuperAdminSub != "" && cfg.BootstrapTenantID != "" {
+	if cfg.BootstrapSuperAdminSub != "" {
 		bootCtx, bootCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		if tid, parseErr := uuid.Parse(cfg.BootstrapTenantID); parseErr != nil {
-			slog.Error("invalid AUTH_BOOTSTRAP_TENANT_ID, skipping bootstrap", "error", parseErr)
-		} else if bootErr := rbacSvc.BootstrapSuperAdmin(bootCtx, tid, cfg.BootstrapSuperAdminSub); bootErr != nil {
+		if bootErr := rbacSvc.BootstrapSuperAdmin(bootCtx, cfg.BootstrapSuperAdminSub); bootErr != nil {
 			slog.Error("failed to bootstrap super_admin", "error", bootErr)
 		}
 		bootCancel()
 	}
 
 	// Handlers
-	tenantHandler := handler.NewTenantHandler(identitySvc)
 	sellerTeamHandler := handler.NewSellerTeamHandler(rbacSvc)
 	apiTokenHandler := handler.NewAPITokenHandler(credentialSvc, cfg.APITokenPrefix)
 	sellerHandler := handler.NewSellerHandler(identitySvc, sellerTeamHandler, apiTokenHandler)
@@ -94,17 +89,14 @@ func main() {
 	r.Get("/healthz", healthHandler.Liveness)
 	r.Get("/readyz", healthHandler.Readiness)
 
-	// Tenant endpoints (no tenant context needed for CRUD on tenants themselves)
-	r.Mount("/tenants", tenantHandler.Routes())
-
-	// Seller endpoints (tenant-scoped, require JWT). Note: seller team
-	// management is nested at /sellers/{sellerID}/team via SellerHandler.
+	// Seller endpoints. Note: seller team management is nested at
+	// /sellers/{sellerID}/team via SellerHandler.
 	r.Mount("/sellers", sellerHandler.Routes())
 
-	// Platform admin management (tenant-scoped, super_admin operations).
+	// Platform admin management (super_admin operations).
 	r.Mount("/platform-admins", platformAdminHandler.Routes())
 
-	// RBAC audit log (tenant-scoped). Mounted on a separate prefix to avoid
+	// RBAC audit log. Mounted on a separate prefix to avoid
 	// conflicting with the /platform-admins subtree above.
 	r.Mount("/rbac-audit", platformAdminHandler.AuditRoutes())
 

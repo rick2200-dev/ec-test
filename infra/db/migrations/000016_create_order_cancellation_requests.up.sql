@@ -15,13 +15,9 @@
 --     partial unique index) and an operator can reconcile from the Stripe
 --     dashboard. Idempotency keys on Stripe calls are deterministic per
 --     request id so retries are safe.
---   * FORCE ROW LEVEL SECURITY is applied because this table is only ever
---     accessed through database.TenantTx (there is no webhook or bootstrap
---     code path that needs to bypass RLS).
 
 CREATE TABLE order_svc.order_cancellation_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
     order_id UUID NOT NULL REFERENCES order_svc.orders(id),
     requested_by_auth0_id VARCHAR(255) NOT NULL,
     reason TEXT NOT NULL,
@@ -42,24 +38,14 @@ CREATE UNIQUE INDEX ux_cancellation_pending_per_order
     ON order_svc.order_cancellation_requests(order_id)
     WHERE status = 'pending';
 
-CREATE INDEX idx_cancellation_requests_tenant
-    ON order_svc.order_cancellation_requests(tenant_id);
-
 CREATE INDEX idx_cancellation_requests_order
-    ON order_svc.order_cancellation_requests(tenant_id, order_id);
+    ON order_svc.order_cancellation_requests(order_id);
 
 CREATE INDEX idx_cancellation_requests_status
-    ON order_svc.order_cancellation_requests(tenant_id, status, created_at DESC);
+    ON order_svc.order_cancellation_requests(status, created_at DESC);
 
 CREATE INDEX idx_cancellation_requests_buyer
-    ON order_svc.order_cancellation_requests(tenant_id, requested_by_auth0_id, created_at DESC);
-
--- Row-Level Security
-ALTER TABLE order_svc.order_cancellation_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE order_svc.order_cancellation_requests FORCE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON order_svc.order_cancellation_requests
-    USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
+    ON order_svc.order_cancellation_requests(requested_by_auth0_id, created_at DESC);
 
 -- Denormalized cancellation fields on orders. Copied from the approved request
 -- so order detail reads don't need to join against the request table.

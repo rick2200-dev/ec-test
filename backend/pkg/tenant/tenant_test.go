@@ -11,10 +11,8 @@ import (
 )
 
 func TestWithContext_FromContext_RoundTrip(t *testing.T) {
-	tid := uuid.New()
 	sid := uuid.New()
 	tc := tenant.Context{
-		TenantID: tid,
 		SellerID: &sid,
 		UserID:   "auth0|user1",
 		Roles:    []string{"seller", "admin"},
@@ -24,9 +22,6 @@ func TestWithContext_FromContext_RoundTrip(t *testing.T) {
 	got, err := tenant.FromContext(ctx)
 	if err != nil {
 		t.Fatalf("FromContext returned error: %v", err)
-	}
-	if got.TenantID != tid {
-		t.Errorf("TenantID = %v, want %v", got.TenantID, tid)
 	}
 	if got.UserID != "auth0|user1" {
 		t.Errorf("UserID = %q, want %q", got.UserID, "auth0|user1")
@@ -41,9 +36,8 @@ func TestWithContext_FromContext_RoundTrip(t *testing.T) {
 
 func TestWithContext_NilSellerID(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|buyer1",
-		Roles:    []string{"buyer"},
+		UserID: "auth0|buyer1",
+		Roles:  []string{"buyer"},
 	}
 
 	ctx := tenant.WithContext(context.Background(), tc)
@@ -58,51 +52,24 @@ func TestWithContext_NilSellerID(t *testing.T) {
 
 func TestFromContext_EmptyContext(t *testing.T) {
 	_, err := tenant.FromContext(context.Background())
-	if !errors.Is(err, tenant.ErrNoTenantID) {
-		t.Errorf("expected ErrNoTenantID, got %v", err)
+	if !errors.Is(err, tenant.ErrNoUserID) {
+		t.Errorf("expected ErrNoUserID, got %v", err)
 	}
 }
 
 func TestFromContext_MissingUserID(t *testing.T) {
 	// We cannot inject a partial context with the unexported ctxKey type,
-	// so we verify the empty-context path returns ErrNoTenantID (covering
-	// the first guard). The user_id guard is exercised indirectly via
-	// round-trip tests that confirm WithContext/FromContext consistency.
+	// so we verify the empty-context path returns ErrNoUserID.
 	_, err := tenant.FromContext(context.Background())
-	if !errors.Is(err, tenant.ErrNoTenantID) {
-		t.Errorf("expected ErrNoTenantID, got %v", err)
-	}
-}
-
-func TestTenantID_Success(t *testing.T) {
-	tid := uuid.New()
-	tc := tenant.Context{
-		TenantID: tid,
-		UserID:   "auth0|u",
-	}
-	ctx := tenant.WithContext(context.Background(), tc)
-
-	got, err := tenant.TenantID(ctx)
-	if err != nil {
-		t.Fatalf("TenantID returned error: %v", err)
-	}
-	if got != tid {
-		t.Errorf("TenantID = %v, want %v", got, tid)
-	}
-}
-
-func TestTenantID_EmptyContext(t *testing.T) {
-	_, err := tenant.TenantID(context.Background())
-	if !errors.Is(err, tenant.ErrNoTenantID) {
-		t.Errorf("expected ErrNoTenantID, got %v", err)
+	if !errors.Is(err, tenant.ErrNoUserID) {
+		t.Errorf("expected ErrNoUserID, got %v", err)
 	}
 }
 
 func TestHasRole_Present(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|u",
-		Roles:    []string{"buyer", "admin"},
+		UserID: "auth0|u",
+		Roles:  []string{"buyer", "admin"},
 	}
 	ctx := tenant.WithContext(context.Background(), tc)
 
@@ -116,9 +83,8 @@ func TestHasRole_Present(t *testing.T) {
 
 func TestHasRole_Absent(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|u",
-		Roles:    []string{"buyer"},
+		UserID: "auth0|u",
+		Roles:  []string{"buyer"},
 	}
 	ctx := tenant.WithContext(context.Background(), tc)
 
@@ -135,9 +101,8 @@ func TestHasRole_NoRolesInContext(t *testing.T) {
 
 func TestHasRole_EmptyRoles(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|u",
-		Roles:    []string{},
+		UserID: "auth0|u",
+		Roles:  []string{},
 	}
 	ctx := tenant.WithContext(context.Background(), tc)
 
@@ -148,8 +113,7 @@ func TestHasRole_EmptyRoles(t *testing.T) {
 
 func TestFromContext_NilRoles(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|u",
+		UserID: "auth0|u",
 	}
 	ctx := tenant.WithContext(context.Background(), tc)
 	got, err := tenant.FromContext(ctx)

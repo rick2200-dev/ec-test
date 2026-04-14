@@ -23,38 +23,37 @@ func NewBuyerSubscriptionRepository(pool *pgxpool.Pool) *BuyerSubscriptionReposi
 	return &BuyerSubscriptionRepository{pool: pool}
 }
 
-func (r *BuyerSubscriptionRepository) CreateBuyerPlan(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error {
+func (r *BuyerSubscriptionRepository) CreateBuyerPlan(ctx context.Context, p *domain.BuyerPlan) error {
 	p.ID = uuid.New()
-	p.TenantID = tenantID
 
 	featuresJSON, err := json.Marshal(p.Features)
 	if err != nil {
 		return fmt.Errorf("marshal buyer plan features: %w", err)
 	}
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO subscription_svc.buyer_plans
-			 (id, tenant_id, name, slug, price_amount, price_currency, features, stripe_price_id, status)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			 (id, name, slug, price_amount, price_currency, features, stripe_price_id, status)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			 RETURNING created_at, updated_at`,
-			p.ID, p.TenantID, p.Name, p.Slug,
+			p.ID, p.Name, p.Slug,
 			p.PriceAmount, p.PriceCurrency, featuresJSON, p.StripePriceID, p.Status,
 		).Scan(&p.CreatedAt, &p.UpdatedAt)
 	})
 }
 
-func (r *BuyerSubscriptionRepository) GetBuyerPlanByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.BuyerPlan, error) {
+func (r *BuyerSubscriptionRepository) GetBuyerPlanByID(ctx context.Context, id uuid.UUID) (*domain.BuyerPlan, error) {
 	var p domain.BuyerPlan
 	var featuresJSON []byte
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, name, slug, price_amount, price_currency, features, stripe_price_id, status, created_at, updated_at
-			 FROM subscription_svc.buyer_plans WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID,
-		).Scan(&p.ID, &p.TenantID, &p.Name, &p.Slug,
+			`SELECT id, name, slug, price_amount, price_currency, features, stripe_price_id, status, created_at, updated_at
+			 FROM subscription_svc.buyer_plans WHERE id = $1`,
+			id,
+		).Scan(&p.ID, &p.Name, &p.Slug,
 			&p.PriceAmount, &p.PriceCurrency, &featuresJSON, &p.StripePriceID, &p.Status,
 			&p.CreatedAt, &p.UpdatedAt)
 		if err == pgx.ErrNoRows {
@@ -78,15 +77,14 @@ func (r *BuyerSubscriptionRepository) GetBuyerPlanByID(ctx context.Context, tena
 	return &p, nil
 }
 
-func (r *BuyerSubscriptionRepository) ListBuyerPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error) {
+func (r *BuyerSubscriptionRepository) ListBuyerPlans(ctx context.Context) ([]domain.BuyerPlan, error) {
 	var plans []domain.BuyerPlan
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, name, slug, price_amount, price_currency, features, stripe_price_id, status, created_at, updated_at
-			 FROM subscription_svc.buyer_plans WHERE tenant_id = $1 AND status = 'active'
+			`SELECT id, name, slug, price_amount, price_currency, features, stripe_price_id, status, created_at, updated_at
+			 FROM subscription_svc.buyer_plans WHERE status = 'active'
 			 ORDER BY price_amount ASC`,
-			tenantID,
 		)
 		if err != nil {
 			return err
@@ -96,7 +94,7 @@ func (r *BuyerSubscriptionRepository) ListBuyerPlans(ctx context.Context, tenant
 		for rows.Next() {
 			var p domain.BuyerPlan
 			var featuresJSON []byte
-			if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.Slug,
+			if err := rows.Scan(&p.ID, &p.Name, &p.Slug,
 				&p.PriceAmount, &p.PriceCurrency, &featuresJSON, &p.StripePriceID, &p.Status,
 				&p.CreatedAt, &p.UpdatedAt); err != nil {
 				return err
@@ -114,19 +112,19 @@ func (r *BuyerSubscriptionRepository) ListBuyerPlans(ctx context.Context, tenant
 	return plans, nil
 }
 
-func (r *BuyerSubscriptionRepository) UpdateBuyerPlan(ctx context.Context, tenantID uuid.UUID, p *domain.BuyerPlan) error {
+func (r *BuyerSubscriptionRepository) UpdateBuyerPlan(ctx context.Context, p *domain.BuyerPlan) error {
 	featuresJSON, err := json.Marshal(p.Features)
 	if err != nil {
 		return fmt.Errorf("marshal buyer plan features: %w", err)
 	}
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE subscription_svc.buyer_plans
-			 SET name = $3, slug = $4, price_amount = $5, price_currency = $6,
-			     features = $7, stripe_price_id = $8, status = $9, updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2`,
-			p.ID, tenantID, p.Name, p.Slug,
+			 SET name = $2, slug = $3, price_amount = $4, price_currency = $5,
+			     features = $6, stripe_price_id = $7, status = $8, updated_at = NOW()
+			 WHERE id = $1`,
+			p.ID, p.Name, p.Slug,
 			p.PriceAmount, p.PriceCurrency, featuresJSON, p.StripePriceID, p.Status,
 		)
 		if err != nil {
@@ -139,24 +137,24 @@ func (r *BuyerSubscriptionRepository) UpdateBuyerPlan(ctx context.Context, tenan
 	})
 }
 
-func (r *BuyerSubscriptionRepository) GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
+func (r *BuyerSubscriptionRepository) GetBuyerSubscription(ctx context.Context, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
 	var sub domain.BuyerSubscriptionWithPlan
 	var featuresJSON []byte
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT bs.id, bs.tenant_id, bs.buyer_auth0_id, bs.plan_id,
+			`SELECT bs.id, bs.buyer_auth0_id, bs.plan_id,
 			        bs.stripe_subscription_id, bs.stripe_customer_id, bs.status,
 			        bs.current_period_start, bs.current_period_end, bs.canceled_at,
 			        bs.created_at, bs.updated_at,
 			        bp.name, bp.slug, bp.features
 			 FROM subscription_svc.buyer_subscriptions bs
 			 JOIN subscription_svc.buyer_plans bp ON bp.id = bs.plan_id
-			 WHERE bs.buyer_auth0_id = $1 AND bs.tenant_id = $2`,
-			buyerAuth0ID, tenantID,
+			 WHERE bs.buyer_auth0_id = $1`,
+			buyerAuth0ID,
 		).Scan(
-			&sub.ID, &sub.TenantID, &sub.BuyerAuth0ID, &sub.PlanID,
+			&sub.ID, &sub.BuyerAuth0ID, &sub.PlanID,
 			&sub.StripeSubscriptionID, &sub.StripeCustomerID, &sub.Status,
 			&sub.CurrentPeriodStart, &sub.CurrentPeriodEnd, &sub.CanceledAt,
 			&sub.CreatedAt, &sub.UpdatedAt,
@@ -183,14 +181,14 @@ func (r *BuyerSubscriptionRepository) GetBuyerSubscription(ctx context.Context, 
 	return &sub, nil
 }
 
-func (r *BuyerSubscriptionRepository) UpsertBuyerSubscription(ctx context.Context, tenantID uuid.UUID, sub *domain.BuyerSubscription) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *BuyerSubscriptionRepository) UpsertBuyerSubscription(ctx context.Context, sub *domain.BuyerSubscription) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO subscription_svc.buyer_subscriptions
-			 (id, tenant_id, buyer_auth0_id, plan_id, stripe_subscription_id, stripe_customer_id, status,
+			 (id, buyer_auth0_id, plan_id, stripe_subscription_id, stripe_customer_id, status,
 			  current_period_start, current_period_end, canceled_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			 ON CONFLICT (tenant_id, buyer_auth0_id)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			 ON CONFLICT (buyer_auth0_id)
 			 DO UPDATE SET plan_id = EXCLUDED.plan_id,
 			              stripe_subscription_id = EXCLUDED.stripe_subscription_id,
 			              stripe_customer_id = EXCLUDED.stripe_customer_id,
@@ -200,7 +198,7 @@ func (r *BuyerSubscriptionRepository) UpsertBuyerSubscription(ctx context.Contex
 			              canceled_at = EXCLUDED.canceled_at,
 			              updated_at = NOW()
 			 RETURNING created_at, updated_at`,
-			sub.ID, tenantID, sub.BuyerAuth0ID, sub.PlanID,
+			sub.ID, sub.BuyerAuth0ID, sub.PlanID,
 			sub.StripeSubscriptionID, sub.StripeCustomerID, sub.Status,
 			sub.CurrentPeriodStart, sub.CurrentPeriodEnd, sub.CanceledAt,
 		).Scan(&sub.CreatedAt, &sub.UpdatedAt)

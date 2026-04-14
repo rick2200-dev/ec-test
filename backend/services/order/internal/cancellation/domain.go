@@ -35,7 +35,6 @@ const (
 // request per order is in the `pending` state at any given moment.
 type CancellationRequest struct {
 	ID                  uuid.UUID  `json:"id"`
-	TenantID            uuid.UUID  `json:"tenant_id"`
 	OrderID             uuid.UUID  `json:"order_id"`
 	RequestedByAuth0ID  string     `json:"requested_by_auth0_id"`
 	Reason              string     `json:"reason"`

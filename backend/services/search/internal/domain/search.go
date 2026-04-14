@@ -5,7 +5,6 @@ import "github.com/google/uuid"
 // SearchRequest represents a product search query.
 type SearchRequest struct {
 	Query      string     `json:"q"`
-	TenantID   uuid.UUID  `json:"tenant_id"`
 	SellerID   *uuid.UUID `json:"seller_id,omitempty"`
 	CategoryID *uuid.UUID `json:"category_id,omitempty"`
 	MinPrice   *float64   `json:"min_price,omitempty"`
@@ -28,7 +27,6 @@ type SearchResult struct {
 // ProductHit represents a single product in search results.
 type ProductHit struct {
 	ID            uuid.UUID `json:"id"`
-	TenantID      uuid.UUID `json:"tenant_id"`
 	SellerID      uuid.UUID `json:"seller_id"`
 	Name          string    `json:"name"`
 	Slug          string    `json:"slug"`
@@ -58,7 +56,6 @@ type FacetValue struct {
 // ProductEvent represents a product event received from Pub/Sub.
 type ProductEvent struct {
 	ID          uuid.UUID `json:"id"`
-	TenantID    uuid.UUID `json:"tenant_id"`
 	SellerID    uuid.UUID `json:"seller_id"`
 	Name        string    `json:"name"`
 	Slug        string    `json:"slug"`

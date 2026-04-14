@@ -21,20 +21,18 @@ service InventoryService {
 
 message InventoryItem {
   string id = 1;
-  string tenant_id = 2;
-  string sku_id = 3;
-  string seller_id = 4;
-  int32 quantity_available = 5;
-  int32 quantity_reserved = 6;
-  int32 low_stock_threshold = 7;
-  google.protobuf.Timestamp updated_at = 8;
+  string sku_id = 2;
+  string seller_id = 3;
+  int32 quantity_available = 4;
+  int32 quantity_reserved = 5;
+  int32 low_stock_threshold = 6;
+  google.protobuf.Timestamp updated_at = 7;
 }
 
 // ─── GetInventory ────────────────────────────────────────────
 
 message GetInventoryRequest {
-  string tenant_id = 1;
-  string sku_id = 2;
+  string sku_id = 1;
 }
 
 message GetInventoryResponse {
@@ -44,9 +42,8 @@ message GetInventoryResponse {
 // ─── ListInventory ───────────────────────────────────────────
 
 message ListInventoryRequest {
-  string tenant_id = 1;
-  string seller_id = 2;
-  common.v1.PaginationRequest pagination = 3;
+  string seller_id = 1;
+  common.v1.PaginationRequest pagination = 2;
 }
 
 message ListInventoryResponse {
@@ -57,11 +54,10 @@ message ListInventoryResponse {
 // ─── UpdateStock ─────────────────────────────────────────────
 
 message UpdateStockRequest {
-  string tenant_id = 1;
-  string sku_id = 2;
-  string seller_id = 3;
-  int32 quantity = 4;
-  int32 low_stock_threshold = 5;
+  string sku_id = 1;
+  string seller_id = 2;
+  int32 quantity = 3;
+  int32 low_stock_threshold = 4;
 }
 
 message UpdateStockResponse {
@@ -71,9 +67,8 @@ message UpdateStockResponse {
 // ─── ReserveStock ────────────────────────────────────────────
 
 message ReserveStockRequest {
-  string tenant_id = 1;
-  string sku_id = 2;
-  int32 quantity = 3;
+  string sku_id = 1;
+  int32 quantity = 2;
 }
 
 message ReserveStockResponse {
@@ -84,9 +79,8 @@ message ReserveStockResponse {
 // ─── ReleaseStock ────────────────────────────────────────────
 
 message ReleaseStockRequest {
-  string tenant_id = 1;
-  string sku_id = 2;
-  int32 quantity = 3;
+  string sku_id = 1;
+  int32 quantity = 2;
 }
 
 message ReleaseStockResponse {
@@ -96,9 +90,8 @@ message ReleaseStockResponse {
 // ─── ConfirmSold ─────────────────────────────────────────────
 
 message ConfirmSoldRequest {
-  string tenant_id = 1;
-  string sku_id = 2;
-  int32 quantity = 3;
+  string sku_id = 1;
+  int32 quantity = 2;
 }
 
 message ConfirmSoldResponse {

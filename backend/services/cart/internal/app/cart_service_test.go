@@ -29,7 +29,7 @@ type mockCartStore struct {
 	deleteCalls int
 }
 
-func (m *mockCartStore) Get(_ context.Context, _ uuid.UUID, _ string) (*domain.Cart, error) {
+func (m *mockCartStore) Get(_ context.Context, _ string) (*domain.Cart, error) {
 	return m.cart, m.getErr
 }
 
@@ -38,7 +38,7 @@ func (m *mockCartStore) Save(_ context.Context, cart *domain.Cart) error {
 	return m.saveErr
 }
 
-func (m *mockCartStore) Delete(_ context.Context, _ uuid.UUID, _ string) error {
+func (m *mockCartStore) Delete(_ context.Context, _ string) error {
 	m.deleteCalls++
 	return m.deleteErr
 }
@@ -49,7 +49,7 @@ type mockSKULookupClient struct {
 	err error
 }
 
-func (m *mockSKULookupClient) LookupSKU(_ context.Context, _, _ uuid.UUID) (*port.SKULookup, error) {
+func (m *mockSKULookupClient) LookupSKU(_ context.Context, _ uuid.UUID) (*port.SKULookup, error) {
 	return m.sku, m.err
 }
 
@@ -61,7 +61,7 @@ type mockCheckoutClient struct {
 	calledWith *domain.CheckoutInput
 }
 
-func (m *mockCheckoutClient) CreateCheckout(_ context.Context, _ uuid.UUID, in domain.CheckoutInput) (*domain.CheckoutResult, error) {
+func (m *mockCheckoutClient) CreateCheckout(_ context.Context, in domain.CheckoutInput) (*domain.CheckoutResult, error) {
 	m.calledWith = &in
 	return m.result, m.err
 }
@@ -75,7 +75,6 @@ func newService(store *mockCartStore, catalog *mockSKULookupClient, order *mockC
 }
 
 var (
-	testTenantID    = uuid.New()
 	testBuyerID     = "auth0|buyer-001"
 	testSKUID       = uuid.New()
 	testSellerID    = uuid.New()
@@ -85,7 +84,6 @@ var (
 
 func newTestCart(items ...domain.CartItem) *domain.Cart {
 	return &domain.Cart{
-		TenantID:     testTenantID,
 		BuyerAuth0ID: testBuyerID,
 		Items:        items,
 		UpdatedAt:    time.Now().UTC(),
@@ -114,7 +112,7 @@ func TestGetCart_ReturnsExistingCart(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.GetCart(context.Background(), testTenantID, testBuyerID)
+	cart, err := svc.GetCart(context.Background(), testBuyerID)
 	if err != nil {
 		t.Fatalf("GetCart() error = %v, want nil", err)
 	}
@@ -130,15 +128,12 @@ func TestGetCart_ReturnsEmptyCartWhenNil(t *testing.T) {
 	store := &mockCartStore{cart: nil}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.GetCart(context.Background(), testTenantID, testBuyerID)
+	cart, err := svc.GetCart(context.Background(), testBuyerID)
 	if err != nil {
 		t.Fatalf("GetCart() error = %v, want nil", err)
 	}
 	if cart == nil {
 		t.Fatal("GetCart() returned nil, want empty cart")
-	}
-	if cart.TenantID != testTenantID {
-		t.Errorf("TenantID = %v, want %v", cart.TenantID, testTenantID)
 	}
 	if cart.BuyerAuth0ID != testBuyerID {
 		t.Errorf("BuyerAuth0ID = %q, want %q", cart.BuyerAuth0ID, testBuyerID)
@@ -152,7 +147,7 @@ func TestGetCart_RepoError(t *testing.T) {
 	store := &mockCartStore{getErr: errors.New("redis down")}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.GetCart(context.Background(), testTenantID, testBuyerID)
+	_, err := svc.GetCart(context.Background(), testBuyerID)
 	if err == nil {
 		t.Fatal("GetCart() error = nil, want error")
 	}
@@ -181,7 +176,7 @@ func TestAddItem_NewSKU_CallsLookupAndSaves(t *testing.T) {
 	}
 	svc := newService(store, catalog, nil)
 
-	cart, err := svc.AddItem(context.Background(), testTenantID, testBuyerID, skuID, 3)
+	cart, err := svc.AddItem(context.Background(), testBuyerID, skuID, 3)
 	if err != nil {
 		t.Fatalf("AddItem() error = %v, want nil", err)
 	}
@@ -223,7 +218,7 @@ func TestAddItem_ExistingSKU_IncrementsQuantity(t *testing.T) {
 	catalog := &mockSKULookupClient{err: errors.New("should not be called")}
 	svc := newService(store, catalog, nil)
 
-	cart, err := svc.AddItem(context.Background(), testTenantID, testBuyerID, skuID, 5)
+	cart, err := svc.AddItem(context.Background(), testBuyerID, skuID, 5)
 	if err != nil {
 		t.Fatalf("AddItem() error = %v, want nil", err)
 	}
@@ -238,7 +233,7 @@ func TestAddItem_ExistingSKU_IncrementsQuantity(t *testing.T) {
 func TestAddItem_InvalidQuantity_Zero(t *testing.T) {
 	svc := newService(&mockCartStore{}, nil, nil)
 
-	_, err := svc.AddItem(context.Background(), testTenantID, testBuyerID, testSKUID, 0)
+	_, err := svc.AddItem(context.Background(), testBuyerID, testSKUID, 0)
 	if !errors.Is(err, domain.ErrInvalidQuantity) {
 		t.Errorf("AddItem(qty=0) error = %v, want %v", err, domain.ErrInvalidQuantity)
 	}
@@ -247,7 +242,7 @@ func TestAddItem_InvalidQuantity_Zero(t *testing.T) {
 func TestAddItem_InvalidQuantity_Negative(t *testing.T) {
 	svc := newService(&mockCartStore{}, nil, nil)
 
-	_, err := svc.AddItem(context.Background(), testTenantID, testBuyerID, testSKUID, -1)
+	_, err := svc.AddItem(context.Background(), testBuyerID, testSKUID, -1)
 	if !errors.Is(err, domain.ErrInvalidQuantity) {
 		t.Errorf("AddItem(qty=-1) error = %v, want %v", err, domain.ErrInvalidQuantity)
 	}
@@ -258,7 +253,7 @@ func TestAddItem_LookupError(t *testing.T) {
 	catalog := &mockSKULookupClient{err: errors.New("catalog unavailable")}
 	svc := newService(store, catalog, nil)
 
-	_, err := svc.AddItem(context.Background(), testTenantID, testBuyerID, uuid.New(), 1)
+	_, err := svc.AddItem(context.Background(), testBuyerID, uuid.New(), 1)
 	if err == nil {
 		t.Fatal("AddItem() error = nil, want error from catalog")
 	}
@@ -280,7 +275,7 @@ func TestAddItem_SaveError(t *testing.T) {
 	}
 	svc := newService(store, catalog, nil)
 
-	_, err := svc.AddItem(context.Background(), testTenantID, testBuyerID, skuID, 1)
+	_, err := svc.AddItem(context.Background(), testBuyerID, skuID, 1)
 	if err == nil {
 		t.Fatal("AddItem() error = nil, want save error")
 	}
@@ -296,7 +291,7 @@ func TestUpdateItemQuantity_Success(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.UpdateItemQuantity(context.Background(), testTenantID, testBuyerID, skuID, 10)
+	cart, err := svc.UpdateItemQuantity(context.Background(), testBuyerID, skuID, 10)
 	if err != nil {
 		t.Fatalf("UpdateItemQuantity() error = %v, want nil", err)
 	}
@@ -311,7 +306,7 @@ func TestUpdateItemQuantity_Success(t *testing.T) {
 func TestUpdateItemQuantity_NegativeQuantity(t *testing.T) {
 	svc := newService(&mockCartStore{}, nil, nil)
 
-	_, err := svc.UpdateItemQuantity(context.Background(), testTenantID, testBuyerID, testSKUID, -1)
+	_, err := svc.UpdateItemQuantity(context.Background(), testBuyerID, testSKUID, -1)
 	if !errors.Is(err, domain.ErrNonNegativeQuantity) {
 		t.Errorf("UpdateItemQuantity(qty=-1) error = %v, want %v", err, domain.ErrNonNegativeQuantity)
 	}
@@ -327,7 +322,7 @@ func TestUpdateItemQuantity_ZeroDelegatesToRemoveItem(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.UpdateItemQuantity(context.Background(), testTenantID, testBuyerID, skuID, 0)
+	cart, err := svc.UpdateItemQuantity(context.Background(), testBuyerID, skuID, 0)
 	if err != nil {
 		t.Fatalf("UpdateItemQuantity(qty=0) error = %v, want nil", err)
 	}
@@ -346,7 +341,7 @@ func TestUpdateItemQuantity_SKUNotInCart(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.UpdateItemQuantity(context.Background(), testTenantID, testBuyerID, uuid.New(), 5)
+	_, err := svc.UpdateItemQuantity(context.Background(), testBuyerID, uuid.New(), 5)
 	if !errors.Is(err, domain.ErrSKUNotInCart) {
 		t.Errorf("UpdateItemQuantity(missing SKU) error = %v, want %v", err, domain.ErrSKUNotInCart)
 	}
@@ -366,7 +361,7 @@ func TestRemoveItem_ExistingSKU(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.RemoveItem(context.Background(), testTenantID, testBuyerID, skuID)
+	cart, err := svc.RemoveItem(context.Background(), testBuyerID, skuID)
 	if err != nil {
 		t.Fatalf("RemoveItem() error = %v, want nil", err)
 	}
@@ -387,7 +382,7 @@ func TestRemoveItem_NonExistentSKU_NoOp(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.RemoveItem(context.Background(), testTenantID, testBuyerID, uuid.New())
+	cart, err := svc.RemoveItem(context.Background(), testBuyerID, uuid.New())
 	if err != nil {
 		t.Fatalf("RemoveItem(non-existent) error = %v, want nil", err)
 	}
@@ -407,15 +402,12 @@ func TestClearCart_Success(t *testing.T) {
 	store := &mockCartStore{}
 	svc := newService(store, nil, nil)
 
-	cart, err := svc.ClearCart(context.Background(), testTenantID, testBuyerID)
+	cart, err := svc.ClearCart(context.Background(), testBuyerID)
 	if err != nil {
 		t.Fatalf("ClearCart() error = %v, want nil", err)
 	}
 	if store.deleteCalls != 1 {
 		t.Errorf("Delete called %d times, want 1", store.deleteCalls)
-	}
-	if cart.TenantID != testTenantID {
-		t.Errorf("TenantID = %v, want %v", cart.TenantID, testTenantID)
 	}
 	if cart.BuyerAuth0ID != testBuyerID {
 		t.Errorf("BuyerAuth0ID = %q, want %q", cart.BuyerAuth0ID, testBuyerID)
@@ -429,7 +421,7 @@ func TestClearCart_DeleteError(t *testing.T) {
 	store := &mockCartStore{deleteErr: errors.New("redis down")}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.ClearCart(context.Background(), testTenantID, testBuyerID)
+	_, err := svc.ClearCart(context.Background(), testBuyerID)
 	if err == nil {
 		t.Fatal("ClearCart() error = nil, want error")
 	}
@@ -464,7 +456,7 @@ func TestCheckout_Success(t *testing.T) {
 	svc := newService(store, nil, orderClient)
 
 	shippingAddr := json.RawMessage(`{"city":"Tokyo"}`)
-	result, err := svc.Checkout(context.Background(), testTenantID, testBuyerID, shippingAddr, "jpy")
+	result, err := svc.Checkout(context.Background(), testBuyerID, shippingAddr, "jpy")
 	if err != nil {
 		t.Fatalf("Checkout() error = %v, want nil", err)
 	}
@@ -508,7 +500,7 @@ func TestCheckout_EmptyCart(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.Checkout(context.Background(), testTenantID, testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
 	if !errors.Is(err, domain.ErrEmptyCart) {
 		t.Errorf("Checkout(empty cart) error = %v, want %v", err, domain.ErrEmptyCart)
 	}
@@ -518,7 +510,7 @@ func TestCheckout_NilCart(t *testing.T) {
 	store := &mockCartStore{cart: nil}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.Checkout(context.Background(), testTenantID, testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
 	if !errors.Is(err, domain.ErrEmptyCart) {
 		t.Errorf("Checkout(nil cart) error = %v, want %v", err, domain.ErrEmptyCart)
 	}
@@ -530,7 +522,7 @@ func TestCheckout_OrderServiceError(t *testing.T) {
 	orderClient := &mockCheckoutClient{err: errors.New("order service unavailable")}
 	svc := newService(store, nil, orderClient)
 
-	_, err := svc.Checkout(context.Background(), testTenantID, testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
 	if err == nil {
 		t.Fatal("Checkout() error = nil, want error from order service")
 	}
@@ -544,7 +536,7 @@ func TestCheckout_RepoGetError(t *testing.T) {
 	store := &mockCartStore{getErr: errors.New("redis read failed")}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.Checkout(context.Background(), testTenantID, testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
 	if err == nil {
 		t.Fatal("Checkout() error = nil, want error from repo")
 	}
@@ -566,7 +558,7 @@ func TestCheckout_DefaultCurrency(t *testing.T) {
 	svc := newService(store, nil, orderClient)
 
 	// Pass empty currency -- service should pick from cart item.
-	_, err := svc.Checkout(context.Background(), testTenantID, testBuyerID, nil, "")
+	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "")
 	if err != nil {
 		t.Fatalf("Checkout() error = %v, want nil", err)
 	}

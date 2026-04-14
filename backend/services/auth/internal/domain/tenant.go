@@ -7,25 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// TenantStatus represents the lifecycle state of a tenant.
-type TenantStatus string
-
-const (
-	TenantStatusActive   TenantStatus = "active"
-	TenantStatusInactive TenantStatus = "inactive"
-)
-
-// Tenant represents a marketplace platform instance.
-type Tenant struct {
-	ID        uuid.UUID       `json:"id"`
-	Name      string          `json:"name"`
-	Slug      string          `json:"slug"`
-	Status    TenantStatus    `json:"status"`
-	Settings  json.RawMessage `json:"settings,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-}
-
 // SellerStatus represents the lifecycle state of a seller.
 type SellerStatus string
 
@@ -36,10 +17,9 @@ const (
 	SellerStatusSuspended SellerStatus = "suspended"
 )
 
-// Seller represents a seller within a tenant marketplace.
+// Seller represents a seller on the marketplace.
 type Seller struct {
 	ID                uuid.UUID       `json:"id"`
-	TenantID          uuid.UUID       `json:"tenant_id"`
 	Auth0OrgID        string          `json:"auth0_org_id"`
 	Name              string          `json:"name"`
 	Slug              string          `json:"slug"`
@@ -63,7 +43,6 @@ const (
 // SellerUser represents a user belonging to a seller organization.
 type SellerUser struct {
 	ID          uuid.UUID      `json:"id"`
-	TenantID    uuid.UUID      `json:"tenant_id"`
 	SellerID    uuid.UUID      `json:"seller_id"`
 	Auth0UserID string         `json:"auth0_user_id"`
 	Role        SellerUserRole `json:"role"`

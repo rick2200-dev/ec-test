@@ -11,24 +11,19 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
 )
 
-// --- claimsToTenantContext (internal function) ---
+// --- claimsToContext (internal function) ---
 
-func TestClaimsToTenantContext_FullClaims(t *testing.T) {
-	tid := uuid.New()
+func TestClaimsToContext_FullClaims(t *testing.T) {
 	sid := uuid.New()
 	claims := map[string]any{
-		claimsNamespace + "/tenant_id": tid.String(),
 		"sub":                          "auth0|user1",
 		claimsNamespace + "/seller_id": sid.String(),
 		claimsNamespace + "/roles":     []any{"seller", "admin"},
 	}
 
-	tc, err := claimsToTenantContext(claims)
+	tc, err := claimsToContext(claims)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-	if tc.TenantID != tid {
-		t.Errorf("TenantID = %v, want %v", tc.TenantID, tid)
 	}
 	if tc.UserID != "auth0|user1" {
 		t.Errorf("UserID = %q, want %q", tc.UserID, "auth0|user1")
@@ -41,14 +36,12 @@ func TestClaimsToTenantContext_FullClaims(t *testing.T) {
 	}
 }
 
-func TestClaimsToTenantContext_MinimalClaims(t *testing.T) {
-	tid := uuid.New()
+func TestClaimsToContext_MinimalClaims(t *testing.T) {
 	claims := map[string]any{
-		claimsNamespace + "/tenant_id": tid.String(),
-		"sub":                          "auth0|buyer1",
+		"sub": "auth0|buyer1",
 	}
 
-	tc, err := claimsToTenantContext(claims)
+	tc, err := claimsToContext(claims)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,44 +53,20 @@ func TestClaimsToTenantContext_MinimalClaims(t *testing.T) {
 	}
 }
 
-func TestClaimsToTenantContext_MissingTenantID(t *testing.T) {
-	claims := map[string]any{
-		"sub": "auth0|user1",
-	}
-	_, err := claimsToTenantContext(claims)
-	if err == nil {
-		t.Fatal("expected error for missing tenant_id")
-	}
-}
-
-func TestClaimsToTenantContext_InvalidTenantID(t *testing.T) {
-	claims := map[string]any{
-		claimsNamespace + "/tenant_id": "not-a-uuid",
-		"sub":                          "auth0|user1",
-	}
-	_, err := claimsToTenantContext(claims)
-	if err == nil {
-		t.Fatal("expected error for invalid tenant_id")
-	}
-}
-
-func TestClaimsToTenantContext_MissingSub(t *testing.T) {
-	claims := map[string]any{
-		claimsNamespace + "/tenant_id": uuid.New().String(),
-	}
-	_, err := claimsToTenantContext(claims)
+func TestClaimsToContext_MissingSub(t *testing.T) {
+	claims := map[string]any{}
+	_, err := claimsToContext(claims)
 	if err == nil {
 		t.Fatal("expected error for missing sub")
 	}
 }
 
-func TestClaimsToTenantContext_InvalidSellerID(t *testing.T) {
+func TestClaimsToContext_InvalidSellerID(t *testing.T) {
 	claims := map[string]any{
-		claimsNamespace + "/tenant_id": uuid.New().String(),
 		"sub":                          "auth0|user1",
 		claimsNamespace + "/seller_id": "bad-uuid",
 	}
-	tc, err := claimsToTenantContext(claims)
+	tc, err := claimsToContext(claims)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -107,13 +76,12 @@ func TestClaimsToTenantContext_InvalidSellerID(t *testing.T) {
 	}
 }
 
-func TestClaimsToTenantContext_EmptySellerID(t *testing.T) {
+func TestClaimsToContext_EmptySellerID(t *testing.T) {
 	claims := map[string]any{
-		claimsNamespace + "/tenant_id": uuid.New().String(),
 		"sub":                          "auth0|user1",
 		claimsNamespace + "/seller_id": "",
 	}
-	tc, err := claimsToTenantContext(claims)
+	tc, err := claimsToContext(claims)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -122,13 +90,12 @@ func TestClaimsToTenantContext_EmptySellerID(t *testing.T) {
 	}
 }
 
-func TestClaimsToTenantContext_NonStringRoles(t *testing.T) {
+func TestClaimsToContext_NonStringRoles(t *testing.T) {
 	claims := map[string]any{
-		claimsNamespace + "/tenant_id": uuid.New().String(),
-		"sub":                          "auth0|user1",
-		claimsNamespace + "/roles":     []any{"seller", 42, true},
+		"sub":                      "auth0|user1",
+		claimsNamespace + "/roles": []any{"seller", 42, true},
 	}
-	tc, err := claimsToTenantContext(claims)
+	tc, err := claimsToContext(claims)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -142,9 +109,8 @@ func TestClaimsToTenantContext_NonStringRoles(t *testing.T) {
 
 func TestRequireRole_Allowed(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|u",
-		Roles:    []string{"admin"},
+		UserID: "auth0|u",
+		Roles:  []string{"admin"},
 	}
 	ctx := tenant.WithContext(context.Background(), tc)
 
@@ -170,9 +136,8 @@ func TestRequireRole_Allowed(t *testing.T) {
 
 func TestRequireRole_Forbidden(t *testing.T) {
 	tc := tenant.Context{
-		TenantID: uuid.New(),
-		UserID:   "auth0|u",
-		Roles:    []string{"buyer"},
+		UserID: "auth0|u",
+		Roles:  []string{"buyer"},
 	}
 	ctx := tenant.WithContext(context.Background(), tc)
 

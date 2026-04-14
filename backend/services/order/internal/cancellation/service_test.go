@@ -26,7 +26,7 @@ type fakeOrderReader struct {
 	calls int
 }
 
-func (f *fakeOrderReader) GetByID(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error) {
+func (f *fakeOrderReader) GetByID(ctx context.Context, orderID uuid.UUID) (*domain.OrderWithLines, error) {
 	f.calls++
 	return f.order, f.err
 }
@@ -38,7 +38,7 @@ type fakePayoutReader struct {
 	err     error
 }
 
-func (f *fakePayoutReader) ListByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) ([]domain.Payout, error) {
+func (f *fakePayoutReader) ListByOrderID(ctx context.Context, orderID uuid.UUID) ([]domain.Payout, error) {
 	return f.payouts, f.err
 }
 
@@ -97,12 +97,12 @@ func (s *fakeStripeClient) ReverseTransfer(transferID string, amount int64, idem
 // used by Service. The individual hook fields let each test supply its
 // own behavior for the one or two methods it actually exercises.
 type fakeRequestsStore struct {
-	createFn       func(ctx context.Context, tenantID uuid.UUID, req *CancellationRequest) error
-	getByIDFn      func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error)
-	listByStatusFn func(ctx context.Context, tenantID, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error)
-	rejectFn       func(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error)
-	markFailedFn   func(ctx context.Context, tenantID, requestID uuid.UUID, failureReason string) error
-	approveTxFn    func(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
+	createFn       func(ctx context.Context, req *CancellationRequest) error
+	getByIDFn      func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error)
+	listByStatusFn func(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error)
+	rejectFn       func(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error)
+	markFailedFn   func(ctx context.Context, requestID uuid.UUID, failureReason string) error
+	approveTxFn    func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
 
 	// Call capture for assertions.
 	markFailedCalls   int
@@ -112,59 +112,58 @@ type fakeRequestsStore struct {
 	listByStatusCalls int
 }
 
-func (f *fakeRequestsStore) Create(ctx context.Context, tenantID uuid.UUID, req *CancellationRequest) error {
+func (f *fakeRequestsStore) Create(ctx context.Context, req *CancellationRequest) error {
 	if f.createFn != nil {
-		return f.createFn(ctx, tenantID, req)
+		return f.createFn(ctx, req)
 	}
 	// Default: stamp plausible values so the happy path can assert.
 	req.ID = uuid.New()
-	req.TenantID = tenantID
 	req.Status = StatusPending
 	req.CreatedAt = time.Now().UTC()
 	req.UpdatedAt = req.CreatedAt
 	return nil
 }
 
-func (f *fakeRequestsStore) GetByID(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+func (f *fakeRequestsStore) GetByID(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 	if f.getByIDFn != nil {
-		return f.getByIDFn(ctx, tenantID, requestID)
+		return f.getByIDFn(ctx, requestID)
 	}
 	return nil, nil
 }
 
-func (f *fakeRequestsStore) GetLatestByOrder(ctx context.Context, tenantID, orderID uuid.UUID) (*CancellationRequest, error) {
+func (f *fakeRequestsStore) GetLatestByOrder(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error) {
 	return nil, nil
 }
 
-func (f *fakeRequestsStore) ListByStatus(ctx context.Context, tenantID, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error) {
+func (f *fakeRequestsStore) ListByStatus(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error) {
 	f.listByStatusCalls++
 	f.lastListSellerID = sellerID
 	if f.listByStatusFn != nil {
-		return f.listByStatusFn(ctx, tenantID, sellerID, status, limit, offset)
+		return f.listByStatusFn(ctx, sellerID, status, limit, offset)
 	}
 	return nil, 0, nil
 }
 
-func (f *fakeRequestsStore) Reject(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
+func (f *fakeRequestsStore) Reject(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
 	if f.rejectFn != nil {
-		return f.rejectFn(ctx, tenantID, requestID, sellerID, comment)
+		return f.rejectFn(ctx, requestID, sellerID, comment)
 	}
 	return nil, errors.New("reject not configured")
 }
 
-func (f *fakeRequestsStore) MarkFailed(ctx context.Context, tenantID, requestID uuid.UUID, failureReason string) error {
+func (f *fakeRequestsStore) MarkFailed(ctx context.Context, requestID uuid.UUID, failureReason string) error {
 	f.markFailedCalls++
 	f.lastFailedReason = failureReason
 	if f.markFailedFn != nil {
-		return f.markFailedFn(ctx, tenantID, requestID, failureReason)
+		return f.markFailedFn(ctx, requestID, failureReason)
 	}
 	return nil
 }
 
-func (f *fakeRequestsStore) ApproveTx(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
+func (f *fakeRequestsStore) ApproveTx(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
 	f.approveTxInputs = append(f.approveTxInputs, in)
 	if f.approveTxFn != nil {
-		return f.approveTxFn(ctx, tenantID, in)
+		return f.approveTxFn(ctx, in)
 	}
 	return nil, nil, errors.New("approveTx not configured")
 }
@@ -179,7 +178,6 @@ const (
 )
 
 var (
-	testTenantID  = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	testOrderID   = uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	testSellerID  = uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	testRequestID = uuid.MustParse("44444444-4444-4444-4444-444444444444")
@@ -190,7 +188,6 @@ func buildTestOrder(status string) *domain.OrderWithLines {
 	return &domain.OrderWithLines{
 		Order: domain.Order{
 			ID:                    testOrderID,
-			TenantID:              testTenantID,
 			SellerID:              testSellerID,
 			BuyerAuth0ID:          testBuyerAuth0ID,
 			Status:                status,
@@ -201,7 +198,6 @@ func buildTestOrder(status string) *domain.OrderWithLines {
 		Lines: []domain.OrderLine{
 			{
 				ID:          uuid.New(),
-				TenantID:    testTenantID,
 				OrderID:     testOrderID,
 				SKUID:       uuid.New(),
 				ProductID:   uuid.New(),
@@ -218,7 +214,6 @@ func buildTestOrder(status string) *domain.OrderWithLines {
 func buildPendingRequest() *CancellationRequest {
 	return &CancellationRequest{
 		ID:                 testRequestID,
-		TenantID:           testTenantID,
 		OrderID:            testOrderID,
 		RequestedByAuth0ID: testBuyerAuth0ID,
 		Reason:             testReason,
@@ -327,13 +322,13 @@ func TestCancellableStatusesMatchesCanOrderBeCancelled(t *testing.T) {
 
 func TestRequestCancellation_EmptyReasonReturnsBadRequest(t *testing.T) {
 	svc := NewService(&fakeOrderReader{}, &fakePayoutReader{}, &fakeRequestsStore{}, &fakeStripeClient{}, nil)
-	_, err := svc.RequestCancellation(context.Background(), testTenantID, testOrderID, testBuyerAuth0ID, "")
+	_, err := svc.RequestCancellation(context.Background(), testOrderID, testBuyerAuth0ID, "")
 	assertAppErrorCode(t, err, 400, "")
 }
 
 func TestRequestCancellation_OrderNotFound(t *testing.T) {
 	svc := NewService(&fakeOrderReader{order: nil}, &fakePayoutReader{}, &fakeRequestsStore{}, &fakeStripeClient{}, nil)
-	_, err := svc.RequestCancellation(context.Background(), testTenantID, testOrderID, testBuyerAuth0ID, testReason)
+	_, err := svc.RequestCancellation(context.Background(), testOrderID, testBuyerAuth0ID, testReason)
 	assertAppErrorCode(t, err, 404, "")
 }
 
@@ -341,7 +336,7 @@ func TestRequestCancellation_BuyerMismatch404(t *testing.T) {
 	order := buildTestOrder(domain.StatusPaid)
 	order.BuyerAuth0ID = "auth0|someone-else"
 	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, &fakeRequestsStore{}, &fakeStripeClient{}, nil)
-	_, err := svc.RequestCancellation(context.Background(), testTenantID, testOrderID, testBuyerAuth0ID, testReason)
+	_, err := svc.RequestCancellation(context.Background(), testOrderID, testBuyerAuth0ID, testReason)
 	// Wrapped in 404 to avoid leaking existence.
 	assertAppErrorCode(t, err, 404, CodeNotOrderBuyer)
 }
@@ -349,19 +344,19 @@ func TestRequestCancellation_BuyerMismatch404(t *testing.T) {
 func TestRequestCancellation_NotCancellableStatus(t *testing.T) {
 	order := buildTestOrder(domain.StatusShipped)
 	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, &fakeRequestsStore{}, &fakeStripeClient{}, nil)
-	_, err := svc.RequestCancellation(context.Background(), testTenantID, testOrderID, testBuyerAuth0ID, testReason)
+	_, err := svc.RequestCancellation(context.Background(), testOrderID, testBuyerAuth0ID, testReason)
 	assertAppErrorCode(t, err, 409, CodeOrderNotCancellable)
 }
 
 func TestRequestCancellation_DuplicatePendingRequest(t *testing.T) {
 	order := buildTestOrder(domain.StatusPaid)
 	store := &fakeRequestsStore{
-		createFn: func(ctx context.Context, tenantID uuid.UUID, req *CancellationRequest) error {
+		createFn: func(ctx context.Context, req *CancellationRequest) error {
 			return ErrPendingRequestExists
 		},
 	}
 	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
-	_, err := svc.RequestCancellation(context.Background(), testTenantID, testOrderID, testBuyerAuth0ID, testReason)
+	_, err := svc.RequestCancellation(context.Background(), testOrderID, testBuyerAuth0ID, testReason)
 	assertAppErrorCode(t, err, 409, CodeCancellationRequestAlreadyExists)
 }
 
@@ -370,7 +365,7 @@ func TestRequestCancellation_Success(t *testing.T) {
 	store := &fakeRequestsStore{} // default Create stamps pending
 	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
 
-	req, err := svc.RequestCancellation(context.Background(), testTenantID, testOrderID, testBuyerAuth0ID, testReason)
+	req, err := svc.RequestCancellation(context.Background(), testOrderID, testBuyerAuth0ID, testReason)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -394,18 +389,18 @@ func TestRequestCancellation_Success(t *testing.T) {
 
 func TestRejectCancellation_RequestNotFound(t *testing.T) {
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return nil, nil
 		},
 	}
 	svc := NewService(&fakeOrderReader{}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
-	_, err := svc.RejectCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "nope")
+	_, err := svc.RejectCancellation(context.Background(), testRequestID, testSellerID, "nope")
 	assertAppErrorCode(t, err, 404, CodeCancellationRequestNotFound)
 }
 
 func TestRejectCancellation_SellerMismatch(t *testing.T) {
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return buildPendingRequest(), nil
 		},
 	}
@@ -413,7 +408,7 @@ func TestRejectCancellation_SellerMismatch(t *testing.T) {
 	order.SellerID = uuid.MustParse("99999999-9999-9999-9999-999999999999")
 	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
 
-	_, err := svc.RejectCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "nope")
+	_, err := svc.RejectCancellation(context.Background(), testRequestID, testSellerID, "nope")
 	assertAppErrorCode(t, err, 404, CodeNotOrderSeller)
 }
 
@@ -421,26 +416,26 @@ func TestRejectCancellation_AlreadyRejected(t *testing.T) {
 	req := buildPendingRequest()
 	req.Status = StatusRejected
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return req, nil
 		},
 	}
 	svc := NewService(&fakeOrderReader{order: buildTestOrder(domain.StatusPaid)}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
-	_, err := svc.RejectCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "nope")
+	_, err := svc.RejectCancellation(context.Background(), testRequestID, testSellerID, "nope")
 	assertAppErrorCode(t, err, 409, CodeCancellationRequestAlreadyProcessed)
 }
 
 func TestRejectCancellation_RaceAtWrite(t *testing.T) {
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return buildPendingRequest(), nil
 		},
-		rejectFn: func(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
+		rejectFn: func(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
 			return nil, ErrAlreadyProcessed
 		},
 	}
 	svc := NewService(&fakeOrderReader{order: buildTestOrder(domain.StatusPaid)}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
-	_, err := svc.RejectCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "nope")
+	_, err := svc.RejectCancellation(context.Background(), testRequestID, testSellerID, "nope")
 	assertAppErrorCode(t, err, 409, CodeCancellationRequestAlreadyProcessed)
 }
 
@@ -448,10 +443,10 @@ func TestRejectCancellation_Success(t *testing.T) {
 	updatedReq := buildPendingRequest()
 	updatedReq.Status = StatusRejected
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return buildPendingRequest(), nil
 		},
-		rejectFn: func(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
+		rejectFn: func(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
 			if comment != "already shipped" {
 				t.Errorf("comment = %q, want %q", comment, "already shipped")
 			}
@@ -460,7 +455,7 @@ func TestRejectCancellation_Success(t *testing.T) {
 	}
 	svc := NewService(&fakeOrderReader{order: buildTestOrder(domain.StatusPaid)}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
 
-	result, err := svc.RejectCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "already shipped")
+	result, err := svc.RejectCancellation(context.Background(), testRequestID, testSellerID, "already shipped")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -490,10 +485,10 @@ func newApproveHarness() *approveHarness {
 	req := buildPendingRequest()
 	stripe := &fakeStripeClient{refundResult: stripeResult{id: "re_test_ok"}}
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return req, nil
 		},
-		approveTxFn: func(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
+		approveTxFn: func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
 			updatedReq := *req
 			updatedReq.Status = StatusApproved
 			refundID := in.StripeRefundID
@@ -520,14 +515,14 @@ func (h *approveHarness) svc() *Service {
 func TestApproveCancellation_AlreadyProcessed(t *testing.T) {
 	h := newApproveHarness()
 	h.req.Status = StatusApproved
-	_, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	_, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	assertAppErrorCode(t, err, 409, CodeCancellationRequestAlreadyProcessed)
 }
 
 func TestApproveCancellation_OrderShippedDuringRequest(t *testing.T) {
 	h := newApproveHarness()
 	h.order.Status = domain.StatusShipped
-	_, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	_, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	assertAppErrorCode(t, err, 409, CodeOrderNotCancellable)
 	if len(h.stripe.calls) != 0 {
 		t.Errorf("expected no Stripe calls, got %d", len(h.stripe.calls))
@@ -537,7 +532,7 @@ func TestApproveCancellation_OrderShippedDuringRequest(t *testing.T) {
 func TestApproveCancellation_MissingPaymentIntent(t *testing.T) {
 	h := newApproveHarness()
 	h.order.StripePaymentIntentID = nil
-	_, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	_, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	assertAppErrorCode(t, err, 409, CodeOrderNotCancellable)
 }
 
@@ -545,7 +540,7 @@ func TestApproveCancellation_RefundFailsMarksRequestFailed(t *testing.T) {
 	h := newApproveHarness()
 	h.stripe.refundResult = stripeResult{err: errors.New("network blip")}
 
-	_, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	_, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	assertAppErrorCode(t, err, 502, CodeRefundFailed)
 	if h.store.markFailedCalls != 1 {
 		t.Errorf("MarkFailed calls = %d, want 1", h.store.markFailedCalls)
@@ -571,7 +566,6 @@ func TestApproveCancellation_ReversalFailsMarksRequestFailed(t *testing.T) {
 	h.payout.payouts = []domain.Payout{
 		{
 			ID:               payoutID,
-			TenantID:         testTenantID,
 			SellerID:         testSellerID,
 			OrderID:          testOrderID,
 			Amount:           4000,
@@ -581,7 +575,7 @@ func TestApproveCancellation_ReversalFailsMarksRequestFailed(t *testing.T) {
 	}
 	h.stripe.reversalResults = []stripeResult{{err: errors.New("stripe 500")}}
 
-	_, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	_, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	assertAppErrorCode(t, err, 502, CodeTransferReversalFailed)
 	if h.store.markFailedCalls != 1 {
 		t.Errorf("MarkFailed calls = %d, want 1", h.store.markFailedCalls)
@@ -630,7 +624,7 @@ func TestApproveCancellation_SkipsIncompletePayouts(t *testing.T) {
 	}
 	h.stripe.reversalResults = []stripeResult{{id: "trr_test_001"}}
 
-	result, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "op comment")
+	result, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "op comment")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -678,11 +672,11 @@ func TestApproveCancellation_StatusRaceAfterStripeMarksFailed(t *testing.T) {
 	h := newApproveHarness()
 	// Stripe succeeds, but between phase 2 and phase 3 the seller
 	// shipped the order, so ApproveTx reports ErrOrderStatusChanged.
-	h.store.approveTxFn = func(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
+	h.store.approveTxFn = func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
 		return nil, nil, ErrOrderStatusChanged
 	}
 
-	_, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	_, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	assertAppErrorCode(t, err, 409, CodeOrderNotCancellable)
 	if h.store.markFailedCalls != 1 {
 		t.Errorf("MarkFailed calls = %d, want 1 (refund must be reconciled manually)", h.store.markFailedCalls)
@@ -694,7 +688,7 @@ func TestApproveCancellation_StatusRaceAfterStripeMarksFailed(t *testing.T) {
 
 func TestApproveCancellation_HappyPathNoPayouts(t *testing.T) {
 	h := newApproveHarness() // zero payouts by default
-	result, err := h.svc().ApproveCancellation(context.Background(), testTenantID, testRequestID, testSellerID, "")
+	result, err := h.svc().ApproveCancellation(context.Background(), testRequestID, testSellerID, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -724,13 +718,13 @@ func TestApproveCancellation_HappyPathNoPayouts(t *testing.T) {
 
 func TestGetByIDForSeller_Success(t *testing.T) {
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return buildPendingRequest(), nil
 		},
 	}
 	svc := NewService(&fakeOrderReader{order: buildTestOrder(domain.StatusPaid)}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
 
-	got, err := svc.GetByIDForSeller(context.Background(), testTenantID, testSellerID, testRequestID)
+	got, err := svc.GetByIDForSeller(context.Background(), testSellerID, testRequestID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -741,12 +735,12 @@ func TestGetByIDForSeller_Success(t *testing.T) {
 
 func TestGetByIDForSeller_RequestNotFound(t *testing.T) {
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return nil, nil
 		},
 	}
 	svc := NewService(&fakeOrderReader{order: buildTestOrder(domain.StatusPaid)}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
-	_, err := svc.GetByIDForSeller(context.Background(), testTenantID, testSellerID, testRequestID)
+	_, err := svc.GetByIDForSeller(context.Background(), testSellerID, testRequestID)
 	assertAppErrorCode(t, err, 404, CodeCancellationRequestNotFound)
 }
 
@@ -755,7 +749,7 @@ func TestGetByIDForSeller_RequestNotFound(t *testing.T) {
 // in 404 so it does not leak existence.
 func TestGetByIDForSeller_SellerMismatch(t *testing.T) {
 	store := &fakeRequestsStore{
-		getByIDFn: func(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+		getByIDFn: func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 			return buildPendingRequest(), nil
 		},
 	}
@@ -763,7 +757,7 @@ func TestGetByIDForSeller_SellerMismatch(t *testing.T) {
 	order.SellerID = uuid.MustParse("99999999-9999-9999-9999-999999999999")
 	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
 
-	_, err := svc.GetByIDForSeller(context.Background(), testTenantID, testSellerID, testRequestID)
+	_, err := svc.GetByIDForSeller(context.Background(), testSellerID, testRequestID)
 	assertAppErrorCode(t, err, 404, CodeNotOrderSeller)
 }
 
@@ -778,7 +772,7 @@ func TestListByStatus_PropagatesSellerIDToStore(t *testing.T) {
 	store := &fakeRequestsStore{}
 	svc := NewService(&fakeOrderReader{}, &fakePayoutReader{}, store, &fakeStripeClient{}, nil)
 
-	_, _, err := svc.ListByStatus(context.Background(), testTenantID, testSellerID, StatusPending, 20, 0)
+	_, _, err := svc.ListByStatus(context.Background(), testSellerID, StatusPending, 20, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

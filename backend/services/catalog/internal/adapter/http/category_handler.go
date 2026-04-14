@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/port"
 )
@@ -41,12 +40,6 @@ type createCategoryRequest struct {
 
 // Create handles POST /categories.
 func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	var req createCategoryRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, mapError(err))
@@ -60,7 +53,7 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SortOrder: req.SortOrder,
 	}
 
-	if err := h.svc.CreateCategory(r.Context(), tenantID, c); err != nil {
+	if err := h.svc.CreateCategory(r.Context(), c); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -70,13 +63,7 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /categories.
 func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
-	categories, err := h.svc.ListCategories(r.Context(), tenantID)
+	categories, err := h.svc.ListCategories(r.Context())
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -95,12 +82,6 @@ type updateCategoryRequest struct {
 
 // Update handles PUT /categories/{id}.
 func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -122,7 +103,7 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		SortOrder: req.SortOrder,
 	}
 
-	if err := h.svc.UpdateCategory(r.Context(), tenantID, c); err != nil {
+	if err := h.svc.UpdateCategory(r.Context(), c); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

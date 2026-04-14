@@ -114,21 +114,20 @@ func TestTTLCache_Expiry(t *testing.T) {
 }
 
 func TestCacheKeys(t *testing.T) {
-	tid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	sid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	sub := "auth0|abc"
 
-	if got := authz.SellerCacheKey(tid, sid, sub); got == "" {
+	if got := authz.SellerCacheKey(sid, sub); got == "" {
 		t.Error("SellerCacheKey returned empty string")
 	}
 	// Different subs must produce different keys.
-	a := authz.SellerCacheKey(tid, sid, "auth0|a")
-	b := authz.SellerCacheKey(tid, sid, "auth0|b")
+	a := authz.SellerCacheKey(sid, "auth0|a")
+	b := authz.SellerCacheKey(sid, "auth0|b")
 	if a == b {
 		t.Error("expected distinct keys for distinct subs")
 	}
 
-	if got := authz.PlatformAdminCacheKey(tid, sub); got == "" {
+	if got := authz.PlatformAdminCacheKey(sub); got == "" {
 		t.Error("PlatformAdminCacheKey returned empty string")
 	}
 }
@@ -202,20 +201,20 @@ type mockSellerRoleLoader struct {
 	err  error
 }
 
-func (m *mockSellerRoleLoader) LoadSellerRole(_ context.Context, _, _ uuid.UUID, _ string) (authz.SellerRole, error) {
+func (m *mockSellerRoleLoader) LoadSellerRole(_ context.Context, _ uuid.UUID, _ string) (authz.SellerRole, error) {
 	return m.role, m.err
 }
-func (m *mockSellerRoleLoader) EvictSellerRole(_, _ uuid.UUID, _ string) {}
+func (m *mockSellerRoleLoader) EvictSellerRole(_ uuid.UUID, _ string) {}
 
 type mockPlatformAdminRoleLoader struct {
 	role authz.PlatformAdminRole
 	err  error
 }
 
-func (m *mockPlatformAdminRoleLoader) LoadPlatformAdminRole(_ context.Context, _ uuid.UUID, _ string) (authz.PlatformAdminRole, error) {
+func (m *mockPlatformAdminRoleLoader) LoadPlatformAdminRole(_ context.Context, _ string) (authz.PlatformAdminRole, error) {
 	return m.role, m.err
 }
-func (m *mockPlatformAdminRoleLoader) EvictPlatformAdminRole(_ uuid.UUID, _ string) {}
+func (m *mockPlatformAdminRoleLoader) EvictPlatformAdminRole(_ string) {}
 
 // helper to build an *http.Request with tenant context injected.
 func requestWithTenant(tc tenant.Context) *http.Request {
@@ -261,7 +260,7 @@ func TestRequireSellerRole_NoSellerID(t *testing.T) {
 
 	// Tenant context present but SellerID is nil (e.g. a buyer).
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 		SellerID: nil,
 	})
@@ -285,7 +284,7 @@ func TestRequireSellerRole_InsufficientRole(t *testing.T) {
 
 	sid := uuid.New()
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 		SellerID: &sid,
 	})
@@ -309,7 +308,7 @@ func TestRequireSellerRole_SufficientRole(t *testing.T) {
 
 	sid := uuid.New()
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 		SellerID: &sid,
 	})
@@ -333,7 +332,7 @@ func TestRequireSellerRole_LoaderError(t *testing.T) {
 
 	sid := uuid.New()
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 		SellerID: &sid,
 	})
@@ -379,7 +378,7 @@ func TestRequirePlatformAdminRole_InsufficientRole(t *testing.T) {
 	handler := mw(next)
 
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 	})
 	rec := httptest.NewRecorder()
@@ -401,7 +400,7 @@ func TestRequirePlatformAdminRole_SufficientRole(t *testing.T) {
 	handler := mw(next)
 
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 	})
 	rec := httptest.NewRecorder()
@@ -428,7 +427,7 @@ func TestCurrentSellerRole_Set(t *testing.T) {
 
 	sid := uuid.New()
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 		SellerID: &sid,
 	})
@@ -462,7 +461,7 @@ func TestCurrentPlatformAdminRole_Set(t *testing.T) {
 	mw := authz.RequirePlatformAdminRole(loader, authz.PlatformAdminRoleSupport)
 
 	req := requestWithTenant(tenant.Context{
-		TenantID: uuid.New(),
+
 		UserID:   "auth0|user1",
 	})
 

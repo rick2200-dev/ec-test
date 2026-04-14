@@ -8,9 +8,8 @@ import (
 )
 
 // ReserveStock calls the inventory gRPC service to reserve stock for a SKU.
-func (c *GRPCClients) ReserveStock(ctx context.Context, tenantID, skuID string, quantity int32) error {
+func (c *GRPCClients) ReserveStock(ctx context.Context, skuID string, quantity int32) error {
 	req := &inventoryv1.ReserveStockRequest{
-		TenantId: tenantID,
 		SkuId:    skuID,
 		Quantity: quantity,
 	}
@@ -25,10 +24,9 @@ func (c *GRPCClients) ReserveStock(ctx context.Context, tenantID, skuID string, 
 }
 
 // GetInventory calls the inventory gRPC service to get inventory for a SKU.
-func (c *GRPCClients) GetInventory(ctx context.Context, tenantID, skuID string) (*inventoryv1.InventoryItem, error) {
+func (c *GRPCClients) GetInventory(ctx context.Context, skuID string) (*inventoryv1.InventoryItem, error) {
 	req := &inventoryv1.GetInventoryRequest{
-		TenantId: tenantID,
-		SkuId:    skuID,
+		SkuId: skuID,
 	}
 	resp, err := c.InventoryClient.GetInventory(ctx, req)
 	if err != nil {

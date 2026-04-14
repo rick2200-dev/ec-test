@@ -26,16 +26,9 @@ func NewCatalogServer(svc port.CatalogUseCase) *CatalogServer {
 	return &CatalogServer{svc: svc}
 }
 
-// ListProducts returns a paginated list of products for a tenant.
+// ListProducts returns a paginated list of products.
 func (s *CatalogServer) ListProducts(ctx context.Context, req *catalogv1.ListProductsRequest) (*catalogv1.ListProductsResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
-	filter := domain.ProductFilter{
-		TenantID: tenantID,
-	}
+	filter := domain.ProductFilter{}
 	if req.GetSellerId() != "" {
 		sellerID, err := uuid.Parse(req.GetSellerId())
 		if err != nil {
@@ -86,14 +79,9 @@ func (s *CatalogServer) ListProducts(ctx context.Context, req *catalogv1.ListPro
 
 // GetProduct retrieves a product by ID or slug.
 func (s *CatalogServer) GetProduct(ctx context.Context, req *catalogv1.GetProductRequest) (*catalogv1.GetProductResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
 	switch v := req.GetIdentifier().(type) {
 	case *catalogv1.GetProductRequest_Slug:
-		p, err := s.svc.GetProduct(ctx, tenantID, v.Slug)
+		p, err := s.svc.GetProduct(ctx, v.Slug)
 		if err != nil {
 			return nil, toGRPCError(err)
 		}
@@ -105,7 +93,7 @@ func (s *CatalogServer) GetProduct(ctx context.Context, req *catalogv1.GetProduc
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, "invalid product id")
 		}
-		p, err := s.svc.GetProductByID(ctx, tenantID, id)
+		p, err := s.svc.GetProductByID(ctx, id)
 		if err != nil {
 			return nil, toGRPCError(err)
 		}
@@ -119,14 +107,9 @@ func (s *CatalogServer) GetProduct(ctx context.Context, req *catalogv1.GetProduc
 
 // CreateProduct creates a new product with optional SKUs.
 func (s *CatalogServer) CreateProduct(ctx context.Context, req *catalogv1.CreateProductRequest) (*catalogv1.CreateProductResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
 	product, skus := protoCreateProductToDomain(req)
 
-	if err := s.svc.CreateProduct(ctx, tenantID, product, skus); err != nil {
+	if err := s.svc.CreateProduct(ctx, product, skus); err != nil {
 		return nil, toGRPCError(err)
 	}
 
@@ -137,14 +120,9 @@ func (s *CatalogServer) CreateProduct(ctx context.Context, req *catalogv1.Create
 
 // UpdateProduct updates a product's details.
 func (s *CatalogServer) UpdateProduct(ctx context.Context, req *catalogv1.UpdateProductRequest) (*catalogv1.UpdateProductResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
 	product := protoUpdateProductToDomain(req)
 
-	if err := s.svc.UpdateProduct(ctx, tenantID, product); err != nil {
+	if err := s.svc.UpdateProduct(ctx, product); err != nil {
 		return nil, toGRPCError(err)
 	}
 
@@ -155,11 +133,6 @@ func (s *CatalogServer) UpdateProduct(ctx context.Context, req *catalogv1.Update
 
 // UpdateProductStatus changes a product's status.
 func (s *CatalogServer) UpdateProductStatus(ctx context.Context, req *catalogv1.UpdateProductStatusRequest) (*catalogv1.UpdateProductStatusResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
 	productID, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid product id")
@@ -167,12 +140,12 @@ func (s *CatalogServer) UpdateProductStatus(ctx context.Context, req *catalogv1.
 
 	st := domain.ProductStatus(req.GetStatus())
 
-	if err := s.svc.UpdateProductStatus(ctx, tenantID, productID, st); err != nil {
+	if err := s.svc.UpdateProductStatus(ctx, productID, st); err != nil {
 		return nil, toGRPCError(err)
 	}
 
 	// Retrieve updated product to return.
-	p, err := s.svc.GetProductByID(ctx, tenantID, productID)
+	p, err := s.svc.GetProductByID(ctx, productID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -182,14 +155,9 @@ func (s *CatalogServer) UpdateProductStatus(ctx context.Context, req *catalogv1.
 	}, nil
 }
 
-// ListCategories returns all categories for a tenant.
+// ListCategories returns all categories.
 func (s *CatalogServer) ListCategories(ctx context.Context, req *catalogv1.ListCategoriesRequest) (*catalogv1.ListCategoriesResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
-	categories, err := s.svc.ListCategories(ctx, tenantID)
+	categories, err := s.svc.ListCategories(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -206,14 +174,9 @@ func (s *CatalogServer) ListCategories(ctx context.Context, req *catalogv1.ListC
 
 // CreateCategory creates a new category.
 func (s *CatalogServer) CreateCategory(ctx context.Context, req *catalogv1.CreateCategoryRequest) (*catalogv1.CreateCategoryResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
 	category := protoCreateCategoryToDomain(req)
 
-	if err := s.svc.CreateCategory(ctx, tenantID, category); err != nil {
+	if err := s.svc.CreateCategory(ctx, category); err != nil {
 		return nil, toGRPCError(err)
 	}
 

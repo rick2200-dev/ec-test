@@ -44,7 +44,7 @@ func (h *PayoutHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	p := pagination.FromRequest(r)
 
-	payouts, total, err := h.svc.ListPayouts(r.Context(), tc.TenantID, *tc.SellerID, p.Limit, p.Offset)
+	payouts, total, err := h.svc.ListPayouts(r.Context(), *tc.SellerID, p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return

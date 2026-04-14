@@ -13,7 +13,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 )
 
-// SellerRepository handles persistence of sellers within a tenant scope.
+// SellerRepository handles persistence of sellers.
 type SellerRepository struct {
 	pool *pgxpool.Pool
 }
@@ -24,46 +24,45 @@ func NewSellerRepository(pool *pgxpool.Pool) *SellerRepository {
 }
 
 // withTx uses the transaction from ctx if one was placed there by
-// database.WithTx, otherwise opens a new tenant-scoped transaction.
-func (r *SellerRepository) withTx(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
+// database.WithTx, otherwise opens a new transaction.
+func (r *SellerRepository) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return fn(tx)
 	}
-	return database.TenantTx(ctx, r.pool, tenantID, fn)
+	return database.Tx(ctx, r.pool, fn)
 }
 
 // Create inserts a new seller. When ctx carries a transaction (placed there
 // by database.WithTx), the insert joins that transaction so the caller can
 // make the seller and its initial owner atomically.
-func (r *SellerRepository) Create(ctx context.Context, tenantID uuid.UUID, s *domain.Seller) error {
+func (r *SellerRepository) Create(ctx context.Context, s *domain.Seller) error {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
 	}
-	s.TenantID = tenantID
 	settings := json.RawMessage("{}")
 	if s.Settings != nil {
 		settings = s.Settings
 	}
-	return r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
-			`INSERT INTO auth_svc.sellers (id, tenant_id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			`INSERT INTO auth_svc.sellers (id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			 RETURNING created_at, updated_at`,
-			s.ID, s.TenantID, s.Auth0OrgID, s.Name, s.Slug, s.Status, s.StripeAccountID, s.CommissionRateBPS, settings,
+			s.ID, s.Auth0OrgID, s.Name, s.Slug, s.Status, s.StripeAccountID, s.CommissionRateBPS, settings,
 		).Scan(&s.CreatedAt, &s.UpdatedAt)
 	})
 }
 
-// GetByID retrieves a seller by ID within a tenant scope.
-func (r *SellerRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Seller, error) {
+// GetByID retrieves a seller by ID.
+func (r *SellerRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Seller, error) {
 	var s domain.Seller
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
-			 FROM auth_svc.sellers WHERE id = $1 AND tenant_id = $2`, id, tenantID,
-		).Scan(&s.ID, &s.TenantID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt)
+			`SELECT id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
+			 FROM auth_svc.sellers WHERE id = $1`, id,
+		).Scan(&s.ID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -82,16 +81,16 @@ func (r *SellerRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) 
 	return &s, nil
 }
 
-// GetBySlug retrieves a seller by slug within a tenant scope.
-func (r *SellerRepository) GetBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*domain.Seller, error) {
+// GetBySlug retrieves a seller by slug.
+func (r *SellerRepository) GetBySlug(ctx context.Context, slug string) (*domain.Seller, error) {
 	var s domain.Seller
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
-			 FROM auth_svc.sellers WHERE slug = $1 AND tenant_id = $2`, slug, tenantID,
-		).Scan(&s.ID, &s.TenantID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt)
+			`SELECT id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
+			 FROM auth_svc.sellers WHERE slug = $1`, slug,
+		).Scan(&s.ID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -110,22 +109,22 @@ func (r *SellerRepository) GetBySlug(ctx context.Context, tenantID uuid.UUID, sl
 	return &s, nil
 }
 
-// List returns a paginated list of sellers for a tenant.
-func (r *SellerRepository) List(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.Seller, int, error) {
+// List returns a paginated list of sellers.
+func (r *SellerRepository) List(ctx context.Context, limit, offset int) ([]domain.Seller, int, error) {
 	var sellers []domain.Seller
 	var total int
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
-			`SELECT COUNT(*) FROM auth_svc.sellers WHERE tenant_id = $1`, tenantID,
+			`SELECT COUNT(*) FROM auth_svc.sellers`,
 		).Scan(&total); err != nil {
 			return err
 		}
 
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
-			 FROM auth_svc.sellers WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-			tenantID, limit, offset,
+			`SELECT id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
+			 FROM auth_svc.sellers ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+			limit, offset,
 		)
 		if err != nil {
 			return err
@@ -134,7 +133,7 @@ func (r *SellerRepository) List(ctx context.Context, tenantID uuid.UUID, limit, 
 
 		for rows.Next() {
 			var s domain.Seller
-			if err := rows.Scan(&s.ID, &s.TenantID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			if err := rows.Scan(&s.ID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt); err != nil {
 				return err
 			}
 			sellers = append(sellers, s)
@@ -148,11 +147,11 @@ func (r *SellerRepository) List(ctx context.Context, tenantID uuid.UUID, limit, 
 }
 
 // UpdateStatus updates the status of a seller.
-func (r *SellerRepository) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.SellerStatus) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *SellerRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SellerStatus) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`UPDATE auth_svc.sellers SET status = $3, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID, status,
+			`UPDATE auth_svc.sellers SET status = $2, updated_at = NOW() WHERE id = $1`,
+			id, status,
 		)
 		if err != nil {
 			return fmt.Errorf("update seller status: %w", err)
@@ -165,12 +164,12 @@ func (r *SellerRepository) UpdateStatus(ctx context.Context, tenantID, id uuid.U
 }
 
 // Update modifies an existing seller.
-func (r *SellerRepository) Update(ctx context.Context, tenantID uuid.UUID, s *domain.Seller) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *SellerRepository) Update(ctx context.Context, s *domain.Seller) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`UPDATE auth_svc.sellers SET name = $3, slug = $4, auth0_org_id = $5, stripe_account_id = $6, commission_rate_bps = $7, settings = $8, updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2`,
-			s.ID, tenantID, s.Name, s.Slug, s.Auth0OrgID, s.StripeAccountID, s.CommissionRateBPS, s.Settings,
+			`UPDATE auth_svc.sellers SET name = $2, slug = $3, auth0_org_id = $4, stripe_account_id = $5, commission_rate_bps = $6, settings = $7, updated_at = NOW()
+			 WHERE id = $1`,
+			s.ID, s.Name, s.Slug, s.Auth0OrgID, s.StripeAccountID, s.CommissionRateBPS, s.Settings,
 		)
 		if err != nil {
 			return fmt.Errorf("update seller: %w", err)

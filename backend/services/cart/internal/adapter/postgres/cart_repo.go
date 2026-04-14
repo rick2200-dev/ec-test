@@ -7,15 +7,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/Riku-KANO/ec-test/services/cart/internal/domain"
 )
 
 // CartRepository persists carts in Redis under the key
-// "cart:{tenant_id}:{buyer_auth0_id}" with a configurable TTL that
-// resets on every write.
+// "cart:{buyer_auth0_id}" with a configurable TTL that resets on every
+// write.
 type CartRepository struct {
 	client *goredis.Client
 	ttl    time.Duration
@@ -31,15 +30,15 @@ func NewCartRepository(client *goredis.Client, ttlSeconds int) *CartRepository {
 	}
 }
 
-// Key builds the Redis key for a given (tenant, buyer) pair.
-func (r *CartRepository) Key(tenantID uuid.UUID, buyerAuth0ID string) string {
-	return fmt.Sprintf("cart:%s:%s", tenantID.String(), buyerAuth0ID)
+// Key builds the Redis key for a given buyer.
+func (r *CartRepository) Key(buyerAuth0ID string) string {
+	return fmt.Sprintf("cart:%s", buyerAuth0ID)
 }
 
 // Get loads a cart from Redis. Returns (nil, nil) when the cart does
 // not exist — callers should treat that as an empty cart.
-func (r *CartRepository) Get(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.Cart, error) {
-	data, err := r.client.Get(ctx, r.Key(tenantID, buyerAuth0ID)).Bytes()
+func (r *CartRepository) Get(ctx context.Context, buyerAuth0ID string) (*domain.Cart, error) {
+	data, err := r.client.Get(ctx, r.Key(buyerAuth0ID)).Bytes()
 	if errors.Is(err, goredis.Nil) {
 		return nil, nil
 	}
@@ -64,15 +63,15 @@ func (r *CartRepository) Save(ctx context.Context, cart *domain.Cart) error {
 		return fmt.Errorf("marshal cart: %w", err)
 	}
 
-	if err := r.client.Set(ctx, r.Key(cart.TenantID, cart.BuyerAuth0ID), data, r.ttl).Err(); err != nil {
+	if err := r.client.Set(ctx, r.Key(cart.BuyerAuth0ID), data, r.ttl).Err(); err != nil {
 		return fmt.Errorf("redis set cart: %w", err)
 	}
 	return nil
 }
 
 // Delete removes a cart from Redis. Used after a successful checkout.
-func (r *CartRepository) Delete(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) error {
-	if err := r.client.Del(ctx, r.Key(tenantID, buyerAuth0ID)).Err(); err != nil {
+func (r *CartRepository) Delete(ctx context.Context, buyerAuth0ID string) error {
+	if err := r.client.Del(ctx, r.Key(buyerAuth0ID)).Err(); err != nil {
 		return fmt.Errorf("redis del cart: %w", err)
 	}
 	return nil

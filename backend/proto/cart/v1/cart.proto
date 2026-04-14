@@ -22,10 +22,9 @@ service CartService {
 // ─── Domain Messages ─────────────────────────────────────────
 
 message Cart {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  repeated CartItem items = 3;
-  google.protobuf.Timestamp updated_at = 4;
+  string buyer_auth0_id = 1;
+  repeated CartItem items = 2;
+  google.protobuf.Timestamp updated_at = 3;
 }
 
 // CartItem holds a SKU reference plus price/name snapshots taken at
@@ -43,8 +42,7 @@ message CartItem {
 // ─── GetCart ─────────────────────────────────────────────────
 
 message GetCartRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
+  string buyer_auth0_id = 1;
 }
 
 message GetCartResponse {
@@ -54,34 +52,30 @@ message GetCartResponse {
 // ─── AddItem ─────────────────────────────────────────────────
 
 message AddItemRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  string sku_id = 3;
-  int32 quantity = 4;
+  string buyer_auth0_id = 1;
+  string sku_id = 2;
+  int32 quantity = 3;
 }
 
 // ─── UpdateItemQuantity ──────────────────────────────────────
 
 message UpdateItemQuantityRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  string sku_id = 3;
-  int32 quantity = 4;  // New absolute quantity; 0 removes the item
+  string buyer_auth0_id = 1;
+  string sku_id = 2;
+  int32 quantity = 3;  // New absolute quantity; 0 removes the item
 }
 
 // ─── RemoveItem ──────────────────────────────────────────────
 
 message RemoveItemRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  string sku_id = 3;
+  string buyer_auth0_id = 1;
+  string sku_id = 2;
 }
 
 // ─── ClearCart ───────────────────────────────────────────────
 
 message ClearCartRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
+  string buyer_auth0_id = 1;
 }
 
 // CartResponse returns the full cart state after a mutation.
@@ -92,10 +86,9 @@ message CartResponse {
 // ─── Checkout ────────────────────────────────────────────────
 
 message CheckoutRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  string shipping_address_json = 3;
-  string currency = 4;
+  string buyer_auth0_id = 1;
+  string shipping_address_json = 2;
+  string currency = 3;
 }
 
 // CheckoutResponse reports the orders created for this checkout (one per

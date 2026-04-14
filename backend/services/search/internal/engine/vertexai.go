@@ -39,6 +39,6 @@ func (e *VertexAIEngine) IndexProduct(_ context.Context, _ domain.ProductEvent) 
 
 // DeleteProduct removes a product from the Vertex AI product catalog.
 // TODO: Implement using Vertex AI Retail API ProductService.DeleteProduct.
-func (e *VertexAIEngine) DeleteProduct(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
+func (e *VertexAIEngine) DeleteProduct(_ context.Context, _ uuid.UUID) error {
 	return fmt.Errorf("vertex AI delete not implemented: project=%s", e.projectID)
 }

@@ -41,7 +41,6 @@ func NewReviewService(
 // CreateReview creates a new review after verifying the buyer's purchase.
 func (s *ReviewService) CreateReview(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	in domain.CreateReviewInput,
 ) (*domain.Review, error) {
@@ -70,7 +69,7 @@ func (s *ReviewService) CreateReview(
 	}
 
 	// Look up product details from catalog.
-	product, err := s.catalog.GetProduct(ctx, tenantID, in.ProductID)
+	product, err := s.catalog.GetProduct(ctx, in.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func (s *ReviewService) CreateReview(
 	var lastErr error
 	errCount := 0
 	for _, skuID := range product.SKUIDs {
-		result, err := s.purchase.CheckPurchase(ctx, tenantID, buyerAuth0ID, product.SellerID, skuID)
+		result, err := s.purchase.CheckPurchase(ctx, buyerAuth0ID, product.SellerID, skuID)
 		if err != nil {
 			lastErr = err
 			errCount++
@@ -120,16 +119,16 @@ func (s *ReviewService) CreateReview(
 
 	// Create review and update aggregate rating in a single transaction so
 	// they cannot diverge.
-	if err := s.repo.RunInTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := s.repo.Create(txCtx, tenantID, review); err != nil {
+	if err := s.repo.RunInTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Create(txCtx, review); err != nil {
 			return err
 		}
-		return s.repo.UpsertProductRating(txCtx, tenantID, in.ProductID, in.Rating, 1)
+		return s.repo.UpsertProductRating(txCtx, in.ProductID, in.Rating, 1)
 	}); err != nil {
 		return nil, err
 	}
 
-	s.publishEvent(ctx, tenantID, "review.created", map[string]any{
+	s.publishEvent(ctx, "review.created", map[string]any{
 		"review_id":      review.ID.String(),
 		"product_id":     review.ProductID.String(),
 		"seller_id":      review.SellerID.String(),
@@ -145,11 +144,11 @@ func (s *ReviewService) CreateReview(
 // UpdateReview updates the caller's own review.
 func (s *ReviewService) UpdateReview(
 	ctx context.Context,
-	tenantID, reviewID uuid.UUID,
+	reviewID uuid.UUID,
 	buyerAuth0ID string,
 	in domain.UpdateReviewInput,
 ) (*domain.Review, error) {
-	review, err := s.repo.GetByID(ctx, tenantID, reviewID)
+	review, err := s.repo.GetByID(ctx, reviewID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load review", err)
 	}
@@ -191,19 +190,19 @@ func (s *ReviewService) UpdateReview(
 
 	// Update review and adjust aggregate rating in a single transaction.
 	ratingDelta := review.Rating - oldRating
-	if err := s.repo.RunInTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := s.repo.Update(txCtx, tenantID, review); err != nil {
+	if err := s.repo.RunInTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Update(txCtx, review); err != nil {
 			return err
 		}
 		if ratingDelta != 0 {
-			return s.repo.UpsertProductRating(txCtx, tenantID, review.ProductID, ratingDelta, 0)
+			return s.repo.UpsertProductRating(txCtx, review.ProductID, ratingDelta, 0)
 		}
 		return nil
 	}); err != nil {
 		return nil, apperrors.Internal("failed to update review", err)
 	}
 
-	s.publishEvent(ctx, tenantID, "review.updated", map[string]any{
+	s.publishEvent(ctx, "review.updated", map[string]any{
 		"review_id":      review.ID.String(),
 		"product_id":     review.ProductID.String(),
 		"seller_id":      review.SellerID.String(),
@@ -219,10 +218,10 @@ func (s *ReviewService) UpdateReview(
 // DeleteReview deletes the caller's own review.
 func (s *ReviewService) DeleteReview(
 	ctx context.Context,
-	tenantID, reviewID uuid.UUID,
+	reviewID uuid.UUID,
 	buyerAuth0ID string,
 ) error {
-	review, err := s.repo.GetByID(ctx, tenantID, reviewID)
+	review, err := s.repo.GetByID(ctx, reviewID)
 	if err != nil {
 		return apperrors.Internal("failed to load review", err)
 	}
@@ -234,16 +233,16 @@ func (s *ReviewService) DeleteReview(
 	}
 
 	// Delete review and adjust aggregate rating in a single transaction.
-	if err := s.repo.RunInTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := s.repo.Delete(txCtx, tenantID, reviewID); err != nil {
+	if err := s.repo.RunInTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Delete(txCtx, reviewID); err != nil {
 			return err
 		}
-		return s.repo.UpsertProductRating(txCtx, tenantID, review.ProductID, -review.Rating, -1)
+		return s.repo.UpsertProductRating(txCtx, review.ProductID, -review.Rating, -1)
 	}); err != nil {
 		return apperrors.Internal("failed to delete review", err)
 	}
 
-	s.publishEvent(ctx, tenantID, "review.deleted", map[string]any{
+	s.publishEvent(ctx, "review.deleted", map[string]any{
 		"review_id":      review.ID.String(),
 		"product_id":     review.ProductID.String(),
 		"seller_id":      review.SellerID.String(),
@@ -255,8 +254,8 @@ func (s *ReviewService) DeleteReview(
 }
 
 // GetReview retrieves a single review with its reply.
-func (s *ReviewService) GetReview(ctx context.Context, tenantID, reviewID uuid.UUID) (*domain.Review, error) {
-	review, err := s.repo.GetByID(ctx, tenantID, reviewID)
+func (s *ReviewService) GetReview(ctx context.Context, reviewID uuid.UUID) (*domain.Review, error) {
+	review, err := s.repo.GetByID(ctx, reviewID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load review", err)
 	}
@@ -269,7 +268,7 @@ func (s *ReviewService) GetReview(ctx context.Context, tenantID, reviewID uuid.U
 // ListByProduct returns paginated reviews for a product.
 func (s *ReviewService) ListByProduct(
 	ctx context.Context,
-	tenantID, productID uuid.UUID,
+	productID uuid.UUID,
 	limit, offset int,
 ) ([]domain.Review, int, error) {
 	if limit <= 0 || limit > 100 {
@@ -278,7 +277,7 @@ func (s *ReviewService) ListByProduct(
 	if offset < 0 {
 		offset = 0
 	}
-	items, total, err := s.repo.ListByProduct(ctx, tenantID, productID, limit, offset)
+	items, total, err := s.repo.ListByProduct(ctx, productID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list reviews", err)
 	}
@@ -286,15 +285,14 @@ func (s *ReviewService) ListByProduct(
 }
 
 // GetProductRating returns the aggregate rating for a product.
-func (s *ReviewService) GetProductRating(ctx context.Context, tenantID, productID uuid.UUID) (*domain.ProductRating, error) {
-	rating, err := s.repo.GetProductRating(ctx, tenantID, productID)
+func (s *ReviewService) GetProductRating(ctx context.Context, productID uuid.UUID) (*domain.ProductRating, error) {
+	rating, err := s.repo.GetProductRating(ctx, productID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load product rating", err)
 	}
 	if rating == nil {
 		// Return a zero rating if no reviews exist.
 		return &domain.ProductRating{
-			TenantID:      tenantID,
 			ProductID:     productID,
 			AverageRating: 0,
 			ReviewCount:   0,
@@ -306,7 +304,7 @@ func (s *ReviewService) GetProductRating(ctx context.Context, tenantID, productI
 // ListForSeller returns paginated reviews on the seller's products.
 func (s *ReviewService) ListForSeller(
 	ctx context.Context,
-	tenantID, sellerID uuid.UUID,
+	sellerID uuid.UUID,
 	limit, offset int,
 ) ([]domain.Review, int, error) {
 	if sellerID == uuid.Nil {
@@ -318,7 +316,7 @@ func (s *ReviewService) ListForSeller(
 	if offset < 0 {
 		offset = 0
 	}
-	items, total, err := s.repo.ListBySeller(ctx, tenantID, sellerID, limit, offset)
+	items, total, err := s.repo.ListBySeller(ctx, sellerID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list reviews", err)
 	}
@@ -328,7 +326,7 @@ func (s *ReviewService) ListForSeller(
 // CreateReply creates a seller reply on a review.
 func (s *ReviewService) CreateReply(
 	ctx context.Context,
-	tenantID, reviewID uuid.UUID,
+	reviewID uuid.UUID,
 	sellerAuth0ID string,
 	sellerID uuid.UUID,
 	in domain.CreateReplyInput,
@@ -341,7 +339,7 @@ func (s *ReviewService) CreateReply(
 		return nil, apperrors.BadRequest("body must be at most 2000 characters")
 	}
 
-	review, err := s.repo.GetByID(ctx, tenantID, reviewID)
+	review, err := s.repo.GetByID(ctx, reviewID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load review", err)
 	}
@@ -357,11 +355,11 @@ func (s *ReviewService) CreateReply(
 		SellerAuth0ID: sellerAuth0ID,
 		Body:          in.Body,
 	}
-	if err := s.repo.CreateReply(ctx, tenantID, reply); err != nil {
+	if err := s.repo.CreateReply(ctx, reply); err != nil {
 		return nil, err
 	}
 
-	s.publishEvent(ctx, tenantID, "review.replied", map[string]any{
+	s.publishEvent(ctx, "review.replied", map[string]any{
 		"review_id":      review.ID.String(),
 		"product_id":     review.ProductID.String(),
 		"seller_id":      review.SellerID.String(),
@@ -376,7 +374,7 @@ func (s *ReviewService) CreateReply(
 // UpdateReply updates a seller reply.
 func (s *ReviewService) UpdateReply(
 	ctx context.Context,
-	tenantID, reviewID uuid.UUID,
+	reviewID uuid.UUID,
 	sellerAuth0ID string,
 	sellerID uuid.UUID,
 	in domain.UpdateReplyInput,
@@ -389,7 +387,7 @@ func (s *ReviewService) UpdateReply(
 		return nil, apperrors.BadRequest("body must be at most 2000 characters")
 	}
 
-	review, err := s.repo.GetByID(ctx, tenantID, reviewID)
+	review, err := s.repo.GetByID(ctx, reviewID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load review", err)
 	}
@@ -401,13 +399,13 @@ func (s *ReviewService) UpdateReply(
 	}
 
 	// Pass reviewID and new body to UpdateReply; the repo uses RETURNING
-	// to populate all remaining fields (id, tenant_id, seller_auth0_id,
+	// to populate all remaining fields (id, seller_auth0_id,
 	// created_at, updated_at) so the caller gets a complete object.
 	reply := &domain.ReviewReply{
 		ReviewID: reviewID,
 		Body:     in.Body,
 	}
-	if err := s.repo.UpdateReply(ctx, tenantID, reply); err != nil {
+	if err := s.repo.UpdateReply(ctx, reply); err != nil {
 		return nil, err
 	}
 
@@ -417,10 +415,10 @@ func (s *ReviewService) UpdateReply(
 // DeleteReply deletes a seller reply.
 func (s *ReviewService) DeleteReply(
 	ctx context.Context,
-	tenantID, reviewID uuid.UUID,
+	reviewID uuid.UUID,
 	sellerID uuid.UUID,
 ) error {
-	review, err := s.repo.GetByID(ctx, tenantID, reviewID)
+	review, err := s.repo.GetByID(ctx, reviewID)
 	if err != nil {
 		return apperrors.Internal("failed to load review", err)
 	}
@@ -430,12 +428,12 @@ func (s *ReviewService) DeleteReply(
 	if review.SellerID != sellerID {
 		return domain.ErrNotSellerOfProduct
 	}
-	return s.repo.DeleteReply(ctx, tenantID, reviewID)
+	return s.repo.DeleteReply(ctx, reviewID)
 }
 
 // publishEvent is a best-effort publisher for review events.
-func (s *ReviewService) publishEvent(ctx context.Context, tenantID uuid.UUID, eventType string, data map[string]any) {
-	pubsub.PublishEvent(ctx, s.publisher, tenantID, eventType, reviewEventTopic, data)
+func (s *ReviewService) publishEvent(ctx context.Context, eventType string, data map[string]any) {
+	pubsub.PublishEvent(ctx, s.publisher, eventType, reviewEventTopic, data)
 }
 
 func truncate(s string, maxLen int) string {

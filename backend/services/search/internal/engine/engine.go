@@ -17,5 +17,5 @@ type SearchEngine interface {
 	IndexProduct(ctx context.Context, product domain.ProductEvent) error
 
 	// DeleteProduct removes a product from the search index.
-	DeleteProduct(ctx context.Context, tenantID uuid.UUID, productID uuid.UUID) error
+	DeleteProduct(ctx context.Context, productID uuid.UUID) error
 }

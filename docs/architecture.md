@@ -6,7 +6,6 @@
 - [サービス一覧](#サービス一覧)
 - [通信パターン](#通信パターン)
 - [データモデル](#データモデル)
-- [マルチテナント設計](#マルチテナント設計)
 - [認証・認可フロー](#認証認可フロー)
 - [イベント駆動アーキテクチャ](#イベント駆動アーキテクチャ)
 - [検索・レコメンデーション](#検索レコメンデーション)
@@ -18,7 +17,7 @@
 
 ## システムアーキテクチャ概要
 
-本システムはマイクロサービスアーキテクチャを採用し、各サービスが独立したドメインを担当します。全てのリクエストは API Gateway を経由し、テナント解決・認証検証が行われます。
+本システムはマイクロサービスアーキテクチャを採用し、各サービスが独立したドメインを担当します。全てのリクエストは API Gateway を経由し、認証検証が行われます。
 
 ```
                     ┌─────────────┐
@@ -38,7 +37,6 @@
               │   (:8080)           │
               │                     │
               │  ・JWT 検証          │
-              │  ・テナント解決      │
               │  ・レート制限        │
               │  ・リクエストルーティング │
               └─┬─┬─┬─┬─┬─┬─┬──────┘
@@ -65,7 +63,7 @@
 │  ┌───────────┐  ┌──────────┐  ┌───────────────────┐  │
 │  │PostgreSQL │  │  Redis   │  │  Cloud Pub/Sub    │  │
 │  │  16       │  │   7      │  │  (非同期メッセージ) │  │
-│  │(RLS分離)  │  │(カート +  │  │                   │  │
+│  │           │  │(カート +  │  │                   │  │
 │  │           │  │ キャッシュ)│  │                   │  │
 │  └───────────┘  └──────────┘  └───────────────────┘  │
 │                                                       │
@@ -89,8 +87,8 @@
 
 | サービス         | ポート | 役割                                                                                                     | DB スキーマ     |
 | ---------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------- |
-| **gateway**      | 8080   | API Gateway。JWT 検証、テナント解決、リクエストルーティング、レート制限                                  | なし            |
-| **auth**         | 8081   | テナント管理、セラー登録・管理、ユーザー認証連携 (Auth0)、RBAC・API トークン                            | `auth_svc`      |
+| **gateway**      | 8080   | API Gateway。JWT 検証、リクエストルーティング、レート制限                                                | なし            |
+| **auth**         | 8081   | セラー登録・管理、ユーザー認証連携 (Auth0)、RBAC・API トークン                                          | `auth_svc`      |
 | **subscription** | 8089   | セラー/バイヤーのサブスクリプションプラン・加入状態管理 (Phase 2 で auth から分離)                      | `subscription_svc` |
 | **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                                                            | `catalog_svc`   |
 | **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                                                               | `inventory_svc` |
@@ -117,7 +115,7 @@ Client  ──HTTP/JSON──▶  Gateway  ──HTTP/JSON──▶  各サー�
 ```
 
 - 全リクエストに `Authorization: Bearer <JWT>` ヘッダーを付与
-- テナント識別: JWT クレーム内の `tenant_id` または `X-Tenant-ID` ヘッダー
+- seller 識別: JWT クレーム内の `seller_id` または `X-Seller-ID` ヘッダー
 - レスポンス形式: JSON (`Content-Type: application/json`)
 
 ### 2. gRPC / 内部 HTTP (サービス間同期通信)
@@ -157,8 +155,6 @@ Catalog Service ──publish──▶ [catalog.product_updated] ──subscribe
 
 ```mermaid
 erDiagram
-    tenants ||--o{ sellers : "has many"
-    tenants ||--o{ categories : "has many"
     sellers ||--o{ seller_users : "has many"
     sellers ||--o{ products : "has many"
     sellers ||--o{ orders : "receives"
@@ -180,19 +176,8 @@ erDiagram
     reviews ||--o| review_replies : "has one"
     products ||--o| product_ratings : "has one"
 
-    tenants {
-        uuid id PK
-        varchar name
-        varchar slug UK
-        varchar status
-        jsonb settings
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
     sellers {
         uuid id PK
-        uuid tenant_id FK
         varchar auth0_org_id
         varchar name
         varchar slug
@@ -204,7 +189,6 @@ erDiagram
 
     seller_users {
         uuid id PK
-        uuid tenant_id FK
         uuid seller_id FK
         varchar auth0_user_id
         varchar role
@@ -212,7 +196,6 @@ erDiagram
 
     categories {
         uuid id PK
-        uuid tenant_id FK
         uuid parent_id FK
         varchar name
         varchar slug
@@ -221,7 +204,6 @@ erDiagram
 
     products {
         uuid id PK
-        uuid tenant_id FK
         uuid seller_id FK
         varchar name
         varchar slug
@@ -233,7 +215,6 @@ erDiagram
 
     skus {
         uuid id PK
-        uuid tenant_id FK
         uuid product_id FK
         uuid seller_id FK
         varchar sku_code
@@ -245,7 +226,6 @@ erDiagram
 
     inventory {
         uuid id PK
-        uuid tenant_id FK
         uuid sku_id FK
         uuid seller_id FK
         int quantity_available
@@ -255,7 +235,6 @@ erDiagram
 
     stock_movements {
         uuid id PK
-        uuid tenant_id FK
         uuid sku_id FK
         varchar movement_type
         int quantity
@@ -265,7 +244,6 @@ erDiagram
 
     orders {
         uuid id PK
-        uuid tenant_id FK
         uuid seller_id FK
         varchar seller_name
         varchar buyer_auth0_id
@@ -280,7 +258,6 @@ erDiagram
 
     order_lines {
         uuid id PK
-        uuid tenant_id FK
         uuid order_id FK
         uuid sku_id FK
         uuid product_id FK
@@ -293,7 +270,6 @@ erDiagram
 
     commission_rules {
         uuid id PK
-        uuid tenant_id FK
         uuid seller_id FK
         uuid category_id FK
         int rate_bps
@@ -304,7 +280,6 @@ erDiagram
 
     payouts {
         uuid id PK
-        uuid tenant_id FK
         uuid seller_id FK
         uuid order_id FK
         bigint amount
@@ -315,7 +290,6 @@ erDiagram
 
     inquiries {
         uuid id PK
-        uuid tenant_id FK
         varchar buyer_auth0_id
         uuid seller_id FK
         uuid sku_id FK
@@ -328,7 +302,6 @@ erDiagram
 
     inquiry_messages {
         uuid id PK
-        uuid tenant_id FK
         uuid inquiry_id FK
         varchar sender_type
         varchar sender_id
@@ -338,7 +311,6 @@ erDiagram
 
     reviews {
         uuid id PK
-        uuid tenant_id FK
         varchar buyer_auth0_id
         uuid product_id FK
         uuid seller_id FK
@@ -350,14 +322,12 @@ erDiagram
 
     review_replies {
         uuid id PK
-        uuid tenant_id FK
         uuid review_id FK
         varchar seller_auth0_id
         text body
     }
 
     product_ratings {
-        uuid tenant_id PK
         uuid product_id PK
         numeric average_rating
         int review_count
@@ -371,7 +341,7 @@ PostgreSQL のスキーマ機能を利用し、サービスごとにスキーマ
 
 | スキーマ        | 担当サービス | テーブル                                               |
 | --------------- | ------------ | ------------------------------------------------------ |
-| `auth_svc`      | auth         | `tenants`, `sellers`, `seller_users`, `buyers`         |
+| `auth_svc`      | auth         | `sellers`, `seller_users`, `buyers`                    |
 | `subscription_svc` | subscription | `subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions` |
 | `catalog_svc`   | catalog      | `categories`, `products`, `skus`, `product_categories` |
 | `inventory_svc` | inventory    | `inventory`, `stock_movements`                         |
@@ -408,7 +378,7 @@ Amazon 型のカート UX では 1 つのチェックアウトで複数セラー
 - `SELECT id, name FROM auth_svc.sellers WHERE id = ANY($1)` → `orders.seller_name`
 - `SELECT id, product_id FROM catalog_svc.skus WHERE id = ANY($1)` → `order_lines.product_id`
 
-`auth_svc.sellers` / `catalog_svc.skus` は `order_svc.orders` と同じ `tenant_isolation` RLS ポリシーを持ち、`TenantTx` が `app.current_tenant_id` をセットするため、テナント越境は自動的に防がれます。
+`auth_svc.sellers` / `catalog_svc.skus` はクロススキーマクエリで参照します。
 
 **クエリ時エンリッチ**: `GET /api/v1/buyer/orders/{id}` は gateway が:
 
@@ -428,57 +398,6 @@ Amazon 型のカート UX では 1 つのチェックアウトで複数セラー
 
 ---
 
-## マルチテナント設計
-
-### Pool モデル
-
-本システムは **Pool (共有データベース) モデル** を採用し、全テナントが同一の PostgreSQL インスタンス・同一のテーブルを共有します。テナント分離は PostgreSQL の **Row-Level Security (RLS)** で実現します。
-
-```
-┌─────────────────────────────────────────────────┐
-│                  PostgreSQL 16                    │
-│                                                  │
-│  ┌───────────────────────────────────────────┐   │
-│  │  catalog_svc.products                      │   │
-│  │  ┌─────────┬──────────────────────────┐   │   │
-│  │  │tenant_id│ data                      │   │   │
-│  │  ├─────────┼──────────────────────────┤   │   │
-│  │  │ AAA     │ テナントAの商品 ...       │   │   │
-│  │  │ AAA     │ テナントAの商品 ...       │   │   │
-│  │  │ BBB     │ テナントBの商品 ...       │   │   │  ← 同一テーブル
-│  │  │ BBB     │ テナントBの商品 ...       │   │   │
-│  │  │ CCC     │ テナントCの商品 ...       │   │   │
-│  │  └─────────┴──────────────────────────┘   │   │
-│  │                                            │   │
-│  │  RLS Policy: tenant_id =                   │   │
-│  │    current_setting('app.current_tenant_id')│   │
-│  └───────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
-```
-
-### RLS ポリシーの仕組み
-
-1. **リクエスト受信**: Gateway が JWT からテナント ID を抽出
-2. **コンテキスト伝播**: `backend/pkg/tenant` パッケージで Go context にテナント ID を格納
-3. **DB セッション設定**: クエリ実行前に `SET app.current_tenant_id = '<uuid>'` を実行
-4. **自動フィルタリング**: PostgreSQL の RLS が全クエリに `WHERE tenant_id = ...` を自動付与
-
-```sql
--- 全テナントスコープテーブルに適用される RLS ポリシー
-ALTER TABLE catalog_svc.products ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON catalog_svc.products
-    USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
-```
-
-### テナント分離の保証
-
-- **DB レベル**: RLS による強制的なフィルタリング (アプリケーションバグがあっても他テナントのデータは見えない)
-- **アプリケーションレベル**: 全クエリで `tenant_id` を WHERE 条件に含める (RLS が無効化された場合の保険)
-- **インデックス**: 全テーブルの `tenant_id` にインデックスを作成し、パフォーマンスを確保
-
----
-
 ## 認証・認可フロー
 
 ### 全体フロー
@@ -493,17 +412,16 @@ sequenceDiagram
 
     Client->>Auth0: 1. ログイン (email/password, Google, etc.)
     Auth0-->>Client: 2. JWT (access_token) 発行
-    Note over Client,Auth0: JWT Claims: sub, tenant_id, seller_id, roles
+    Note over Client,Auth0: JWT Claims: sub, seller_id, roles
 
     Client->>GW: 3. API リクエスト + Authorization: Bearer <JWT>
     GW->>GW: 4. JWT 署名検証 (Auth0 JWKS)
-    GW->>GW: 5. テナント ID 抽出 + コンテキスト構築
-    GW->>Svc: 6. リクエスト転送 (X-Tenant-ID, X-User-ID ヘッダー)
-    Svc->>DB: 7. SET app.current_tenant_id = '<tenant_id>'
-    Svc->>DB: 8. クエリ実行 (RLS が自動フィルタ)
-    DB-->>Svc: 9. テナントスコープの結果
-    Svc-->>GW: 10. レスポンス
-    GW-->>Client: 11. レスポンス
+    GW->>GW: 5. コンテキスト構築
+    GW->>Svc: 6. リクエスト転送 (X-User-ID, X-Seller-ID ヘッダー)
+    Svc->>DB: 7. クエリ実行
+    DB-->>Svc: 8. 結果
+    Svc-->>GW: 9. レスポンス
+    GW-->>Client: 10. レスポンス
 ```
 
 ### JWT クレーム構造
@@ -511,9 +429,8 @@ sequenceDiagram
 ```json
 {
   "sub": "auth0|abc123",
-  "iss": "https://<tenant>.auth0.com/",
+  "iss": "https://<domain>.auth0.com/",
   "aud": "https://api.ec-marketplace.example.com",
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
   "seller_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
   "roles": ["seller:admin"],
   "exp": 1700000000
@@ -524,8 +441,7 @@ sequenceDiagram
 
 | ロール           | 説明                   | アクセス範囲         |
 | ---------------- | ---------------------- | -------------------- |
-| `platform:admin` | プラットフォーム管理者 | 全テナント・全操作   |
-| `tenant:admin`   | テナント管理者         | 自テナント内の全操作 |
+| `platform:admin` | プラットフォーム管理者 | 全操作               |
 | `seller:admin`   | セラー管理者           | 自セラーの全操作     |
 | `seller:member`  | セラーメンバー         | 自セラーの限定操作   |
 | `buyer`          | 購入者                 | 商品閲覧・購入       |
@@ -563,7 +479,6 @@ sequenceDiagram
 ```json
 {
   "event_type": "order.created",
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
   "timestamp": "2026-04-06T12:00:00Z",
   "data": {
     "order_id": "...",
@@ -577,7 +492,6 @@ sequenceDiagram
 
 **設計方針:**
 
-- **全メッセージに `tenant_id` を含める**: サブスクライバーがテナントコンテキストを復元するため
 - **べき等処理**: サブスクライバーは同一メッセージの再配信に対応
 - **Pub/Sub 失敗は呼び出し元を失敗させない**: 結果整合性 (eventual consistency) を許容
 
@@ -641,7 +555,7 @@ Buyer frontend
     ▼
 Gateway (:8080)  ──▶  Cart Service (:8088)
                           │
-                          ├─ Redis            cart:{tenant_id}:{buyer_auth0_id} (TTL 30日)
+                          ├─ Redis            cart:{buyer_auth0_id} (TTL 30日)
                           │
                           └─ Order Service (内部 HTTP)
                                   │
@@ -660,9 +574,9 @@ Stripe ──▶ POST /webhooks/stripe (order service)
 
 ### 設計の要点
 
-- **カートは Redis に保存**: `cart:{tenant_id}:{buyer_auth0_id}` をキー、JSON を値とする単純な KV。TTL 30 日、更新のたびにリセット。
+- **カートは Redis に保存**: `cart:{buyer_auth0_id}` をキー、JSON を値とする単純な KV。TTL 30 日、更新のたびにリセット。
 - **Stripe は Separate Charges and Transfers**: Destination Charges は 1 PaymentIntent = 1 connected account の制約があり、マルチセラー決済には構造的に使えません。本システムではプラットフォームアカウントで課金 (charge) し、webhook 受信後にセラーごとに Transfer を発行します。
-- **Checkout の DB 書込は 1 トランザクション**: `TenantTx` で `orders` と `payouts` (pending) をまとめて作成し、その後 Stripe を呼び出します。ロールバック時は何も作成されません。
+- **Checkout の DB 書込は 1 トランザクション**: `database.Tx` で `orders` と `payouts` (pending) をまとめて作成し、その後 Stripe を呼び出します。ロールバック時は何も作成されません。
 - **価格スナップショット**: カート追加時点の価格を `unit_price_snapshot` として Redis に保存。チェックアウト時に order service が catalog の現行価格と比較し、差分があれば警告を返します。
 - **単一購入経路**: 「今すぐ購入」などの直接注文 API は廃止し、全ての購入はカート経由で行います (単一セラー注文でもカートに追加 → チェックアウト)。
 - **購入履歴のスナップショット+エンリッチ**: `GET /api/v1/buyer/orders/{id}` は、checkout 時に永続化した `seller_name` / `product_name` / `product_id` などのスナップショット値と、catalog gRPC (`GetProduct`) から取得した現在の `image_url` / `slug` / 生存状態 (`status=archived` で `is_deleted`) を組み合わせて返します。詳細は [データモデル § 購入履歴と商品スナップショット](#購入履歴と商品スナップショット) を参照。

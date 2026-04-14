@@ -20,10 +20,9 @@ type PlanFeatures struct {
 	PromotedResults int     `json:"promoted_results"`
 }
 
-// SubscriptionPlan represents a seller plan tier available within a tenant.
+// SubscriptionPlan represents a seller plan tier.
 type SubscriptionPlan struct {
 	ID            uuid.UUID    `json:"id"`
-	TenantID      uuid.UUID    `json:"tenant_id"`
 	Name          string       `json:"name"`
 	Slug          string       `json:"slug"`
 	Tier          int          `json:"tier"`
@@ -49,7 +48,6 @@ const (
 // SellerSubscription tracks which plan a seller is currently on.
 type SellerSubscription struct {
 	ID                   uuid.UUID          `json:"id"`
-	TenantID             uuid.UUID          `json:"tenant_id"`
 	SellerID             uuid.UUID          `json:"seller_id"`
 	PlanID               uuid.UUID          `json:"plan_id"`
 	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`
@@ -77,10 +75,9 @@ type BuyerPlanFeatures struct {
 	FreeShipping bool `json:"free_shipping"`
 }
 
-// BuyerPlan represents a buyer subscription plan tier available within a tenant.
+// BuyerPlan represents a buyer subscription plan tier.
 type BuyerPlan struct {
 	ID            uuid.UUID         `json:"id"`
-	TenantID      uuid.UUID         `json:"tenant_id"`
 	Name          string            `json:"name"`
 	Slug          string            `json:"slug"`
 	PriceAmount   int64             `json:"price_amount"`
@@ -95,7 +92,6 @@ type BuyerPlan struct {
 // BuyerSubscription tracks which plan a buyer is currently on.
 type BuyerSubscription struct {
 	ID                   uuid.UUID          `json:"id"`
-	TenantID             uuid.UUID          `json:"tenant_id"`
 	BuyerAuth0ID         string             `json:"buyer_auth0_id"`
 	PlanID               uuid.UUID          `json:"plan_id"`
 	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`

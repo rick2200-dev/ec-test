@@ -39,14 +39,13 @@ func NewCatalogClient(baseURL, internalToken string) *CatalogClient {
 // GetProduct retrieves product metadata and SKU IDs from the catalog service.
 func (c *CatalogClient) GetProduct(
 	ctx context.Context,
-	tenantID, productID uuid.UUID,
+	productID uuid.UUID,
 ) (*port.ProductLookup, error) {
 	reqURL := fmt.Sprintf("%s/internal/products/%s", c.baseURL, productID.String())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, apperrors.Internal("build catalog request", err)
 	}
-	req.Header.Set("X-Tenant-ID", tenantID.String())
 	req.Header.Set("X-Internal-Token", c.internalToken)
 
 	resp, err := c.http.Do(req)

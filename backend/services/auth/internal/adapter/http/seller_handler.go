@@ -8,7 +8,6 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/pagination"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
 )
@@ -57,14 +56,8 @@ type createSellerRequest struct {
 	CommissionRateBPS int    `json:"commission_rate_bps"`
 }
 
-// Create handles POST /sellers (tenant-scoped).
+// Create handles POST /sellers.
 func (h *SellerHandler) Create(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	var req createSellerRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, err)
@@ -79,7 +72,7 @@ func (h *SellerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		CommissionRateBPS: req.CommissionRateBPS,
 	}
 
-	if err := h.svc.CreateSeller(r.Context(), tenantID, s); err != nil {
+	if err := h.svc.CreateSeller(r.Context(), s); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -89,12 +82,6 @@ func (h *SellerHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /sellers/{id}.
 func (h *SellerHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -102,7 +89,7 @@ func (h *SellerHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s, err := h.svc.GetSeller(r.Context(), tenantID, id)
+	s, err := h.svc.GetSeller(r.Context(), id)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -113,15 +100,9 @@ func (h *SellerHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /sellers.
 func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	p := pagination.FromRequest(r)
 
-	sellers, total, err := h.svc.ListSellers(r.Context(), tenantID, p.Limit, p.Offset)
+	sellers, total, err := h.svc.ListSellers(r.Context(), p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -138,12 +119,6 @@ func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Approve handles PUT /sellers/{id}/approve.
 func (h *SellerHandler) Approve(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -151,7 +126,7 @@ func (h *SellerHandler) Approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ApproveSeller(r.Context(), tenantID, id); err != nil {
+	if err := h.svc.ApproveSeller(r.Context(), id); err != nil {
 		httputil.Error(w, err)
 		return
 	}

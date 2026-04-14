@@ -42,11 +42,6 @@ func NewServer(svc port.OrderUseCase) *Server {
 //
 //nolint:staticcheck // SA1019: implementing deprecated RPC for backwards compatibility
 func (s *Server) CreateOrder(ctx context.Context, req *orderv1.CreateOrderRequest) (*orderv1.CreateOrderResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid tenant_id: %v", err)
-	}
-
 	sellerID, err := uuid.Parse(req.GetSellerId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid seller_id: %v", err)
@@ -59,7 +54,7 @@ func (s *Server) CreateOrder(ctx context.Context, req *orderv1.CreateOrderReques
 		ShippingAddress: parseShippingAddress(req.GetShippingAddressJson()),
 	}
 
-	orderWithLines, clientSecret, err := s.svc.CreateOrder(ctx, tenantID, input)
+	orderWithLines, clientSecret, err := s.svc.CreateOrder(ctx, input)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
@@ -72,17 +67,12 @@ func (s *Server) CreateOrder(ctx context.Context, req *orderv1.CreateOrderReques
 
 // GetOrder retrieves an order by ID.
 func (s *Server) GetOrder(ctx context.Context, req *orderv1.GetOrderRequest) (*orderv1.GetOrderResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid tenant_id: %v", err)
-	}
-
 	orderID, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid order id: %v", err)
 	}
 
-	orderWithLines, err := s.svc.GetOrder(ctx, tenantID, orderID)
+	orderWithLines, err := s.svc.GetOrder(ctx, orderID)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
@@ -94,14 +84,9 @@ func (s *Server) GetOrder(ctx context.Context, req *orderv1.GetOrderRequest) (*o
 
 // ListBuyerOrders returns paginated orders for a buyer.
 func (s *Server) ListBuyerOrders(ctx context.Context, req *orderv1.ListBuyerOrdersRequest) (*orderv1.ListBuyerOrdersResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid tenant_id: %v", err)
-	}
-
 	limit, offset := paginationDefaults(req.GetPagination())
 
-	orders, total, err := s.svc.ListBuyerOrders(ctx, tenantID, req.GetBuyerAuth0Id(), limit, offset)
+	orders, total, err := s.svc.ListBuyerOrders(ctx, req.GetBuyerAuth0Id(), limit, offset)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
@@ -123,11 +108,6 @@ func (s *Server) ListBuyerOrders(ctx context.Context, req *orderv1.ListBuyerOrde
 
 // ListSellerOrders returns paginated orders for a seller.
 func (s *Server) ListSellerOrders(ctx context.Context, req *orderv1.ListSellerOrdersRequest) (*orderv1.ListSellerOrdersResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid tenant_id: %v", err)
-	}
-
 	sellerID, err := uuid.Parse(req.GetSellerId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid seller_id: %v", err)
@@ -135,7 +115,7 @@ func (s *Server) ListSellerOrders(ctx context.Context, req *orderv1.ListSellerOr
 
 	limit, offset := paginationDefaults(req.GetPagination())
 
-	orders, total, err := s.svc.ListSellerOrders(ctx, tenantID, sellerID, req.GetStatus(), limit, offset)
+	orders, total, err := s.svc.ListSellerOrders(ctx, sellerID, req.GetStatus(), limit, offset)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
@@ -157,43 +137,32 @@ func (s *Server) ListSellerOrders(ctx context.Context, req *orderv1.ListSellerOr
 
 // UpdateOrderStatus updates the status of an order.
 //
-// Note: the gRPC request shape (tenant_id, id, status) does not
-// carry an authenticated seller identity, so this adapter cannot
-// independently enforce seller ownership before calling the service.
-// It resolves the order's seller_id up front and passes it as the
-// ownership argument — this effectively makes the check a no-op on
-// the gRPC path, matching the pre-existing behavior. The REST
-// handler (order_handler.UpdateStatus) IS tightened: it extracts
-// seller_id from tenant.Context and passes the authenticated caller
-// to the service, which is where the real ownership guarantee lives.
-// If the gRPC path ever needs a real auth check, the proto message
-// must add a seller_id field and this adapter should pass the
-// authenticated caller just like the REST handler does.
+// Note: the gRPC request shape (id, status) does not carry an authenticated
+// seller identity, so this adapter cannot independently enforce seller
+// ownership before calling the service. It resolves the order's seller_id
+// up front and passes it as the ownership argument — this effectively makes
+// the check a no-op on the gRPC path. The REST handler IS tightened: it
+// extracts seller_id from the authenticated caller and passes it to the
+// service, which is where the real ownership guarantee lives.
 func (s *Server) UpdateOrderStatus(ctx context.Context, req *orderv1.UpdateOrderStatusRequest) (*orderv1.UpdateOrderStatusResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid tenant_id: %v", err)
-	}
-
 	orderID, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid order id: %v", err)
 	}
 
 	// Resolve the order's current seller_id so the service's
-	// ownership comparison is a no-op rather than a hard 404. See
-	// the method comment for why this is intentional on this path.
-	existing, err := s.svc.GetOrder(ctx, tenantID, orderID)
+	// ownership comparison is a no-op rather than a hard 404.
+	existing, err := s.svc.GetOrder(ctx, orderID)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
 
-	if err := s.svc.UpdateOrderStatus(ctx, tenantID, existing.SellerID, orderID, req.GetStatus()); err != nil {
+	if err := s.svc.UpdateOrderStatus(ctx, existing.SellerID, orderID, req.GetStatus()); err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
 
 	// Fetch the updated order to return it.
-	orderWithLines, err := s.svc.GetOrder(ctx, tenantID, orderID)
+	orderWithLines, err := s.svc.GetOrder(ctx, orderID)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}
@@ -205,11 +174,6 @@ func (s *Server) UpdateOrderStatus(ctx context.Context, req *orderv1.UpdateOrder
 
 // ListPayouts returns paginated payouts for a seller.
 func (s *Server) ListPayouts(ctx context.Context, req *orderv1.ListPayoutsRequest) (*orderv1.ListPayoutsResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid tenant_id: %v", err)
-	}
-
 	sellerID, err := uuid.Parse(req.GetSellerId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid seller_id: %v", err)
@@ -217,7 +181,7 @@ func (s *Server) ListPayouts(ctx context.Context, req *orderv1.ListPayoutsReques
 
 	limit, offset := paginationDefaults(req.GetPagination())
 
-	payouts, total, err := s.svc.ListPayouts(ctx, tenantID, sellerID, limit, offset)
+	payouts, total, err := s.svc.ListPayouts(ctx, sellerID, limit, offset)
 	if err != nil {
 		return nil, serviceErrToGRPC(err)
 	}

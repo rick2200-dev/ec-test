@@ -49,36 +49,34 @@ message PlanFeatures {
 
 message SellerPlan {
   string id = 1;
-  string tenant_id = 2;
-  string name = 3;
-  string slug = 4;
-  int32 tier = 5;
-  common.v1.Money price = 6;
-  PlanFeatures features = 7;
-  string stripe_price_id = 8;
-  string status = 9;
-  google.protobuf.Timestamp created_at = 10;
-  google.protobuf.Timestamp updated_at = 11;
+  string name = 2;
+  string slug = 3;
+  int32 tier = 4;
+  common.v1.Money price = 5;
+  PlanFeatures features = 6;
+  string stripe_price_id = 7;
+  string status = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
 }
 
 message SellerSubscription {
   string id = 1;
-  string tenant_id = 2;
-  string seller_id = 3;
-  string plan_id = 4;
-  string stripe_subscription_id = 5;
-  string stripe_customer_id = 6;
-  string status = 7;
-  google.protobuf.Timestamp current_period_start = 8;
-  google.protobuf.Timestamp current_period_end = 9;
-  google.protobuf.Timestamp canceled_at = 10;
-  google.protobuf.Timestamp created_at = 11;
-  google.protobuf.Timestamp updated_at = 12;
+  string seller_id = 2;
+  string plan_id = 3;
+  string stripe_subscription_id = 4;
+  string stripe_customer_id = 5;
+  string status = 6;
+  google.protobuf.Timestamp current_period_start = 7;
+  google.protobuf.Timestamp current_period_end = 8;
+  google.protobuf.Timestamp canceled_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
 
   // Plan summary fields, joined server-side so callers don't round-trip.
-  string plan_name = 13;
-  string plan_slug = 14;
-  int32 plan_tier = 15;
+  string plan_name = 12;
+  string plan_slug = 13;
+  int32 plan_tier = 14;
 }
 
 // BuyerPlanFeatures intentionally mirrors only the flags we ship today.
@@ -89,55 +87,63 @@ message BuyerPlanFeatures {
 
 message BuyerPlan {
   string id = 1;
-  string tenant_id = 2;
-  string name = 3;
-  string slug = 4;
-  common.v1.Money price = 5;
-  BuyerPlanFeatures features = 6;
-  string stripe_price_id = 7;
-  string status = 8;
-  google.protobuf.Timestamp created_at = 9;
-  google.protobuf.Timestamp updated_at = 10;
+  string name = 2;
+  string slug = 3;
+  common.v1.Money price = 4;
+  BuyerPlanFeatures features = 5;
+  string stripe_price_id = 6;
+  string status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 message BuyerSubscription {
   string id = 1;
-  string tenant_id = 2;
-  string buyer_auth0_id = 3;
-  string plan_id = 4;
-  string stripe_subscription_id = 5;
-  string stripe_customer_id = 6;
-  string status = 7;
-  google.protobuf.Timestamp current_period_start = 8;
-  google.protobuf.Timestamp current_period_end = 9;
-  google.protobuf.Timestamp canceled_at = 10;
-  google.protobuf.Timestamp created_at = 11;
-  google.protobuf.Timestamp updated_at = 12;
+  string buyer_auth0_id = 2;
+  string plan_id = 3;
+  string stripe_subscription_id = 4;
+  string stripe_customer_id = 5;
+  string status = 6;
+  google.protobuf.Timestamp current_period_start = 7;
+  google.protobuf.Timestamp current_period_end = 8;
+  google.protobuf.Timestamp canceled_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
 
-  string plan_name = 13;
-  string plan_slug = 14;
-  BuyerPlanFeatures features = 15;
+  string plan_name = 12;
+  string plan_slug = 13;
+  BuyerPlanFeatures features = 14;
 }
 
 // ─── Seller plan RPCs ────────────────────────────────────────
 
-message ListSellerPlansRequest {
-  string tenant_id = 1;
-}
+message ListSellerPlansRequest {}
 message ListSellerPlansResponse {
   repeated SellerPlan plans = 1;
 }
 
 message GetSellerPlanRequest {
-  string tenant_id = 1;
-  string plan_id = 2;
+  string plan_id = 1;
 }
 message GetSellerPlanResponse {
   SellerPlan plan = 1;
 }
 
 message CreateSellerPlanRequest {
-  string tenant_id = 1;
+  string name = 1;
+  string slug = 2;
+  int32 tier = 3;
+  common.v1.Money price = 4;
+  PlanFeatures features = 5;
+  string stripe_price_id = 6;
+  string status = 7;
+}
+message CreateSellerPlanResponse {
+  SellerPlan plan = 1;
+}
+
+message UpdateSellerPlanRequest {
+  string plan_id = 1;
   string name = 2;
   string slug = 3;
   int32 tier = 4;
@@ -146,21 +152,6 @@ message CreateSellerPlanRequest {
   string stripe_price_id = 7;
   string status = 8;
 }
-message CreateSellerPlanResponse {
-  SellerPlan plan = 1;
-}
-
-message UpdateSellerPlanRequest {
-  string tenant_id = 1;
-  string plan_id = 2;
-  string name = 3;
-  string slug = 4;
-  int32 tier = 5;
-  common.v1.Money price = 6;
-  PlanFeatures features = 7;
-  string stripe_price_id = 8;
-  string status = 9;
-}
 message UpdateSellerPlanResponse {
   SellerPlan plan = 1;
 }
@@ -168,17 +159,15 @@ message UpdateSellerPlanResponse {
 // ─── Seller subscription RPCs ────────────────────────────────
 
 message GetSellerSubscriptionRequest {
-  string tenant_id = 1;
-  string seller_id = 2;
+  string seller_id = 1;
 }
 message GetSellerSubscriptionResponse {
   SellerSubscription subscription = 1;
 }
 
 message SubscribeSellerRequest {
-  string tenant_id = 1;
-  string seller_id = 2;
-  string plan_id = 3;
+  string seller_id = 1;
+  string plan_id = 2;
 }
 message SubscribeSellerResponse {
   SellerSubscription subscription = 1;
@@ -186,43 +175,38 @@ message SubscribeSellerResponse {
 
 // ─── Buyer plan RPCs ─────────────────────────────────────────
 
-message ListBuyerPlansRequest {
-  string tenant_id = 1;
-}
+message ListBuyerPlansRequest {}
 message ListBuyerPlansResponse {
   repeated BuyerPlan plans = 1;
 }
 
 message GetBuyerPlanRequest {
-  string tenant_id = 1;
-  string plan_id = 2;
+  string plan_id = 1;
 }
 message GetBuyerPlanResponse {
   BuyerPlan plan = 1;
 }
 
 message CreateBuyerPlanRequest {
-  string tenant_id = 1;
-  string name = 2;
-  string slug = 3;
-  common.v1.Money price = 4;
-  BuyerPlanFeatures features = 5;
-  string stripe_price_id = 6;
-  string status = 7;
+  string name = 1;
+  string slug = 2;
+  common.v1.Money price = 3;
+  BuyerPlanFeatures features = 4;
+  string stripe_price_id = 5;
+  string status = 6;
 }
 message CreateBuyerPlanResponse {
   BuyerPlan plan = 1;
 }
 
 message UpdateBuyerPlanRequest {
-  string tenant_id = 1;
-  string plan_id = 2;
-  string name = 3;
-  string slug = 4;
-  common.v1.Money price = 5;
-  BuyerPlanFeatures features = 6;
-  string stripe_price_id = 7;
-  string status = 8;
+  string plan_id = 1;
+  string name = 2;
+  string slug = 3;
+  common.v1.Money price = 4;
+  BuyerPlanFeatures features = 5;
+  string stripe_price_id = 6;
+  string status = 7;
 }
 message UpdateBuyerPlanResponse {
   BuyerPlan plan = 1;
@@ -231,17 +215,15 @@ message UpdateBuyerPlanResponse {
 // ─── Buyer subscription RPCs ─────────────────────────────────
 
 message GetBuyerSubscriptionRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
+  string buyer_auth0_id = 1;
 }
 message GetBuyerSubscriptionResponse {
   BuyerSubscription subscription = 1;
 }
 
 message SubscribeBuyerRequest {
-  string tenant_id = 1;
-  string buyer_auth0_id = 2;
-  string plan_id = 3;
+  string buyer_auth0_id = 1;
+  string plan_id = 2;
 }
 message SubscribeBuyerResponse {
   BuyerSubscription subscription = 1;

@@ -6,17 +6,16 @@ Code with PKCE) を利用します。セッションは `@auth0/nextjs-auth0` SD
 `/api/gateway/*` プロキシ呼び出しで access token を Bearer ヘッダとして
 転送します (BFF パターン)。
 
-このドキュメントでは、Auth0 テナントの初回セットアップ手順と、
+このドキュメントでは、Auth0 の初回セットアップ手順と、
 `frontend/apps/buyer/.env.local` に必要な環境変数を説明します。
 
 ---
 
-## 1. Auth0 テナントの作成
+## 1. Auth0 アカウントの作成
 
 1. <https://auth0.com/> でサインアップ (無料枠で OK)。
-2. ダッシュボードからテナントを作成します。リージョンは開発機に近いものを
-   選んでください。テナントドメインは `dev-<random>.us.auth0.com` のように
-   なります。
+2. ダッシュボードからアプリケーションを作成します。リージョンは開発機に近いものを
+   選んでください。ドメインは `dev-<random>.us.auth0.com` のようになります。
 
 ## 2. Regular Web Application の作成
 
@@ -75,12 +74,7 @@ NEXT_PUBLIC_API_URL=/api/gateway
 
 AUTH_SERVICE_URL=http://localhost:8081
 AUTH_INTERNAL_TOKEN=dev-internal-token
-DEFAULT_TENANT_ID=00000000-0000-0000-0000-000000000001
 ```
-
-`DEFAULT_TENANT_ID` は seed で作成されるテナントの UUID に合わせてください
-(`infra/db/seeds/` を確認するか、`auth_svc.tenants` を psql で直接
-クエリします)。
 
 ## 6. Gateway の設定
 
@@ -126,7 +120,7 @@ gateway の環境変数にコピーし、`docker compose restart gateway` で
 **ログインは成功するが `auth_svc.buyers` が空** — BFF からの upsert 呼び出し
 (`POST /internal/buyers/upsert`) が失敗しています。Next.js dev サーバーの
 ログで `"buyer upsert failed"` を確認してください。よくある原因は
-`AUTH_INTERNAL_TOKEN` の不一致、`DEFAULT_TENANT_ID` の間違い、または
+`AUTH_INTERNAL_TOKEN` の不一致、または
 ホストから auth service コンテナに到達できないことです。
 
 **レビュー投稿が `403 PURCHASE_REQUIRED` を返す** — これは想定通りの

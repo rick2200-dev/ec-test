@@ -19,13 +19,13 @@ import (
 // an interface so service_test.go can mock it without reaching into
 // pgx or the repository package.
 type OrderReader interface {
-	GetByID(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error)
+	GetByID(ctx context.Context, orderID uuid.UUID) (*domain.OrderWithLines, error)
 }
 
 // PayoutReader is the narrow view of the existing payout repository
 // that cancellation needs. Same rationale as OrderReader.
 type PayoutReader interface {
-	ListByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) ([]domain.Payout, error)
+	ListByOrderID(ctx context.Context, orderID uuid.UUID) ([]domain.Payout, error)
 }
 
 // StripeClient is the narrow view of the Stripe wrapper that
@@ -41,17 +41,16 @@ type StripeClient interface {
 // persistence without a real Postgres, while *Repository is the
 // production implementation wired from main.go.
 type RequestsStore interface {
-	Create(ctx context.Context, tenantID uuid.UUID, req *CancellationRequest) error
-	GetByID(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error)
-	GetLatestByOrder(ctx context.Context, tenantID, orderID uuid.UUID) (*CancellationRequest, error)
+	Create(ctx context.Context, req *CancellationRequest) error
+	GetByID(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error)
+	GetLatestByOrder(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error)
 	// ListByStatus is seller-scoped — the sellerID parameter is mandatory
 	// and must join through order_svc.orders so one seller cannot read
-	// another seller's cancellation reasons or buyer identifiers in a
-	// multi-seller tenant.
-	ListByStatus(ctx context.Context, tenantID, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error)
-	Reject(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error)
-	MarkFailed(ctx context.Context, tenantID, requestID uuid.UUID, failureReason string) error
-	ApproveTx(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
+	// another seller's cancellation reasons or buyer identifiers.
+	ListByStatus(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error)
+	Reject(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error)
+	MarkFailed(ctx context.Context, requestID uuid.UUID, failureReason string) error
+	ApproveTx(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
 }
 
 // Service orchestrates the order-cancellation workflow end-to-end:
@@ -98,12 +97,12 @@ func NewService(
 //     cancellable window (shipped/delivered/completed/cancelled)
 //   - Conflict + CodeCancellationRequestAlreadyExists if a pending
 //     request already exists for this order
-func (s *Service) RequestCancellation(ctx context.Context, tenantID, orderID uuid.UUID, buyerAuth0ID, reason string) (*CancellationRequest, error) {
+func (s *Service) RequestCancellation(ctx context.Context, orderID uuid.UUID, buyerAuth0ID, reason string) (*CancellationRequest, error) {
 	if reason == "" {
 		return nil, apperrors.BadRequest("cancellation reason is required")
 	}
 
-	order, err := s.orders.GetByID(ctx, tenantID, orderID)
+	order, err := s.orders.GetByID(ctx, orderID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load order", err)
 	}
@@ -123,7 +122,7 @@ func (s *Service) RequestCancellation(ctx context.Context, tenantID, orderID uui
 		RequestedByAuth0ID: buyerAuth0ID,
 		Reason:             reason,
 	}
-	if err := s.requests.Create(ctx, tenantID, req); err != nil {
+	if err := s.requests.Create(ctx, req); err != nil {
 		if errors.Is(err, ErrPendingRequestExists) {
 			return nil, apperrors.Conflict("a cancellation request is already pending for this order").
 				WithCode(CodeCancellationRequestAlreadyExists)
@@ -135,12 +134,11 @@ func (s *Service) RequestCancellation(ctx context.Context, tenantID, orderID uui
 	return req, nil
 }
 
-// GetByID loads a request by id, enforcing tenant scoping through
-// the repository's TenantTx. Intended for internal / admin use — the
+// GetByID loads a request by id. Intended for internal / admin use — the
 // seller-facing REST handler must call GetByIDForSeller so it also
 // verifies seller ownership of the underlying order.
-func (s *Service) GetByID(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
-	req, err := s.requests.GetByID(ctx, tenantID, requestID)
+func (s *Service) GetByID(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
+	req, err := s.requests.GetByID(ctx, requestID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load cancellation request", err)
 	}
@@ -156,10 +154,10 @@ func (s *Service) GetByID(ctx context.Context, tenantID, requestID uuid.UUID) (*
 // leaking the existence of another seller's request — same pattern as
 // assertSellerOwnsOrder used by Approve / Reject. This is what the
 // seller-facing REST GET /cancellation-requests/{id} endpoint MUST call
-// instead of GetByID, otherwise a multi-seller tenant could read another
-// seller's cancellation reason or buyer auth0 id.
-func (s *Service) GetByIDForSeller(ctx context.Context, tenantID, sellerID, requestID uuid.UUID) (*CancellationRequest, error) {
-	req, _, err := s.loadRequestForSellerAction(ctx, tenantID, requestID, sellerID)
+// instead of GetByID, otherwise a seller could read another seller's
+// cancellation reason or buyer auth0 id.
+func (s *Service) GetByIDForSeller(ctx context.Context, sellerID, requestID uuid.UUID) (*CancellationRequest, error) {
+	req, _, err := s.loadRequestForSellerAction(ctx, requestID, sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,8 +168,8 @@ func (s *Service) GetByIDForSeller(ctx context.Context, tenantID, sellerID, requ
 // be nil if none has been opened), after verifying the buyer owns the
 // order. Used by the buyer order-detail page to render the current
 // cancellation state.
-func (s *Service) GetLatestForOrder(ctx context.Context, tenantID, orderID uuid.UUID, buyerAuth0ID string) (*CancellationRequest, error) {
-	order, err := s.orders.GetByID(ctx, tenantID, orderID)
+func (s *Service) GetLatestForOrder(ctx context.Context, orderID uuid.UUID, buyerAuth0ID string) (*CancellationRequest, error) {
+	order, err := s.orders.GetByID(ctx, orderID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load order", err)
 	}
@@ -181,7 +179,7 @@ func (s *Service) GetLatestForOrder(ctx context.Context, tenantID, orderID uuid.
 	if err := assertBuyerOwnsOrder(&order.Order, buyerAuth0ID); err != nil {
 		return nil, err
 	}
-	req, err := s.requests.GetLatestByOrder(ctx, tenantID, orderID)
+	req, err := s.requests.GetLatestByOrder(ctx, orderID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load cancellation request", err)
 	}
@@ -190,11 +188,10 @@ func (s *Service) GetLatestForOrder(ctx context.Context, tenantID, orderID uuid.
 
 // ListByStatus returns paginated requests filtered by status AND by
 // the calling seller. The sellerID is mandatory and is propagated to
-// the repository's JOIN against order_svc.orders so a multi-seller
-// tenant cannot read another seller's cancellation reasons or buyer
-// auth0 ids via this endpoint.
-func (s *Service) ListByStatus(ctx context.Context, tenantID, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error) {
-	requests, total, err := s.requests.ListByStatus(ctx, tenantID, sellerID, status, limit, offset)
+// the repository's JOIN against order_svc.orders so one seller cannot
+// read another seller's cancellation reasons or buyer auth0 ids.
+func (s *Service) ListByStatus(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error) {
+	requests, total, err := s.requests.ListByStatus(ctx, sellerID, status, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list cancellation requests", err)
 	}
@@ -211,8 +208,8 @@ func (s *Service) ListByStatus(ctx context.Context, tenantID, sellerID uuid.UUID
 //   - NotFound + CodeNotOrderSeller if the caller is not the seller
 //   - Conflict + CodeCancellationRequestAlreadyProcessed if the
 //     request is no longer pending
-func (s *Service) RejectCancellation(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
-	req, order, err := s.loadRequestForSellerAction(ctx, tenantID, requestID, sellerID)
+func (s *Service) RejectCancellation(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
+	req, order, err := s.loadRequestForSellerAction(ctx, requestID, sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +218,7 @@ func (s *Service) RejectCancellation(ctx context.Context, tenantID, requestID, s
 			WithCode(CodeCancellationRequestAlreadyProcessed)
 	}
 
-	updated, err := s.requests.Reject(ctx, tenantID, requestID, sellerID, comment)
+	updated, err := s.requests.Reject(ctx, requestID, sellerID, comment)
 	if err != nil {
 		if errors.Is(err, ErrAlreadyProcessed) {
 			return nil, apperrors.Conflict("cancellation request is no longer pending").
@@ -263,9 +260,9 @@ func (s *Service) RejectCancellation(ctx context.Context, tenantID, requestID, s
 //
 // Errors surface the most specific semantic code — the buyer-facing
 // error UI switches on these.
-func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
+func (s *Service) ApproveCancellation(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
 	// Phase 1 — read and validate.
-	req, order, err := s.loadRequestForSellerAction(ctx, tenantID, requestID, sellerID)
+	req, order, err := s.loadRequestForSellerAction(ctx, requestID, sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +279,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 			WithCode(CodeOrderNotCancellable)
 	}
 
-	payouts, err := s.payouts.ListByOrderID(ctx, tenantID, order.ID)
+	payouts, err := s.payouts.ListByOrderID(ctx, order.ID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load payouts", err)
 	}
@@ -292,7 +289,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 	refundID, err := s.stripe.CreateRefund(*order.StripePaymentIntentID, order.TotalAmount, refundKey)
 	if err != nil {
 		failureReason := fmt.Sprintf("stripe refund failed: %v", err)
-		if markErr := s.requests.MarkFailed(ctx, tenantID, requestID, failureReason); markErr != nil {
+		if markErr := s.requests.MarkFailed(ctx, requestID, failureReason); markErr != nil {
 			slog.Error("failed to mark cancellation request as failed after refund failure",
 				"error", markErr, "request_id", requestID)
 		}
@@ -314,7 +311,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 		reversalID, rerr := s.stripe.ReverseTransfer(*p.StripeTransferID, p.Amount, reverseKey)
 		if rerr != nil {
 			failureReason := fmt.Sprintf("stripe transfer reversal failed for payout %s: %v", p.ID, rerr)
-			if markErr := s.requests.MarkFailed(ctx, tenantID, requestID, failureReason); markErr != nil {
+			if markErr := s.requests.MarkFailed(ctx, requestID, failureReason); markErr != nil {
 				slog.Error("failed to mark cancellation request as failed after reversal failure",
 					"error", markErr, "request_id", requestID)
 			}
@@ -327,7 +324,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 		})
 	}
 
-	// Phase 3 — write phase (single tenant transaction).
+	// Phase 3 — write phase (single transaction).
 	in := ApprovalTxInput{
 		RequestID:         requestID,
 		OrderID:           order.ID,
@@ -339,7 +336,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 		ReversedPayouts:   reversed,
 		CancellableStatus: cancellableStatuses(),
 	}
-	updatedReq, updatedOrder, err := s.requests.ApproveTx(ctx, tenantID, in)
+	updatedReq, updatedOrder, err := s.requests.ApproveTx(ctx, in)
 	if err != nil {
 		if errors.Is(err, ErrAlreadyProcessed) {
 			return nil, apperrors.Conflict("cancellation request is no longer pending").
@@ -350,7 +347,7 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 			// time. Stripe has already refunded so the request must
 			// be moved to `failed` for manual reconciliation.
 			failureReason := "order status changed between approval read and write; stripe refund and reversals must be reconciled manually"
-			if markErr := s.requests.MarkFailed(ctx, tenantID, requestID, failureReason); markErr != nil {
+			if markErr := s.requests.MarkFailed(ctx, requestID, failureReason); markErr != nil {
 				slog.Error("failed to mark cancellation request as failed after status race",
 					"error", markErr, "request_id", requestID)
 			}
@@ -371,8 +368,8 @@ func (s *Service) ApproveCancellation(ctx context.Context, tenantID, requestID, 
 // that the calling seller owns the order. Shared by Approve / Reject
 // so the ownership check can never drift between the two paths.
 // Returns apperrors directly so handlers can pass them through.
-func (s *Service) loadRequestForSellerAction(ctx context.Context, tenantID, requestID, sellerID uuid.UUID) (*CancellationRequest, *domain.OrderWithLines, error) {
-	req, err := s.requests.GetByID(ctx, tenantID, requestID)
+func (s *Service) loadRequestForSellerAction(ctx context.Context, requestID, sellerID uuid.UUID) (*CancellationRequest, *domain.OrderWithLines, error) {
+	req, err := s.requests.GetByID(ctx, requestID)
 	if err != nil {
 		return nil, nil, apperrors.Internal("failed to load cancellation request", err)
 	}
@@ -381,7 +378,7 @@ func (s *Service) loadRequestForSellerAction(ctx context.Context, tenantID, requ
 			WithCode(CodeCancellationRequestNotFound)
 	}
 
-	order, err := s.orders.GetByID(ctx, tenantID, req.OrderID)
+	order, err := s.orders.GetByID(ctx, req.OrderID)
 	if err != nil {
 		return nil, nil, apperrors.Internal("failed to load order", err)
 	}

@@ -26,13 +26,12 @@ const (
 type InventoryItem struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId          string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SkuId             string                 `protobuf:"bytes,3,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	SellerId          string                 `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	QuantityAvailable int32                  `protobuf:"varint,5,opt,name=quantity_available,json=quantityAvailable,proto3" json:"quantity_available,omitempty"`
-	QuantityReserved  int32                  `protobuf:"varint,6,opt,name=quantity_reserved,json=quantityReserved,proto3" json:"quantity_reserved,omitempty"`
-	LowStockThreshold int32                  `protobuf:"varint,7,opt,name=low_stock_threshold,json=lowStockThreshold,proto3" json:"low_stock_threshold,omitempty"`
-	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	SkuId             string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	SellerId          string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	QuantityAvailable int32                  `protobuf:"varint,4,opt,name=quantity_available,json=quantityAvailable,proto3" json:"quantity_available,omitempty"`
+	QuantityReserved  int32                  `protobuf:"varint,5,opt,name=quantity_reserved,json=quantityReserved,proto3" json:"quantity_reserved,omitempty"`
+	LowStockThreshold int32                  `protobuf:"varint,6,opt,name=low_stock_threshold,json=lowStockThreshold,proto3" json:"low_stock_threshold,omitempty"`
+	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -70,13 +69,6 @@ func (*InventoryItem) Descriptor() ([]byte, []int) {
 func (x *InventoryItem) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *InventoryItem) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -125,8 +117,7 @@ func (x *InventoryItem) GetUpdatedAt() *timestamppb.Timestamp {
 
 type GetInventoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	SkuId         string                 `protobuf:"bytes,1,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,13 +150,6 @@ func (x *GetInventoryRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetInventoryRequest.ProtoReflect.Descriptor instead.
 func (*GetInventoryRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *GetInventoryRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetInventoryRequest) GetSkuId() string {
@@ -221,9 +205,8 @@ func (x *GetInventoryResponse) GetItem() *InventoryItem {
 
 type ListInventoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -256,13 +239,6 @@ func (x *ListInventoryRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListInventoryRequest.ProtoReflect.Descriptor instead.
 func (*ListInventoryRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *ListInventoryRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListInventoryRequest) GetSellerId() string {
@@ -333,11 +309,10 @@ func (x *ListInventoryResponse) GetPagination() *v1.PaginationResponse {
 
 type UpdateStockRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	TenantId          string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SkuId             string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	SellerId          string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Quantity          int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	LowStockThreshold int32                  `protobuf:"varint,5,opt,name=low_stock_threshold,json=lowStockThreshold,proto3" json:"low_stock_threshold,omitempty"`
+	SkuId             string                 `protobuf:"bytes,1,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	SellerId          string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Quantity          int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	LowStockThreshold int32                  `protobuf:"varint,4,opt,name=low_stock_threshold,json=lowStockThreshold,proto3" json:"low_stock_threshold,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -370,13 +345,6 @@ func (x *UpdateStockRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateStockRequest.ProtoReflect.Descriptor instead.
 func (*UpdateStockRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *UpdateStockRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateStockRequest) GetSkuId() string {
@@ -453,9 +421,8 @@ func (x *UpdateStockResponse) GetItem() *InventoryItem {
 
 type ReserveStockRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	SkuId         string                 `protobuf:"bytes,1,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -488,13 +455,6 @@ func (x *ReserveStockRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ReserveStockRequest.ProtoReflect.Descriptor instead.
 func (*ReserveStockRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ReserveStockRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ReserveStockRequest) GetSkuId() string {
@@ -565,9 +525,8 @@ func (x *ReserveStockResponse) GetItem() *InventoryItem {
 
 type ReleaseStockRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	SkuId         string                 `protobuf:"bytes,1,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -600,13 +559,6 @@ func (x *ReleaseStockRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ReleaseStockRequest.ProtoReflect.Descriptor instead.
 func (*ReleaseStockRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *ReleaseStockRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ReleaseStockRequest) GetSkuId() string {
@@ -669,9 +621,8 @@ func (x *ReleaseStockResponse) GetItem() *InventoryItem {
 
 type ConfirmSoldRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	SkuId         string                 `protobuf:"bytes,1,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -704,13 +655,6 @@ func (x *ConfirmSoldRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ConfirmSoldRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmSoldRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_v1_inventory_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *ConfirmSoldRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ConfirmSoldRequest) GetSkuId() string {
@@ -775,58 +719,51 @@ var File_inventory_v1_inventory_proto protoreflect.FileDescriptor
 
 const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
-	"\x1cinventory/v1/inventory.proto\x12\finventory.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xb7\x02\n" +
+	"\x1cinventory/v1/inventory.proto\x12\finventory.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x9a\x02\n" +
 	"\rInventoryItem\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06sku_id\x18\x03 \x01(\tR\x05skuId\x12\x1b\n" +
-	"\tseller_id\x18\x04 \x01(\tR\bsellerId\x12-\n" +
-	"\x12quantity_available\x18\x05 \x01(\x05R\x11quantityAvailable\x12+\n" +
-	"\x11quantity_reserved\x18\x06 \x01(\x05R\x10quantityReserved\x12.\n" +
-	"\x13low_stock_threshold\x18\a \x01(\x05R\x11lowStockThreshold\x129\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1b\n" +
+	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12-\n" +
+	"\x12quantity_available\x18\x04 \x01(\x05R\x11quantityAvailable\x12+\n" +
+	"\x11quantity_reserved\x18\x05 \x01(\x05R\x10quantityReserved\x12.\n" +
+	"\x13low_stock_threshold\x18\x06 \x01(\x05R\x11lowStockThreshold\x129\n" +
 	"\n" +
-	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"I\n" +
-	"\x13GetInventoryRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\"G\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\",\n" +
+	"\x13GetInventoryRequest\x12\x15\n" +
+	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\"G\n" +
 	"\x14GetInventoryResponse\x12/\n" +
-	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"\x8e\x01\n" +
+	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"q\n" +
 	"\x14ListInventoryRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12<\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12<\n" +
 	"\n" +
-	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\"\x89\x01\n" +
 	"\x15ListInventoryResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.inventory.v1.InventoryItemR\x05items\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"\xb1\x01\n" +
-	"\x12UpdateStockRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x1a\n" +
-	"\bquantity\x18\x04 \x01(\x05R\bquantity\x12.\n" +
-	"\x13low_stock_threshold\x18\x05 \x01(\x05R\x11lowStockThreshold\"F\n" +
+	"pagination\"\x94\x01\n" +
+	"\x12UpdateStockRequest\x12\x15\n" +
+	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1b\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x1a\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\x12.\n" +
+	"\x13low_stock_threshold\x18\x04 \x01(\x05R\x11lowStockThreshold\"F\n" +
 	"\x13UpdateStockResponse\x12/\n" +
-	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"e\n" +
-	"\x13ReserveStockRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\x05R\bquantity\"a\n" +
+	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"H\n" +
+	"\x13ReserveStockRequest\x12\x15\n" +
+	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1a\n" +
+	"\bquantity\x18\x02 \x01(\x05R\bquantity\"a\n" +
 	"\x14ReserveStockResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12/\n" +
-	"\x04item\x18\x02 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"e\n" +
-	"\x13ReleaseStockRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\x05R\bquantity\"G\n" +
+	"\x04item\x18\x02 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"H\n" +
+	"\x13ReleaseStockRequest\x12\x15\n" +
+	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1a\n" +
+	"\bquantity\x18\x02 \x01(\x05R\bquantity\"G\n" +
 	"\x14ReleaseStockResponse\x12/\n" +
-	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"d\n" +
-	"\x12ConfirmSoldRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\x05R\bquantity\"F\n" +
+	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item\"G\n" +
+	"\x12ConfirmSoldRequest\x12\x15\n" +
+	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1a\n" +
+	"\bquantity\x18\x02 \x01(\x05R\bquantity\"F\n" +
 	"\x13ConfirmSoldResponse\x12/\n" +
 	"\x04item\x18\x01 \x01(\v2\x1b.inventory.v1.InventoryItemR\x04item2\x99\x04\n" +
 	"\x10InventoryService\x12U\n" +

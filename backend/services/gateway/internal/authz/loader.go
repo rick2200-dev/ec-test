@@ -45,8 +45,8 @@ func NewLoader(client *proxy.ServiceClient) *Loader {
 }
 
 // LoadSellerRole implements pkgauthz.SellerRoleLoader.
-func (l *Loader) LoadSellerRole(ctx context.Context, tenantID, sellerID uuid.UUID, sub string) (pkgauthz.SellerRole, error) {
-	key := pkgauthz.SellerCacheKey(tenantID, sellerID, sub)
+func (l *Loader) LoadSellerRole(ctx context.Context, sellerID uuid.UUID, sub string) (pkgauthz.SellerRole, error) {
+	key := pkgauthz.SellerCacheKey(sellerID, sub)
 	if v, err := l.cache.Get(key); err == nil {
 		return pkgauthz.SellerRole(v), nil
 	}
@@ -71,13 +71,13 @@ func (l *Loader) LoadSellerRole(ctx context.Context, tenantID, sellerID uuid.UUI
 }
 
 // EvictSellerRole implements pkgauthz.SellerRoleLoader.
-func (l *Loader) EvictSellerRole(tenantID, sellerID uuid.UUID, sub string) {
-	l.cache.Delete(pkgauthz.SellerCacheKey(tenantID, sellerID, sub))
+func (l *Loader) EvictSellerRole(sellerID uuid.UUID, sub string) {
+	l.cache.Delete(pkgauthz.SellerCacheKey(sellerID, sub))
 }
 
 // LoadPlatformAdminRole implements pkgauthz.PlatformAdminRoleLoader.
-func (l *Loader) LoadPlatformAdminRole(ctx context.Context, tenantID uuid.UUID, sub string) (pkgauthz.PlatformAdminRole, error) {
-	key := pkgauthz.PlatformAdminCacheKey(tenantID, sub)
+func (l *Loader) LoadPlatformAdminRole(ctx context.Context, sub string) (pkgauthz.PlatformAdminRole, error) {
+	key := pkgauthz.PlatformAdminCacheKey(sub)
 	if v, err := l.cache.Get(key); err == nil {
 		return pkgauthz.PlatformAdminRole(v), nil
 	}
@@ -101,6 +101,6 @@ func (l *Loader) LoadPlatformAdminRole(ctx context.Context, tenantID uuid.UUID, 
 }
 
 // EvictPlatformAdminRole implements pkgauthz.PlatformAdminRoleLoader.
-func (l *Loader) EvictPlatformAdminRole(tenantID uuid.UUID, sub string) {
-	l.cache.Delete(pkgauthz.PlatformAdminCacheKey(tenantID, sub))
+func (l *Loader) EvictPlatformAdminRole(sub string) {
+	l.cache.Delete(pkgauthz.PlatformAdminCacheKey(sub))
 }

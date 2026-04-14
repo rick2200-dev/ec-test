@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/domain"
 )
@@ -40,7 +38,7 @@ func NewOrderClient(baseURL, internalToken string) *OrderClient {
 
 // CreateCheckout posts the cart's contents to POST /internal/checkouts
 // and returns the result.
-func (c *OrderClient) CreateCheckout(ctx context.Context, tenantID uuid.UUID, in domain.CheckoutInput) (*domain.CheckoutResult, error) {
+func (c *OrderClient) CreateCheckout(ctx context.Context, in domain.CheckoutInput) (*domain.CheckoutResult, error) {
 	payload, err := json.Marshal(in)
 	if err != nil {
 		return nil, apperrors.Internal("marshal checkout input", err)
@@ -52,7 +50,6 @@ func (c *OrderClient) CreateCheckout(ctx context.Context, tenantID uuid.UUID, in
 		return nil, apperrors.Internal("build checkout request", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Tenant-ID", tenantID.String())
 	req.Header.Set("X-Internal-Token", c.internalToken)
 
 	resp, err := c.http.Do(req)

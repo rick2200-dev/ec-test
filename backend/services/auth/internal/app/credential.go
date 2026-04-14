@@ -24,13 +24,13 @@ import (
 //
 // Token wire format (plaintext, never persisted after issuance):
 //
-//     <prefix><lookup12>_<secret43>
+//	<prefix><lookup12>_<secret43>
 //
-//   prefix  — env-configured, rotatable (default "sk_live_")
-//   lookup  — 12 base62 chars (~71 bits of entropy), unique-indexed in the
-//             DB so the gateway hot path can do an O(1) B-tree probe
-//   secret  — 43 base62 chars (~256 bits of entropy), SHA-256'd on the
-//             server and compared in constant time on every request
+//	prefix  — env-configured, rotatable (default "sk_live_")
+//	lookup  — 12 base62 chars (~71 bits of entropy), unique-indexed in the
+//	          DB so the gateway hot path can do an O(1) B-tree probe
+//	secret  — 43 base62 chars (~256 bits of entropy), SHA-256'd on the
+//	          server and compared in constant time on every request
 //
 // Both components are generated directly as base62 characters using
 // rejection sampling (see generateBase62) rather than by encoding a
@@ -80,7 +80,7 @@ func NewCredentialService(
 // insert, so RBAC checks and the insert are atomic.
 func (s *CredentialService) IssueAPIToken(
 	ctx context.Context,
-	tenantID, sellerID uuid.UUID,
+	sellerID uuid.UUID,
 	name string,
 	scopes []domain.APITokenScope,
 	rateLimitRPS, rateLimitBurst *int,
@@ -134,7 +134,6 @@ func (s *CredentialService) IssueAPIToken(
 	}
 
 	token := &domain.SellerAPIToken{
-		TenantID:            tenantID,
 		SellerID:            sellerID,
 		Name:                name,
 		TokenPrefix:         tokenPrefix,
@@ -147,11 +146,11 @@ func (s *CredentialService) IssueAPIToken(
 		ExpiresAt:           expiresAt,
 	}
 
-	err = s.db.RunTenantTx(ctx, tenantID, func(txCtx context.Context) error {
+	err = s.db.RunTx(ctx, func(txCtx context.Context) error {
 		// Only owners may issue tokens. ScopesForSellerRole already enforces
 		// the same rule structurally — we check the actor's live role here
 		// so a member/admin can never issue even via a forged request.
-		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
 		// Double-check the requested scopes are within the set the issuer's
@@ -173,7 +172,6 @@ func (s *CredentialService) IssueAPIToken(
 
 	slog.Info("seller api token issued",
 		"id", token.ID,
-		"tenant_id", tenantID,
 		"seller_id", sellerID,
 		"issuer", tc.UserID,
 		"scopes", cleanScopes,
@@ -183,8 +181,8 @@ func (s *CredentialService) IssueAPIToken(
 
 // ListAPITokens returns tokens belonging to the given seller, newest first,
 // including revoked/expired rows so the dashboard can display history.
-func (s *CredentialService) ListAPITokens(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
-	tokens, total, err := s.apiTokens.ListBySeller(ctx, tenantID, sellerID, limit, offset)
+func (s *CredentialService) ListAPITokens(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.SellerAPIToken, int, error) {
+	tokens, total, err := s.apiTokens.ListBySeller(ctx, sellerID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list api tokens", err)
 	}
@@ -194,8 +192,8 @@ func (s *CredentialService) ListAPITokens(ctx context.Context, tenantID, sellerI
 // GetAPIToken retrieves a single token by ID. Returns NotFound if the token
 // does not exist or does not belong to the given seller (same shape either
 // way to avoid leaking existence across sellers).
-func (s *CredentialService) GetAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (*domain.SellerAPIToken, error) {
-	t, err := s.apiTokens.GetByID(ctx, tenantID, id)
+func (s *CredentialService) GetAPIToken(ctx context.Context, sellerID, id uuid.UUID) (*domain.SellerAPIToken, error) {
+	t, err := s.apiTokens.GetByID(ctx, id)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get api token", err)
 	}
@@ -210,12 +208,8 @@ func (s *CredentialService) GetAPIToken(ctx context.Context, tenantID, sellerID,
 //
 // Returns the (prefix, lookup) pair of the revoked token so upstream
 // callers — specifically the gateway — can evict their lookup cache
-// synchronously instead of waiting for the short TTL. This is a
-// deliberate leak of persistence-layer fields into the service signature:
-// the alternative (a second round-trip from the handler) would race the
-// eviction against a concurrent Load from another gateway request and
-// defeat the purpose.
-func (s *CredentialService) RevokeAPIToken(ctx context.Context, tenantID, sellerID, id uuid.UUID) (prefix, lookup string, err error) {
+// synchronously instead of waiting for the short TTL.
+func (s *CredentialService) RevokeAPIToken(ctx context.Context, sellerID, id uuid.UUID) (prefix, lookup string, err error) {
 	tc, err := tenant.FromContext(ctx)
 	if err != nil || tc.UserID == "" {
 		return "", "", apperrors.Unauthorized("caller identity required")
@@ -223,7 +217,7 @@ func (s *CredentialService) RevokeAPIToken(ctx context.Context, tenantID, seller
 
 	// Pre-check seller membership so we return 404 (not 403) for tokens
 	// belonging to other sellers.
-	existing, err := s.apiTokens.GetByID(ctx, tenantID, id)
+	existing, err := s.apiTokens.GetByID(ctx, id)
 	if err != nil {
 		return "", "", apperrors.Internal("failed to get api token", err)
 	}
@@ -231,11 +225,11 @@ func (s *CredentialService) RevokeAPIToken(ctx context.Context, tenantID, seller
 		return "", "", apperrors.NotFound("api token not found")
 	}
 
-	err = s.db.RunTenantTx(ctx, tenantID, func(txCtx context.Context) error {
-		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, tenantID, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
+	err = s.db.RunTx(ctx, func(txCtx context.Context) error {
+		if err := requireSellerRoleAtLeast(txCtx, s.sellerUsers, sellerID, tc.UserID, domain.SellerUserRoleOwner); err != nil {
 			return err
 		}
-		return s.apiTokens.Revoke(txCtx, tenantID, id, tc.UserID)
+		return s.apiTokens.Revoke(txCtx, id, tc.UserID)
 	})
 	if err != nil {
 		return "", "", mapAPITokenError(err, "failed to revoke api token")
@@ -243,7 +237,6 @@ func (s *CredentialService) RevokeAPIToken(ctx context.Context, tenantID, seller
 
 	slog.Info("seller api token revoked",
 		"id", id,
-		"tenant_id", tenantID,
 		"seller_id", sellerID,
 		"actor", tc.UserID,
 	)
@@ -253,7 +246,7 @@ func (s *CredentialService) RevokeAPIToken(ctx context.Context, tenantID, seller
 // LookupAPIToken is the gateway hot-path entry point. Given the three pieces
 // of a plaintext token it resolves the row, verifies the secret in constant
 // time, checks revoke/expiry, and returns the token record so the gateway
-// can construct its tenant context.
+// can construct its context.
 //
 // Callers must NOT persist the returned token struct beyond the lifetime of
 // a single request; the gateway keeps its own short-TTL cache.
@@ -355,11 +348,6 @@ const base62RejectThreshold = 248
 // generateBase62 returns n base62 characters drawn uniformly from the
 // alphabet using rejection sampling. Each output character is produced
 // from a single random byte; biased bytes are rejected and re-drawn.
-//
-// Why not encode N random bytes into base62 digits? For fixed widths like
-// 12 and 43 chars, byte-to-base62 conversion isn't length-stable — e.g.
-// 9 bytes of 0xFF overflow 12 digits. Direct per-char generation is
-// length-stable by construction and easier to reason about.
 func generateBase62(n int) (string, error) {
 	out := make([]byte, n)
 	// Refill strategy: pull 2x bytes at a time to amortize the syscall

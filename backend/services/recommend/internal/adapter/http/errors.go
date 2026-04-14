@@ -16,8 +16,7 @@ func mapError(err error) error {
 		return appErr
 	}
 	switch {
-	case errors.Is(err, domain.ErrMissingTenantID),
-		errors.Is(err, domain.ErrMissingUserID),
+	case errors.Is(err, domain.ErrMissingUserID),
 		errors.Is(err, domain.ErrMissingProductID),
 		errors.Is(err, domain.ErrInvalidRecommendationType),
 		errors.Is(err, domain.ErrInvalidEventType):

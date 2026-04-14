@@ -42,7 +42,6 @@ func NewInquiryService(
 // cannot rewrite history on the thread.
 func (s *InquiryService) CreateInquiry(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	in domain.CreateInquiryInput,
 ) (*domain.InquiryWithMessages, error) {
@@ -71,7 +70,7 @@ func (s *InquiryService) CreateInquiry(
 	}
 
 	// Purchase verification against the order service.
-	check, err := s.orderClient.CheckPurchase(ctx, tenantID, buyerAuth0ID, in.SellerID, in.SKUID)
+	check, err := s.orderClient.CheckPurchase(ctx, buyerAuth0ID, in.SellerID, in.SKUID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,12 +92,12 @@ func (s *InquiryService) CreateInquiry(
 		Body:       in.InitialBody,
 	}
 
-	result, err := s.repo.Create(ctx, tenantID, inq, firstMsg)
+	result, err := s.repo.Create(ctx, inq, firstMsg)
 	if err != nil {
 		return nil, apperrors.Internal("failed to create inquiry", err)
 	}
 
-	s.publishMessageEvent(ctx, tenantID, &result.Inquiry, firstMsg)
+	s.publishMessageEvent(ctx, &result.Inquiry, firstMsg)
 	return result, nil
 }
 
@@ -110,7 +109,6 @@ func (s *InquiryService) CreateInquiry(
 // only when their seller_id matches `inquiry.seller_id`.
 func (s *InquiryService) PostMessage(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	actorAuth0ID string,
 	actorSellerID *uuid.UUID,
 	in domain.PostMessageInput,
@@ -129,7 +127,7 @@ func (s *InquiryService) PostMessage(
 		return nil, domain.ErrInvalidSenderType
 	}
 
-	thread, err := s.repo.GetByID(ctx, tenantID, in.InquiryID)
+	thread, err := s.repo.GetByID(ctx, in.InquiryID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load inquiry", err)
 	}
@@ -162,11 +160,11 @@ func (s *InquiryService) PostMessage(
 		SenderID:   in.SenderID,
 		Body:       in.Body,
 	}
-	if err := s.repo.AppendMessage(ctx, tenantID, msg); err != nil {
+	if err := s.repo.AppendMessage(ctx, msg); err != nil {
 		return nil, apperrors.Internal("failed to append message", err)
 	}
 
-	s.publishMessageEvent(ctx, tenantID, &thread.Inquiry, msg)
+	s.publishMessageEvent(ctx, &thread.Inquiry, msg)
 	return msg, nil
 }
 
@@ -174,11 +172,11 @@ func (s *InquiryService) PostMessage(
 // that the caller is either the buyer or a member of the seller team.
 func (s *InquiryService) GetInquiry(
 	ctx context.Context,
-	tenantID, inquiryID uuid.UUID,
+	inquiryID uuid.UUID,
 	actorAuth0ID string,
 	actorSellerID *uuid.UUID,
 ) (*domain.InquiryWithMessages, error) {
-	thread, err := s.repo.GetByID(ctx, tenantID, inquiryID)
+	thread, err := s.repo.GetByID(ctx, inquiryID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load inquiry", err)
 	}
@@ -194,7 +192,6 @@ func (s *InquiryService) GetInquiry(
 // ListForBuyer returns the buyer's threads ordered by most recently active.
 func (s *InquiryService) ListForBuyer(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	limit, offset int,
 ) ([]domain.Inquiry, int, error) {
@@ -207,7 +204,7 @@ func (s *InquiryService) ListForBuyer(
 	if offset < 0 {
 		offset = 0
 	}
-	items, total, err := s.repo.ListByBuyer(ctx, tenantID, buyerAuth0ID, limit, offset)
+	items, total, err := s.repo.ListByBuyer(ctx, buyerAuth0ID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list inquiries", err)
 	}
@@ -217,7 +214,7 @@ func (s *InquiryService) ListForBuyer(
 // ListForSeller returns a seller's received threads. status may be empty.
 func (s *InquiryService) ListForSeller(
 	ctx context.Context,
-	tenantID, sellerID uuid.UUID,
+	sellerID uuid.UUID,
 	status string,
 	limit, offset int,
 ) ([]domain.Inquiry, int, error) {
@@ -230,7 +227,7 @@ func (s *InquiryService) ListForSeller(
 	if offset < 0 {
 		offset = 0
 	}
-	items, total, err := s.repo.ListBySeller(ctx, tenantID, sellerID, status, limit, offset)
+	items, total, err := s.repo.ListBySeller(ctx, sellerID, status, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list inquiries", err)
 	}
@@ -241,12 +238,12 @@ func (s *InquiryService) ListForSeller(
 // given reader role.
 func (s *InquiryService) MarkRead(
 	ctx context.Context,
-	tenantID, inquiryID uuid.UUID,
+	inquiryID uuid.UUID,
 	readerType string,
 	actorAuth0ID string,
 	actorSellerID *uuid.UUID,
 ) error {
-	thread, err := s.repo.GetByID(ctx, tenantID, inquiryID)
+	thread, err := s.repo.GetByID(ctx, inquiryID)
 	if err != nil {
 		return apperrors.Internal("failed to load inquiry", err)
 	}
@@ -259,7 +256,7 @@ func (s *InquiryService) MarkRead(
 	if readerType != domain.SenderTypeBuyer && readerType != domain.SenderTypeSeller {
 		return domain.ErrInvalidReaderType
 	}
-	if err := s.repo.MarkRead(ctx, tenantID, inquiryID, readerType); err != nil {
+	if err := s.repo.MarkRead(ctx, inquiryID, readerType); err != nil {
 		return apperrors.Internal("failed to mark messages read", err)
 	}
 	return nil
@@ -268,10 +265,10 @@ func (s *InquiryService) MarkRead(
 // CloseInquiry transitions a thread to closed. Only the seller can close.
 func (s *InquiryService) CloseInquiry(
 	ctx context.Context,
-	tenantID, inquiryID uuid.UUID,
+	inquiryID uuid.UUID,
 	actorSellerID *uuid.UUID,
 ) error {
-	thread, err := s.repo.GetByID(ctx, tenantID, inquiryID)
+	thread, err := s.repo.GetByID(ctx, inquiryID)
 	if err != nil {
 		return apperrors.Internal("failed to load inquiry", err)
 	}
@@ -281,7 +278,7 @@ func (s *InquiryService) CloseInquiry(
 	if actorSellerID == nil || *actorSellerID != thread.SellerID {
 		return domain.ErrNotParticipant
 	}
-	if err := s.repo.Close(ctx, tenantID, inquiryID); err != nil {
+	if err := s.repo.Close(ctx, inquiryID); err != nil {
 		return apperrors.Internal("failed to close inquiry", err)
 	}
 	return nil
@@ -309,7 +306,6 @@ func (s *InquiryService) isParticipant(
 // user-facing request still succeeds if pubsub is unavailable.
 func (s *InquiryService) publishMessageEvent(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	inq *domain.Inquiry,
 	msg *domain.InquiryMessage,
 ) {
@@ -326,5 +322,5 @@ func (s *InquiryService) publishMessageEvent(
 		"product_name":   inq.ProductName,
 		"body_preview":   preview,
 	}
-	pubsub.PublishEvent(ctx, s.publisher, tenantID, "inquiry.message_created", inquiryEventTopic, data)
+	pubsub.PublishEvent(ctx, s.publisher, "inquiry.message_created", inquiryEventTopic, data)
 }

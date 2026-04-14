@@ -14,9 +14,8 @@ import (
 // domainProductToProto converts a domain Product to a proto Product.
 func domainProductToProto(p *domain.Product) *catalogv1.Product {
 	pb := &catalogv1.Product{
-		Id:          p.ID.String(),
-		TenantId:    p.TenantID.String(),
-		SellerId:    p.SellerID.String(),
+		Id:       p.ID.String(),
+		SellerId: p.SellerID.String(),
 		Name:        p.Name,
 		Slug:        p.Slug,
 		Description: p.Description,
@@ -46,7 +45,6 @@ func domainProductWithSKUsToProto(p *domain.ProductWithSKUs) *catalogv1.Product 
 func domainSKUToProto(s *domain.SKU) *catalogv1.SKU {
 	pb := &catalogv1.SKU{
 		Id:        s.ID.String(),
-		TenantId:  s.TenantID.String(),
 		ProductId: s.ProductID.String(),
 		SellerId:  s.SellerID.String(),
 		SkuCode:   s.SKUCode,
@@ -112,9 +110,8 @@ func protoUpdateProductToDomain(req *catalogv1.UpdateProductRequest) *domain.Pro
 // domainCategoryToProto converts a domain Category to a proto Category.
 func domainCategoryToProto(c *domain.Category) *catalogv1.Category {
 	pb := &catalogv1.Category{
-		Id:        c.ID.String(),
-		TenantId:  c.TenantID.String(),
-		Name:      c.Name,
+		Id:   c.ID.String(),
+		Name: c.Name,
 		Slug:      c.Slug,
 		SortOrder: int32(c.SortOrder),
 		CreatedAt: timestamppb.New(c.CreatedAt),

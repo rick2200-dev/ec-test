@@ -27,16 +27,12 @@ func NewInventoryServer(svc port.InventoryUseCase) *InventoryServer {
 
 // GetInventory retrieves inventory for a specific SKU.
 func (s *InventoryServer) GetInventory(ctx context.Context, req *inventoryv1.GetInventoryRequest) (*inventoryv1.GetInventoryResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
 	skuID, err := uuid.Parse(req.GetSkuId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid sku_id")
 	}
 
-	inv, err := s.svc.GetInventory(ctx, tenantID, skuID)
+	inv, err := s.svc.GetInventory(ctx, skuID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -48,10 +44,6 @@ func (s *InventoryServer) GetInventory(ctx context.Context, req *inventoryv1.Get
 
 // ListInventory returns a paginated list of inventory for a seller.
 func (s *InventoryServer) ListInventory(ctx context.Context, req *inventoryv1.ListInventoryRequest) (*inventoryv1.ListInventoryResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
 	sellerID, err := uuid.Parse(req.GetSellerId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid seller_id")
@@ -66,7 +58,7 @@ func (s *InventoryServer) ListInventory(ctx context.Context, req *inventoryv1.Li
 		offset = req.GetPagination().GetOffset()
 	}
 
-	items, total, err := s.svc.ListInventory(ctx, tenantID, sellerID, int(limit), int(offset))
+	items, total, err := s.svc.ListInventory(ctx, sellerID, int(limit), int(offset))
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -88,19 +80,14 @@ func (s *InventoryServer) ListInventory(ctx context.Context, req *inventoryv1.Li
 
 // UpdateStock upserts an inventory record.
 func (s *InventoryServer) UpdateStock(ctx context.Context, req *inventoryv1.UpdateStockRequest) (*inventoryv1.UpdateStockResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-
 	inv := protoUpdateStockToDomain(req)
 
-	if err := s.svc.UpdateStock(ctx, tenantID, inv); err != nil {
+	if err := s.svc.UpdateStock(ctx, inv); err != nil {
 		return nil, toGRPCError(err)
 	}
 
 	// Retrieve updated inventory to return.
-	updated, err := s.svc.GetInventory(ctx, tenantID, inv.SKUID)
+	updated, err := s.svc.GetInventory(ctx, inv.SKUID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -112,21 +99,17 @@ func (s *InventoryServer) UpdateStock(ctx context.Context, req *inventoryv1.Upda
 
 // ReserveStock reserves quantity for a SKU.
 func (s *InventoryServer) ReserveStock(ctx context.Context, req *inventoryv1.ReserveStockRequest) (*inventoryv1.ReserveStockResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
 	skuID, err := uuid.Parse(req.GetSkuId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid sku_id")
 	}
 
-	if err := s.svc.ReserveStock(ctx, tenantID, skuID, int(req.GetQuantity())); err != nil {
+	if err := s.svc.ReserveStock(ctx, skuID, int(req.GetQuantity())); err != nil {
 		return nil, toGRPCError(err)
 	}
 
 	// Retrieve updated inventory to return.
-	inv, err := s.svc.GetInventory(ctx, tenantID, skuID)
+	inv, err := s.svc.GetInventory(ctx, skuID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -139,21 +122,17 @@ func (s *InventoryServer) ReserveStock(ctx context.Context, req *inventoryv1.Res
 
 // ReleaseStock releases reserved stock.
 func (s *InventoryServer) ReleaseStock(ctx context.Context, req *inventoryv1.ReleaseStockRequest) (*inventoryv1.ReleaseStockResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
 	skuID, err := uuid.Parse(req.GetSkuId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid sku_id")
 	}
 
-	if err := s.svc.ReleaseStock(ctx, tenantID, skuID, int(req.GetQuantity())); err != nil {
+	if err := s.svc.ReleaseStock(ctx, skuID, int(req.GetQuantity())); err != nil {
 		return nil, toGRPCError(err)
 	}
 
 	// Retrieve updated inventory to return.
-	inv, err := s.svc.GetInventory(ctx, tenantID, skuID)
+	inv, err := s.svc.GetInventory(ctx, skuID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -165,21 +144,17 @@ func (s *InventoryServer) ReleaseStock(ctx context.Context, req *inventoryv1.Rel
 
 // ConfirmSold confirms that reserved stock has been sold.
 func (s *InventoryServer) ConfirmSold(ctx context.Context, req *inventoryv1.ConfirmSoldRequest) (*inventoryv1.ConfirmSoldResponse, error) {
-	tenantID, err := uuid.Parse(req.GetTenantId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
 	skuID, err := uuid.Parse(req.GetSkuId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid sku_id")
 	}
 
-	if err := s.svc.ConfirmSold(ctx, tenantID, skuID, int(req.GetQuantity())); err != nil {
+	if err := s.svc.ConfirmSold(ctx, skuID, int(req.GetQuantity())); err != nil {
 		return nil, toGRPCError(err)
 	}
 
 	// Retrieve updated inventory to return.
-	inv, err := s.svc.GetInventory(ctx, tenantID, skuID)
+	inv, err := s.svc.GetInventory(ctx, skuID)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

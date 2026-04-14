@@ -19,106 +19,106 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockReviewStore struct {
-	createFn              func(ctx context.Context, tenantID uuid.UUID, review *domain.Review) error
-	getByIDFn             func(ctx context.Context, tenantID, reviewID uuid.UUID) (*domain.Review, error)
-	updateFn              func(ctx context.Context, tenantID uuid.UUID, review *domain.Review) error
-	deleteFn              func(ctx context.Context, tenantID, reviewID uuid.UUID) error
-	listByProductFn       func(ctx context.Context, tenantID, productID uuid.UUID, limit, offset int) ([]domain.Review, int, error)
-	listBySellerFn        func(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Review, int, error)
-	createReplyFn         func(ctx context.Context, tenantID uuid.UUID, reply *domain.ReviewReply) error
-	updateReplyFn         func(ctx context.Context, tenantID uuid.UUID, reply *domain.ReviewReply) error
-	deleteReplyFn         func(ctx context.Context, tenantID, reviewID uuid.UUID) error
-	getReplyByReviewFn    func(ctx context.Context, tenantID, reviewID uuid.UUID) (*domain.ReviewReply, error)
-	getProductRatingFn    func(ctx context.Context, tenantID, productID uuid.UUID) (*domain.ProductRating, error)
-	upsertProductRatingFn func(ctx context.Context, tenantID, productID uuid.UUID, ratingDelta, countDelta int) error
+	createFn              func(ctx context.Context, review *domain.Review) error
+	getByIDFn             func(ctx context.Context, reviewID uuid.UUID) (*domain.Review, error)
+	updateFn              func(ctx context.Context, review *domain.Review) error
+	deleteFn              func(ctx context.Context, reviewID uuid.UUID) error
+	listByProductFn       func(ctx context.Context, productID uuid.UUID, limit, offset int) ([]domain.Review, int, error)
+	listBySellerFn        func(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Review, int, error)
+	createReplyFn         func(ctx context.Context, reply *domain.ReviewReply) error
+	updateReplyFn         func(ctx context.Context, reply *domain.ReviewReply) error
+	deleteReplyFn         func(ctx context.Context, reviewID uuid.UUID) error
+	getReplyByReviewFn    func(ctx context.Context, reviewID uuid.UUID) (*domain.ReviewReply, error)
+	getProductRatingFn    func(ctx context.Context, productID uuid.UUID) (*domain.ProductRating, error)
+	upsertProductRatingFn func(ctx context.Context, productID uuid.UUID, ratingDelta, countDelta int) error
 }
 
-func (m *mockReviewStore) RunInTx(ctx context.Context, _ uuid.UUID, fn func(ctx context.Context) error) error {
+func (m *mockReviewStore) RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	return fn(ctx)
 }
 
-func (m *mockReviewStore) Create(ctx context.Context, tenantID uuid.UUID, review *domain.Review) error {
+func (m *mockReviewStore) Create(ctx context.Context, review *domain.Review) error {
 	if m.createFn != nil {
-		return m.createFn(ctx, tenantID, review)
+		return m.createFn(ctx, review)
 	}
 	review.ID = uuid.New()
 	return nil
 }
 
-func (m *mockReviewStore) GetByID(ctx context.Context, tenantID, reviewID uuid.UUID) (*domain.Review, error) {
+func (m *mockReviewStore) GetByID(ctx context.Context, reviewID uuid.UUID) (*domain.Review, error) {
 	if m.getByIDFn != nil {
-		return m.getByIDFn(ctx, tenantID, reviewID)
+		return m.getByIDFn(ctx, reviewID)
 	}
 	return nil, nil
 }
 
-func (m *mockReviewStore) Update(ctx context.Context, tenantID uuid.UUID, review *domain.Review) error {
+func (m *mockReviewStore) Update(ctx context.Context, review *domain.Review) error {
 	if m.updateFn != nil {
-		return m.updateFn(ctx, tenantID, review)
+		return m.updateFn(ctx, review)
 	}
 	return nil
 }
 
-func (m *mockReviewStore) Delete(ctx context.Context, tenantID, reviewID uuid.UUID) error {
+func (m *mockReviewStore) Delete(ctx context.Context, reviewID uuid.UUID) error {
 	if m.deleteFn != nil {
-		return m.deleteFn(ctx, tenantID, reviewID)
+		return m.deleteFn(ctx, reviewID)
 	}
 	return nil
 }
 
-func (m *mockReviewStore) ListByProduct(ctx context.Context, tenantID, productID uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
+func (m *mockReviewStore) ListByProduct(ctx context.Context, productID uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 	if m.listByProductFn != nil {
-		return m.listByProductFn(ctx, tenantID, productID, limit, offset)
+		return m.listByProductFn(ctx, productID, limit, offset)
 	}
 	return nil, 0, nil
 }
 
-func (m *mockReviewStore) ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
+func (m *mockReviewStore) ListBySeller(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 	if m.listBySellerFn != nil {
-		return m.listBySellerFn(ctx, tenantID, sellerID, limit, offset)
+		return m.listBySellerFn(ctx, sellerID, limit, offset)
 	}
 	return nil, 0, nil
 }
 
-func (m *mockReviewStore) CreateReply(ctx context.Context, tenantID uuid.UUID, reply *domain.ReviewReply) error {
+func (m *mockReviewStore) CreateReply(ctx context.Context, reply *domain.ReviewReply) error {
 	if m.createReplyFn != nil {
-		return m.createReplyFn(ctx, tenantID, reply)
+		return m.createReplyFn(ctx, reply)
 	}
 	reply.ID = uuid.New()
 	return nil
 }
 
-func (m *mockReviewStore) UpdateReply(ctx context.Context, tenantID uuid.UUID, reply *domain.ReviewReply) error {
+func (m *mockReviewStore) UpdateReply(ctx context.Context, reply *domain.ReviewReply) error {
 	if m.updateReplyFn != nil {
-		return m.updateReplyFn(ctx, tenantID, reply)
+		return m.updateReplyFn(ctx, reply)
 	}
 	return nil
 }
 
-func (m *mockReviewStore) DeleteReply(ctx context.Context, tenantID, reviewID uuid.UUID) error {
+func (m *mockReviewStore) DeleteReply(ctx context.Context, reviewID uuid.UUID) error {
 	if m.deleteReplyFn != nil {
-		return m.deleteReplyFn(ctx, tenantID, reviewID)
+		return m.deleteReplyFn(ctx, reviewID)
 	}
 	return nil
 }
 
-func (m *mockReviewStore) GetReplyByReview(ctx context.Context, tenantID, reviewID uuid.UUID) (*domain.ReviewReply, error) {
+func (m *mockReviewStore) GetReplyByReview(ctx context.Context, reviewID uuid.UUID) (*domain.ReviewReply, error) {
 	if m.getReplyByReviewFn != nil {
-		return m.getReplyByReviewFn(ctx, tenantID, reviewID)
+		return m.getReplyByReviewFn(ctx, reviewID)
 	}
 	return nil, nil
 }
 
-func (m *mockReviewStore) GetProductRating(ctx context.Context, tenantID, productID uuid.UUID) (*domain.ProductRating, error) {
+func (m *mockReviewStore) GetProductRating(ctx context.Context, productID uuid.UUID) (*domain.ProductRating, error) {
 	if m.getProductRatingFn != nil {
-		return m.getProductRatingFn(ctx, tenantID, productID)
+		return m.getProductRatingFn(ctx, productID)
 	}
 	return nil, nil
 }
 
-func (m *mockReviewStore) UpsertProductRating(ctx context.Context, tenantID, productID uuid.UUID, ratingDelta, countDelta int) error {
+func (m *mockReviewStore) UpsertProductRating(ctx context.Context, productID uuid.UUID, ratingDelta, countDelta int) error {
 	if m.upsertProductRatingFn != nil {
-		return m.upsertProductRatingFn(ctx, tenantID, productID, ratingDelta, countDelta)
+		return m.upsertProductRatingFn(ctx, productID, ratingDelta, countDelta)
 	}
 	return nil
 }
@@ -128,12 +128,12 @@ func (m *mockReviewStore) UpsertProductRating(ctx context.Context, tenantID, pro
 // ---------------------------------------------------------------------------
 
 type mockCatalogClient struct {
-	getProductFn func(ctx context.Context, tenantID, productID uuid.UUID) (*port.ProductLookup, error)
+	getProductFn func(ctx context.Context, productID uuid.UUID) (*port.ProductLookup, error)
 }
 
-func (m *mockCatalogClient) GetProduct(ctx context.Context, tenantID, productID uuid.UUID) (*port.ProductLookup, error) {
+func (m *mockCatalogClient) GetProduct(ctx context.Context, productID uuid.UUID) (*port.ProductLookup, error) {
 	if m.getProductFn != nil {
-		return m.getProductFn(ctx, tenantID, productID)
+		return m.getProductFn(ctx, productID)
 	}
 	return nil, nil
 }
@@ -143,12 +143,12 @@ func (m *mockCatalogClient) GetProduct(ctx context.Context, tenantID, productID 
 // ---------------------------------------------------------------------------
 
 type mockPurchaseChecker struct {
-	checkPurchaseFn func(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error)
+	checkPurchaseFn func(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error)
 }
 
-func (m *mockPurchaseChecker) CheckPurchase(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
+func (m *mockPurchaseChecker) CheckPurchase(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
 	if m.checkPurchaseFn != nil {
-		return m.checkPurchaseFn(ctx, tenantID, buyerAuth0ID, sellerID, skuID)
+		return m.checkPurchaseFn(ctx, buyerAuth0ID, sellerID, skuID)
 	}
 	return &port.PurchaseCheckResult{Purchased: false}, nil
 }
@@ -174,7 +174,6 @@ func intPtr(v int) *int       { return &v }
 func strPtr(v string) *string { return &v }
 
 var (
-	tenantID  = uuid.New()
 	productID = uuid.New()
 	sellerID  = uuid.New()
 	reviewID  = uuid.New()
@@ -196,7 +195,6 @@ func defaultProductLookup() *port.ProductLookup {
 func defaultReview() *domain.Review {
 	return &domain.Review{
 		ID:           reviewID,
-		TenantID:     tenantID,
 		BuyerAuth0ID: buyerID,
 		ProductID:    productID,
 		SellerID:     sellerID,
@@ -223,18 +221,18 @@ func defaultCreateInput() domain.CreateReviewInput {
 func TestCreateReview_Success(t *testing.T) {
 	repo := &mockReviewStore{}
 	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
+		getProductFn: func(_ context.Context, _ uuid.UUID) (*port.ProductLookup, error) {
 			return defaultProductLookup(), nil
 		},
 	}
 	purchase := &mockPurchaseChecker{
-		checkPurchaseFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
+		checkPurchaseFn: func(_ context.Context, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
 			return &port.PurchaseCheckResult{Purchased: true}, nil
 		},
 	}
 	svc := newTestService(repo, catalog, purchase)
 
-	review, err := svc.CreateReview(context.Background(), tenantID, buyerID, defaultCreateInput())
+	review, err := svc.CreateReview(context.Background(), buyerID, defaultCreateInput())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -261,7 +259,7 @@ func TestCreateReview_InvalidRating_Zero(t *testing.T) {
 	in := defaultCreateInput()
 	in.Rating = 0
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
+	_, err := svc.CreateReview(context.Background(), buyerID, in)
 	if !errors.Is(err, domain.ErrInvalidRating) {
 		t.Fatalf("expected ErrInvalidRating, got %v", err)
 	}
@@ -273,7 +271,7 @@ func TestCreateReview_InvalidRating_Six(t *testing.T) {
 	in := defaultCreateInput()
 	in.Rating = 6
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
+	_, err := svc.CreateReview(context.Background(), buyerID, in)
 	if !errors.Is(err, domain.ErrInvalidRating) {
 		t.Fatalf("expected ErrInvalidRating, got %v", err)
 	}
@@ -282,7 +280,7 @@ func TestCreateReview_InvalidRating_Six(t *testing.T) {
 func TestCreateReview_EmptyBuyer(t *testing.T) {
 	svc := newTestService(&mockReviewStore{}, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	_, err := svc.CreateReview(context.Background(), tenantID, "", defaultCreateInput())
+	_, err := svc.CreateReview(context.Background(), "", defaultCreateInput())
 	if err == nil {
 		t.Fatal("expected error for empty buyer")
 	}
@@ -297,7 +295,7 @@ func TestCreateReview_EmptyProductID(t *testing.T) {
 	in := defaultCreateInput()
 	in.ProductID = uuid.Nil
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
+	_, err := svc.CreateReview(context.Background(), buyerID, in)
 	if err == nil {
 		t.Fatal("expected error for empty product_id")
 	}
@@ -308,7 +306,7 @@ func TestCreateReview_EmptyProductID(t *testing.T) {
 
 func TestCreateReview_EmptyTitle(t *testing.T) {
 	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
+		getProductFn: func(_ context.Context, _ uuid.UUID) (*port.ProductLookup, error) {
 			return defaultProductLookup(), nil
 		},
 	}
@@ -317,7 +315,7 @@ func TestCreateReview_EmptyTitle(t *testing.T) {
 	in := defaultCreateInput()
 	in.Title = ""
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
+	_, err := svc.CreateReview(context.Background(), buyerID, in)
 	if err == nil {
 		t.Fatal("expected error for empty title")
 	}
@@ -328,7 +326,7 @@ func TestCreateReview_EmptyTitle(t *testing.T) {
 
 func TestCreateReview_EmptyBody(t *testing.T) {
 	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
+		getProductFn: func(_ context.Context, _ uuid.UUID) (*port.ProductLookup, error) {
 			return defaultProductLookup(), nil
 		},
 	}
@@ -337,7 +335,7 @@ func TestCreateReview_EmptyBody(t *testing.T) {
 	in := defaultCreateInput()
 	in.Body = "   " // whitespace-only should be treated as empty
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
+	_, err := svc.CreateReview(context.Background(), buyerID, in)
 	if err == nil {
 		t.Fatal("expected error for empty body")
 	}
@@ -348,18 +346,18 @@ func TestCreateReview_EmptyBody(t *testing.T) {
 
 func TestCreateReview_PurchaseNotFound(t *testing.T) {
 	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
+		getProductFn: func(_ context.Context, _ uuid.UUID) (*port.ProductLookup, error) {
 			return defaultProductLookup(), nil
 		},
 	}
 	purchase := &mockPurchaseChecker{
-		checkPurchaseFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
+		checkPurchaseFn: func(_ context.Context, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
 			return &port.PurchaseCheckResult{Purchased: false}, nil
 		},
 	}
 	svc := newTestService(&mockReviewStore{}, catalog, purchase)
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, defaultCreateInput())
+	_, err := svc.CreateReview(context.Background(), buyerID, defaultCreateInput())
 	if !errors.Is(err, domain.ErrPurchaseRequired) {
 		t.Fatalf("expected ErrPurchaseRequired, got %v", err)
 	}
@@ -367,13 +365,13 @@ func TestCreateReview_PurchaseNotFound(t *testing.T) {
 
 func TestCreateReview_CatalogError(t *testing.T) {
 	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
+		getProductFn: func(_ context.Context, _ uuid.UUID) (*port.ProductLookup, error) {
 			return nil, errors.New("catalog unavailable")
 		},
 	}
 	svc := newTestService(&mockReviewStore{}, catalog, &mockPurchaseChecker{})
 
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, defaultCreateInput())
+	_, err := svc.CreateReview(context.Background(), buyerID, defaultCreateInput())
 	if err == nil {
 		t.Fatal("expected error when catalog fails")
 	}
@@ -388,13 +386,13 @@ func TestCreateReview_CatalogError(t *testing.T) {
 
 func TestGetReview_Success(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	review, err := svc.GetReview(context.Background(), tenantID, reviewID)
+	review, err := svc.GetReview(context.Background(), reviewID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -408,13 +406,13 @@ func TestGetReview_Success(t *testing.T) {
 
 func TestGetReview_NotFound(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	_, err := svc.GetReview(context.Background(), tenantID, reviewID)
+	_, err := svc.GetReview(context.Background(), reviewID)
 	if !errors.Is(err, domain.ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound, got %v", err)
 	}
@@ -429,7 +427,7 @@ func TestUpdateReview_SuccessWithRatingChange(t *testing.T) {
 	existingReview.Rating = 3
 
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			// Return a copy so mutations don't affect the original.
 			r := *existingReview
 			return &r, nil
@@ -441,7 +439,7 @@ func TestUpdateReview_SuccessWithRatingChange(t *testing.T) {
 		Rating: intPtr(5),
 		Title:  strPtr("Updated title"),
 	}
-	review, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
+	review, err := svc.UpdateReview(context.Background(), reviewID, buyerID, in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -455,14 +453,14 @@ func TestUpdateReview_SuccessWithRatingChange(t *testing.T) {
 
 func TestUpdateReview_NotFound(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.UpdateReviewInput{Rating: intPtr(3)}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
+	_, err := svc.UpdateReview(context.Background(), reviewID, buyerID, in)
 	if !errors.Is(err, domain.ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound, got %v", err)
 	}
@@ -470,14 +468,14 @@ func TestUpdateReview_NotFound(t *testing.T) {
 
 func TestUpdateReview_NotOwner(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.UpdateReviewInput{Rating: intPtr(3)}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, "auth0|someone_else", in)
+	_, err := svc.UpdateReview(context.Background(), reviewID, "auth0|someone_else", in)
 	if !errors.Is(err, domain.ErrNotReviewOwner) {
 		t.Fatalf("expected ErrNotReviewOwner, got %v", err)
 	}
@@ -485,14 +483,14 @@ func TestUpdateReview_NotOwner(t *testing.T) {
 
 func TestUpdateReview_InvalidRating(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.UpdateReviewInput{Rating: intPtr(0)}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
+	_, err := svc.UpdateReview(context.Background(), reviewID, buyerID, in)
 	if !errors.Is(err, domain.ErrInvalidRating) {
 		t.Fatalf("expected ErrInvalidRating, got %v", err)
 	}
@@ -505,17 +503,17 @@ func TestUpdateReview_InvalidRating(t *testing.T) {
 func TestDeleteReview_Success(t *testing.T) {
 	deleteCalled := false
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
-		deleteFn: func(_ context.Context, _, _ uuid.UUID) error {
+		deleteFn: func(_ context.Context, _ uuid.UUID) error {
 			deleteCalled = true
 			return nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	err := svc.DeleteReview(context.Background(), tenantID, reviewID, buyerID)
+	err := svc.DeleteReview(context.Background(), reviewID, buyerID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -526,13 +524,13 @@ func TestDeleteReview_Success(t *testing.T) {
 
 func TestDeleteReview_NotFound(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	err := svc.DeleteReview(context.Background(), tenantID, reviewID, buyerID)
+	err := svc.DeleteReview(context.Background(), reviewID, buyerID)
 	if !errors.Is(err, domain.ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound, got %v", err)
 	}
@@ -540,13 +538,13 @@ func TestDeleteReview_NotFound(t *testing.T) {
 
 func TestDeleteReview_NotOwner(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	err := svc.DeleteReview(context.Background(), tenantID, reviewID, "auth0|someone_else")
+	err := svc.DeleteReview(context.Background(), reviewID, "auth0|someone_else")
 	if !errors.Is(err, domain.ErrNotReviewOwner) {
 		t.Fatalf("expected ErrNotReviewOwner, got %v", err)
 	}
@@ -559,7 +557,7 @@ func TestDeleteReview_NotOwner(t *testing.T) {
 func TestListByProduct_Success(t *testing.T) {
 	expected := []domain.Review{*defaultReview()}
 	repo := &mockReviewStore{
-		listByProductFn: func(_ context.Context, _, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
+		listByProductFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 			if limit != 10 {
 				t.Errorf("expected limit 10, got %d", limit)
 			}
@@ -571,7 +569,7 @@ func TestListByProduct_Success(t *testing.T) {
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	items, total, err := svc.ListByProduct(context.Background(), tenantID, productID, 10, 5)
+	items, total, err := svc.ListByProduct(context.Background(), productID, 10, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -585,7 +583,7 @@ func TestListByProduct_Success(t *testing.T) {
 
 func TestListByProduct_DefaultLimitOffset(t *testing.T) {
 	repo := &mockReviewStore{
-		listByProductFn: func(_ context.Context, _, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
+		listByProductFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 			if limit != 20 {
 				t.Errorf("expected default limit 20, got %d", limit)
 			}
@@ -597,7 +595,7 @@ func TestListByProduct_DefaultLimitOffset(t *testing.T) {
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	_, _, err := svc.ListByProduct(context.Background(), tenantID, productID, 0, -1)
+	_, _, err := svc.ListByProduct(context.Background(), productID, 0, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -609,9 +607,8 @@ func TestListByProduct_DefaultLimitOffset(t *testing.T) {
 
 func TestGetProductRating_Success(t *testing.T) {
 	repo := &mockReviewStore{
-		getProductRatingFn: func(_ context.Context, _, _ uuid.UUID) (*domain.ProductRating, error) {
+		getProductRatingFn: func(_ context.Context, _ uuid.UUID) (*domain.ProductRating, error) {
 			return &domain.ProductRating{
-				TenantID:      tenantID,
 				ProductID:     productID,
 				AverageRating: 4.5,
 				ReviewCount:   10,
@@ -620,7 +617,7 @@ func TestGetProductRating_Success(t *testing.T) {
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	rating, err := svc.GetProductRating(context.Background(), tenantID, productID)
+	rating, err := svc.GetProductRating(context.Background(), productID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -634,13 +631,13 @@ func TestGetProductRating_Success(t *testing.T) {
 
 func TestGetProductRating_NilReturnsZero(t *testing.T) {
 	repo := &mockReviewStore{
-		getProductRatingFn: func(_ context.Context, _, _ uuid.UUID) (*domain.ProductRating, error) {
+		getProductRatingFn: func(_ context.Context, _ uuid.UUID) (*domain.ProductRating, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	rating, err := svc.GetProductRating(context.Background(), tenantID, productID)
+	rating, err := svc.GetProductRating(context.Background(), productID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -653,9 +650,6 @@ func TestGetProductRating_NilReturnsZero(t *testing.T) {
 	if rating.ReviewCount != 0 {
 		t.Errorf("expected count 0, got %d", rating.ReviewCount)
 	}
-	if rating.TenantID != tenantID {
-		t.Errorf("expected tenant_id %s, got %s", tenantID, rating.TenantID)
-	}
 	if rating.ProductID != productID {
 		t.Errorf("expected product_id %s, got %s", productID, rating.ProductID)
 	}
@@ -667,14 +661,14 @@ func TestGetProductRating_NilReturnsZero(t *testing.T) {
 
 func TestCreateReply_Success(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.CreateReplyInput{Body: "Thank you for the review!"}
-	reply, err := svc.CreateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	reply, err := svc.CreateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -693,7 +687,7 @@ func TestCreateReply_EmptyBody(t *testing.T) {
 	svc := newTestService(&mockReviewStore{}, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.CreateReplyInput{Body: "  "}
-	_, err := svc.CreateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	_, err := svc.CreateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if err == nil {
 		t.Fatal("expected error for empty body")
 	}
@@ -704,7 +698,7 @@ func TestCreateReply_EmptyBody(t *testing.T) {
 
 func TestCreateReply_NotSellerOfProduct(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
@@ -712,7 +706,7 @@ func TestCreateReply_NotSellerOfProduct(t *testing.T) {
 
 	otherSellerID := uuid.New()
 	in := domain.CreateReplyInput{Body: "Reply body"}
-	_, err := svc.CreateReply(context.Background(), tenantID, reviewID, sellerSub, otherSellerID, in)
+	_, err := svc.CreateReply(context.Background(), reviewID, sellerSub, otherSellerID, in)
 	if !errors.Is(err, domain.ErrNotSellerOfProduct) {
 		t.Fatalf("expected ErrNotSellerOfProduct, got %v", err)
 	}
@@ -720,14 +714,14 @@ func TestCreateReply_NotSellerOfProduct(t *testing.T) {
 
 func TestCreateReply_ReviewNotFound(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.CreateReplyInput{Body: "Reply body"}
-	_, err := svc.CreateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	_, err := svc.CreateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if !errors.Is(err, domain.ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound, got %v", err)
 	}
@@ -740,17 +734,17 @@ func TestCreateReply_ReviewNotFound(t *testing.T) {
 func TestDeleteReply_Success(t *testing.T) {
 	deleteReplyCalled := false
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
-		deleteReplyFn: func(_ context.Context, _, _ uuid.UUID) error {
+		deleteReplyFn: func(_ context.Context, _ uuid.UUID) error {
 			deleteReplyCalled = true
 			return nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	err := svc.DeleteReply(context.Background(), tenantID, reviewID, sellerID)
+	err := svc.DeleteReply(context.Background(), reviewID, sellerID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -761,13 +755,13 @@ func TestDeleteReply_Success(t *testing.T) {
 
 func TestDeleteReply_ReviewNotFound(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	err := svc.DeleteReply(context.Background(), tenantID, reviewID, sellerID)
+	err := svc.DeleteReply(context.Background(), reviewID, sellerID)
 	if !errors.Is(err, domain.ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound, got %v", err)
 	}
@@ -775,14 +769,14 @@ func TestDeleteReply_ReviewNotFound(t *testing.T) {
 
 func TestDeleteReply_NotSeller(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	otherSellerID := uuid.New()
-	err := svc.DeleteReply(context.Background(), tenantID, reviewID, otherSellerID)
+	err := svc.DeleteReply(context.Background(), reviewID, otherSellerID)
 	if !errors.Is(err, domain.ErrNotSellerOfProduct) {
 		t.Fatalf("expected ErrNotSellerOfProduct, got %v", err)
 	}
@@ -795,10 +789,10 @@ func TestDeleteReply_NotSeller(t *testing.T) {
 func TestUpdateReply_Success(t *testing.T) {
 	updateReplyCalled := false
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
-		updateReplyFn: func(_ context.Context, _ uuid.UUID, reply *domain.ReviewReply) error {
+		updateReplyFn: func(_ context.Context, reply *domain.ReviewReply) error {
 			updateReplyCalled = true
 			if reply.ReviewID != reviewID {
 				t.Errorf("expected review_id %s, got %s", reviewID, reply.ReviewID)
@@ -812,7 +806,7 @@ func TestUpdateReply_Success(t *testing.T) {
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.UpdateReplyInput{Body: "Updated reply body"}
-	reply, err := svc.UpdateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	reply, err := svc.UpdateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -828,7 +822,7 @@ func TestUpdateReply_EmptyBody(t *testing.T) {
 	svc := newTestService(&mockReviewStore{}, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.UpdateReplyInput{Body: "   "}
-	_, err := svc.UpdateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	_, err := svc.UpdateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if err == nil {
 		t.Fatal("expected error for empty body")
 	}
@@ -839,14 +833,14 @@ func TestUpdateReply_EmptyBody(t *testing.T) {
 
 func TestUpdateReply_ReviewNotFound(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return nil, nil
 		},
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
 	in := domain.UpdateReplyInput{Body: "Some reply"}
-	_, err := svc.UpdateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	_, err := svc.UpdateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if !errors.Is(err, domain.ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound, got %v", err)
 	}
@@ -854,7 +848,7 @@ func TestUpdateReply_ReviewNotFound(t *testing.T) {
 
 func TestUpdateReply_NotSellerOfProduct(t *testing.T) {
 	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Review, error) {
 			return defaultReview(), nil
 		},
 	}
@@ -862,7 +856,7 @@ func TestUpdateReply_NotSellerOfProduct(t *testing.T) {
 
 	otherSellerID := uuid.New()
 	in := domain.UpdateReplyInput{Body: "Some reply"}
-	_, err := svc.UpdateReply(context.Background(), tenantID, reviewID, sellerSub, otherSellerID, in)
+	_, err := svc.UpdateReply(context.Background(), reviewID, sellerSub, otherSellerID, in)
 	if !errors.Is(err, domain.ErrNotSellerOfProduct) {
 		t.Fatalf("expected ErrNotSellerOfProduct, got %v", err)
 	}
@@ -873,7 +867,7 @@ func TestUpdateReply_BodyTooLong(t *testing.T) {
 
 	longBody := strings.Repeat("x", 2001)
 	in := domain.UpdateReplyInput{Body: longBody}
-	_, err := svc.UpdateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
+	_, err := svc.UpdateReply(context.Background(), reviewID, sellerSub, sellerID, in)
 	if err == nil {
 		t.Fatal("expected error for body too long")
 	}
@@ -889,7 +883,7 @@ func TestUpdateReply_BodyTooLong(t *testing.T) {
 func TestListForSeller_Success(t *testing.T) {
 	expected := []domain.Review{*defaultReview()}
 	repo := &mockReviewStore{
-		listBySellerFn: func(_ context.Context, _, sid uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
+		listBySellerFn: func(_ context.Context, sid uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 			if sid != sellerID {
 				t.Errorf("expected seller_id %s, got %s", sellerID, sid)
 			}
@@ -904,7 +898,7 @@ func TestListForSeller_Success(t *testing.T) {
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	items, total, err := svc.ListForSeller(context.Background(), tenantID, sellerID, 10, 5)
+	items, total, err := svc.ListForSeller(context.Background(), sellerID, 10, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -919,7 +913,7 @@ func TestListForSeller_Success(t *testing.T) {
 func TestListForSeller_NilSellerID(t *testing.T) {
 	svc := newTestService(&mockReviewStore{}, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	_, _, err := svc.ListForSeller(context.Background(), tenantID, uuid.Nil, 10, 0)
+	_, _, err := svc.ListForSeller(context.Background(), uuid.Nil, 10, 0)
 	if err == nil {
 		t.Fatal("expected error for nil seller_id")
 	}
@@ -930,7 +924,7 @@ func TestListForSeller_NilSellerID(t *testing.T) {
 
 func TestListForSeller_DefaultLimitOffset(t *testing.T) {
 	repo := &mockReviewStore{
-		listBySellerFn: func(_ context.Context, _, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
+		listBySellerFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]domain.Review, int, error) {
 			if limit != 20 {
 				t.Errorf("expected default limit 20, got %d", limit)
 			}
@@ -942,468 +936,8 @@ func TestListForSeller_DefaultLimitOffset(t *testing.T) {
 	}
 	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
 
-	_, _, err := svc.ListForSeller(context.Background(), tenantID, sellerID, 0, -1)
+	_, _, err := svc.ListForSeller(context.Background(), sellerID, 0, -1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestListForSeller_LimitExceeds100(t *testing.T) {
-	repo := &mockReviewStore{
-		listBySellerFn: func(_ context.Context, _, _ uuid.UUID, limit, _ int) ([]domain.Review, int, error) {
-			if limit != 20 {
-				t.Errorf("expected default limit 20 when >100, got %d", limit)
-			}
-			return nil, 0, nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	_, _, err := svc.ListForSeller(context.Background(), tenantID, sellerID, 101, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: CreateReview - additional edge cases
-// ---------------------------------------------------------------------------
-
-func TestCreateReview_TitleTooLong(t *testing.T) {
-	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
-			return defaultProductLookup(), nil
-		},
-	}
-	svc := newTestService(&mockReviewStore{}, catalog, &mockPurchaseChecker{})
-
-	in := defaultCreateInput()
-	in.Title = strings.Repeat("a", 256)
-
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
-	if err == nil {
-		t.Fatal("expected error for title too long")
-	}
-	if !strings.Contains(err.Error(), "title must be at most 255 characters") {
-		t.Fatalf("expected title length error, got %v", err)
-	}
-}
-
-func TestCreateReview_BodyTooLong(t *testing.T) {
-	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
-			return defaultProductLookup(), nil
-		},
-	}
-	svc := newTestService(&mockReviewStore{}, catalog, &mockPurchaseChecker{})
-
-	in := defaultCreateInput()
-	in.Body = strings.Repeat("b", 4001)
-
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, in)
-	if err == nil {
-		t.Fatal("expected error for body too long")
-	}
-	if !strings.Contains(err.Error(), "body must be at most 4000 characters") {
-		t.Fatalf("expected body length error, got %v", err)
-	}
-}
-
-func TestCreateReview_PurchaseCheckPartialError(t *testing.T) {
-	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
-			return defaultProductLookup(), nil
-		},
-	}
-	callCount := 0
-	purchase := &mockPurchaseChecker{
-		checkPurchaseFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
-			callCount++
-			// First SKU errors, second SKU returns not-purchased.
-			if callCount == 1 {
-				return nil, errors.New("order service timeout")
-			}
-			return &port.PurchaseCheckResult{Purchased: false}, nil
-		},
-	}
-	svc := newTestService(&mockReviewStore{}, catalog, purchase)
-
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, defaultCreateInput())
-	if err == nil {
-		t.Fatal("expected error for partial purchase check failure")
-	}
-	if !strings.Contains(err.Error(), "purchase check partially failed") {
-		t.Fatalf("expected partial failure error, got %v", err)
-	}
-}
-
-func TestCreateReview_PurchaseCheckAllErrors(t *testing.T) {
-	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
-			return defaultProductLookup(), nil
-		},
-	}
-	purchase := &mockPurchaseChecker{
-		checkPurchaseFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
-			return nil, errors.New("order service down")
-		},
-	}
-	svc := newTestService(&mockReviewStore{}, catalog, purchase)
-
-	_, err := svc.CreateReview(context.Background(), tenantID, buyerID, defaultCreateInput())
-	if err == nil {
-		t.Fatal("expected error when all purchase checks fail")
-	}
-	if !strings.Contains(err.Error(), "purchase check partially failed") {
-		t.Fatalf("expected partial failure error, got %v", err)
-	}
-}
-
-func TestCreateReview_PurchaseCheckFirstSKUSucceeds(t *testing.T) {
-	catalog := &mockCatalogClient{
-		getProductFn: func(_ context.Context, _, _ uuid.UUID) (*port.ProductLookup, error) {
-			return defaultProductLookup(), nil
-		},
-	}
-	callCount := 0
-	purchase := &mockPurchaseChecker{
-		checkPurchaseFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
-			callCount++
-			// First SKU purchased, second should not be called.
-			return &port.PurchaseCheckResult{Purchased: true}, nil
-		},
-	}
-	svc := newTestService(&mockReviewStore{}, catalog, purchase)
-
-	review, err := svc.CreateReview(context.Background(), tenantID, buyerID, defaultCreateInput())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if review == nil {
-		t.Fatal("expected review, got nil")
-	}
-	if callCount != 1 {
-		t.Errorf("expected purchase check to stop after first success, but was called %d times", callCount)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: UpdateReview - additional edge cases
-// ---------------------------------------------------------------------------
-
-func TestUpdateReview_EmptyTitleUpdate(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	in := domain.UpdateReviewInput{Title: strPtr("   ")}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if err == nil {
-		t.Fatal("expected error for empty title")
-	}
-	if !strings.Contains(err.Error(), "title is required") {
-		t.Fatalf("expected title error, got %v", err)
-	}
-}
-
-func TestUpdateReview_EmptyBodyUpdate(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	in := domain.UpdateReviewInput{Body: strPtr("  ")}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if err == nil {
-		t.Fatal("expected error for empty body")
-	}
-	if !strings.Contains(err.Error(), "body is required") {
-		t.Fatalf("expected body error, got %v", err)
-	}
-}
-
-func TestUpdateReview_TitleTooLong(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	longTitle := strings.Repeat("a", 256)
-	in := domain.UpdateReviewInput{Title: strPtr(longTitle)}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if err == nil {
-		t.Fatal("expected error for title too long")
-	}
-	if !strings.Contains(err.Error(), "title must be at most 255 characters") {
-		t.Fatalf("expected title length error, got %v", err)
-	}
-}
-
-func TestUpdateReview_BodyTooLong(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	longBody := strings.Repeat("b", 4001)
-	in := domain.UpdateReviewInput{Body: strPtr(longBody)}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if err == nil {
-		t.Fatal("expected error for body too long")
-	}
-	if !strings.Contains(err.Error(), "body must be at most 4000 characters") {
-		t.Fatalf("expected body length error, got %v", err)
-	}
-}
-
-func TestUpdateReview_InvalidRatingHigh(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	in := domain.UpdateReviewInput{Rating: intPtr(6)}
-	_, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if !errors.Is(err, domain.ErrInvalidRating) {
-		t.Fatalf("expected ErrInvalidRating, got %v", err)
-	}
-}
-
-func TestUpdateReview_BodyOnly(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	in := domain.UpdateReviewInput{Body: strPtr("Updated body text")}
-	review, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if review.Body != "Updated body text" {
-		t.Errorf("expected body 'Updated body text', got %q", review.Body)
-	}
-	// Rating should remain unchanged.
-	if review.Rating != 4 {
-		t.Errorf("expected rating unchanged at 4, got %d", review.Rating)
-	}
-}
-
-func TestUpdateReview_NoFieldsChanged(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	// Empty input — no fields set.
-	in := domain.UpdateReviewInput{}
-	review, err := svc.UpdateReview(context.Background(), tenantID, reviewID, buyerID, in)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if review.Rating != 4 {
-		t.Errorf("expected unchanged rating 4, got %d", review.Rating)
-	}
-	if review.Title != "Great product" {
-		t.Errorf("expected unchanged title, got %q", review.Title)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: CreateReply - additional edge cases
-// ---------------------------------------------------------------------------
-
-func TestCreateReply_BodyTooLong(t *testing.T) {
-	svc := newTestService(&mockReviewStore{}, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	longBody := strings.Repeat("x", 2001)
-	in := domain.CreateReplyInput{Body: longBody}
-	_, err := svc.CreateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
-	if err == nil {
-		t.Fatal("expected error for body too long")
-	}
-	if !strings.Contains(err.Error(), "body must be at most 2000 characters") {
-		t.Fatalf("expected body length error, got %v", err)
-	}
-}
-
-func TestCreateReply_BodyExactly2000(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return defaultReview(), nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	body := strings.Repeat("y", 2000)
-	in := domain.CreateReplyInput{Body: body}
-	reply, err := svc.CreateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if reply == nil {
-		t.Fatal("expected reply, got nil")
-	}
-	if len(reply.Body) != 2000 {
-		t.Errorf("expected body length 2000, got %d", len(reply.Body))
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: GetReview - repo error
-// ---------------------------------------------------------------------------
-
-func TestGetReview_RepoError(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return nil, errors.New("db connection lost")
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	_, err := svc.GetReview(context.Background(), tenantID, reviewID)
-	if err == nil {
-		t.Fatal("expected error when repo fails")
-	}
-	if !strings.Contains(err.Error(), "failed to load review") {
-		t.Fatalf("expected wrapped error, got %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: ListByProduct - repo error
-// ---------------------------------------------------------------------------
-
-func TestListByProduct_RepoError(t *testing.T) {
-	repo := &mockReviewStore{
-		listByProductFn: func(_ context.Context, _, _ uuid.UUID, _, _ int) ([]domain.Review, int, error) {
-			return nil, 0, errors.New("db timeout")
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	_, _, err := svc.ListByProduct(context.Background(), tenantID, productID, 10, 0)
-	if err == nil {
-		t.Fatal("expected error when repo fails")
-	}
-	if !strings.Contains(err.Error(), "failed to list reviews") {
-		t.Fatalf("expected wrapped error, got %v", err)
-	}
-}
-
-func TestListByProduct_LimitExceeds100(t *testing.T) {
-	repo := &mockReviewStore{
-		listByProductFn: func(_ context.Context, _, _ uuid.UUID, limit, _ int) ([]domain.Review, int, error) {
-			if limit != 20 {
-				t.Errorf("expected default limit 20 when >100, got %d", limit)
-			}
-			return nil, 0, nil
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	_, _, err := svc.ListByProduct(context.Background(), tenantID, productID, 101, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: ListForSeller - repo error
-// ---------------------------------------------------------------------------
-
-func TestListForSeller_RepoError(t *testing.T) {
-	repo := &mockReviewStore{
-		listBySellerFn: func(_ context.Context, _, _ uuid.UUID, _, _ int) ([]domain.Review, int, error) {
-			return nil, 0, errors.New("db timeout")
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	_, _, err := svc.ListForSeller(context.Background(), tenantID, sellerID, 10, 0)
-	if err == nil {
-		t.Fatal("expected error when repo fails")
-	}
-	if !strings.Contains(err.Error(), "failed to list reviews") {
-		t.Fatalf("expected wrapped error, got %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: GetProductRating - repo error
-// ---------------------------------------------------------------------------
-
-func TestGetProductRating_RepoError(t *testing.T) {
-	repo := &mockReviewStore{
-		getProductRatingFn: func(_ context.Context, _, _ uuid.UUID) (*domain.ProductRating, error) {
-			return nil, errors.New("db error")
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	_, err := svc.GetProductRating(context.Background(), tenantID, productID)
-	if err == nil {
-		t.Fatal("expected error when repo fails")
-	}
-	if !strings.Contains(err.Error(), "failed to load product rating") {
-		t.Fatalf("expected wrapped error, got %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: DeleteReview - repo error on GetByID
-// ---------------------------------------------------------------------------
-
-func TestDeleteReview_RepoGetError(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return nil, errors.New("db error")
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	err := svc.DeleteReview(context.Background(), tenantID, reviewID, buyerID)
-	if err == nil {
-		t.Fatal("expected error when repo GetByID fails")
-	}
-	if !strings.Contains(err.Error(), "failed to load review") {
-		t.Fatalf("expected wrapped error, got %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests: UpdateReply - repo error on GetByID
-// ---------------------------------------------------------------------------
-
-func TestUpdateReply_RepoGetError(t *testing.T) {
-	repo := &mockReviewStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.Review, error) {
-			return nil, errors.New("db error")
-		},
-	}
-	svc := newTestService(repo, &mockCatalogClient{}, &mockPurchaseChecker{})
-
-	in := domain.UpdateReplyInput{Body: "Some reply"}
-	_, err := svc.UpdateReply(context.Background(), tenantID, reviewID, sellerSub, sellerID, in)
-	if err == nil {
-		t.Fatal("expected error when repo GetByID fails")
-	}
-	if !strings.Contains(err.Error(), "failed to load review") {
-		t.Fatalf("expected wrapped error, got %v", err)
 	}
 }

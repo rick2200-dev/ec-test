@@ -27,7 +27,6 @@ const (
 // RBACAuditEntry is one row in auth_svc.rbac_audit_log.
 type RBACAuditEntry struct {
 	ID                uuid.UUID  `json:"id"`
-	TenantID          uuid.UUID  `json:"tenant_id"`
 	ActorAuth0UserID  string     `json:"actor_auth0_user_id"`
 	TargetAuth0UserID string     `json:"target_auth0_user_id"`
 	Scope             RBACScope  `json:"scope"`

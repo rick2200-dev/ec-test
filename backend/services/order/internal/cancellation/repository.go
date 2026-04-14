@@ -33,9 +33,7 @@ const pendingUniqueIndex = "ux_cancellation_pending_per_order"
 // semantic error.
 var ErrPendingRequestExists = errors.New("pending cancellation request already exists for order")
 
-// Repository persists CancellationRequest rows inside a TenantTx so
-// all reads and writes go through the `tenant_isolation` RLS policy
-// declared in migration 000016.
+// Repository persists CancellationRequest rows using database transactions.
 type Repository struct {
 	pool *pgxpool.Pool
 }
@@ -49,18 +47,17 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 // ErrPendingRequestExists if another pending request already exists
 // for the same order (authoritative race guard via the partial unique
 // index).
-func (r *Repository) Create(ctx context.Context, tenantID uuid.UUID, req *CancellationRequest) error {
+func (r *Repository) Create(ctx context.Context, req *CancellationRequest) error {
 	req.ID = uuid.New()
-	req.TenantID = tenantID
 	req.Status = StatusPending
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
 			`INSERT INTO order_svc.order_cancellation_requests
-			 (id, tenant_id, order_id, requested_by_auth0_id, reason, status)
-			 VALUES ($1, $2, $3, $4, $5, $6)
+			 (id, order_id, requested_by_auth0_id, reason, status)
+			 VALUES ($1, $2, $3, $4, $5)
 			 RETURNING created_at, updated_at`,
-			req.ID, req.TenantID, req.OrderID, req.RequestedByAuth0ID, req.Reason, string(req.Status),
+			req.ID, req.OrderID, req.RequestedByAuth0ID, req.Reason, string(req.Status),
 		).Scan(&req.CreatedAt, &req.UpdatedAt)
 		if err != nil {
 			var pgErr *pgconn.PgError
@@ -77,18 +74,18 @@ func (r *Repository) Create(ctx context.Context, tenantID uuid.UUID, req *Cancel
 
 // GetByID loads a request by id. Returns (nil, nil) when no row is
 // found so callers can distinguish missing-row from DB error.
-func (r *Repository) GetByID(ctx context.Context, tenantID, requestID uuid.UUID) (*CancellationRequest, error) {
+func (r *Repository) GetByID(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error) {
 	var req CancellationRequest
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return scanOne(ctx, tx, &req, &found,
-			`SELECT id, tenant_id, order_id, requested_by_auth0_id, reason, status,
+			`SELECT id, order_id, requested_by_auth0_id, reason, status,
 			        seller_comment, processed_by_seller_id, processed_at,
 			        stripe_refund_id, failure_reason, created_at, updated_at
 			 FROM order_svc.order_cancellation_requests
-			 WHERE id = $1 AND tenant_id = $2`,
-			requestID, tenantID,
+			 WHERE id = $1`,
+			requestID,
 		)
 	})
 	if err != nil {
@@ -104,20 +101,20 @@ func (r *Repository) GetByID(ctx context.Context, tenantID, requestID uuid.UUID)
 // (nil, nil) if no request has ever been opened against it. Used by
 // the buyer order-detail page to decide whether to show the "Cancel"
 // button or the current request status.
-func (r *Repository) GetLatestByOrder(ctx context.Context, tenantID, orderID uuid.UUID) (*CancellationRequest, error) {
+func (r *Repository) GetLatestByOrder(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error) {
 	var req CancellationRequest
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return scanOne(ctx, tx, &req, &found,
-			`SELECT id, tenant_id, order_id, requested_by_auth0_id, reason, status,
+			`SELECT id, order_id, requested_by_auth0_id, reason, status,
 			        seller_comment, processed_by_seller_id, processed_at,
 			        stripe_refund_id, failure_reason, created_at, updated_at
 			 FROM order_svc.order_cancellation_requests
-			 WHERE tenant_id = $1 AND order_id = $2
+			 WHERE order_id = $1
 			 ORDER BY created_at DESC
 			 LIMIT 1`,
-			tenantID, orderID,
+			orderID,
 		)
 	})
 	if err != nil {
@@ -131,37 +128,35 @@ func (r *Repository) GetLatestByOrder(ctx context.Context, tenantID, orderID uui
 
 // ListByStatus returns paginated requests filtered by status AND constrained
 // to the given seller, by joining against order_svc.orders and matching
-// orders.seller_id. The seller_id filter is mandatory — a multi-seller tenant
-// must not be able to read another seller's cancellation reasons or buyer
-// auth0 ids through this endpoint. The underlying cancellation table has no
-// denormalized seller_id column, so we join rather than widen the schema.
-func (r *Repository) ListByStatus(ctx context.Context, tenantID uuid.UUID, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error) {
+// orders.seller_id. The seller_id filter is mandatory so one seller cannot
+// read another seller's cancellation reasons or buyer auth0 ids through this
+// endpoint. The underlying cancellation table has no denormalized seller_id
+// column, so we join rather than widen the schema.
+func (r *Repository) ListByStatus(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error) {
 	var requests []CancellationRequest
 	var total int
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
 			`SELECT COUNT(*)
 			 FROM order_svc.order_cancellation_requests cr
-			 JOIN order_svc.orders o
-			   ON o.id = cr.order_id AND o.tenant_id = cr.tenant_id
-			 WHERE cr.tenant_id = $1 AND cr.status = $2 AND o.seller_id = $3`,
-			tenantID, string(status), sellerID,
+			 JOIN order_svc.orders o ON o.id = cr.order_id
+			 WHERE cr.status = $1 AND o.seller_id = $2`,
+			string(status), sellerID,
 		).Scan(&total); err != nil {
 			return fmt.Errorf("count cancellation requests: %w", err)
 		}
 
 		rows, err := tx.Query(ctx,
-			`SELECT cr.id, cr.tenant_id, cr.order_id, cr.requested_by_auth0_id, cr.reason, cr.status,
+			`SELECT cr.id, cr.order_id, cr.requested_by_auth0_id, cr.reason, cr.status,
 			        cr.seller_comment, cr.processed_by_seller_id, cr.processed_at,
 			        cr.stripe_refund_id, cr.failure_reason, cr.created_at, cr.updated_at
 			 FROM order_svc.order_cancellation_requests cr
-			 JOIN order_svc.orders o
-			   ON o.id = cr.order_id AND o.tenant_id = cr.tenant_id
-			 WHERE cr.tenant_id = $1 AND cr.status = $2 AND o.seller_id = $3
+			 JOIN order_svc.orders o ON o.id = cr.order_id
+			 WHERE cr.status = $1 AND o.seller_id = $2
 			 ORDER BY cr.created_at DESC
-			 LIMIT $4 OFFSET $5`,
-			tenantID, string(status), sellerID, limit, offset,
+			 LIMIT $3 OFFSET $4`,
+			string(status), sellerID, limit, offset,
 		)
 		if err != nil {
 			return fmt.Errorf("list cancellation requests: %w", err)
@@ -185,28 +180,28 @@ func (r *Repository) ListByStatus(ctx context.Context, tenantID uuid.UUID, selle
 
 // ListByBuyer returns paginated requests opened by the given buyer.
 // Used by the buyer "my requests" page if / when we build it.
-func (r *Repository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]CancellationRequest, int, error) {
+func (r *Repository) ListByBuyer(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]CancellationRequest, int, error) {
 	var requests []CancellationRequest
 	var total int
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
 			`SELECT COUNT(*) FROM order_svc.order_cancellation_requests
-			 WHERE tenant_id = $1 AND requested_by_auth0_id = $2`,
-			tenantID, buyerAuth0ID,
+			 WHERE requested_by_auth0_id = $1`,
+			buyerAuth0ID,
 		).Scan(&total); err != nil {
 			return fmt.Errorf("count buyer cancellation requests: %w", err)
 		}
 
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, order_id, requested_by_auth0_id, reason, status,
+			`SELECT id, order_id, requested_by_auth0_id, reason, status,
 			        seller_comment, processed_by_seller_id, processed_at,
 			        stripe_refund_id, failure_reason, created_at, updated_at
 			 FROM order_svc.order_cancellation_requests
-			 WHERE tenant_id = $1 AND requested_by_auth0_id = $2
+			 WHERE requested_by_auth0_id = $1
 			 ORDER BY created_at DESC
-			 LIMIT $3 OFFSET $4`,
-			tenantID, buyerAuth0ID, limit, offset,
+			 LIMIT $2 OFFSET $3`,
+			buyerAuth0ID, limit, offset,
 		)
 		if err != nil {
 			return fmt.Errorf("list buyer cancellation requests: %w", err)
@@ -234,23 +229,23 @@ func (r *Repository) ListByBuyer(ctx context.Context, tenantID uuid.UUID, buyerA
 // approval/rejection is a no-op (RowsAffected == 0) and returns
 // ErrAlreadyProcessed. Callers must already have verified that the
 // seller owns the order — this method only enforces the state guard.
-func (r *Repository) Reject(ctx context.Context, tenantID, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
+func (r *Repository) Reject(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error) {
 	var updated CancellationRequest
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return scanOne(ctx, tx, &updated, &found,
 			`UPDATE order_svc.order_cancellation_requests
 			 SET status = 'rejected',
-			     seller_comment = $3,
-			     processed_by_seller_id = $4,
+			     seller_comment = $2,
+			     processed_by_seller_id = $3,
 			     processed_at = NOW(),
 			     updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2 AND status = 'pending'
-			 RETURNING id, tenant_id, order_id, requested_by_auth0_id, reason, status,
+			 WHERE id = $1 AND status = 'pending'
+			 RETURNING id, order_id, requested_by_auth0_id, reason, status,
 			           seller_comment, processed_by_seller_id, processed_at,
 			           stripe_refund_id, failure_reason, created_at, updated_at`,
-			requestID, tenantID, comment, sellerID,
+			requestID, comment, sellerID,
 		)
 	})
 	if err != nil {
@@ -265,15 +260,15 @@ func (r *Repository) Reject(ctx context.Context, tenantID, requestID, sellerID u
 // MarkFailed atomically transitions a request from pending → failed,
 // recording failure_reason. Used after a Stripe refund or reversal
 // irrecoverably errors during approval. Same pending-guard as Reject.
-func (r *Repository) MarkFailed(ctx context.Context, tenantID, requestID uuid.UUID, failureReason string) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *Repository) MarkFailed(ctx context.Context, requestID uuid.UUID, failureReason string) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE order_svc.order_cancellation_requests
 			 SET status = 'failed',
-			     failure_reason = $3,
+			     failure_reason = $2,
 			     updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2 AND status = 'pending'`,
-			requestID, tenantID, failureReason,
+			 WHERE id = $1 AND status = 'pending'`,
+			requestID, failureReason,
 		)
 		if err != nil {
 			return fmt.Errorf("mark cancellation failed: %w", err)
@@ -321,27 +316,27 @@ type ReversedPayout struct {
 // guards miss (RowsAffected == 0) the whole transaction is rolled back
 // and ErrAlreadyProcessed / ErrOrderStatusChanged is surfaced so the
 // service layer can translate to an appropriate semantic error.
-func (r *Repository) ApproveTx(ctx context.Context, tenantID uuid.UUID, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
+func (r *Repository) ApproveTx(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
 	var updatedReq CancellationRequest
 	var updatedOrder domain.Order
 	var reqFound bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		// 1) Flip the request row. Re-assert status='pending' so we
 		// fail fast if another caller already resolved it.
 		if err := scanOne(ctx, tx, &updatedReq, &reqFound,
 			`UPDATE order_svc.order_cancellation_requests
 			 SET status = 'approved',
-			     seller_comment = NULLIF($3, ''),
-			     processed_by_seller_id = $4,
-			     processed_at = $5,
-			     stripe_refund_id = $6,
+			     seller_comment = NULLIF($2, ''),
+			     processed_by_seller_id = $3,
+			     processed_at = $4,
+			     stripe_refund_id = $5,
 			     updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2 AND status = 'pending'
-			 RETURNING id, tenant_id, order_id, requested_by_auth0_id, reason, status,
+			 WHERE id = $1 AND status = 'pending'
+			 RETURNING id, order_id, requested_by_auth0_id, reason, status,
 			           seller_comment, processed_by_seller_id, processed_at,
 			           stripe_refund_id, failure_reason, created_at, updated_at`,
-			in.RequestID, tenantID, in.Comment, in.SellerID, in.ProcessedAt, in.StripeRefundID,
+			in.RequestID, in.Comment, in.SellerID, in.ProcessedAt, in.StripeRefundID,
 		); err != nil {
 			return fmt.Errorf("approve cancellation request: %w", err)
 		}
@@ -354,18 +349,18 @@ func (r *Repository) ApproveTx(ctx context.Context, tenantID uuid.UUID, in Appro
 		scanErr := tx.QueryRow(ctx,
 			`UPDATE order_svc.orders
 			 SET status = 'cancelled',
-			     cancelled_at = $3,
-			     cancellation_reason = $4,
+			     cancelled_at = $2,
+			     cancellation_reason = $3,
 			     updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2
-			   AND status = ANY($5)
-			 RETURNING id, tenant_id, seller_id, seller_name, buyer_auth0_id, status,
+			 WHERE id = $1
+			   AND status = ANY($4)
+			 RETURNING id, seller_id, seller_name, buyer_auth0_id, status,
 			           subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			           shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
 			           created_at, updated_at`,
-			in.OrderID, tenantID, in.ProcessedAt, in.Reason, in.CancellableStatus,
+			in.OrderID, in.ProcessedAt, in.Reason, in.CancellableStatus,
 		).Scan(
-			&updatedOrder.ID, &updatedOrder.TenantID, &updatedOrder.SellerID, &updatedOrder.SellerName,
+			&updatedOrder.ID, &updatedOrder.SellerID, &updatedOrder.SellerName,
 			&updatedOrder.BuyerAuth0ID, &updatedOrder.Status,
 			&updatedOrder.SubtotalAmount, &updatedOrder.ShippingFee, &updatedOrder.CommissionAmount,
 			&updatedOrder.TotalAmount, &updatedOrder.Currency,
@@ -385,11 +380,11 @@ func (r *Repository) ApproveTx(ctx context.Context, tenantID uuid.UUID, in Appro
 		for _, rp := range in.ReversedPayouts {
 			tag, err := tx.Exec(ctx,
 				`UPDATE order_svc.payouts
-				 SET status = $3,
-				     stripe_reversal_id = $4,
-				     reversed_at = $5
-				 WHERE id = $1 AND tenant_id = $2`,
-				rp.PayoutID, tenantID, domain.PayoutStatusReversed, rp.StripeReversalID, in.ProcessedAt,
+				 SET status = $2,
+				     stripe_reversal_id = $3,
+				     reversed_at = $4
+				 WHERE id = $1`,
+				rp.PayoutID, domain.PayoutStatusReversed, rp.StripeReversalID, in.ProcessedAt,
 			)
 			if err != nil {
 				return fmt.Errorf("mark payout reversed: %w", err)
@@ -424,13 +419,13 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-// scanRow reads one request row from the 13-column SELECT projection
+// scanRow reads one request row from the 12-column SELECT projection
 // used by every read method in this file. Kept in one place so the
 // column list and the Go field order cannot drift.
 func scanRow(row rowScanner, req *CancellationRequest) error {
 	var status string
 	if err := row.Scan(
-		&req.ID, &req.TenantID, &req.OrderID, &req.RequestedByAuth0ID, &req.Reason, &status,
+		&req.ID, &req.OrderID, &req.RequestedByAuth0ID, &req.Reason, &status,
 		&req.SellerComment, &req.ProcessedBySellerID, &req.ProcessedAt,
 		&req.StripeRefundID, &req.FailureReason, &req.CreatedAt, &req.UpdatedAt,
 	); err != nil {

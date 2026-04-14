@@ -22,7 +22,6 @@ import (
 // packages across service boundaries.
 type productJSON struct {
 	ID          string          `json:"id"`
-	TenantID    string          `json:"tenant_id"`
 	SellerID    string          `json:"seller_id"`
 	CategoryID  *string         `json:"category_id,omitempty"`
 	Name        string          `json:"name"`
@@ -40,7 +39,6 @@ type productJSON struct {
 // flattens the price on the way out.
 type skuJSON struct {
 	ID            string          `json:"id"`
-	TenantID      string          `json:"tenant_id"`
 	ProductID     string          `json:"product_id"`
 	SellerID      string          `json:"seller_id"`
 	SKUCode       string          `json:"sku_code"`
@@ -68,7 +66,6 @@ func protoProductToJSON(p *catalogv1.Product) productJSON {
 	}
 	return productJSON{
 		ID:          p.GetId(),
-		TenantID:    p.GetTenantId(),
 		SellerID:    p.GetSellerId(),
 		CategoryID:  nil, // proto has no category_id field
 		Name:        p.GetName(),
@@ -92,7 +89,6 @@ func protoProductWithSKUsToJSON(p *catalogv1.Product) productWithSKUsJSON {
 	for _, s := range p.GetSkus() {
 		out.SKUs = append(out.SKUs, skuJSON{
 			ID:            s.GetId(),
-			TenantID:      s.GetTenantId(),
 			ProductID:     s.GetProductId(),
 			SellerID:      s.GetSellerId(),
 			SKUCode:       s.GetSkuCode(),

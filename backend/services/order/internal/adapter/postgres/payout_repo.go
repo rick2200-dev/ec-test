@@ -23,36 +23,35 @@ func NewPayoutRepository(pool *pgxpool.Pool) *PayoutRepository {
 }
 
 // Create inserts a new payout record.
-func (r *PayoutRepository) Create(ctx context.Context, tenantID uuid.UUID, payout *domain.Payout) error {
+func (r *PayoutRepository) Create(ctx context.Context, payout *domain.Payout) error {
 	payout.ID = uuid.New()
-	payout.TenantID = tenantID
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO order_svc.payouts
-			 (id, tenant_id, seller_id, order_id, amount, currency, stripe_transfer_id, status)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			 (id, seller_id, order_id, amount, currency, stripe_transfer_id, status)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)
 			 RETURNING created_at`,
-			payout.ID, payout.TenantID, payout.SellerID, payout.OrderID,
+			payout.ID, payout.SellerID, payout.OrderID,
 			payout.Amount, payout.Currency, payout.StripeTransferID, payout.Status,
 		).Scan(&payout.CreatedAt)
 	})
 }
 
 // GetByOrderID retrieves a payout by its associated order ID.
-func (r *PayoutRepository) GetByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.Payout, error) {
+func (r *PayoutRepository) GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domain.Payout, error) {
 	var p domain.Payout
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, order_id, amount, currency,
+			`SELECT id, seller_id, order_id, amount, currency,
 			        stripe_transfer_id, stripe_reversal_id, status,
 			        created_at, completed_at, reversed_at
-			 FROM order_svc.payouts WHERE order_id = $1 AND tenant_id = $2`,
-			orderID, tenantID,
+			 FROM order_svc.payouts WHERE order_id = $1`,
+			orderID,
 		).Scan(
-			&p.ID, &p.TenantID, &p.SellerID, &p.OrderID,
+			&p.ID, &p.SellerID, &p.OrderID,
 			&p.Amount, &p.Currency, &p.StripeTransferID, &p.StripeReversalID, &p.Status,
 			&p.CreatedAt, &p.CompletedAt, &p.ReversedAt,
 		)
@@ -75,25 +74,25 @@ func (r *PayoutRepository) GetByOrderID(ctx context.Context, tenantID, orderID u
 }
 
 // ListBySeller returns paginated payouts for a specific seller.
-func (r *PayoutRepository) ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
+func (r *PayoutRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
 	var payouts []domain.Payout
 	var total int
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
-			`SELECT COUNT(*) FROM order_svc.payouts WHERE tenant_id = $1 AND seller_id = $2`,
-			tenantID, sellerID,
+			`SELECT COUNT(*) FROM order_svc.payouts WHERE seller_id = $1`,
+			sellerID,
 		).Scan(&total); err != nil {
 			return fmt.Errorf("count payouts: %w", err)
 		}
 
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, seller_id, order_id, amount, currency,
+			`SELECT id, seller_id, order_id, amount, currency,
 			        stripe_transfer_id, stripe_reversal_id, status,
 			        created_at, completed_at, reversed_at
-			 FROM order_svc.payouts WHERE tenant_id = $1 AND seller_id = $2
-			 ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
-			tenantID, sellerID, limit, offset,
+			 FROM order_svc.payouts WHERE seller_id = $1
+			 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			sellerID, limit, offset,
 		)
 		if err != nil {
 			return fmt.Errorf("list payouts: %w", err)
@@ -103,7 +102,7 @@ func (r *PayoutRepository) ListBySeller(ctx context.Context, tenantID, sellerID 
 		for rows.Next() {
 			var p domain.Payout
 			if err := rows.Scan(
-				&p.ID, &p.TenantID, &p.SellerID, &p.OrderID,
+				&p.ID, &p.SellerID, &p.OrderID,
 				&p.Amount, &p.Currency, &p.StripeTransferID, &p.StripeReversalID, &p.Status,
 				&p.CreatedAt, &p.CompletedAt, &p.ReversedAt,
 			); err != nil {
@@ -125,18 +124,18 @@ func (r *PayoutRepository) ListBySeller(ctx context.Context, tenantID, sellerID 
 // correct if we ever split payouts (partial shipments, etc.). Ordered
 // by created_at ASC for deterministic iteration during transfer
 // reversal.
-func (r *PayoutRepository) ListByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) ([]domain.Payout, error) {
+func (r *PayoutRepository) ListByOrderID(ctx context.Context, orderID uuid.UUID) ([]domain.Payout, error) {
 	var payouts []domain.Payout
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, seller_id, order_id, amount, currency,
+			`SELECT id, seller_id, order_id, amount, currency,
 			        stripe_transfer_id, stripe_reversal_id, status,
 			        created_at, completed_at, reversed_at
 			 FROM order_svc.payouts
-			 WHERE tenant_id = $1 AND order_id = $2
+			 WHERE order_id = $1
 			 ORDER BY created_at ASC`,
-			tenantID, orderID,
+			orderID,
 		)
 		if err != nil {
 			return fmt.Errorf("list payouts by order: %w", err)
@@ -146,7 +145,7 @@ func (r *PayoutRepository) ListByOrderID(ctx context.Context, tenantID, orderID 
 		for rows.Next() {
 			var p domain.Payout
 			if err := rows.Scan(
-				&p.ID, &p.TenantID, &p.SellerID, &p.OrderID,
+				&p.ID, &p.SellerID, &p.OrderID,
 				&p.Amount, &p.Currency, &p.StripeTransferID, &p.StripeReversalID, &p.Status,
 				&p.CreatedAt, &p.CompletedAt, &p.ReversedAt,
 			); err != nil {
@@ -163,14 +162,14 @@ func (r *PayoutRepository) ListByOrderID(ctx context.Context, tenantID, orderID 
 }
 
 // UpdateStatus updates the status (and optionally the stripe transfer ID) of a payout.
-func (r *PayoutRepository) UpdateStatus(ctx context.Context, tenantID, payoutID uuid.UUID, status string, stripeTransferID *string) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *PayoutRepository) UpdateStatus(ctx context.Context, payoutID uuid.UUID, status string, stripeTransferID *string) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE order_svc.payouts
-			 SET status = $3, stripe_transfer_id = COALESCE($4, stripe_transfer_id),
-			     completed_at = CASE WHEN $3 = 'completed' THEN NOW() ELSE completed_at END
-			 WHERE id = $1 AND tenant_id = $2`,
-			payoutID, tenantID, status, stripeTransferID,
+			 SET status = $2, stripe_transfer_id = COALESCE($3, stripe_transfer_id),
+			     completed_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE completed_at END
+			 WHERE id = $1`,
+			payoutID, status, stripeTransferID,
 		)
 		if err != nil {
 			return fmt.Errorf("update payout status: %w", err)

@@ -53,12 +53,7 @@ type updatePlatformAdminRoleRequest struct {
 
 // List handles GET /platform-admins.
 func (h *PlatformAdminHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-	admins, err := h.svc.ListPlatformAdmins(r.Context(), tenantID)
+	admins, err := h.svc.ListPlatformAdmins(r.Context())
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -68,17 +63,12 @@ func (h *PlatformAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Grant handles POST /platform-admins.
 func (h *PlatformAdminHandler) Grant(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
 	var req grantPlatformAdminRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, err)
 		return
 	}
-	created, err := h.svc.GrantPlatformAdmin(r.Context(), tenantID, req.Auth0UserID, req.Role)
+	created, err := h.svc.GrantPlatformAdmin(r.Context(), req.Auth0UserID, req.Role)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -88,11 +78,6 @@ func (h *PlatformAdminHandler) Grant(w http.ResponseWriter, r *http.Request) {
 
 // UpdateRole handles PUT /platform-admins/{id}/role.
 func (h *PlatformAdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -104,7 +89,7 @@ func (h *PlatformAdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request
 		httputil.Error(w, err)
 		return
 	}
-	if err := h.svc.UpdatePlatformAdminRole(r.Context(), tenantID, id, req.Role); err != nil {
+	if err := h.svc.UpdatePlatformAdminRole(r.Context(), id, req.Role); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -113,18 +98,13 @@ func (h *PlatformAdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request
 
 // Revoke handles DELETE /platform-admins/{id}.
 func (h *PlatformAdminHandler) Revoke(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid admin id"})
 		return
 	}
-	if err := h.svc.RevokePlatformAdmin(r.Context(), tenantID, id); err != nil {
+	if err := h.svc.RevokePlatformAdmin(r.Context(), id); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -134,17 +114,12 @@ func (h *PlatformAdminHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 // Me handles GET /platform-admins/me. Returns the caller's platform admin
 // role so UI can conditionally render controls.
 func (h *PlatformAdminHandler) Me(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil || tc.UserID == "" {
 		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "caller identity required"})
 		return
 	}
-	role, err := h.svc.LookupPlatformAdminRole(r.Context(), tenantID, tc.UserID)
+	role, err := h.svc.LookupPlatformAdminRole(r.Context(), tc.UserID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -154,13 +129,8 @@ func (h *PlatformAdminHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 // ListAudit handles GET /platform-admins/audit.
 func (h *PlatformAdminHandler) ListAudit(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
 	p := pagination.FromRequest(r)
-	entries, total, err := h.svc.ListRBACAuditLog(r.Context(), tenantID, p.Limit, p.Offset)
+	entries, total, err := h.svc.ListRBACAuditLog(r.Context(), p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, err)
 		return

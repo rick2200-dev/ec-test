@@ -13,17 +13,13 @@ import (
 )
 
 func TestNewEvent(t *testing.T) {
-	tid := uuid.New()
 	data := map[string]string{"product_id": "p1"}
 	before := time.Now().UTC()
-	event := pubsub.NewEvent("order.created", tid, data)
+	event := pubsub.NewEvent("order.created", data)
 	after := time.Now().UTC()
 
 	if event.Type != "order.created" {
 		t.Errorf("Type = %q, want %q", event.Type, "order.created")
-	}
-	if event.TenantID != tid.String() {
-		t.Errorf("TenantID = %q, want %q", event.TenantID, tid.String())
 	}
 	if event.ID == "" {
 		t.Error("ID should not be empty")
@@ -37,11 +33,9 @@ func TestNewEvent(t *testing.T) {
 }
 
 func TestEncode_Decode_RoundTrip(t *testing.T) {
-	tid := uuid.New()
 	original := pubsub.Event{
 		ID:        uuid.New().String(),
 		Type:      "product.updated",
-		TenantID:  tid.String(),
 		Timestamp: time.Now().UTC().Truncate(time.Millisecond),
 		Data:      map[string]any{"sku": "ABC-123"},
 	}
@@ -62,13 +56,10 @@ func TestEncode_Decode_RoundTrip(t *testing.T) {
 	if decoded.Type != original.Type {
 		t.Errorf("Type = %q, want %q", decoded.Type, original.Type)
 	}
-	if decoded.TenantID != original.TenantID {
-		t.Errorf("TenantID = %q, want %q", decoded.TenantID, original.TenantID)
-	}
 }
 
 func TestEncode_ValidJSON(t *testing.T) {
-	event := pubsub.NewEvent("test.event", uuid.New(), "simple-data")
+	event := pubsub.NewEvent("test.event", "simple-data")
 	encoded, err := pubsub.Encode(event)
 	if err != nil {
 		t.Fatalf("Encode error: %v", err)
@@ -118,10 +109,9 @@ func (m *mockPublisher) Close() error { return nil }
 
 func TestPublishEvent_Success(t *testing.T) {
 	pub := &mockPublisher{}
-	tid := uuid.New()
 	data := map[string]string{"order_id": "o1"}
 
-	pubsub.PublishEvent(context.Background(), pub, tid, "order.created", "orders", data)
+	pubsub.PublishEvent(context.Background(), pub, "order.created", "orders", data)
 
 	if len(pub.published) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(pub.published))
@@ -130,28 +120,24 @@ func TestPublishEvent_Success(t *testing.T) {
 	if event.Type != "order.created" {
 		t.Errorf("Type = %q, want %q", event.Type, "order.created")
 	}
-	if event.TenantID != tid.String() {
-		t.Errorf("TenantID = %q, want %q", event.TenantID, tid.String())
-	}
 }
 
 func TestPublishEvent_NilPublisher(t *testing.T) {
 	// Should be a no-op without panic.
-	pubsub.PublishEvent(context.Background(), nil, uuid.New(), "test", "topic", nil)
+	pubsub.PublishEvent(context.Background(), nil, "test", "topic", nil)
 }
 
 func TestPublishEvent_Error(t *testing.T) {
 	pub := &mockPublisher{err: errors.New("publish failed")}
 
 	// Should not panic; just logs a warning.
-	pubsub.PublishEvent(context.Background(), pub, uuid.New(), "test", "topic", nil)
+	pubsub.PublishEvent(context.Background(), pub, "test", "topic", nil)
 }
 
 func TestEncode_NonSerializableData(t *testing.T) {
 	event := pubsub.Event{
 		ID:        uuid.New().String(),
 		Type:      "test.event",
-		TenantID:  uuid.New().String(),
 		Timestamp: time.Now().UTC(),
 		Data:      make(chan int), // channels cannot be JSON-marshaled
 	}
@@ -177,9 +163,6 @@ func TestDecode_PartialJSON(t *testing.T) {
 	if event.ID != "" {
 		t.Errorf("ID = %q, want empty string", event.ID)
 	}
-	if event.TenantID != "" {
-		t.Errorf("TenantID = %q, want empty string", event.TenantID)
-	}
 	if !event.Timestamp.IsZero() {
 		t.Errorf("Timestamp = %v, want zero time", event.Timestamp)
 	}
@@ -188,39 +171,11 @@ func TestDecode_PartialJSON(t *testing.T) {
 	}
 }
 
-func TestDecode_ExtraFields(t *testing.T) {
-	// JSON with all known fields plus extra unknown ones.
-	raw := []byte(`{
-		"event_id": "abc-123",
-		"event_type": "order.shipped",
-		"tenant_id": "tenant-1",
-		"timestamp": "2025-01-15T10:30:00Z",
-		"data": {"key": "value"},
-		"unknown_field": "should be ignored",
-		"another_extra": 42
-	}`)
-
-	event, err := pubsub.Decode(raw)
-	if err != nil {
-		t.Fatalf("Decode error: %v", err)
-	}
-	if event.ID != "abc-123" {
-		t.Errorf("ID = %q, want %q", event.ID, "abc-123")
-	}
-	if event.Type != "order.shipped" {
-		t.Errorf("Type = %q, want %q", event.Type, "order.shipped")
-	}
-	if event.TenantID != "tenant-1" {
-		t.Errorf("TenantID = %q, want %q", event.TenantID, "tenant-1")
-	}
-}
-
 func TestNewEvent_FieldsPopulated(t *testing.T) {
-	tid := uuid.New()
 	data := map[string]int{"quantity": 5}
 
 	before := time.Now().UTC()
-	event := pubsub.NewEvent("inventory.updated", tid, data)
+	event := pubsub.NewEvent("inventory.updated", data)
 	after := time.Now().UTC()
 
 	// ID must be a valid, non-nil UUID.
@@ -238,11 +193,6 @@ func TestNewEvent_FieldsPopulated(t *testing.T) {
 	// Type must match.
 	if event.Type != "inventory.updated" {
 		t.Errorf("Type = %q, want %q", event.Type, "inventory.updated")
-	}
-
-	// TenantID must match the provided UUID string.
-	if event.TenantID != tid.String() {
-		t.Errorf("TenantID = %q, want %q", event.TenantID, tid.String())
 	}
 
 	// Timestamp must be recent (between before and after).
@@ -274,12 +224,10 @@ func TestEncode_Decode_PreservesAllFields(t *testing.T) {
 		Shipping address `json:"shipping"`
 	}
 
-	tid := uuid.New()
 	ts := time.Date(2025, 6, 15, 12, 30, 0, 0, time.UTC)
 	original := pubsub.Event{
 		ID:        uuid.New().String(),
 		Type:      "order.completed",
-		TenantID:  tid.String(),
 		Timestamp: ts,
 		Data: orderData{
 			OrderID: "ord-999",
@@ -306,9 +254,6 @@ func TestEncode_Decode_PreservesAllFields(t *testing.T) {
 	}
 	if decoded.Type != original.Type {
 		t.Errorf("Type = %q, want %q", decoded.Type, original.Type)
-	}
-	if decoded.TenantID != original.TenantID {
-		t.Errorf("TenantID = %q, want %q", decoded.TenantID, original.TenantID)
 	}
 	if !decoded.Timestamp.Equal(original.Timestamp) {
 		t.Errorf("Timestamp = %v, want %v", decoded.Timestamp, original.Timestamp)
@@ -338,7 +283,6 @@ func TestEncode_Decode_PreservesAllFields(t *testing.T) {
 		t.Fatalf("normalize decoded data: %v", err)
 	}
 
-	// Compare top-level and nested values.
 	origBytes, _ := json.Marshal(origMap)
 	decBytes, _ := json.Marshal(decMap)
 	if string(origBytes) != string(decBytes) {
@@ -348,10 +292,9 @@ func TestEncode_Decode_PreservesAllFields(t *testing.T) {
 
 func TestPublishEvent_BuildsCorrectEvent(t *testing.T) {
 	pub := &mockPublisher{}
-	tid := uuid.New()
 	data := map[string]string{"item": "widget"}
 
-	pubsub.PublishEvent(context.Background(), pub, tid, "cart.added", "cart-events", data)
+	pubsub.PublishEvent(context.Background(), pub, "cart.added", "cart-events", data)
 
 	if len(pub.published) != 1 {
 		t.Fatalf("expected 1 published event, got %d", len(pub.published))
@@ -362,11 +305,6 @@ func TestPublishEvent_BuildsCorrectEvent(t *testing.T) {
 	// Verify the event type matches what was passed to PublishEvent.
 	if event.Type != "cart.added" {
 		t.Errorf("Type = %q, want %q", event.Type, "cart.added")
-	}
-
-	// Verify TenantID matches.
-	if event.TenantID != tid.String() {
-		t.Errorf("TenantID = %q, want %q", event.TenantID, tid.String())
 	}
 
 	// Verify ID is a valid UUID.

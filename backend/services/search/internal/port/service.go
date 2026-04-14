@@ -21,5 +21,5 @@ type SearchUseCase interface {
 	// IndexProduct indexes or re-indexes a product event (insert/update) in the search backend.
 	IndexProduct(ctx context.Context, product domain.ProductEvent) error
 	// DeleteProduct removes a product from the search index.
-	DeleteProduct(ctx context.Context, tenantID, productID uuid.UUID) error
+	DeleteProduct(ctx context.Context, productID uuid.UUID) error
 }

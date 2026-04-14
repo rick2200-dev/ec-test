@@ -26,23 +26,22 @@ const (
 type Order struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Id                    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId              string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId              string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	BuyerAuth0Id          string                 `protobuf:"bytes,4,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	Status                string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
-	Subtotal              *v1.Money              `protobuf:"bytes,6,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
-	Commission            *v1.Money              `protobuf:"bytes,7,opt,name=commission,proto3" json:"commission,omitempty"`
-	Total                 *v1.Money              `protobuf:"bytes,8,opt,name=total,proto3" json:"total,omitempty"`
-	ShippingAddressJson   string                 `protobuf:"bytes,9,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
-	StripePaymentIntentId string                 `protobuf:"bytes,10,opt,name=stripe_payment_intent_id,json=stripePaymentIntentId,proto3" json:"stripe_payment_intent_id,omitempty"`
-	Lines                 []*OrderLine           `protobuf:"bytes,11,rep,name=lines,proto3" json:"lines,omitempty"`
-	PaidAt                *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=paid_at,json=paidAt,proto3" json:"paid_at,omitempty"`
-	CreatedAt             *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt             *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ShippingFee           *v1.Money              `protobuf:"bytes,15,opt,name=shipping_fee,json=shippingFee,proto3" json:"shipping_fee,omitempty"`
+	SellerId              string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	BuyerAuth0Id          string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	Status                string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	Subtotal              *v1.Money              `protobuf:"bytes,5,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
+	Commission            *v1.Money              `protobuf:"bytes,6,opt,name=commission,proto3" json:"commission,omitempty"`
+	Total                 *v1.Money              `protobuf:"bytes,7,opt,name=total,proto3" json:"total,omitempty"`
+	ShippingAddressJson   string                 `protobuf:"bytes,8,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
+	StripePaymentIntentId string                 `protobuf:"bytes,9,opt,name=stripe_payment_intent_id,json=stripePaymentIntentId,proto3" json:"stripe_payment_intent_id,omitempty"`
+	Lines                 []*OrderLine           `protobuf:"bytes,10,rep,name=lines,proto3" json:"lines,omitempty"`
+	PaidAt                *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=paid_at,json=paidAt,proto3" json:"paid_at,omitempty"`
+	CreatedAt             *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt             *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ShippingFee           *v1.Money              `protobuf:"bytes,14,opt,name=shipping_fee,json=shippingFee,proto3" json:"shipping_fee,omitempty"`
 	// Seller company name captured at order creation time. Preserved even if
 	// the seller is later deleted so buyer order history remains readable.
-	SellerName    string `protobuf:"bytes,16,opt,name=seller_name,json=sellerName,proto3" json:"seller_name,omitempty"`
+	SellerName    string `protobuf:"bytes,15,opt,name=seller_name,json=sellerName,proto3" json:"seller_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,13 +79,6 @@ func (*Order) Descriptor() ([]byte, []int) {
 func (x *Order) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *Order) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -302,14 +294,13 @@ func (x *OrderLine) GetProductId() string {
 type Payout struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId         string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId         string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	OrderId          string                 `protobuf:"bytes,4,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	Amount           *v1.Money              `protobuf:"bytes,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	StripeTransferId string                 `protobuf:"bytes,6,opt,name=stripe_transfer_id,json=stripeTransferId,proto3" json:"stripe_transfer_id,omitempty"`
-	Status           string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	CompletedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	SellerId         string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	OrderId          string                 `protobuf:"bytes,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	Amount           *v1.Money              `protobuf:"bytes,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	StripeTransferId string                 `protobuf:"bytes,5,opt,name=stripe_transfer_id,json=stripeTransferId,proto3" json:"stripe_transfer_id,omitempty"`
+	Status           string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CompletedAt      *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -347,13 +338,6 @@ func (*Payout) Descriptor() ([]byte, []int) {
 func (x *Payout) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *Payout) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -410,11 +394,10 @@ func (x *Payout) GetCompletedAt() *timestamppb.Timestamp {
 // Deprecated: Marked as deprecated in order/v1/order.proto.
 type CreateOrderRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	TenantId            string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId            string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	BuyerAuth0Id        string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	Lines               []*OrderLineInput      `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
-	ShippingAddressJson string                 `protobuf:"bytes,5,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
+	SellerId            string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	BuyerAuth0Id        string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	Lines               []*OrderLineInput      `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
+	ShippingAddressJson string                 `protobuf:"bytes,4,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -447,13 +430,6 @@ func (x *CreateOrderRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateOrderRequest.ProtoReflect.Descriptor instead.
 func (*CreateOrderRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *CreateOrderRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateOrderRequest) GetSellerId() string {
@@ -595,11 +571,10 @@ func (x *CreateOrderResponse) GetStripeClientSecret() string {
 // a single transaction, and returns all order IDs sharing one PaymentIntent.
 type CreateCheckoutRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	TenantId            string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id        string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	ShippingAddressJson string                 `protobuf:"bytes,3,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
-	Currency            string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
-	Lines               []*CheckoutLineInput   `protobuf:"bytes,5,rep,name=lines,proto3" json:"lines,omitempty"`
+	BuyerAuth0Id        string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	ShippingAddressJson string                 `protobuf:"bytes,2,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
+	Currency            string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
+	Lines               []*CheckoutLineInput   `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -632,13 +607,6 @@ func (x *CreateCheckoutRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateCheckoutRequest.ProtoReflect.Descriptor instead.
 func (*CreateCheckoutRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *CreateCheckoutRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateCheckoutRequest) GetBuyerAuth0Id() string {
@@ -825,8 +793,7 @@ func (x *CreateCheckoutResponse) GetTotal() *v1.Money {
 
 type GetOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -859,13 +826,6 @@ func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetOrderRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *GetOrderRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetOrderRequest) GetId() string {
@@ -921,9 +881,8 @@ func (x *GetOrderResponse) GetOrder() *Order {
 
 type ListBuyerOrdersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -958,13 +917,6 @@ func (*ListBuyerOrdersRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *ListBuyerOrdersRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *ListBuyerOrdersRequest) GetBuyerAuth0Id() string {
 	if x != nil {
 		return x.BuyerAuth0Id
@@ -981,10 +933,9 @@ func (x *ListBuyerOrdersRequest) GetPagination() *v1.PaginationRequest {
 
 type ListSellerOrdersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // Optional filter
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,4,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // Optional filter
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1017,13 +968,6 @@ func (x *ListSellerOrdersRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListSellerOrdersRequest.ProtoReflect.Descriptor instead.
 func (*ListSellerOrdersRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *ListSellerOrdersRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListSellerOrdersRequest) GetSellerId() string {
@@ -1153,9 +1097,8 @@ func (x *ListSellerOrdersResponse) GetPagination() *v1.PaginationResponse {
 
 type UpdateOrderStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // paid, processing, shipped, delivered, completed, cancelled
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // paid, processing, shipped, delivered, completed, cancelled
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1188,13 +1131,6 @@ func (x *UpdateOrderStatusRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateOrderStatusRequest.ProtoReflect.Descriptor instead.
 func (*UpdateOrderStatusRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *UpdateOrderStatusRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateOrderStatusRequest) GetId() string {
@@ -1257,9 +1193,8 @@ func (x *UpdateOrderStatusResponse) GetOrder() *Order {
 
 type ListPayoutsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1292,13 +1227,6 @@ func (x *ListPayoutsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListPayoutsRequest.ProtoReflect.Descriptor instead.
 func (*ListPayoutsRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *ListPayoutsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListPayoutsRequest) GetSellerId() string {
@@ -1374,19 +1302,18 @@ func (x *ListPayoutsResponse) GetPagination() *v1.PaginationResponse {
 type CancellationRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId           string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	OrderId            string                 `protobuf:"bytes,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	RequestedByAuth0Id string                 `protobuf:"bytes,4,opt,name=requested_by_auth0_id,json=requestedByAuth0Id,proto3" json:"requested_by_auth0_id,omitempty"`
-	Reason             string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	OrderId            string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	RequestedByAuth0Id string                 `protobuf:"bytes,3,opt,name=requested_by_auth0_id,json=requestedByAuth0Id,proto3" json:"requested_by_auth0_id,omitempty"`
+	Reason             string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
 	// Status: pending, approved, rejected, failed.
-	Status              string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
-	SellerComment       string                 `protobuf:"bytes,7,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"`
-	ProcessedBySellerId string                 `protobuf:"bytes,8,opt,name=processed_by_seller_id,json=processedBySellerId,proto3" json:"processed_by_seller_id,omitempty"`
-	ProcessedAt         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=processed_at,json=processedAt,proto3" json:"processed_at,omitempty"`
-	StripeRefundId      string                 `protobuf:"bytes,10,opt,name=stripe_refund_id,json=stripeRefundId,proto3" json:"stripe_refund_id,omitempty"`
-	FailureReason       string                 `protobuf:"bytes,11,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"`
-	CreatedAt           *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Status              string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	SellerComment       string                 `protobuf:"bytes,6,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"`
+	ProcessedBySellerId string                 `protobuf:"bytes,7,opt,name=processed_by_seller_id,json=processedBySellerId,proto3" json:"processed_by_seller_id,omitempty"`
+	ProcessedAt         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=processed_at,json=processedAt,proto3" json:"processed_at,omitempty"`
+	StripeRefundId      string                 `protobuf:"bytes,9,opt,name=stripe_refund_id,json=stripeRefundId,proto3" json:"stripe_refund_id,omitempty"`
+	FailureReason       string                 `protobuf:"bytes,10,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"`
+	CreatedAt           *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt           *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1424,13 +1351,6 @@ func (*CancellationRequest) Descriptor() ([]byte, []int) {
 func (x *CancellationRequest) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *CancellationRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -1513,12 +1433,11 @@ func (x *CancellationRequest) GetUpdatedAt() *timestamppb.Timestamp {
 }
 
 type RequestOrderCancellationRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	OrderId  string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	OrderId string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
 	// buyer_auth0_id is resolved server-side from the authenticated
 	// identity. Clients that set this field are ignored.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1551,13 +1470,6 @@ func (x *RequestOrderCancellationRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RequestOrderCancellationRequest.ProtoReflect.Descriptor instead.
 func (*RequestOrderCancellationRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *RequestOrderCancellationRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *RequestOrderCancellationRequest) GetOrderId() string {
@@ -1620,9 +1532,8 @@ func (x *RequestOrderCancellationResponse) GetRequest() *CancellationRequest {
 
 type ApproveOrderCancellationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                            // cancellation request id
-	SellerComment string                 `protobuf:"bytes,3,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"` // optional
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                            // cancellation request id
+	SellerComment string                 `protobuf:"bytes,2,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"` // optional
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1655,13 +1566,6 @@ func (x *ApproveOrderCancellationRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ApproveOrderCancellationRequest.ProtoReflect.Descriptor instead.
 func (*ApproveOrderCancellationRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *ApproveOrderCancellationRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ApproveOrderCancellationRequest) GetId() string {
@@ -1724,9 +1628,8 @@ func (x *ApproveOrderCancellationResponse) GetRequest() *CancellationRequest {
 
 type RejectOrderCancellationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                            // cancellation request id
-	SellerComment string                 `protobuf:"bytes,3,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"` // required — shown to the buyer
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                            // cancellation request id
+	SellerComment string                 `protobuf:"bytes,2,opt,name=seller_comment,json=sellerComment,proto3" json:"seller_comment,omitempty"` // required — shown to the buyer
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1759,13 +1662,6 @@ func (x *RejectOrderCancellationRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RejectOrderCancellationRequest.ProtoReflect.Descriptor instead.
 func (*RejectOrderCancellationRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *RejectOrderCancellationRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *RejectOrderCancellationRequest) GetId() string {
@@ -1827,16 +1723,15 @@ func (x *RejectOrderCancellationResponse) GetRequest() *CancellationRequest {
 }
 
 type ListOrderCancellationRequestsRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
 	// Optional status filter. Defaults to "pending" server-side when
 	// empty (seller dashboards land on pending-first).
-	Status     string                `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Pagination *v1.PaginationRequest `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	Status     string                `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Pagination *v1.PaginationRequest `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	// Seller scope. MUST be set — the server joins order_svc.orders on this
-	// to prevent a multi-seller tenant from reading another seller's
-	// cancellation reasons or buyer identifiers. See docs/order-cancellation.md.
-	SellerId      string `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	// to prevent one seller from reading another seller's cancellation
+	// reasons or buyer identifiers. See docs/order-cancellation.md.
+	SellerId      string `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1869,13 +1764,6 @@ func (x *ListOrderCancellationRequestsRequest) ProtoReflect() protoreflect.Messa
 // Deprecated: Use ListOrderCancellationRequestsRequest.ProtoReflect.Descriptor instead.
 func (*ListOrderCancellationRequestsRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *ListOrderCancellationRequestsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListOrderCancellationRequestsRequest) GetStatus() string {
@@ -1953,8 +1841,7 @@ func (x *ListOrderCancellationRequestsResponse) GetPagination() *v1.PaginationRe
 
 type GetOrderCancellationRequestRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1987,13 +1874,6 @@ func (x *GetOrderCancellationRequestRequest) ProtoReflect() protoreflect.Message
 // Deprecated: Use GetOrderCancellationRequestRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderCancellationRequestRequest) Descriptor() ([]byte, []int) {
 	return file_order_v1_order_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *GetOrderCancellationRequestRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetOrderCancellationRequestRequest) GetId() string {
@@ -2051,29 +1931,28 @@ var File_order_v1_order_proto protoreflect.FileDescriptor
 
 const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xb0\x05\n" +
+	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x93\x05\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x04 \x01(\tR\fbuyerAuth0Id\x12\x16\n" +
-	"\x06status\x18\x05 \x01(\tR\x06status\x12,\n" +
-	"\bsubtotal\x18\x06 \x01(\v2\x10.common.v1.MoneyR\bsubtotal\x120\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12,\n" +
+	"\bsubtotal\x18\x05 \x01(\v2\x10.common.v1.MoneyR\bsubtotal\x120\n" +
 	"\n" +
-	"commission\x18\a \x01(\v2\x10.common.v1.MoneyR\n" +
+	"commission\x18\x06 \x01(\v2\x10.common.v1.MoneyR\n" +
 	"commission\x12&\n" +
-	"\x05total\x18\b \x01(\v2\x10.common.v1.MoneyR\x05total\x122\n" +
-	"\x15shipping_address_json\x18\t \x01(\tR\x13shippingAddressJson\x127\n" +
-	"\x18stripe_payment_intent_id\x18\n" +
-	" \x01(\tR\x15stripePaymentIntentId\x12)\n" +
-	"\x05lines\x18\v \x03(\v2\x13.order.v1.OrderLineR\x05lines\x123\n" +
-	"\apaid_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\x06paidAt\x129\n" +
+	"\x05total\x18\a \x01(\v2\x10.common.v1.MoneyR\x05total\x122\n" +
+	"\x15shipping_address_json\x18\b \x01(\tR\x13shippingAddressJson\x127\n" +
+	"\x18stripe_payment_intent_id\x18\t \x01(\tR\x15stripePaymentIntentId\x12)\n" +
+	"\x05lines\x18\n" +
+	" \x03(\v2\x13.order.v1.OrderLineR\x05lines\x123\n" +
+	"\apaid_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x06paidAt\x129\n" +
 	"\n" +
-	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x123\n" +
-	"\fshipping_fee\x18\x0f \x01(\v2\x10.common.v1.MoneyR\vshippingFee\x12\x1f\n" +
-	"\vseller_name\x18\x10 \x01(\tR\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x123\n" +
+	"\fshipping_fee\x18\x0e \x01(\v2\x10.common.v1.MoneyR\vshippingFee\x12\x1f\n" +
+	"\vseller_name\x18\x0f \x01(\tR\n" +
 	"sellerName\"\xa8\x02\n" +
 	"\tOrderLine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
@@ -2087,36 +1966,33 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"line_total\x18\b \x01(\v2\x10.common.v1.MoneyR\tlineTotal\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\t \x01(\tR\tproductId\"\xd7\x02\n" +
+	"product_id\x18\t \x01(\tR\tproductId\"\xba\x02\n" +
 	"\x06Payout\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x19\n" +
-	"\border_id\x18\x04 \x01(\tR\aorderId\x12(\n" +
-	"\x06amount\x18\x05 \x01(\v2\x10.common.v1.MoneyR\x06amount\x12,\n" +
-	"\x12stripe_transfer_id\x18\x06 \x01(\tR\x10stripeTransferId\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\x129\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x19\n" +
+	"\border_id\x18\x03 \x01(\tR\aorderId\x12(\n" +
+	"\x06amount\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x06amount\x12,\n" +
+	"\x12stripe_transfer_id\x18\x05 \x01(\tR\x10stripeTransferId\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x129\n" +
 	"\n" +
-	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12=\n" +
-	"\fcompleted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"\xdc\x01\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12=\n" +
+	"\fcompleted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"\xbf\x01\n" +
 	"\x12CreateOrderRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\x12.\n" +
-	"\x05lines\x18\x04 \x03(\v2\x18.order.v1.OrderLineInputR\x05lines\x122\n" +
-	"\x15shipping_address_json\x18\x05 \x01(\tR\x13shippingAddressJson:\x02\x18\x01\"G\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12.\n" +
+	"\x05lines\x18\x03 \x03(\v2\x18.order.v1.OrderLineInputR\x05lines\x122\n" +
+	"\x15shipping_address_json\x18\x04 \x01(\tR\x13shippingAddressJson:\x02\x18\x01\"G\n" +
 	"\x0eOrderLineInput\x12\x15\n" +
 	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1a\n" +
 	"\bquantity\x18\x02 \x01(\x05R\bquantity:\x02\x18\x01\"r\n" +
 	"\x13CreateOrderResponse\x12%\n" +
 	"\x05order\x18\x01 \x01(\v2\x0f.order.v1.OrderR\x05order\x120\n" +
-	"\x14stripe_client_secret\x18\x02 \x01(\tR\x12stripeClientSecret:\x02\x18\x01\"\xdd\x01\n" +
-	"\x15CreateCheckoutRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x122\n" +
-	"\x15shipping_address_json\x18\x03 \x01(\tR\x13shippingAddressJson\x12\x1a\n" +
-	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x121\n" +
-	"\x05lines\x18\x05 \x03(\v2\x1b.order.v1.CheckoutLineInputR\x05lines\"\x85\x02\n" +
+	"\x14stripe_client_secret\x18\x02 \x01(\tR\x12stripeClientSecret:\x02\x18\x01\"\xc0\x01\n" +
+	"\x15CreateCheckoutRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x122\n" +
+	"\x15shipping_address_json\x18\x02 \x01(\tR\x13shippingAddressJson\x12\x1a\n" +
+	"\bcurrency\x18\x03 \x01(\tR\bcurrency\x121\n" +
+	"\x05lines\x18\x04 \x03(\v2\x1b.order.v1.CheckoutLineInputR\x05lines\"\x85\x02\n" +
 	"\x11CheckoutLineInput\x12\x15\n" +
 	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x1a\n" +
@@ -2128,24 +2004,21 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\x06orders\x18\x01 \x03(\v2\x0f.order.v1.OrderR\x06orders\x120\n" +
 	"\x14stripe_client_secret\x18\x02 \x01(\tR\x12stripeClientSecret\x127\n" +
 	"\x18stripe_payment_intent_id\x18\x03 \x01(\tR\x15stripePaymentIntentId\x12&\n" +
-	"\x05total\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x05total\">\n" +
-	"\x0fGetOrderRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"9\n" +
+	"\x05total\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x05total\"!\n" +
+	"\x0fGetOrderRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"9\n" +
 	"\x10GetOrderResponse\x12%\n" +
-	"\x05order\x18\x01 \x01(\v2\x0f.order.v1.OrderR\x05order\"\x99\x01\n" +
-	"\x16ListBuyerOrdersRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12<\n" +
+	"\x05order\x18\x01 \x01(\v2\x0f.order.v1.OrderR\x05order\"|\n" +
+	"\x16ListBuyerOrdersRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12<\n" +
+	"\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\"\x8c\x01\n" +
+	"\x17ListSellerOrdersRequest\x12\x1b\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12<\n" +
 	"\n" +
 	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
-	"pagination\"\xa9\x01\n" +
-	"\x17ListSellerOrdersRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\x12<\n" +
-	"\n" +
-	"pagination\x18\x04 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\"\x81\x01\n" +
 	"\x17ListBuyerOrdersResponse\x12'\n" +
 	"\x06orders\x18\x01 \x03(\v2\x0f.order.v1.OrderR\x06orders\x12=\n" +
@@ -2156,74 +2029,66 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\x06orders\x18\x01 \x03(\v2\x0f.order.v1.OrderR\x06orders\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"_\n" +
-	"\x18UpdateOrderStatusRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\"B\n" +
+	"pagination\"B\n" +
+	"\x18UpdateOrderStatusRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"B\n" +
 	"\x19UpdateOrderStatusResponse\x12%\n" +
-	"\x05order\x18\x01 \x01(\v2\x0f.order.v1.OrderR\x05order\"\x8c\x01\n" +
+	"\x05order\x18\x01 \x01(\v2\x0f.order.v1.OrderR\x05order\"o\n" +
 	"\x12ListPayoutsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12<\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12<\n" +
 	"\n" +
-	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\"\x80\x01\n" +
 	"\x13ListPayoutsResponse\x12*\n" +
 	"\apayouts\x18\x01 \x03(\v2\x10.order.v1.PayoutR\apayouts\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"\xa2\x04\n" +
+	"pagination\"\x85\x04\n" +
 	"\x13CancellationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x19\n" +
-	"\border_id\x18\x03 \x01(\tR\aorderId\x121\n" +
-	"\x15requested_by_auth0_id\x18\x04 \x01(\tR\x12requestedByAuth0Id\x12\x16\n" +
-	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\x12%\n" +
-	"\x0eseller_comment\x18\a \x01(\tR\rsellerComment\x123\n" +
-	"\x16processed_by_seller_id\x18\b \x01(\tR\x13processedBySellerId\x12=\n" +
-	"\fprocessed_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vprocessedAt\x12(\n" +
-	"\x10stripe_refund_id\x18\n" +
-	" \x01(\tR\x0estripeRefundId\x12%\n" +
-	"\x0efailure_reason\x18\v \x01(\tR\rfailureReason\x129\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\border_id\x18\x02 \x01(\tR\aorderId\x121\n" +
+	"\x15requested_by_auth0_id\x18\x03 \x01(\tR\x12requestedByAuth0Id\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12%\n" +
+	"\x0eseller_comment\x18\x06 \x01(\tR\rsellerComment\x123\n" +
+	"\x16processed_by_seller_id\x18\a \x01(\tR\x13processedBySellerId\x12=\n" +
+	"\fprocessed_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vprocessedAt\x12(\n" +
+	"\x10stripe_refund_id\x18\t \x01(\tR\x0estripeRefundId\x12%\n" +
+	"\x0efailure_reason\x18\n" +
+	" \x01(\tR\rfailureReason\x129\n" +
 	"\n" +
-	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"q\n" +
-	"\x1fRequestOrderCancellationRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"[\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"T\n" +
+	"\x1fRequestOrderCancellationRequest\x12\x19\n" +
+	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"[\n" +
 	" RequestOrderCancellationResponse\x127\n" +
-	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"u\n" +
-	"\x1fApproveOrderCancellationRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\x12%\n" +
-	"\x0eseller_comment\x18\x03 \x01(\tR\rsellerComment\"[\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"X\n" +
+	"\x1fApproveOrderCancellationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
+	"\x0eseller_comment\x18\x02 \x01(\tR\rsellerComment\"[\n" +
 	" ApproveOrderCancellationResponse\x127\n" +
-	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"t\n" +
-	"\x1eRejectOrderCancellationRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\x12%\n" +
-	"\x0eseller_comment\x18\x03 \x01(\tR\rsellerComment\"Z\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"W\n" +
+	"\x1eRejectOrderCancellationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
+	"\x0eseller_comment\x18\x02 \x01(\tR\rsellerComment\"Z\n" +
 	"\x1fRejectOrderCancellationResponse\x127\n" +
-	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"\xb6\x01\n" +
-	"$ListOrderCancellationRequestsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12<\n" +
+	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest\"\x99\x01\n" +
+	"$ListOrderCancellationRequestsRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12<\n" +
 	"\n" +
-	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\x12\x1b\n" +
-	"\tseller_id\x18\x04 \x01(\tR\bsellerId\"\xa1\x01\n" +
+	"\tseller_id\x18\x03 \x01(\tR\bsellerId\"\xa1\x01\n" +
 	"%ListOrderCancellationRequestsResponse\x129\n" +
 	"\brequests\x18\x01 \x03(\v2\x1d.order.v1.CancellationRequestR\brequests\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"Q\n" +
-	"\"GetOrderCancellationRequestRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"^\n" +
+	"pagination\"4\n" +
+	"\"GetOrderCancellationRequestRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"^\n" +
 	"#GetOrderCancellationRequestResponse\x127\n" +
 	"\arequest\x18\x01 \x01(\v2\x1d.order.v1.CancellationRequestR\arequest2\xa9\t\n" +
 	"\fOrderService\x12S\n" +

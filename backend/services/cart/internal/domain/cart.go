@@ -8,10 +8,9 @@ import (
 )
 
 // Cart is the buyer's shopping cart, persisted in Redis as a JSON blob.
-// A cart belongs to a single (tenant_id, buyer_auth0_id) pair and can
-// contain items from multiple sellers (Amazon-style multi-seller cart).
+// A cart belongs to a single buyer and can contain items from multiple
+// sellers (Amazon-style multi-seller cart).
 type Cart struct {
-	TenantID     uuid.UUID  `json:"tenant_id"`
 	BuyerAuth0ID string     `json:"buyer_auth0_id"`
 	Items        []CartItem `json:"items"`
 	UpdatedAt    time.Time  `json:"updated_at"`

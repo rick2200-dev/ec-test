@@ -23,10 +23,9 @@ message PaginationResponse {
   int32 offset = 3;
 }
 
-// TenantContext carries tenant-scoped identity.
-message TenantContext {
-  string tenant_id = 1;
-  string seller_id = 2;  // Empty for buyers and platform admins
-  string user_id = 3;
-  repeated string roles = 4;
+// RequestContext carries request-scoped identity (single-tenant deployment).
+message RequestContext {
+  string seller_id = 1;  // Empty for buyers and platform admins
+  string user_id = 2;
+  repeated string roles = 3;
 }

@@ -25,29 +25,29 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockOrderUseCase struct {
-	CreateOrderFn         func(ctx context.Context, tenantID uuid.UUID, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error)
-	CreateCheckoutFn      func(ctx context.Context, tenantID uuid.UUID, input domain.CheckoutInput) (*domain.CheckoutResult, error)
+	CreateOrderFn          func(ctx context.Context, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error)
+	CreateCheckoutFn       func(ctx context.Context, input domain.CheckoutInput) (*domain.CheckoutResult, error)
 	HandlePaymentSuccessFn func(ctx context.Context, stripePaymentIntentID string) error
-	CheckPurchaseFn       func(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error)
-	GetOrderFn            func(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error)
-	ListBuyerOrdersFn     func(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error)
-	ListSellerOrdersFn    func(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Order, int, error)
-	UpdateOrderStatusFn   func(ctx context.Context, tenantID, sellerID, orderID uuid.UUID, status string) error
-	ListPayoutsFn         func(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error)
-	ListCommissionRulesFn func(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.CommissionRule, int, error)
-	CreateCommissionRuleFn func(ctx context.Context, tenantID uuid.UUID, rule *domain.CommissionRule) error
+	CheckPurchaseFn        func(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error)
+	GetOrderFn             func(ctx context.Context, orderID uuid.UUID) (*domain.OrderWithLines, error)
+	ListBuyerOrdersFn      func(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error)
+	ListSellerOrdersFn     func(ctx context.Context, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Order, int, error)
+	UpdateOrderStatusFn    func(ctx context.Context, sellerID, orderID uuid.UUID, status string) error
+	ListPayoutsFn          func(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error)
+	ListCommissionRulesFn  func(ctx context.Context, limit, offset int) ([]domain.CommissionRule, int, error)
+	CreateCommissionRuleFn func(ctx context.Context, rule *domain.CommissionRule) error
 }
 
-func (m *mockOrderUseCase) CreateOrder(ctx context.Context, tenantID uuid.UUID, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
+func (m *mockOrderUseCase) CreateOrder(ctx context.Context, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
 	if m.CreateOrderFn != nil {
-		return m.CreateOrderFn(ctx, tenantID, input)
+		return m.CreateOrderFn(ctx, input)
 	}
 	return nil, "", errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) CreateCheckout(ctx context.Context, tenantID uuid.UUID, input domain.CheckoutInput) (*domain.CheckoutResult, error) {
+func (m *mockOrderUseCase) CreateCheckout(ctx context.Context, input domain.CheckoutInput) (*domain.CheckoutResult, error) {
 	if m.CreateCheckoutFn != nil {
-		return m.CreateCheckoutFn(ctx, tenantID, input)
+		return m.CreateCheckoutFn(ctx, input)
 	}
 	return nil, errors.New("not implemented")
 }
@@ -59,58 +59,58 @@ func (m *mockOrderUseCase) HandlePaymentSuccess(ctx context.Context, stripePayme
 	return errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) CheckPurchase(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
+func (m *mockOrderUseCase) CheckPurchase(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
 	if m.CheckPurchaseFn != nil {
-		return m.CheckPurchaseFn(ctx, tenantID, buyerAuth0ID, sellerID, skuID)
+		return m.CheckPurchaseFn(ctx, buyerAuth0ID, sellerID, skuID)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) GetOrder(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error) {
+func (m *mockOrderUseCase) GetOrder(ctx context.Context, orderID uuid.UUID) (*domain.OrderWithLines, error) {
 	if m.GetOrderFn != nil {
-		return m.GetOrderFn(ctx, tenantID, orderID)
+		return m.GetOrderFn(ctx, orderID)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) ListBuyerOrders(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error) {
+func (m *mockOrderUseCase) ListBuyerOrders(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error) {
 	if m.ListBuyerOrdersFn != nil {
-		return m.ListBuyerOrdersFn(ctx, tenantID, buyerAuth0ID, limit, offset)
+		return m.ListBuyerOrdersFn(ctx, buyerAuth0ID, limit, offset)
 	}
 	return nil, 0, errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) ListSellerOrders(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Order, int, error) {
+func (m *mockOrderUseCase) ListSellerOrders(ctx context.Context, sellerID uuid.UUID, statusFilter string, limit, offset int) ([]domain.Order, int, error) {
 	if m.ListSellerOrdersFn != nil {
-		return m.ListSellerOrdersFn(ctx, tenantID, sellerID, status, limit, offset)
+		return m.ListSellerOrdersFn(ctx, sellerID, statusFilter, limit, offset)
 	}
 	return nil, 0, errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) UpdateOrderStatus(ctx context.Context, tenantID, sellerID, orderID uuid.UUID, status string) error {
+func (m *mockOrderUseCase) UpdateOrderStatus(ctx context.Context, sellerID, orderID uuid.UUID, status string) error {
 	if m.UpdateOrderStatusFn != nil {
-		return m.UpdateOrderStatusFn(ctx, tenantID, sellerID, orderID, status)
+		return m.UpdateOrderStatusFn(ctx, sellerID, orderID, status)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) ListPayouts(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
+func (m *mockOrderUseCase) ListPayouts(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
 	if m.ListPayoutsFn != nil {
-		return m.ListPayoutsFn(ctx, tenantID, sellerID, limit, offset)
+		return m.ListPayoutsFn(ctx, sellerID, limit, offset)
 	}
 	return nil, 0, errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) ListCommissionRules(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.CommissionRule, int, error) {
+func (m *mockOrderUseCase) ListCommissionRules(ctx context.Context, limit, offset int) ([]domain.CommissionRule, int, error) {
 	if m.ListCommissionRulesFn != nil {
-		return m.ListCommissionRulesFn(ctx, tenantID, limit, offset)
+		return m.ListCommissionRulesFn(ctx, limit, offset)
 	}
 	return nil, 0, errors.New("not implemented")
 }
 
-func (m *mockOrderUseCase) CreateCommissionRule(ctx context.Context, tenantID uuid.UUID, rule *domain.CommissionRule) error {
+func (m *mockOrderUseCase) CreateCommissionRule(ctx context.Context, rule *domain.CommissionRule) error {
 	if m.CreateCommissionRuleFn != nil {
-		return m.CreateCommissionRuleFn(ctx, tenantID, rule)
+		return m.CreateCommissionRuleFn(ctx, rule)
 	}
 	return errors.New("not implemented")
 }
@@ -408,7 +408,6 @@ func TestProtoLinesToDomain(t *testing.T) {
 func TestOrderToProto(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	orderID := uuid.New()
-	tenantID := uuid.New()
 	sellerID := uuid.New()
 	lineID := uuid.New()
 	skuID := uuid.New()
@@ -419,7 +418,6 @@ func TestOrderToProto(t *testing.T) {
 		paidAt := now.Add(-time.Hour)
 		o := &domain.Order{
 			ID:                    orderID,
-			TenantID:              tenantID,
 			SellerID:              sellerID,
 			SellerName:            "Test Seller",
 			BuyerAuth0ID:          "auth0|buyer1",
@@ -438,7 +436,6 @@ func TestOrderToProto(t *testing.T) {
 		lines := []domain.OrderLine{
 			{
 				ID:          lineID,
-				TenantID:    tenantID,
 				OrderID:     orderID,
 				SKUID:       skuID,
 				ProductID:   productID,
@@ -455,9 +452,6 @@ func TestOrderToProto(t *testing.T) {
 
 		if pb.Id != orderID.String() {
 			t.Errorf("Id = %s, want %s", pb.Id, orderID)
-		}
-		if pb.TenantId != tenantID.String() {
-			t.Errorf("TenantId = %s, want %s", pb.TenantId, tenantID)
 		}
 		if pb.SellerId != sellerID.String() {
 			t.Errorf("SellerId = %s, want %s", pb.SellerId, sellerID)
@@ -497,7 +491,6 @@ func TestOrderToProto(t *testing.T) {
 	t.Run("handles nil lines", func(t *testing.T) {
 		o := &domain.Order{
 			ID:              orderID,
-			TenantID:        tenantID,
 			SellerID:        sellerID,
 			Status:          domain.StatusPending,
 			Currency:        "jpy",
@@ -514,7 +507,6 @@ func TestOrderToProto(t *testing.T) {
 	t.Run("handles nil optional fields", func(t *testing.T) {
 		o := &domain.Order{
 			ID:              orderID,
-			TenantID:        tenantID,
 			SellerID:        sellerID,
 			Status:          domain.StatusPending,
 			Currency:        "jpy",
@@ -537,7 +529,6 @@ func TestOrderToProto(t *testing.T) {
 func TestPayoutToProto(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	payoutID := uuid.New()
-	tenantID := uuid.New()
 	sellerID := uuid.New()
 	orderID := uuid.New()
 
@@ -546,7 +537,6 @@ func TestPayoutToProto(t *testing.T) {
 		completedAt := now.Add(-30 * time.Minute)
 		p := &domain.Payout{
 			ID:               payoutID,
-			TenantID:         tenantID,
 			SellerID:         sellerID,
 			OrderID:          orderID,
 			Amount:           9000,
@@ -591,7 +581,6 @@ func TestPayoutToProto(t *testing.T) {
 	t.Run("handles nil optional fields", func(t *testing.T) {
 		p := &domain.Payout{
 			ID:        payoutID,
-			TenantID:  tenantID,
 			SellerID:  sellerID,
 			OrderID:   orderID,
 			Amount:    5000,
@@ -620,7 +609,6 @@ func TestPayoutToProto(t *testing.T) {
 // correct proto response.
 func TestGetOrder_Success(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
-	tenantID := uuid.New()
 	orderID := uuid.New()
 	sellerID := uuid.New()
 	lineID := uuid.New()
@@ -628,17 +616,13 @@ func TestGetOrder_Success(t *testing.T) {
 	productID := uuid.New()
 
 	mock := &mockOrderUseCase{
-		GetOrderFn: func(_ context.Context, tid, oid uuid.UUID) (*domain.OrderWithLines, error) {
-			if tid != tenantID {
-				t.Errorf("tenantID = %s, want %s", tid, tenantID)
-			}
+		GetOrderFn: func(_ context.Context, oid uuid.UUID) (*domain.OrderWithLines, error) {
 			if oid != orderID {
 				t.Errorf("orderID = %s, want %s", oid, orderID)
 			}
 			return &domain.OrderWithLines{
 				Order: domain.Order{
 					ID:              orderID,
-					TenantID:        tenantID,
 					SellerID:        sellerID,
 					BuyerAuth0ID:    "auth0|buyer",
 					Status:          domain.StatusPaid,
@@ -651,7 +635,6 @@ func TestGetOrder_Success(t *testing.T) {
 				Lines: []domain.OrderLine{
 					{
 						ID:          lineID,
-						TenantID:    tenantID,
 						OrderID:     orderID,
 						SKUID:       skuID,
 						ProductID:   productID,
@@ -669,8 +652,7 @@ func TestGetOrder_Success(t *testing.T) {
 
 	srv := NewServer(mock)
 	resp, err := srv.GetOrder(context.Background(), &orderv1.GetOrderRequest{
-		TenantId: tenantID.String(),
-		Id:       orderID.String(),
+		Id: orderID.String(),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -692,33 +674,12 @@ func TestGetOrder_Success(t *testing.T) {
 	}
 }
 
-// TestGetOrder_InvalidTenantID verifies that an invalid tenant_id returns
-// InvalidArgument.
-func TestGetOrder_InvalidTenantID(t *testing.T) {
-	srv := NewServer(&mockOrderUseCase{})
-	_, err := srv.GetOrder(context.Background(), &orderv1.GetOrderRequest{
-		TenantId: "not-a-uuid",
-		Id:       uuid.New().String(),
-	})
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	st, ok := status.FromError(err)
-	if !ok {
-		t.Fatalf("expected gRPC status error, got %T: %v", err, err)
-	}
-	if st.Code() != codes.InvalidArgument {
-		t.Errorf("code = %s, want InvalidArgument", st.Code())
-	}
-}
-
 // TestGetOrder_InvalidOrderID verifies that an invalid order id returns
 // InvalidArgument.
 func TestGetOrder_InvalidOrderID(t *testing.T) {
 	srv := NewServer(&mockOrderUseCase{})
 	_, err := srv.GetOrder(context.Background(), &orderv1.GetOrderRequest{
-		TenantId: uuid.New().String(),
-		Id:       "bad-order-id",
+		Id: "bad-order-id",
 	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -735,17 +696,13 @@ func TestGetOrder_InvalidOrderID(t *testing.T) {
 // TestListBuyerOrders_Success verifies pagination and order list conversion.
 func TestListBuyerOrders_Success(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
-	tenantID := uuid.New()
 	order1ID := uuid.New()
 	order2ID := uuid.New()
 	sellerID := uuid.New()
 	buyerAuth0ID := "auth0|buyer123"
 
 	mock := &mockOrderUseCase{
-		ListBuyerOrdersFn: func(_ context.Context, tid uuid.UUID, buyer string, limit, offset int) ([]domain.Order, int, error) {
-			if tid != tenantID {
-				t.Errorf("tenantID = %s, want %s", tid, tenantID)
-			}
+		ListBuyerOrdersFn: func(_ context.Context, buyer string, limit, offset int) ([]domain.Order, int, error) {
 			if buyer != buyerAuth0ID {
 				t.Errorf("buyerAuth0ID = %s, want %s", buyer, buyerAuth0ID)
 			}
@@ -758,7 +715,6 @@ func TestListBuyerOrders_Success(t *testing.T) {
 			return []domain.Order{
 				{
 					ID:              order1ID,
-					TenantID:        tenantID,
 					SellerID:        sellerID,
 					BuyerAuth0ID:    buyerAuth0ID,
 					Status:          domain.StatusPaid,
@@ -770,7 +726,6 @@ func TestListBuyerOrders_Success(t *testing.T) {
 				},
 				{
 					ID:              order2ID,
-					TenantID:        tenantID,
 					SellerID:        sellerID,
 					BuyerAuth0ID:    buyerAuth0ID,
 					Status:          domain.StatusShipped,
@@ -786,7 +741,6 @@ func TestListBuyerOrders_Success(t *testing.T) {
 
 	srv := NewServer(mock)
 	resp, err := srv.ListBuyerOrders(context.Background(), &orderv1.ListBuyerOrdersRequest{
-		TenantId:     tenantID.String(),
 		BuyerAuth0Id: buyerAuth0ID,
 		Pagination:   &commonv1.PaginationRequest{Limit: 10, Offset: 5},
 	})
@@ -819,7 +773,6 @@ func TestListBuyerOrders_Success(t *testing.T) {
 // TestListPayouts_Success verifies pagination and payout list conversion.
 func TestListPayouts_Success(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
-	tenantID := uuid.New()
 	sellerID := uuid.New()
 	payout1ID := uuid.New()
 	payout2ID := uuid.New()
@@ -829,17 +782,13 @@ func TestListPayouts_Success(t *testing.T) {
 	completedAt := now.Add(-10 * time.Minute)
 
 	mock := &mockOrderUseCase{
-		ListPayoutsFn: func(_ context.Context, tid, sid uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
-			if tid != tenantID {
-				t.Errorf("tenantID = %s, want %s", tid, tenantID)
-			}
+		ListPayoutsFn: func(_ context.Context, sid uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
 			if sid != sellerID {
 				t.Errorf("sellerID = %s, want %s", sid, sellerID)
 			}
 			return []domain.Payout{
 				{
 					ID:               payout1ID,
-					TenantID:         tenantID,
 					SellerID:         sellerID,
 					OrderID:          orderID1,
 					Amount:           8000,
@@ -851,7 +800,6 @@ func TestListPayouts_Success(t *testing.T) {
 				},
 				{
 					ID:        payout2ID,
-					TenantID:  tenantID,
 					SellerID:  sellerID,
 					OrderID:   orderID2,
 					Amount:    3000,
@@ -865,7 +813,6 @@ func TestListPayouts_Success(t *testing.T) {
 
 	srv := NewServer(mock)
 	resp, err := srv.ListPayouts(context.Background(), &orderv1.ListPayoutsRequest{
-		TenantId:   tenantID.String(),
 		SellerId:   sellerID.String(),
 		Pagination: &commonv1.PaginationRequest{Limit: 20, Offset: 0},
 	})
@@ -917,21 +864,21 @@ func TestListPayouts_Success(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCreateOrder_Success(t *testing.T) {
-	tid, sid, orderID := uuid.New(), uuid.New(), uuid.New()
+	sid, orderID := uuid.New(), uuid.New()
 	skuID := uuid.New()
 	now := time.Now().Truncate(time.Second)
 
 	mock := &mockOrderUseCase{
-		CreateOrderFn: func(_ context.Context, tenantID uuid.UUID, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
-			if tenantID != tid || input.SellerID != sid {
-				t.Errorf("tenantID=%s sellerID=%s", tenantID, input.SellerID)
+		CreateOrderFn: func(_ context.Context, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
+			if input.SellerID != sid {
+				t.Errorf("sellerID=%s", input.SellerID)
 			}
 			if len(input.Lines) != 1 || input.Lines[0].SKUID != skuID || input.Lines[0].Quantity != 2 {
 				t.Errorf("lines = %+v", input.Lines)
 			}
 			return &domain.OrderWithLines{
 				Order: domain.Order{
-					ID: orderID, TenantID: tid, SellerID: sid,
+					ID: orderID, SellerID: sid,
 					Status: "pending", TotalAmount: 1500, Currency: "jpy",
 					ShippingAddress: []byte(`{"city":"Tokyo"}`),
 					CreatedAt: now, UpdatedAt: now,
@@ -946,7 +893,6 @@ func TestCreateOrder_Success(t *testing.T) {
 
 	//nolint:staticcheck // SA1019: deprecated single-seller CreateOrder RPC
 	resp, err := srv.CreateOrder(context.Background(), &orderv1.CreateOrderRequest{
-		TenantId:     tid.String(),
 		SellerId:     sid.String(),
 		BuyerAuth0Id: "auth0|buyer",
 		Lines: []*orderv1.OrderLineInput{ //nolint:staticcheck
@@ -965,23 +911,10 @@ func TestCreateOrder_Success(t *testing.T) {
 	}
 }
 
-func TestCreateOrder_InvalidTenantID(t *testing.T) {
-	srv := NewServer(&mockOrderUseCase{})
-	//nolint:staticcheck
-	_, err := srv.CreateOrder(context.Background(), &orderv1.CreateOrderRequest{
-		TenantId: "not-a-uuid",
-		SellerId: uuid.New().String(),
-	})
-	if status.Code(err) != codes.InvalidArgument {
-		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
-	}
-}
-
 func TestCreateOrder_InvalidSellerID(t *testing.T) {
 	srv := NewServer(&mockOrderUseCase{})
 	//nolint:staticcheck
 	_, err := srv.CreateOrder(context.Background(), &orderv1.CreateOrderRequest{
-		TenantId: uuid.New().String(),
 		SellerId: "not-a-uuid",
 	})
 	if status.Code(err) != codes.InvalidArgument {
@@ -991,14 +924,13 @@ func TestCreateOrder_InvalidSellerID(t *testing.T) {
 
 func TestCreateOrder_ServiceError(t *testing.T) {
 	mock := &mockOrderUseCase{
-		CreateOrderFn: func(_ context.Context, _ uuid.UUID, _ domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
+		CreateOrderFn: func(_ context.Context, _ domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
 			return nil, "", apperrors.NotFound("seller not found")
 		},
 	}
 	srv := NewServer(mock)
 	//nolint:staticcheck
 	_, err := srv.CreateOrder(context.Background(), &orderv1.CreateOrderRequest{
-		TenantId: uuid.New().String(),
 		SellerId: uuid.New().String(),
 	})
 	if status.Code(err) != codes.NotFound {
@@ -1011,14 +943,14 @@ func TestCreateOrder_ServiceError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestListSellerOrders_Success(t *testing.T) {
-	tid, sid := uuid.New(), uuid.New()
+	sid := uuid.New()
 	orderID := uuid.New()
 	now := time.Now().Truncate(time.Second)
 
 	mock := &mockOrderUseCase{
-		ListSellerOrdersFn: func(_ context.Context, tenantID, sellerID uuid.UUID, statusFilter string, limit, offset int) ([]domain.Order, int, error) {
-			if tenantID != tid || sellerID != sid {
-				t.Errorf("ids mismatch")
+		ListSellerOrdersFn: func(_ context.Context, sellerID uuid.UUID, statusFilter string, limit, offset int) ([]domain.Order, int, error) {
+			if sellerID != sid {
+				t.Errorf("sellerID mismatch")
 			}
 			if statusFilter != "paid" {
 				t.Errorf("status filter = %q, want paid", statusFilter)
@@ -1027,7 +959,7 @@ func TestListSellerOrders_Success(t *testing.T) {
 				t.Errorf("limit=%d offset=%d, want 50,10", limit, offset)
 			}
 			return []domain.Order{
-				{ID: orderID, TenantID: tid, SellerID: sid, Status: "paid", Currency: "jpy",
+				{ID: orderID, SellerID: sid, Status: "paid", Currency: "jpy",
 					ShippingAddress: []byte("{}"), CreatedAt: now, UpdatedAt: now},
 			}, 3, nil
 		},
@@ -1035,7 +967,7 @@ func TestListSellerOrders_Success(t *testing.T) {
 	srv := NewServer(mock)
 
 	resp, err := srv.ListSellerOrders(context.Background(), &orderv1.ListSellerOrdersRequest{
-		TenantId: tid.String(), SellerId: sid.String(), Status: "paid",
+		SellerId: sid.String(), Status: "paid",
 		Pagination: &commonv1.PaginationRequest{Limit: 50, Offset: 10},
 	})
 	if err != nil {
@@ -1052,20 +984,10 @@ func TestListSellerOrders_Success(t *testing.T) {
 	}
 }
 
-func TestListSellerOrders_InvalidTenantID(t *testing.T) {
-	srv := NewServer(&mockOrderUseCase{})
-	_, err := srv.ListSellerOrders(context.Background(), &orderv1.ListSellerOrdersRequest{
-		TenantId: "bogus", SellerId: uuid.New().String(),
-	})
-	if status.Code(err) != codes.InvalidArgument {
-		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
-	}
-}
-
 func TestListSellerOrders_InvalidSellerID(t *testing.T) {
 	srv := NewServer(&mockOrderUseCase{})
 	_, err := srv.ListSellerOrders(context.Background(), &orderv1.ListSellerOrdersRequest{
-		TenantId: uuid.New().String(), SellerId: "bogus",
+		SellerId: "bogus",
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
@@ -1074,13 +996,13 @@ func TestListSellerOrders_InvalidSellerID(t *testing.T) {
 
 func TestListSellerOrders_ServiceError(t *testing.T) {
 	mock := &mockOrderUseCase{
-		ListSellerOrdersFn: func(_ context.Context, _, _ uuid.UUID, _ string, _, _ int) ([]domain.Order, int, error) {
+		ListSellerOrdersFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ int) ([]domain.Order, int, error) {
 			return nil, 0, errors.New("db down")
 		},
 	}
 	srv := NewServer(mock)
 	_, err := srv.ListSellerOrders(context.Background(), &orderv1.ListSellerOrdersRequest{
-		TenantId: uuid.New().String(), SellerId: uuid.New().String(),
+		SellerId: uuid.New().String(),
 	})
 	if status.Code(err) != codes.Internal {
 		t.Errorf("code = %v, want Internal", status.Code(err))
@@ -1092,23 +1014,23 @@ func TestListSellerOrders_ServiceError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestUpdateOrderStatus_Success(t *testing.T) {
-	tid, sid, oid := uuid.New(), uuid.New(), uuid.New()
+	sid, oid := uuid.New(), uuid.New()
 	now := time.Now().Truncate(time.Second)
 
 	var updateCalled bool
 	mock := &mockOrderUseCase{
-		GetOrderFn: func(_ context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error) {
-			if tenantID != tid || orderID != oid {
-				t.Errorf("ids mismatch")
+		GetOrderFn: func(_ context.Context, orderID uuid.UUID) (*domain.OrderWithLines, error) {
+			if orderID != oid {
+				t.Errorf("orderID mismatch")
 			}
 			return &domain.OrderWithLines{
 				Order: domain.Order{
-					ID: oid, TenantID: tid, SellerID: sid, Status: "paid",
+					ID: oid, SellerID: sid, Status: "paid",
 					ShippingAddress: []byte("{}"), CreatedAt: now, UpdatedAt: now,
 				},
 			}, nil
 		},
-		UpdateOrderStatusFn: func(_ context.Context, tenantID, sellerID, orderID uuid.UUID, newStatus string) error {
+		UpdateOrderStatusFn: func(_ context.Context, sellerID, orderID uuid.UUID, newStatus string) error {
 			updateCalled = true
 			if sellerID != sid {
 				t.Errorf("sellerID = %s, want %s (resolved from GetOrder)", sellerID, sid)
@@ -1116,7 +1038,6 @@ func TestUpdateOrderStatus_Success(t *testing.T) {
 			if newStatus != "shipped" {
 				t.Errorf("status = %q, want shipped", newStatus)
 			}
-			_ = tenantID
 			_ = orderID
 			return nil
 		},
@@ -1124,7 +1045,7 @@ func TestUpdateOrderStatus_Success(t *testing.T) {
 	srv := NewServer(mock)
 
 	resp, err := srv.UpdateOrderStatus(context.Background(), &orderv1.UpdateOrderStatusRequest{
-		TenantId: tid.String(), Id: oid.String(), Status: "shipped",
+		Id: oid.String(), Status: "shipped",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1137,20 +1058,10 @@ func TestUpdateOrderStatus_Success(t *testing.T) {
 	}
 }
 
-func TestUpdateOrderStatus_InvalidTenantID(t *testing.T) {
-	srv := NewServer(&mockOrderUseCase{})
-	_, err := srv.UpdateOrderStatus(context.Background(), &orderv1.UpdateOrderStatusRequest{
-		TenantId: "bogus", Id: uuid.New().String(), Status: "shipped",
-	})
-	if status.Code(err) != codes.InvalidArgument {
-		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
-	}
-}
-
 func TestUpdateOrderStatus_InvalidOrderID(t *testing.T) {
 	srv := NewServer(&mockOrderUseCase{})
 	_, err := srv.UpdateOrderStatus(context.Background(), &orderv1.UpdateOrderStatusRequest{
-		TenantId: uuid.New().String(), Id: "bogus", Status: "shipped",
+		Id: "bogus", Status: "shipped",
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
@@ -1159,13 +1070,13 @@ func TestUpdateOrderStatus_InvalidOrderID(t *testing.T) {
 
 func TestUpdateOrderStatus_GetOrderFails(t *testing.T) {
 	mock := &mockOrderUseCase{
-		GetOrderFn: func(_ context.Context, _, _ uuid.UUID) (*domain.OrderWithLines, error) {
+		GetOrderFn: func(_ context.Context, _ uuid.UUID) (*domain.OrderWithLines, error) {
 			return nil, apperrors.NotFound("order not found")
 		},
 	}
 	srv := NewServer(mock)
 	_, err := srv.UpdateOrderStatus(context.Background(), &orderv1.UpdateOrderStatusRequest{
-		TenantId: uuid.New().String(), Id: uuid.New().String(), Status: "shipped",
+		Id: uuid.New().String(), Status: "shipped",
 	})
 	if status.Code(err) != codes.NotFound {
 		t.Errorf("code = %v, want NotFound", status.Code(err))
@@ -1175,18 +1086,18 @@ func TestUpdateOrderStatus_GetOrderFails(t *testing.T) {
 func TestUpdateOrderStatus_UpdateFails(t *testing.T) {
 	sid := uuid.New()
 	mock := &mockOrderUseCase{
-		GetOrderFn: func(_ context.Context, _, _ uuid.UUID) (*domain.OrderWithLines, error) {
+		GetOrderFn: func(_ context.Context, _ uuid.UUID) (*domain.OrderWithLines, error) {
 			return &domain.OrderWithLines{
 				Order: domain.Order{SellerID: sid, ShippingAddress: []byte("{}")},
 			}, nil
 		},
-		UpdateOrderStatusFn: func(_ context.Context, _, _, _ uuid.UUID, _ string) error {
+		UpdateOrderStatusFn: func(_ context.Context, _, _ uuid.UUID, _ string) error {
 			return apperrors.BadRequest("invalid status transition")
 		},
 	}
 	srv := NewServer(mock)
 	_, err := srv.UpdateOrderStatus(context.Background(), &orderv1.UpdateOrderStatusRequest{
-		TenantId: uuid.New().String(), Id: uuid.New().String(), Status: "bogus",
+		Id: uuid.New().String(), Status: "bogus",
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
@@ -1197,33 +1108,12 @@ func TestUpdateOrderStatus_UpdateFails(t *testing.T) {
 // Misc: ListPayouts invalid IDs, GetOrder path coverage
 // ---------------------------------------------------------------------------
 
-func TestListPayouts_InvalidTenantID(t *testing.T) {
-	srv := NewServer(&mockOrderUseCase{})
-	_, err := srv.ListPayouts(context.Background(), &orderv1.ListPayoutsRequest{
-		TenantId: "bogus", SellerId: uuid.New().String(),
-	})
-	if status.Code(err) != codes.InvalidArgument {
-		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
-	}
-}
-
 func TestListPayouts_InvalidSellerID(t *testing.T) {
 	srv := NewServer(&mockOrderUseCase{})
 	_, err := srv.ListPayouts(context.Background(), &orderv1.ListPayoutsRequest{
-		TenantId: uuid.New().String(), SellerId: "bogus",
+		SellerId: "bogus",
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
 	}
 }
-
-func TestListBuyerOrders_InvalidTenantID(t *testing.T) {
-	srv := NewServer(&mockOrderUseCase{})
-	_, err := srv.ListBuyerOrders(context.Background(), &orderv1.ListBuyerOrdersRequest{
-		TenantId: "bogus",
-	})
-	if status.Code(err) != codes.InvalidArgument {
-		t.Errorf("code = %v, want InvalidArgument", status.Code(err))
-	}
-}
-

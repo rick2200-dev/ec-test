@@ -17,7 +17,6 @@ import (
 // foreign key elsewhere.
 type Buyer struct {
 	ID          uuid.UUID `json:"id"`
-	TenantID    uuid.UUID `json:"tenant_id"`
 	Auth0Sub    string    `json:"auth0_sub"`
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name,omitempty"`

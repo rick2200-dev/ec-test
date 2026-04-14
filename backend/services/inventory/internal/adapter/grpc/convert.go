@@ -12,7 +12,6 @@ import (
 func domainInventoryToProto(inv *domain.Inventory) *inventoryv1.InventoryItem {
 	return &inventoryv1.InventoryItem{
 		Id:                inv.ID.String(),
-		TenantId:          inv.TenantID.String(),
 		SkuId:             inv.SKUID.String(),
 		SellerId:          inv.SellerID.String(),
 		QuantityAvailable: int32(inv.QuantityAvailable),

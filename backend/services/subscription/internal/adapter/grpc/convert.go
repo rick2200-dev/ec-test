@@ -61,7 +61,6 @@ func buyerPlanFeaturesFromProto(f *subscriptionv1.BuyerPlanFeatures) domain.Buye
 func sellerPlanToProto(p *domain.SubscriptionPlan) *subscriptionv1.SellerPlan {
 	return &subscriptionv1.SellerPlan{
 		Id:            p.ID.String(),
-		TenantId:      p.TenantID.String(),
 		Name:          p.Name,
 		Slug:          p.Slug,
 		Tier:          int32(p.Tier),
@@ -77,7 +76,6 @@ func sellerPlanToProto(p *domain.SubscriptionPlan) *subscriptionv1.SellerPlan {
 func sellerSubscriptionToProto(s *domain.SellerSubscriptionWithPlan) *subscriptionv1.SellerSubscription {
 	return &subscriptionv1.SellerSubscription{
 		Id:                   s.ID.String(),
-		TenantId:             s.TenantID.String(),
 		SellerId:             s.SellerID.String(),
 		PlanId:               s.PlanID.String(),
 		StripeSubscriptionId: s.StripeSubscriptionID,
@@ -97,7 +95,6 @@ func sellerSubscriptionToProto(s *domain.SellerSubscriptionWithPlan) *subscripti
 func sellerSubscriptionBareToProto(s *domain.SellerSubscription) *subscriptionv1.SellerSubscription {
 	return &subscriptionv1.SellerSubscription{
 		Id:                   s.ID.String(),
-		TenantId:             s.TenantID.String(),
 		SellerId:             s.SellerID.String(),
 		PlanId:               s.PlanID.String(),
 		StripeSubscriptionId: s.StripeSubscriptionID,
@@ -114,7 +111,6 @@ func sellerSubscriptionBareToProto(s *domain.SellerSubscription) *subscriptionv1
 func buyerPlanToProto(p *domain.BuyerPlan) *subscriptionv1.BuyerPlan {
 	return &subscriptionv1.BuyerPlan{
 		Id:            p.ID.String(),
-		TenantId:      p.TenantID.String(),
 		Name:          p.Name,
 		Slug:          p.Slug,
 		Price:         &commonv1.Money{Amount: p.PriceAmount, Currency: p.PriceCurrency},
@@ -129,7 +125,6 @@ func buyerPlanToProto(p *domain.BuyerPlan) *subscriptionv1.BuyerPlan {
 func buyerSubscriptionToProto(s *domain.BuyerSubscriptionWithPlan) *subscriptionv1.BuyerSubscription {
 	return &subscriptionv1.BuyerSubscription{
 		Id:                   s.ID.String(),
-		TenantId:             s.TenantID.String(),
 		BuyerAuth0Id:         s.BuyerAuth0ID,
 		PlanId:               s.PlanID.String(),
 		StripeSubscriptionId: s.StripeSubscriptionID,
@@ -149,7 +144,6 @@ func buyerSubscriptionToProto(s *domain.BuyerSubscriptionWithPlan) *subscription
 func buyerSubscriptionBareToProto(s *domain.BuyerSubscription) *subscriptionv1.BuyerSubscription {
 	return &subscriptionv1.BuyerSubscription{
 		Id:                   s.ID.String(),
-		TenantId:             s.TenantID.String(),
 		BuyerAuth0Id:         s.BuyerAuth0ID,
 		PlanId:               s.PlanID.String(),
 		StripeSubscriptionId: s.StripeSubscriptionID,

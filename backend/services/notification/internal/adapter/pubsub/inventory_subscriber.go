@@ -36,7 +36,6 @@ func (s *InventorySubscriber) handleEvent(ctx context.Context, event pubsub.Even
 	slog.Info("received inventory event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 
 	switch event.Type {
@@ -70,7 +69,6 @@ func (s *InventorySubscriber) handleLowStock(ctx context.Context, event pubsub.E
 		"current_stock", data.CurrentStock,
 		"threshold", data.Threshold,
 		"seller_email", data.SellerEmail,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, data.SellerEmail, subject, body); err != nil {

@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
 )
@@ -65,14 +64,8 @@ type sellerRoleResponse struct {
 }
 
 // GetSellerRole handles GET /internal/authz/seller-role?seller_id=&sub=
-// Tenant ID is taken from the X-Tenant-ID header set via InternalContext
-// middleware. Returns the role as a JSON string; empty if not a member.
+// Returns the role as a JSON string; empty if not a member.
 func (h *InternalAuthzHandler) GetSellerRole(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "missing tenant id"})
-		return
-	}
 	q := r.URL.Query()
 	sellerIDStr := q.Get("seller_id")
 	sub := q.Get("sub")
@@ -85,7 +78,7 @@ func (h *InternalAuthzHandler) GetSellerRole(w http.ResponseWriter, r *http.Requ
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid seller_id"})
 		return
 	}
-	role, err := h.rbac.LookupSellerRole(r.Context(), tenantID, sellerID, sub)
+	role, err := h.rbac.LookupSellerRole(r.Context(), sellerID, sub)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -95,17 +88,12 @@ func (h *InternalAuthzHandler) GetSellerRole(w http.ResponseWriter, r *http.Requ
 
 // GetPlatformAdminRole handles GET /internal/authz/platform-admin-role?sub=
 func (h *InternalAuthzHandler) GetPlatformAdminRole(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "missing tenant id"})
-		return
-	}
 	sub := r.URL.Query().Get("sub")
 	if sub == "" {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "sub is required"})
 		return
 	}
-	role, err := h.rbac.LookupPlatformAdminRole(r.Context(), tenantID, sub)
+	role, err := h.rbac.LookupPlatformAdminRole(r.Context(), sub)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -132,11 +120,10 @@ type apiTokenLookupResponse struct {
 }
 
 // apiTokenSummary mirrors the fields the gateway needs to build its
-// tenant.Context and apply rate limiting. Sensitive columns (token_hash
+// context and apply rate limiting. Sensitive columns (token_hash
 // in particular) are never included.
 type apiTokenSummary struct {
 	ID                  uuid.UUID `json:"id"`
-	TenantID            uuid.UUID `json:"tenant_id"`
 	SellerID            uuid.UUID `json:"seller_id"`
 	Scopes              []string  `json:"scopes"`
 	RateLimitRPS        *int      `json:"rate_limit_rps,omitempty"`
@@ -186,7 +173,6 @@ func (h *InternalAuthzHandler) LookupAPIToken(w http.ResponseWriter, r *http.Req
 		Status: "active",
 		Token: &apiTokenSummary{
 			ID:                  tok.ID,
-			TenantID:            tok.TenantID,
 			SellerID:            tok.SellerID,
 			Scopes:              scopeStrings,
 			RateLimitRPS:        tok.RateLimitRPS,

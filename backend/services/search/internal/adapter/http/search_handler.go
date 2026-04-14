@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/search/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/search/internal/port"
 )
@@ -70,17 +69,6 @@ func (h *SearchHandler) parseSearchRequest(r *http.Request) (domain.SearchReques
 
 	req := domain.SearchRequest{
 		Query: q.Get("q"),
-	}
-
-	// Tenant ID from context (set by middleware) or query param
-	if tid, err := tenant.TenantID(r.Context()); err == nil {
-		req.TenantID = tid
-	} else if tidStr := q.Get("tenant_id"); tidStr != "" {
-		parsed, err := uuid.Parse(tidStr)
-		if err != nil {
-			return req, err
-		}
-		req.TenantID = parsed
 	}
 
 	if sellerIDStr := q.Get("seller_id"); sellerIDStr != "" {

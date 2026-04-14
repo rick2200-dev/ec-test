@@ -31,10 +31,6 @@ func NewRecommendService(eng engine.RecommendEngine, refresher ViewRefresher) *R
 
 // GetRecommendations validates the request and delegates to the engine.
 func (s *RecommendService) GetRecommendations(ctx context.Context, req domain.RecommendRequest) (*domain.RecommendResponse, error) {
-	if req.TenantID == uuid.Nil {
-		return nil, domain.ErrMissingTenantID
-	}
-
 	if req.Limit <= 0 {
 		req.Limit = 10
 	}
@@ -64,9 +60,6 @@ func (s *RecommendService) GetRecommendations(ctx context.Context, req domain.Re
 
 // RecordUserEvent validates and records a user behavior event.
 func (s *RecommendService) RecordUserEvent(ctx context.Context, event domain.UserEvent) error {
-	if event.TenantID == uuid.Nil {
-		return domain.ErrMissingTenantID
-	}
 	if event.UserID == "" {
 		return domain.ErrMissingUserID
 	}

@@ -30,30 +30,30 @@ func NewService(seller port.SellerSubscriptionStore, buyer port.BuyerSubscriptio
 
 // --- Seller Plan Methods ---
 
-func (s *Service) CreatePlan(ctx context.Context, tenantID uuid.UUID, plan *domain.SubscriptionPlan) error {
+func (s *Service) CreatePlan(ctx context.Context, plan *domain.SubscriptionPlan) error {
 	if plan.Status == "" {
 		plan.Status = "active"
 	}
 	if plan.PriceCurrency == "" {
 		plan.PriceCurrency = "JPY"
 	}
-	if err := s.seller.CreatePlan(ctx, tenantID, plan); err != nil {
+	if err := s.seller.CreatePlan(ctx, plan); err != nil {
 		return apperrors.Internal("failed to create plan", err)
 	}
-	slog.Info("subscription plan created", "id", plan.ID, "tenant_id", tenantID, "slug", plan.Slug)
+	slog.Info("subscription plan created", "id", plan.ID, "slug", plan.Slug)
 	return nil
 }
 
-func (s *Service) ListPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.SubscriptionPlan, error) {
-	plans, err := s.seller.ListPlans(ctx, tenantID)
+func (s *Service) ListPlans(ctx context.Context) ([]domain.SubscriptionPlan, error) {
+	plans, err := s.seller.ListPlans(ctx)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list plans", err)
 	}
 	return plans, nil
 }
 
-func (s *Service) GetPlan(ctx context.Context, tenantID, planID uuid.UUID) (*domain.SubscriptionPlan, error) {
-	plan, err := s.seller.GetPlanByID(ctx, tenantID, planID)
+func (s *Service) GetPlan(ctx context.Context, planID uuid.UUID) (*domain.SubscriptionPlan, error) {
+	plan, err := s.seller.GetPlanByID(ctx, planID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get plan", err)
 	}
@@ -63,23 +63,23 @@ func (s *Service) GetPlan(ctx context.Context, tenantID, planID uuid.UUID) (*dom
 	return plan, nil
 }
 
-func (s *Service) UpdatePlan(ctx context.Context, tenantID uuid.UUID, plan *domain.SubscriptionPlan) error {
-	existing, err := s.seller.GetPlanByID(ctx, tenantID, plan.ID)
+func (s *Service) UpdatePlan(ctx context.Context, plan *domain.SubscriptionPlan) error {
+	existing, err := s.seller.GetPlanByID(ctx, plan.ID)
 	if err != nil {
 		return apperrors.Internal("failed to get plan", err)
 	}
 	if existing == nil {
 		return apperrors.NotFound("plan not found")
 	}
-	if err := s.seller.UpdatePlan(ctx, tenantID, plan); err != nil {
+	if err := s.seller.UpdatePlan(ctx, plan); err != nil {
 		return apperrors.Internal("failed to update plan", err)
 	}
-	slog.Info("subscription plan updated", "id", plan.ID, "tenant_id", tenantID)
+	slog.Info("subscription plan updated", "id", plan.ID)
 	return nil
 }
 
-func (s *Service) GetSellerSubscription(ctx context.Context, tenantID, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error) {
-	sub, err := s.seller.GetSellerSubscription(ctx, tenantID, sellerID)
+func (s *Service) GetSellerSubscription(ctx context.Context, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error) {
+	sub, err := s.seller.GetSellerSubscription(ctx, sellerID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get seller subscription", err)
 	}
@@ -89,8 +89,8 @@ func (s *Service) GetSellerSubscription(ctx context.Context, tenantID, sellerID 
 	return sub, nil
 }
 
-func (s *Service) SubscribeSeller(ctx context.Context, tenantID, sellerID, planID uuid.UUID) (*domain.SellerSubscription, error) {
-	plan, err := s.seller.GetPlanByID(ctx, tenantID, planID)
+func (s *Service) SubscribeSeller(ctx context.Context, sellerID, planID uuid.UUID) (*domain.SellerSubscription, error) {
+	plan, err := s.seller.GetPlanByID(ctx, planID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get plan", err)
 	}
@@ -100,12 +100,11 @@ func (s *Service) SubscribeSeller(ctx context.Context, tenantID, sellerID, planI
 
 	sub := &domain.SellerSubscription{
 		ID:       uuid.New(),
-		TenantID: tenantID,
 		SellerID: sellerID,
 		PlanID:   planID,
 		Status:   domain.SubscriptionStatusActive,
 	}
-	if err := s.seller.UpsertSellerSubscription(ctx, tenantID, sub); err != nil {
+	if err := s.seller.UpsertSellerSubscription(ctx, sub); err != nil {
 		return nil, apperrors.Internal("failed to subscribe seller", err)
 	}
 	// Refresh the materialized view so search ranking picks up the new tier.
@@ -114,36 +113,36 @@ func (s *Service) SubscribeSeller(ctx context.Context, tenantID, sellerID, planI
 	if err := s.seller.RefreshPlanBoostView(ctx); err != nil {
 		slog.Warn("failed to refresh plan boost view", "error", err)
 	}
-	slog.Info("seller subscribed", "seller_id", sellerID, "plan_id", planID, "tenant_id", tenantID)
+	slog.Info("seller subscribed", "seller_id", sellerID, "plan_id", planID)
 	return sub, nil
 }
 
 // --- Buyer Plan Methods ---
 
-func (s *Service) CreateBuyerPlan(ctx context.Context, tenantID uuid.UUID, plan *domain.BuyerPlan) error {
+func (s *Service) CreateBuyerPlan(ctx context.Context, plan *domain.BuyerPlan) error {
 	if plan.Status == "" {
 		plan.Status = "active"
 	}
 	if plan.PriceCurrency == "" {
 		plan.PriceCurrency = "JPY"
 	}
-	if err := s.buyer.CreateBuyerPlan(ctx, tenantID, plan); err != nil {
+	if err := s.buyer.CreateBuyerPlan(ctx, plan); err != nil {
 		return apperrors.Internal("failed to create buyer plan", err)
 	}
-	slog.Info("buyer plan created", "id", plan.ID, "tenant_id", tenantID, "slug", plan.Slug)
+	slog.Info("buyer plan created", "id", plan.ID, "slug", plan.Slug)
 	return nil
 }
 
-func (s *Service) ListBuyerPlans(ctx context.Context, tenantID uuid.UUID) ([]domain.BuyerPlan, error) {
-	plans, err := s.buyer.ListBuyerPlans(ctx, tenantID)
+func (s *Service) ListBuyerPlans(ctx context.Context) ([]domain.BuyerPlan, error) {
+	plans, err := s.buyer.ListBuyerPlans(ctx)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list buyer plans", err)
 	}
 	return plans, nil
 }
 
-func (s *Service) GetBuyerPlan(ctx context.Context, tenantID, planID uuid.UUID) (*domain.BuyerPlan, error) {
-	plan, err := s.buyer.GetBuyerPlanByID(ctx, tenantID, planID)
+func (s *Service) GetBuyerPlan(ctx context.Context, planID uuid.UUID) (*domain.BuyerPlan, error) {
+	plan, err := s.buyer.GetBuyerPlanByID(ctx, planID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get buyer plan", err)
 	}
@@ -153,23 +152,23 @@ func (s *Service) GetBuyerPlan(ctx context.Context, tenantID, planID uuid.UUID) 
 	return plan, nil
 }
 
-func (s *Service) UpdateBuyerPlan(ctx context.Context, tenantID uuid.UUID, plan *domain.BuyerPlan) error {
-	existing, err := s.buyer.GetBuyerPlanByID(ctx, tenantID, plan.ID)
+func (s *Service) UpdateBuyerPlan(ctx context.Context, plan *domain.BuyerPlan) error {
+	existing, err := s.buyer.GetBuyerPlanByID(ctx, plan.ID)
 	if err != nil {
 		return apperrors.Internal("failed to get buyer plan", err)
 	}
 	if existing == nil {
 		return apperrors.NotFound("buyer plan not found")
 	}
-	if err := s.buyer.UpdateBuyerPlan(ctx, tenantID, plan); err != nil {
+	if err := s.buyer.UpdateBuyerPlan(ctx, plan); err != nil {
 		return apperrors.Internal("failed to update buyer plan", err)
 	}
-	slog.Info("buyer plan updated", "id", plan.ID, "tenant_id", tenantID)
+	slog.Info("buyer plan updated", "id", plan.ID)
 	return nil
 }
 
-func (s *Service) GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
-	sub, err := s.buyer.GetBuyerSubscription(ctx, tenantID, buyerAuth0ID)
+func (s *Service) GetBuyerSubscription(ctx context.Context, buyerAuth0ID string) (*domain.BuyerSubscriptionWithPlan, error) {
+	sub, err := s.buyer.GetBuyerSubscription(ctx, buyerAuth0ID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get buyer subscription", err)
 	}
@@ -179,8 +178,8 @@ func (s *Service) GetBuyerSubscription(ctx context.Context, tenantID uuid.UUID, 
 	return sub, nil
 }
 
-func (s *Service) SubscribeBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, planID uuid.UUID) (*domain.BuyerSubscription, error) {
-	plan, err := s.buyer.GetBuyerPlanByID(ctx, tenantID, planID)
+func (s *Service) SubscribeBuyer(ctx context.Context, buyerAuth0ID string, planID uuid.UUID) (*domain.BuyerSubscription, error) {
+	plan, err := s.buyer.GetBuyerPlanByID(ctx, planID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get buyer plan", err)
 	}
@@ -190,14 +189,13 @@ func (s *Service) SubscribeBuyer(ctx context.Context, tenantID uuid.UUID, buyerA
 
 	sub := &domain.BuyerSubscription{
 		ID:           uuid.New(),
-		TenantID:     tenantID,
 		BuyerAuth0ID: buyerAuth0ID,
 		PlanID:       planID,
 		Status:       domain.SubscriptionStatusActive,
 	}
-	if err := s.buyer.UpsertBuyerSubscription(ctx, tenantID, sub); err != nil {
+	if err := s.buyer.UpsertBuyerSubscription(ctx, sub); err != nil {
 		return nil, apperrors.Internal("failed to subscribe buyer", err)
 	}
-	slog.Info("buyer subscribed", "buyer_auth0_id", buyerAuth0ID, "plan_id", planID, "tenant_id", tenantID)
+	slog.Info("buyer subscribed", "buyer_auth0_id", buyerAuth0ID, "plan_id", planID)
 	return sub, nil
 }

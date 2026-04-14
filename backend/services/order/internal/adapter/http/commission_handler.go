@@ -7,7 +7,6 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/pagination"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/port"
 )
@@ -32,15 +31,9 @@ func (h *CommissionHandler) Routes() chi.Router {
 
 // List handles GET /commissions.
 func (h *CommissionHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	p := pagination.FromRequest(r)
 
-	rules, total, err := h.svc.ListCommissionRules(r.Context(), tenantID, p.Limit, p.Offset)
+	rules, total, err := h.svc.ListCommissionRules(r.Context(), p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -57,19 +50,13 @@ func (h *CommissionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Create handles POST /commissions.
 func (h *CommissionHandler) Create(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	var rule domain.CommissionRule
 	if err := httputil.Decode(r, &rule); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
 
-	if err := h.svc.CreateCommissionRule(r.Context(), tenantID, &rule); err != nil {
+	if err := h.svc.CreateCommissionRule(r.Context(), &rule); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

@@ -26,7 +26,6 @@ const (
 // Notification represents a notification record.
 type Notification struct {
 	ID        string             `json:"id"`
-	TenantID  string             `json:"tenant_id"`
 	Type      NotificationType   `json:"type"`
 	Recipient string             `json:"recipient"`
 	Subject   string             `json:"subject"`

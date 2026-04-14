@@ -34,7 +34,6 @@ func (s *ReviewSubscriber) handleEvent(ctx context.Context, event pubsub.Event) 
 	slog.Info("received review event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 
 	switch event.Type {
@@ -70,7 +69,6 @@ func (s *ReviewSubscriber) handleReviewCreated(ctx context.Context, event pubsub
 	slog.Info("sending review notification",
 		"review_id", data.ReviewID,
 		"recipient", recipientHint,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, recipientHint, subject, body); err != nil {
@@ -100,7 +98,6 @@ func (s *ReviewSubscriber) handleReviewReplied(ctx context.Context, event pubsub
 	slog.Info("sending review reply notification",
 		"review_id", data.ReviewID,
 		"recipient", recipientHint,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, recipientHint, subject, body); err != nil {

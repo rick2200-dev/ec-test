@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/port"
 )
@@ -39,13 +38,7 @@ func (h *BuyerSubscriptionHandler) BuyerSubscriptionRoutes() chi.Router {
 }
 
 func (h *BuyerSubscriptionHandler) ListBuyerPlans(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
-	plans, err := h.svc.ListBuyerPlans(r.Context(), tenantID)
+	plans, err := h.svc.ListBuyerPlans(r.Context())
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -64,12 +57,6 @@ type createBuyerPlanRequest struct {
 }
 
 func (h *BuyerSubscriptionHandler) CreateBuyerPlan(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	var req createBuyerPlanRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, err)
@@ -85,7 +72,7 @@ func (h *BuyerSubscriptionHandler) CreateBuyerPlan(w http.ResponseWriter, r *htt
 		StripePriceID: req.StripePriceID,
 	}
 
-	if err := h.svc.CreateBuyerPlan(r.Context(), tenantID, plan); err != nil {
+	if err := h.svc.CreateBuyerPlan(r.Context(), plan); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -94,19 +81,13 @@ func (h *BuyerSubscriptionHandler) CreateBuyerPlan(w http.ResponseWriter, r *htt
 }
 
 func (h *BuyerSubscriptionHandler) GetBuyerPlan(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid plan id"})
 		return
 	}
 
-	plan, err := h.svc.GetBuyerPlan(r.Context(), tenantID, id)
+	plan, err := h.svc.GetBuyerPlan(r.Context(), id)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -126,12 +107,6 @@ type updateBuyerPlanRequest struct {
 }
 
 func (h *BuyerSubscriptionHandler) UpdateBuyerPlan(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid plan id"})
@@ -155,7 +130,7 @@ func (h *BuyerSubscriptionHandler) UpdateBuyerPlan(w http.ResponseWriter, r *htt
 		Status:        req.Status,
 	}
 
-	if err := h.svc.UpdateBuyerPlan(r.Context(), tenantID, plan); err != nil {
+	if err := h.svc.UpdateBuyerPlan(r.Context(), plan); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -164,19 +139,13 @@ func (h *BuyerSubscriptionHandler) UpdateBuyerPlan(w http.ResponseWriter, r *htt
 }
 
 func (h *BuyerSubscriptionHandler) GetBuyerSubscription(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	buyerAuth0ID := chi.URLParam(r, "buyerAuth0ID")
 	if buyerAuth0ID == "" {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "buyer_auth0_id required"})
 		return
 	}
 
-	sub, err := h.svc.GetBuyerSubscription(r.Context(), tenantID, buyerAuth0ID)
+	sub, err := h.svc.GetBuyerSubscription(r.Context(), buyerAuth0ID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -190,12 +159,6 @@ type subscribeBuyerRequest struct {
 }
 
 func (h *BuyerSubscriptionHandler) SubscribeBuyer(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	buyerAuth0ID := chi.URLParam(r, "buyerAuth0ID")
 	if buyerAuth0ID == "" {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "buyer_auth0_id required"})
@@ -214,7 +177,7 @@ func (h *BuyerSubscriptionHandler) SubscribeBuyer(w http.ResponseWriter, r *http
 		return
 	}
 
-	sub, err := h.svc.SubscribeBuyer(r.Context(), tenantID, buyerAuth0ID, planID)
+	sub, err := h.svc.SubscribeBuyer(r.Context(), buyerAuth0ID, planID)
 	if err != nil {
 		httputil.Error(w, err)
 		return

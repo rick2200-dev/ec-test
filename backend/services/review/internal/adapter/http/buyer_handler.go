@@ -48,7 +48,7 @@ type createReviewRequest struct {
 func (h *BuyerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	var req createReviewRequest
@@ -57,7 +57,7 @@ func (h *BuyerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := h.svc.CreateReview(r.Context(), tc.TenantID, tc.UserID, domain.CreateReviewInput{
+	review, err := h.svc.CreateReview(r.Context(), tc.UserID, domain.CreateReviewInput{
 		ProductID: req.ProductID,
 		Rating:    req.Rating,
 		Title:     req.Title,
@@ -81,7 +81,7 @@ type updateReviewRequest struct {
 func (h *BuyerHandler) Update(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -95,7 +95,7 @@ func (h *BuyerHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := h.svc.UpdateReview(r.Context(), tc.TenantID, id, tc.UserID, domain.UpdateReviewInput{
+	review, err := h.svc.UpdateReview(r.Context(), id, tc.UserID, domain.UpdateReviewInput{
 		Rating: req.Rating,
 		Title:  req.Title,
 		Body:   req.Body,
@@ -111,7 +111,7 @@ func (h *BuyerHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *BuyerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -120,7 +120,7 @@ func (h *BuyerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteReview(r.Context(), tc.TenantID, id, tc.UserID); err != nil {
+	if err := h.svc.DeleteReview(r.Context(), id, tc.UserID); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -129,18 +129,13 @@ func (h *BuyerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Get handles GET /reviews/{id}.
 func (h *BuyerHandler) Get(w http.ResponseWriter, r *http.Request) {
-	tc, err := tenant.FromContext(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.Error(w, apperrors.BadRequest("invalid review id"))
 		return
 	}
 
-	review, err := h.svc.GetReview(r.Context(), tc.TenantID, id)
+	review, err := h.svc.GetReview(r.Context(), id)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -150,11 +145,6 @@ func (h *BuyerHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // ListByProduct handles GET /reviews/product/{productId}.
 func (h *BuyerHandler) ListByProduct(w http.ResponseWriter, r *http.Request) {
-	tc, err := tenant.FromContext(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
 	productID, err := uuid.Parse(chi.URLParam(r, "productId"))
 	if err != nil {
 		httputil.Error(w, apperrors.BadRequest("invalid product id"))
@@ -162,7 +152,7 @@ func (h *BuyerHandler) ListByProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, offset := parsePagination(r)
 
-	items, total, err := h.svc.ListByProduct(r.Context(), tc.TenantID, productID, limit, offset)
+	items, total, err := h.svc.ListByProduct(r.Context(), productID, limit, offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -172,18 +162,13 @@ func (h *BuyerHandler) ListByProduct(w http.ResponseWriter, r *http.Request) {
 
 // GetProductRating handles GET /reviews/product/{productId}/rating.
 func (h *BuyerHandler) GetProductRating(w http.ResponseWriter, r *http.Request) {
-	tc, err := tenant.FromContext(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
 	productID, err := uuid.Parse(chi.URLParam(r, "productId"))
 	if err != nil {
 		httputil.Error(w, apperrors.BadRequest("invalid product id"))
 		return
 	}
 
-	rating, err := h.svc.GetProductRating(r.Context(), tc.TenantID, productID)
+	rating, err := h.svc.GetProductRating(r.Context(), productID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
