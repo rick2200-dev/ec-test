@@ -23,6 +23,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/postgres"
 	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/adapter/stripe"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/order/internal/app"
 	"github.com/Riku-KANO/ec-test/services/order/internal/cancellation"
 	"github.com/Riku-KANO/ec-test/services/order/internal/config"
@@ -32,6 +33,10 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
 	cfg := config.Load()
+
+	// Background context for long-lived goroutines (pub/sub subscribers).
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -73,10 +78,40 @@ func main() {
 		}
 	}()
 
+	// Pub/Sub emulator host (must be set before subscriber is created).
+	if cfg.PubSubEmulatorHost != "" {
+		if err := os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost); err != nil {
+			slog.Warn("failed to set PUBSUB_EMULATOR_HOST", "error", err)
+		}
+	}
+
 	// Repositories
 	orderRepo := repository.NewOrderRepository(pool)
 	commissionRepo := repository.NewCommissionRepository(pool)
 	payoutRepo := repository.NewPayoutRepository(pool)
+
+	// Pub/Sub subscriber — listens for shipping events to update order status.
+	if cfg.PubSubProjectID != "" {
+		sub, subErr := pubsub.NewGCPSubscriber(bgCtx, cfg.PubSubProjectID)
+		if subErr != nil {
+			slog.Warn("failed to create pubsub subscriber, shipping status sync disabled", "error", subErr)
+		} else {
+			defer func() {
+				if err := sub.Close(); err != nil {
+					slog.Warn("failed to close pubsub subscriber", "error", err)
+				}
+			}()
+			shippingSub := subscriber.NewShippingSubscriber(sub, orderRepo)
+			go func() {
+				if err := shippingSub.Start(bgCtx); err != nil {
+					slog.Error("shipping subscriber error", "error", err)
+				}
+			}()
+			slog.Info("shipping event subscriber started")
+		}
+	} else {
+		slog.Info("PUBSUB_PROJECT_ID not set, shipping status sync disabled")
+	}
 
 	// Buyer subscription client (for checking free shipping eligibility).
 	// Talks to the dedicated subscription service over gRPC.
@@ -184,6 +219,9 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-quit
 	slog.Info("shutting down", "signal", sig.String())
+
+	// Stop Pub/Sub subscribers before closing servers.
+	bgCancel()
 
 	grpcSrv.GracefulStop()
 

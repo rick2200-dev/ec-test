@@ -34,6 +34,11 @@ type OrderPaidEvent struct {
 	BuyerAuth0ID          string `json:"buyer_auth0_id"`
 	TotalAmount           int64  `json:"total_amount"`
 	StripePaymentIntentID string `json:"stripe_payment_intent_id"`
+	// ShippingAddressJSON is the shipping address JSON snapshot at order creation
+	// time. Added for the shipping service so it can create a shipment without
+	// calling back to the order service. Existing subscribers that do not declare
+	// this field are unaffected (JSON is forward-compatible).
+	ShippingAddressJSON string `json:"shipping_address_json,omitempty"`
 }
 
 // OrderShippedEvent is published when a seller marks an order as shipped.

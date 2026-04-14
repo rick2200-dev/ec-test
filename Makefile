@@ -1,5 +1,5 @@
 .PHONY: help deps-up deps-down migrate seed proto-gen openapi-gen \
-       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart dev-inquiry dev-review dev-subscription \
+       dev-gateway dev-auth dev-catalog dev-inventory dev-order dev-search dev-recommend dev-notification dev-cart dev-inquiry dev-review dev-subscription dev-shipping \
        dev-buyer dev-seller dev-admin \
        build-all lint-go test-go
 
@@ -78,6 +78,9 @@ dev-review:
 dev-subscription:
 	cd backend/services/subscription && air
 
+dev-shipping:
+	cd backend/services/shipping && air
+
 # ─── Frontend ──────────────────────────────────────────────────
 dev-buyer:
 	pnpm --filter buyer dev
@@ -89,7 +92,7 @@ dev-admin:
 	pnpm --filter admin dev
 
 # ─── Build & Test ──────────────────────────────────────────────
-GO_SERVICES := gateway auth catalog inventory order search recommend notification cart inquiry review subscription
+GO_SERVICES := gateway auth catalog inventory order search recommend notification cart inquiry review subscription shipping
 
 build-all:
 	@set -e; for svc in $(GO_SERVICES); do \

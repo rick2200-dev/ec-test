@@ -100,6 +100,7 @@ make dev-order        # Order         → :8084
 make dev-cart         # Cart          → :8088
 make dev-inquiry      # Inquiry       → :8090
 make dev-review       # Review        → :8091
+make dev-shipping     # Shipping      → :8092
 
 # 6. フロントエンドを起動 (別ターミナルで)
 pnpm install

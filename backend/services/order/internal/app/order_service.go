@@ -442,6 +442,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			BuyerAuth0ID:          order.BuyerAuth0ID,
 			TotalAmount:           order.TotalAmount,
 			StripePaymentIntentID: stripePaymentIntentID,
+			ShippingAddressJSON:   string(order.ShippingAddress),
 		})
 		pubsub.PublishEvent(ctx, s.publisher, order.TenantID, domain.EventTypePayoutCompleted, "payout-events", domain.PayoutCompletedEvent{
 			PayoutID:         payout.ID.String(),

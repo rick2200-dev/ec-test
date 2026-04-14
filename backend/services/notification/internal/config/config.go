@@ -12,6 +12,10 @@ type Config struct {
 	SMTPHost           string
 	SMTPPort           string
 	SMTPFrom           string
+	// DatabaseURL is optional. When set, the service uses a Postgres-backed
+	// event deduplicator to prevent duplicate notifications on at-least-once
+	// re-deliveries. When unset, deduplication is skipped (no-op).
+	DatabaseURL string
 }
 
 // Load reads configuration from environment variables.
@@ -23,6 +27,7 @@ func Load() Config {
 		SMTPHost:           getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:           getEnv("SMTP_PORT", "1025"),
 		SMTPFrom:           getEnv("SMTP_FROM", "noreply@ecmarket.local"),
+		DatabaseURL:        getEnv("DATABASE_URL", ""),
 	}
 }
 

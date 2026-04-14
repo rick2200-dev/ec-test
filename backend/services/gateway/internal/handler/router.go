@@ -70,6 +70,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 		cart := NewCartHandler(svc)
 		inquiry := NewInquiryHandler(svc)
 		review := NewReviewHandler(svc)
+		shipping := NewShippingHandler(svc)
 		api.Route("/buyer", func(br chi.Router) {
 			br.Use(jwtMW.VerifyJWT)
 			br.Get("/products", buyer.ListProducts)
@@ -79,6 +80,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 			// POST /orders endpoint was removed; use POST /cart/checkout.
 			br.Get("/orders", buyer.ListOrders)
 			br.Get("/orders/{id}", buyer.GetOrder)
+			br.Get("/orders/{order_id}/shipment", shipping.GetBuyerOrderShipment)
 			br.Post("/orders/{id}/cancellation-request", buyer.RequestOrderCancellation)
 			br.Get("/orders/{id}/cancellation-request", buyer.GetOrderCancellationRequest)
 			br.Post("/events", buyer.TrackEvent)
@@ -171,6 +173,17 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 				ui.Get("/subscription", seller.GetSubscription)
 				ui.Post("/subscription", seller.Subscribe)
 				ui.Get("/plans", seller.ListPlans)
+
+				// Shipment management. Parked in the UI-only subtree
+				// (apitoken.Block) because registering a shipment triggers
+				// event publishing — too risky to expose via API tokens in v1.
+				ui.Route("/shipments", func(sr chi.Router) {
+					sr.Get("/", shipping.ListShipments)
+					sr.Get("/{id}", shipping.GetShipment)
+					sr.Post("/{id}/register", shipping.RegisterShipment)
+					sr.Post("/{id}/deliver", shipping.MarkShipmentDelivered)
+				})
+				ui.Get("/orders/{order_id}/shipment", shipping.GetSellerOrderShipment)
 
 				// Cancellation request management. Parked in the UI-only
 				// subtree (apitoken.Block) because approving a cancellation

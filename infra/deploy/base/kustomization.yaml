@@ -14,6 +14,7 @@ resources:
   - recommend/
   - notification/
   - inquiry/
+  - shipping/
 
 commonLabels:
   app.kubernetes.io/part-of: ec-marketplace

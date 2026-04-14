@@ -15,4 +15,5 @@ use (
 	./backend/services/review
 	./backend/services/search
 	./backend/services/subscription
+	./backend/services/shipping
 )
