@@ -2,8 +2,10 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	//nolint:staticcheck // SA1019: pubsub v2 migration is tracked separately; using v1 consistently across services
 	gcppubsub "cloud.google.com/go/pubsub"
@@ -57,6 +59,23 @@ func (s *GCPSubscriber) Subscribe(ctx context.Context, subscription string, hand
 		}
 
 		if err := handler(ctx, event); err != nil {
+			// If the handler returns a RetryAfterError, sleep for the requested
+			// delay before nacking. The GCP client library automatically extends
+			// the ack deadline while this callback is running, so the message is
+			// not redelivered during the sleep. This avoids tight nack/redeliver
+			// loops (e.g., while a concurrent processing claim is still active).
+			var retryErr *RetryAfterError
+			if errors.As(err, &retryErr) && retryErr.Delay > 0 {
+				slog.Info("handler requested delayed retry, sleeping before nack",
+					"subscription", subscription,
+					"event_id", event.ID,
+					"delay", retryErr.Delay,
+				)
+				select {
+				case <-time.After(retryErr.Delay):
+				case <-ctx.Done():
+				}
+			}
 			slog.Error("failed to handle event",
 				"subscription", subscription,
 				"event_id", event.ID,

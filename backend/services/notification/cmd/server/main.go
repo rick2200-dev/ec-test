@@ -12,11 +12,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/Riku-KANO/ec-test/pkg/database"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
-	"github.com/Riku-KANO/ec-test/services/notification/internal/adapter/http"
-	"github.com/Riku-KANO/ec-test/services/notification/internal/adapter/pubsub"
+	notificationhandler "github.com/Riku-KANO/ec-test/services/notification/internal/adapter/http"
+	notificationpostgres "github.com/Riku-KANO/ec-test/services/notification/internal/adapter/postgres"
+	subscriber "github.com/Riku-KANO/ec-test/services/notification/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/config"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
+	"github.com/Riku-KANO/ec-test/services/notification/internal/port"
 )
 
 func main() {
@@ -29,6 +32,36 @@ func main() {
 		if err := os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost); err != nil {
 			slog.Warn("failed to set PUBSUB_EMULATOR_HOST", "error", err)
 		}
+	}
+
+	// DB-backed event deduplication.
+	//
+	// When DATABASE_URL is set the service connects to Postgres and uses a
+	// processed_events inbox table to skip redelivered shipping events. If the
+	// connection fails the service exits immediately — a misconfigured DB in
+	// production is an operational error, not something to silently work around.
+	//
+	// When DATABASE_URL is unset (local dev / unit-test environments) the service
+	// starts with a no-op deduplicator and logs a warning. Duplicate notifications
+	// are acceptable in dev; set DATABASE_URL in staging/production.
+	var dedup port.Deduplicator
+	if cfg.DatabaseURL != "" {
+		initCtx, initCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		pool, err := database.NewPool(initCtx, database.Config{
+			URL:      cfg.DatabaseURL,
+			MaxConns: 5,
+			MinConns: 1,
+		})
+		initCancel()
+		if err != nil {
+			slog.Error("failed to connect to database for event deduplication", "error", err)
+			os.Exit(1)
+		}
+		defer pool.Close()
+		dedup = notificationpostgres.NewEventDeduplicator(pool)
+		slog.Info("event deduplicator ready")
+	} else {
+		slog.Warn("DATABASE_URL not set; shipping event deduplication disabled — set DATABASE_URL in production to prevent duplicate notifications")
 	}
 
 	// Email sender (log-only for MVP).
@@ -56,6 +89,9 @@ func main() {
 	inventorySub := subscriber.NewInventorySubscriber(sub, sender)
 	inquirySub := subscriber.NewInquirySubscriber(sub, sender)
 	reviewSub := subscriber.NewReviewSubscriber(sub, sender)
+	// ShippingSubscriber uses the deduplicator to prevent duplicate emails on
+	// at-least-once re-deliveries. dedup may be nil (no-op) if DB is absent.
+	shippingSub := subscriber.NewShippingSubscriber(sub, sender, dedup)
 
 	go func() {
 		if err := orderSub.Start(ctx); err != nil {
@@ -81,8 +117,14 @@ func main() {
 		}
 	}()
 
+	go func() {
+		if err := shippingSub.Start(ctx); err != nil {
+			slog.Error("shipping subscriber error", "error", err)
+		}
+	}()
+
 	// Health handler.
-	healthHandler := handler.NewHealthHandler()
+	healthHandler := notificationhandler.NewHealthHandler()
 
 	// Router.
 	r := chi.NewRouter()
