@@ -7,8 +7,11 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/port"
 )
@@ -83,56 +86,50 @@ func (s *EventSubscriber) handleUserEvent(ctx context.Context, event pubsub.Even
 	return nil
 }
 
-// orderEventData represents the data payload for order events.
-type orderEventData struct {
-	OrderID string          `json:"order_id"`
-	UserID  string          `json:"user_id"`
-	Lines   []orderLineData `json:"lines"`
-}
-
-// orderLineData represents a single line item in an order.
-type orderLineData struct {
-	ProductID string `json:"product_id"`
-	Quantity  int    `json:"quantity"`
-}
-
-// handleOrderEvent processes order.paid events and records "purchased" events for
-// all order line items.
+// handleOrderEvent processes order.paid events as a "purchased" signal for the
+// buyer. The canonical payload is orderv1.OrderPaid which carries order_id +
+// buyer_auth0_id + seller_id + total_amount but no line items — per-line
+// product affinity would require the order service to include lines on
+// order.paid or a callback to order. For now we record a single purchased
+// event keyed on (buyer_auth0_id, order_id) so the recommender still knows a
+// purchase happened.
 func (s *EventSubscriber) handleOrderEvent(ctx context.Context, event pubsub.Event) error {
 	if event.Type != "order.paid" {
-		return nil // only process paid orders
+		return nil
 	}
 
-	dataBytes, err := json.Marshal(event.Data)
+	var data orderv1.OrderPaid
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
+		return fmt.Errorf("decode order.paid data: %w", err)
+	}
+
+	orderID, err := uuid.Parse(data.OrderId)
+	if err != nil {
+		return fmt.Errorf("parse order_id %q: %w", data.OrderId, err)
+	}
+
+	ue := domain.UserEvent{
+		UserID:    data.BuyerAuth0Id,
+		EventType: domain.Purchased,
+		ProductID: orderID, // Order-scoped signal until line-level data is in the contract.
+	}
+	if err := s.svc.RecordUserEvent(ctx, ue); err != nil {
+		slog.Error("failed to record purchase event", "order_id", data.OrderId, "error", err)
+		return err
+	}
+
+	slog.Info("processed order.paid event", "order_id", data.OrderId, "buyer_auth0_id", data.BuyerAuth0Id)
+	return nil
+}
+
+func decodeProtoEventData(eventData any, target protoreflect.ProtoMessage) error {
+	raw, err := json.Marshal(eventData)
 	if err != nil {
 		return fmt.Errorf("marshal event data: %w", err)
 	}
-
-	var data orderEventData
-	if err := json.Unmarshal(dataBytes, &data); err != nil {
-		slog.Error("failed to decode order event data", "error", err)
-		return fmt.Errorf("unmarshal order event data: %w", err)
+	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal(raw, target); err != nil {
+		return fmt.Errorf("unmarshal proto event data: %w", err)
 	}
-
-	for _, line := range data.Lines {
-		productID, err := uuid.Parse(line.ProductID)
-		if err != nil {
-			slog.Error("failed to parse product_id in order line", "product_id", line.ProductID, "error", err)
-			continue
-		}
-
-		ue := domain.UserEvent{
-			UserID:    data.UserID,
-			EventType: domain.Purchased,
-			ProductID: productID,
-		}
-
-		if err := s.svc.RecordUserEvent(ctx, ue); err != nil {
-			slog.Error("failed to record purchase event", "product_id", line.ProductID, "error", err)
-			// Continue processing other lines even if one fails.
-		}
-	}
-
-	slog.Info("processed order.paid event", "order_id", data.OrderID, "lines", len(data.Lines))
 	return nil
 }

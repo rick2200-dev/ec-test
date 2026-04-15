@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 )
 
 // Cancellation RPCs are INTENTIONALLY unimplemented on the gRPC path.

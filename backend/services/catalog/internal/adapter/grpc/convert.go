@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	catalogv1 "github.com/Riku-KANO/ec-test/gen/go/catalog/v1"
-	commonv1 "github.com/Riku-KANO/ec-test/gen/go/common/v1"
+	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
+	commonv1 "github.com/Riku-KANO/ec-test/shared/api/gen/go/common/v1"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
 )
 

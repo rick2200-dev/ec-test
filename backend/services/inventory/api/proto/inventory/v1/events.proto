@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1;inventoryv1";
+
+// InventoryUpdated is published whenever a SKU's stock level changes.
+message InventoryUpdated {
+  string sku_id = 1;
+  string seller_id = 2;
+  int32 quantity_available = 3;
+  int32 quantity_reserved = 4;
+}
+
+// LowStock is published when a SKU's available quantity falls at or below
+// its configured threshold. Subscribers: notification (alert the seller).
+message LowStock {
+  string sku_id = 1;
+  string seller_id = 2;
+  int32 quantity_available = 3;
+  int32 quantity_reserved = 4;
+  int32 low_stock_threshold = 5;
+}

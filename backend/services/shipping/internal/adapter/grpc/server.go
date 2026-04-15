@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	shippingv1 "github.com/Riku-KANO/ec-test/gen/go/shipping/v1"
+	shippingv1 "github.com/Riku-KANO/ec-test/services/shipping/api/gen/go/shipping/v1"
 )
 
 // Server implements shippingv1.ShippingServiceServer.

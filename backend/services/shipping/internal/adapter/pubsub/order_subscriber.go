@@ -7,14 +7,18 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/services/shipping/internal/port"
 )
 
 const orderSubscription = "order-events-shipping"
 
 // OrderSubscriber listens for order events and manages shipment lifecycle.
+// Payload schemas are defined in services/order/api/proto/order/v1/events.proto.
 type OrderSubscriber struct {
 	subscriber pubsub.Subscriber
 	svc        port.ShipmentUseCase
@@ -47,26 +51,17 @@ func (s *OrderSubscriber) handleEvent(ctx context.Context, event pubsub.Event) e
 	}
 }
 
-// orderPaidData mirrors the payload published by the order service for order.paid.
-// Field names here must stay in sync with order/internal/domain/events.go.
-type orderPaidData struct {
-	OrderID             string `json:"order_id"`
-	SellerID            string `json:"seller_id"`
-	BuyerAuth0ID        string `json:"buyer_auth0_id"`
-	ShippingAddressJSON string `json:"shipping_address_json"`
-}
-
 func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Event) error {
-	var data orderPaidData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.OrderPaid
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.paid data: %w", err)
 	}
 
-	sellerID, err := uuid.Parse(data.SellerID)
+	sellerID, err := uuid.Parse(data.SellerId)
 	if err != nil {
 		return fmt.Errorf("parse seller_id: %w", err)
 	}
-	orderID, err := uuid.Parse(data.OrderID)
+	orderID, err := uuid.Parse(data.OrderId)
 	if err != nil {
 		return fmt.Errorf("parse order_id: %w", err)
 	}
@@ -74,44 +69,43 @@ func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Even
 	if err := s.svc.CreateShipment(ctx, port.CreateShipmentInput{
 		SellerID:        sellerID,
 		OrderID:         orderID,
-		BuyerAuth0ID:    data.BuyerAuth0ID,
-		ShippingAddress: []byte(data.ShippingAddressJSON),
+		BuyerAuth0ID:    data.BuyerAuth0Id,
+		ShippingAddress: []byte(data.ShippingAddressJson),
 	}); err != nil {
-		return fmt.Errorf("create shipment for order %s: %w", data.OrderID, err)
+		return fmt.Errorf("create shipment for order %s: %w", data.OrderId, err)
 	}
 
-	slog.Info("shipment created for order", "order_id", data.OrderID)
+	slog.Info("shipment created for order", "order_id", data.OrderId)
 	return nil
 }
 
-// orderCancelledData mirrors the cancellation payload from the order service.
-type orderCancelledData struct {
-	OrderID string `json:"order_id"`
-}
-
 func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub.Event) error {
-	var data orderCancelledData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.OrderCancelled
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.cancelled data: %w", err)
 	}
 
-	orderID, err := uuid.Parse(data.OrderID)
+	orderID, err := uuid.Parse(data.OrderId)
 	if err != nil {
 		return fmt.Errorf("parse order_id: %w", err)
 	}
 
 	if err := s.svc.CancelShipment(ctx, orderID); err != nil {
-		return fmt.Errorf("cancel shipment for order %s: %w", data.OrderID, err)
+		return fmt.Errorf("cancel shipment for order %s: %w", data.OrderId, err)
 	}
 
-	slog.Info("shipment cancelled for order", "order_id", data.OrderID)
+	slog.Info("shipment cancelled for order", "order_id", data.OrderId)
 	return nil
 }
 
-func decodeEventData(eventData any, target any) error {
+func decodeProtoEventData(eventData any, target protoreflect.ProtoMessage) error {
 	raw, err := json.Marshal(eventData)
 	if err != nil {
 		return fmt.Errorf("marshal event data: %w", err)
 	}
-	return json.Unmarshal(raw, target)
+	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal(raw, target); err != nil {
+		return fmt.Errorf("unmarshal proto event data: %w", err)
+	}
+	return nil
 }

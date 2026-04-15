@@ -1,0 +1,866 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "subscription/v1/subscription.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "SubscriptionService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/buyer-plans": {
+      "get": {
+        "summary": "--- Buyer plans ---",
+        "operationId": "SubscriptionService_ListBuyerPlans",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListBuyerPlansResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubscriptionService"
+        ]
+      },
+      "post": {
+        "operationId": "SubscriptionService_CreateBuyerPlan",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateBuyerPlanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateBuyerPlanRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      }
+    },
+    "/v1/buyer-plans/{plan_id}": {
+      "get": {
+        "operationId": "SubscriptionService_GetBuyerPlan",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetBuyerPlanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      },
+      "put": {
+        "operationId": "SubscriptionService_UpdateBuyerPlan",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateBuyerPlanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SubscriptionServiceUpdateBuyerPlanBody"
+            }
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      }
+    },
+    "/v1/buyers/{buyer_auth0_id}/subscription": {
+      "get": {
+        "summary": "--- Buyer subscriptions ---\nGetBuyerSubscription is on the order service hot path — order calls it\nduring order creation to decide whether to waive the shipping fee.",
+        "operationId": "SubscriptionService_GetBuyerSubscription",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetBuyerSubscriptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "buyer_auth0_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      },
+      "post": {
+        "operationId": "SubscriptionService_SubscribeBuyer",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SubscribeBuyerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "buyer_auth0_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SubscriptionServiceSubscribeBuyerBody"
+            }
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      }
+    },
+    "/v1/seller-plans": {
+      "get": {
+        "summary": "--- Seller plans ---",
+        "operationId": "SubscriptionService_ListSellerPlans",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListSellerPlansResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubscriptionService"
+        ]
+      },
+      "post": {
+        "operationId": "SubscriptionService_CreateSellerPlan",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateSellerPlanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateSellerPlanRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      }
+    },
+    "/v1/seller-plans/{plan_id}": {
+      "get": {
+        "operationId": "SubscriptionService_GetSellerPlan",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSellerPlanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      },
+      "put": {
+        "operationId": "SubscriptionService_UpdateSellerPlan",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateSellerPlanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SubscriptionServiceUpdateSellerPlanBody"
+            }
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      }
+    },
+    "/v1/sellers/{seller_id}/subscription": {
+      "get": {
+        "summary": "--- Seller subscriptions ---",
+        "operationId": "SubscriptionService_GetSellerSubscription",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSellerSubscriptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      },
+      "post": {
+        "operationId": "SubscriptionService_SubscribeSeller",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SubscribeSellerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SubscriptionServiceSubscribeSellerBody"
+            }
+          }
+        ],
+        "tags": [
+          "SubscriptionService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "SubscriptionServiceSubscribeBuyerBody": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string"
+        }
+      }
+    },
+    "SubscriptionServiceSubscribeSellerBody": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string"
+        }
+      }
+    },
+    "SubscriptionServiceUpdateBuyerPlanBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/definitions/v1Money"
+        },
+        "features": {
+          "$ref": "#/definitions/v1BuyerPlanFeatures"
+        },
+        "stripe_price_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "SubscriptionServiceUpdateSellerPlanBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "price": {
+          "$ref": "#/definitions/v1Money"
+        },
+        "features": {
+          "$ref": "#/definitions/v1PlanFeatures"
+        },
+        "stripe_price_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1BuyerPlan": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/definitions/v1Money"
+        },
+        "features": {
+          "$ref": "#/definitions/v1BuyerPlanFeatures"
+        },
+        "stripe_price_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1BuyerPlanFeatures": {
+      "type": "object",
+      "properties": {
+        "free_shipping": {
+          "type": "boolean"
+        }
+      },
+      "description": "BuyerPlanFeatures intentionally mirrors only the flags we ship today.\nGrow this as new flags get added."
+    },
+    "v1BuyerSubscription": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "buyer_auth0_id": {
+          "type": "string"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "stripe_subscription_id": {
+          "type": "string"
+        },
+        "stripe_customer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "current_period_start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "current_period_end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "canceled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "plan_name": {
+          "type": "string"
+        },
+        "plan_slug": {
+          "type": "string"
+        },
+        "features": {
+          "$ref": "#/definitions/v1BuyerPlanFeatures"
+        }
+      }
+    },
+    "v1CreateBuyerPlanRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/definitions/v1Money"
+        },
+        "features": {
+          "$ref": "#/definitions/v1BuyerPlanFeatures"
+        },
+        "stripe_price_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CreateBuyerPlanResponse": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/v1BuyerPlan"
+        }
+      }
+    },
+    "v1CreateSellerPlanRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "price": {
+          "$ref": "#/definitions/v1Money"
+        },
+        "features": {
+          "$ref": "#/definitions/v1PlanFeatures"
+        },
+        "stripe_price_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CreateSellerPlanResponse": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/v1SellerPlan"
+        }
+      }
+    },
+    "v1GetBuyerPlanResponse": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/v1BuyerPlan"
+        }
+      }
+    },
+    "v1GetBuyerSubscriptionResponse": {
+      "type": "object",
+      "properties": {
+        "subscription": {
+          "$ref": "#/definitions/v1BuyerSubscription"
+        }
+      }
+    },
+    "v1GetSellerPlanResponse": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/v1SellerPlan"
+        }
+      }
+    },
+    "v1GetSellerSubscriptionResponse": {
+      "type": "object",
+      "properties": {
+        "subscription": {
+          "$ref": "#/definitions/v1SellerSubscription"
+        }
+      }
+    },
+    "v1ListBuyerPlansResponse": {
+      "type": "object",
+      "properties": {
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BuyerPlan"
+          }
+        }
+      }
+    },
+    "v1ListSellerPlansResponse": {
+      "type": "object",
+      "properties": {
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SellerPlan"
+          }
+        }
+      }
+    },
+    "v1Money": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "string",
+          "format": "int64",
+          "title": "Amount in smallest currency unit (e.g., cents/yen)"
+        },
+        "currency": {
+          "type": "string",
+          "title": "ISO 4217 currency code (e.g., \"JPY\")"
+        }
+      },
+      "description": "Money represents a monetary amount."
+    },
+    "v1PlanFeatures": {
+      "type": "object",
+      "properties": {
+        "max_products": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "search_boost": {
+          "type": "number",
+          "format": "double"
+        },
+        "featured_slots": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "promoted_results": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "description": "PlanFeatures describes the seller-plan capabilities granted to a seller.\nKept as concrete fields (not a map) so clients get type-checked access to\nthe search-boost value that the search service relies on."
+    },
+    "v1SellerPlan": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "price": {
+          "$ref": "#/definitions/v1Money"
+        },
+        "features": {
+          "$ref": "#/definitions/v1PlanFeatures"
+        },
+        "stripe_price_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1SellerSubscription": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "seller_id": {
+          "type": "string"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "stripe_subscription_id": {
+          "type": "string"
+        },
+        "stripe_customer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "current_period_start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "current_period_end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "canceled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "plan_name": {
+          "type": "string",
+          "description": "Plan summary fields, joined server-side so callers don't round-trip."
+        },
+        "plan_slug": {
+          "type": "string"
+        },
+        "plan_tier": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1SubscribeBuyerResponse": {
+      "type": "object",
+      "properties": {
+        "subscription": {
+          "$ref": "#/definitions/v1BuyerSubscription"
+        }
+      }
+    },
+    "v1SubscribeSellerResponse": {
+      "type": "object",
+      "properties": {
+        "subscription": {
+          "$ref": "#/definitions/v1SellerSubscription"
+        }
+      }
+    },
+    "v1UpdateBuyerPlanResponse": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/v1BuyerPlan"
+        }
+      }
+    },
+    "v1UpdateSellerPlanResponse": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/v1SellerPlan"
+        }
+      }
+    }
+  }
+}

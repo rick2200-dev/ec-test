@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	commonv1 "github.com/Riku-KANO/ec-test/gen/go/common/v1"
-	inventoryv1 "github.com/Riku-KANO/ec-test/gen/go/inventory/v1"
+	commonv1 "github.com/Riku-KANO/ec-test/shared/api/gen/go/common/v1"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/port"
 )

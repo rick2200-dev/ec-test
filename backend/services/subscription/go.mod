@@ -3,7 +3,8 @@ module github.com/Riku-KANO/ec-test/services/subscription
 go 1.25.3
 
 require (
-	github.com/Riku-KANO/ec-test/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/subscription/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/shared/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/Riku-KANO/ec-test/pkg v0.0.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
@@ -35,4 +36,6 @@ require (
 
 replace github.com/Riku-KANO/ec-test/pkg => ../../pkg
 
-replace github.com/Riku-KANO/ec-test/gen/go => ../../gen/go
+replace github.com/Riku-KANO/ec-test/services/subscription/api/gen/go => ./api/gen/go
+
+replace github.com/Riku-KANO/ec-test/shared/api/gen/go => ../../shared/api/gen/go

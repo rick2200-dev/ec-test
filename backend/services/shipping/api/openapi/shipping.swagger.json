@@ -1,0 +1,263 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "shipping/v1/events.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "ShippingService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/orders/{order_id}/shipment": {
+      "get": {
+        "operationId": "ShippingService_GetShipmentByOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetShipmentByOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ShippingService"
+        ]
+      }
+    },
+    "/v1/shipments/{id}/deliver": {
+      "post": {
+        "operationId": "ShippingService_MarkDelivered",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarkDeliveredResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ShippingServiceMarkDeliveredBody"
+            }
+          }
+        ],
+        "tags": [
+          "ShippingService"
+        ]
+      }
+    },
+    "/v1/shipments/{id}/register": {
+      "post": {
+        "operationId": "ShippingService_RegisterShipment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RegisterShipmentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ShippingServiceRegisterShipmentBody"
+            }
+          }
+        ],
+        "tags": [
+          "ShippingService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "ShippingServiceMarkDeliveredBody": {
+      "type": "object",
+      "properties": {
+        "seller_id": {
+          "type": "string"
+        },
+        "delivered_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ShippingServiceRegisterShipmentBody": {
+      "type": "object",
+      "properties": {
+        "seller_id": {
+          "type": "string"
+        },
+        "carrier": {
+          "type": "string"
+        },
+        "tracking_number": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "shipped_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1GetShipmentByOrderResponse": {
+      "type": "object",
+      "properties": {
+        "shipment": {
+          "$ref": "#/definitions/v1Shipment"
+        }
+      }
+    },
+    "v1MarkDeliveredResponse": {
+      "type": "object",
+      "properties": {
+        "shipment": {
+          "$ref": "#/definitions/v1Shipment"
+        }
+      }
+    },
+    "v1RegisterShipmentResponse": {
+      "type": "object",
+      "properties": {
+        "shipment": {
+          "$ref": "#/definitions/v1Shipment"
+        }
+      }
+    },
+    "v1Shipment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "seller_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "buyer_auth0_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "title": "pending | ready_to_ship | shipped | delivered | cancelled"
+        },
+        "carrier": {
+          "type": "string"
+        },
+        "tracking_number": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "shipping_address_json": {
+          "type": "string"
+        },
+        "shipped_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "delivered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "Shipment represents a physical delivery associated with an order."
+    }
+  }
+}

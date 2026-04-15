@@ -1,0 +1,19 @@
+version: v2
+deps:
+  - buf.build/googleapis/googleapis
+modules:
+  - path: shared/api/proto
+  - path: services/cart/api/proto
+  - path: services/catalog/api/proto
+  - path: services/inquiry/api/proto
+  - path: services/inventory/api/proto
+  - path: services/order/api/proto
+  - path: services/review/api/proto
+  - path: services/shipping/api/proto
+  - path: services/subscription/api/proto
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

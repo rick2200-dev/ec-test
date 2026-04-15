@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package cart.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/cart/api/gen/go/cart/v1;cartv1";
+
+// CartCheckedOut is published on the "cart-events" topic when a buyer
+// successfully completes checkout. Downstream consumers (e.g. recommend) use
+// this event to record user purchase behaviour.
+message CartCheckedOut {
+  string buyer_auth0_id = 1;
+  repeated string order_ids = 2;
+  string stripe_payment_intent_id = 3;
+  int64 total_amount = 4;
+  string currency = 5;
+}

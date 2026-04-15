@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package review.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/review/api/gen/go/review/v1;reviewv1";
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ReviewService provides product review operations.
+service ReviewService {
+  // Buyer operations
+  rpc CreateReview(CreateReviewRequest) returns (CreateReviewResponse);
+  rpc GetReview(GetReviewRequest) returns (GetReviewResponse);
+  rpc UpdateReview(UpdateReviewRequest) returns (UpdateReviewResponse);
+  rpc DeleteReview(DeleteReviewRequest) returns (DeleteReviewResponse);
+
+  // Public queries
+  rpc ListProductReviews(ListProductReviewsRequest) returns (ListProductReviewsResponse);
+  rpc GetProductRating(GetProductRatingRequest) returns (GetProductRatingResponse);
+
+  // Seller operations
+  rpc ListSellerReviews(ListSellerReviewsRequest) returns (ListSellerReviewsResponse);
+  rpc CreateReply(CreateReplyRequest) returns (CreateReplyResponse);
+  rpc UpdateReply(UpdateReplyRequest) returns (UpdateReplyResponse);
+  rpc DeleteReply(DeleteReplyRequest) returns (DeleteReplyResponse);
+}
+
+// Review represents a buyer's review of a product.
+message Review {
+  string id = 1;
+  string buyer_auth0_id = 2;
+  string product_id = 3;
+  string seller_id = 4;
+  string product_name = 5;
+  int32 rating = 6;
+  string title = 7;
+  string body = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  ReviewReply reply = 11; // May be null if no reply exists
+}
+
+// ReviewReply represents a seller's reply to a review.
+message ReviewReply {
+  string id = 1;
+  string review_id = 2;
+  string seller_auth0_id = 3;
+  string body = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// ProductRating is the aggregate rating for a product.
+message ProductRating {
+  string product_id = 1;
+  double average_rating = 2;
+  int32 review_count = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// --- Request / Response messages ---
+
+message CreateReviewRequest {
+  string buyer_auth0_id = 1;
+  string product_id = 2;
+  int32 rating = 3;
+  string title = 4;
+  string body = 5;
+}
+
+message CreateReviewResponse {
+  Review review = 1;
+}
+
+message GetReviewRequest {
+  string review_id = 1;
+}
+
+message GetReviewResponse {
+  Review review = 1;
+}
+
+message UpdateReviewRequest {
+  string review_id = 1;
+  string buyer_auth0_id = 2;
+  optional int32 rating = 3;
+  optional string title = 4;
+  optional string body = 5;
+}
+
+message UpdateReviewResponse {
+  Review review = 1;
+}
+
+message DeleteReviewRequest {
+  string review_id = 1;
+  string buyer_auth0_id = 2;
+}
+
+message DeleteReviewResponse {}
+
+message ListProductReviewsRequest {
+  string product_id = 1;
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message ListProductReviewsResponse {
+  repeated Review reviews = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message GetProductRatingRequest {
+  string product_id = 1;
+}
+
+message GetProductRatingResponse {
+  ProductRating rating = 1;
+}
+
+message ListSellerReviewsRequest {
+  string seller_id = 1;
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message ListSellerReviewsResponse {
+  repeated Review reviews = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateReplyRequest {
+  string review_id = 1;
+  string seller_auth0_id = 2;
+  string seller_id = 3;
+  string body = 4;
+}
+
+message CreateReplyResponse {
+  ReviewReply reply = 1;
+}
+
+message UpdateReplyRequest {
+  string review_id = 1;
+  string seller_auth0_id = 2;
+  string seller_id = 3;
+  string body = 4;
+}
+
+message UpdateReplyResponse {
+  ReviewReply reply = 1;
+}
+
+message DeleteReplyRequest {
+  string review_id = 1;
+  string seller_id = 2;
+}
+
+message DeleteReplyResponse {}

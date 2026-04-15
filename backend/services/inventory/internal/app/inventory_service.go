@@ -8,6 +8,7 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/port"
 )
@@ -23,10 +24,6 @@ func NewInventoryService(repo port.InventoryStore, publisher pubsub.Publisher) *
 	return &InventoryService{repo: repo, publisher: publisher}
 }
 
-// publishEvent publishes an event if the publisher is configured.
-func (s *InventoryService) publishEvent(ctx context.Context, eventType, topic string, data any) {
-	pubsub.PublishEvent(ctx, s.publisher, eventType, topic, data)
-}
 
 // GetInventory retrieves inventory for a specific SKU.
 func (s *InventoryService) GetInventory(ctx context.Context, skuID uuid.UUID) (*domain.Inventory, error) {
@@ -67,11 +64,11 @@ func (s *InventoryService) UpdateStock(ctx context.Context, inv *domain.Inventor
 
 	slog.Info("stock updated", "sku_id", inv.SKUID)
 
-	s.publishEvent(ctx, "inventory.updated", "inventory-events", map[string]any{
-		"sku_id":             inv.SKUID.String(),
-		"seller_id":          inv.SellerID.String(),
-		"quantity_available": inv.QuantityAvailable,
-		"quantity_reserved":  inv.QuantityReserved,
+	pubsub.PublishProtoEvent(ctx, s.publisher, "inventory.updated", "inventory-events", &inventoryv1.InventoryUpdated{
+		SkuId:             inv.SKUID.String(),
+		SellerId:          inv.SellerID.String(),
+		QuantityAvailable: int32(inv.QuantityAvailable),
+		QuantityReserved:  int32(inv.QuantityReserved),
 	})
 
 	return nil
@@ -101,16 +98,14 @@ func (s *InventoryService) ReserveStock(ctx context.Context, skuID uuid.UUID, qu
 
 	// Check for low stock after reservation.
 	inv, invErr := s.repo.GetBySKUID(ctx, skuID)
-	if invErr == nil && inv != nil {
-		eventData := map[string]any{
-			"sku_id":             inv.SKUID.String(),
-			"seller_id":          inv.SellerID.String(),
-			"quantity_available": inv.QuantityAvailable,
-			"quantity_reserved":  inv.QuantityReserved,
-		}
-		if inv.QuantityAvailable <= inv.LowStockThreshold {
-			s.publishEvent(ctx, "inventory.low_stock", "inventory-events", eventData)
-		}
+	if invErr == nil && inv != nil && inv.QuantityAvailable <= inv.LowStockThreshold {
+		pubsub.PublishProtoEvent(ctx, s.publisher, "inventory.low_stock", "inventory-events", &inventoryv1.LowStock{
+			SkuId:             inv.SKUID.String(),
+			SellerId:          inv.SellerID.String(),
+			QuantityAvailable: int32(inv.QuantityAvailable),
+			QuantityReserved:  int32(inv.QuantityReserved),
+			LowStockThreshold: int32(inv.LowStockThreshold),
+		})
 	}
 
 	return nil

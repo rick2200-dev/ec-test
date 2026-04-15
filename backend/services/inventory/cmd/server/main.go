@@ -14,7 +14,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"google.golang.org/grpc"
 
-	inventoryv1 "github.com/Riku-KANO/ec-test/gen/go/inventory/v1"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"

@@ -11,6 +11,7 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/port"
 )
@@ -144,10 +145,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, input domain.CreateOrder
 
 	slog.Info("order created", "order_id", order.ID, "total", totalAmount)
 
-	pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", domain.OrderCreatedEvent{
-		OrderID:      order.ID.String(),
-		SellerID:     order.SellerID.String(),
-		BuyerAuth0ID: order.BuyerAuth0ID,
+	pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", &orderv1.OrderCreated{
+		OrderId:      order.ID.String(),
+		SellerId:     order.SellerID.String(),
+		BuyerAuth0Id: order.BuyerAuth0ID,
 		TotalAmount:  totalAmount,
 		Currency:     currency,
 	})
@@ -294,13 +295,13 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 	// 7. Publish order.created for each order in the checkout.
 	for i := range batch {
 		o := batch[i].Order
-		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", domain.OrderCreatedEvent{
-			OrderID:               o.ID.String(),
-			SellerID:              o.SellerID.String(),
-			BuyerAuth0ID:          o.BuyerAuth0ID,
+		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", &orderv1.OrderCreated{
+			OrderId:               o.ID.String(),
+			SellerId:              o.SellerID.String(),
+			BuyerAuth0Id:          o.BuyerAuth0ID,
 			TotalAmount:           o.TotalAmount,
 			Currency:              o.Currency,
-			StripePaymentIntentID: piID,
+			StripePaymentIntentId: piID,
 		})
 	}
 
@@ -404,10 +405,10 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			if failErr := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusFailed, nil); failErr != nil {
 				slog.Error("failed to mark payout failed", "error", failErr, "payout_id", payout.ID)
 			}
-			pubsub.PublishEvent(ctx, s.publisher, domain.EventTypePayoutFailed, "payout-events", domain.PayoutFailedEvent{
-				PayoutID: payout.ID.String(),
-				OrderID:  order.ID.String(),
-				SellerID: order.SellerID.String(),
+			pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutFailed, "payout-events", &orderv1.PayoutFailed{
+				PayoutId: payout.ID.String(),
+				OrderId:  order.ID.String(),
+				SellerId: order.SellerID.String(),
 				Error:    transferErr.Error(),
 			})
 			continue
@@ -425,21 +426,21 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		)
 
 		// 6. Publish order.paid and payout.completed.
-		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", domain.OrderPaidEvent{
-			OrderID:               order.ID.String(),
-			SellerID:              order.SellerID.String(),
-			BuyerAuth0ID:          order.BuyerAuth0ID,
+		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", &orderv1.OrderPaid{
+			OrderId:               order.ID.String(),
+			SellerId:              order.SellerID.String(),
+			BuyerAuth0Id:          order.BuyerAuth0ID,
 			TotalAmount:           order.TotalAmount,
-			StripePaymentIntentID: stripePaymentIntentID,
-			ShippingAddressJSON:   string(order.ShippingAddress),
+			StripePaymentIntentId: stripePaymentIntentID,
+			ShippingAddressJson:   string(order.ShippingAddress),
 		})
-		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", domain.PayoutCompletedEvent{
-			PayoutID:         payout.ID.String(),
-			OrderID:          order.ID.String(),
-			SellerID:         order.SellerID.String(),
+		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", &orderv1.PayoutCompleted{
+			PayoutId:         payout.ID.String(),
+			OrderId:          order.ID.String(),
+			SellerId:         order.SellerID.String(),
 			Amount:           payout.Amount,
 			Currency:         payout.Currency,
-			StripeTransferID: transferID,
+			StripeTransferId: transferID,
 		})
 	}
 
@@ -544,8 +545,8 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, sellerID, orderID 
 	}
 
 	if status == domain.StatusShipped {
-		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderShipped, "order-events", domain.OrderShippedEvent{
-			OrderID: orderID.String(),
+		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderShipped, "order-events", &orderv1.OrderShipped{
+			OrderId: orderID.String(),
 		})
 	}
 

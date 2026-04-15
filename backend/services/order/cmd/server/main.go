@@ -14,7 +14,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"google.golang.org/grpc"
 
-	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"

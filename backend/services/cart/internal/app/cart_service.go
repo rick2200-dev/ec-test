@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	cartv1 "github.com/Riku-KANO/ec-test/services/cart/api/gen/go/cart/v1"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/port"
 )
@@ -212,10 +213,10 @@ func (s *CartService) Checkout(
 		orderIDStrs = append(orderIDStrs, id.String())
 	}
 
-	pubsub.PublishEvent(ctx, s.publisher, "cart.checked_out", "cart-events", domain.CartCheckedOutEvent{
-		BuyerAuth0ID:          buyerAuth0ID,
-		OrderIDs:              orderIDStrs,
-		StripePaymentIntentID: result.StripePaymentIntentID,
+	pubsub.PublishProtoEvent(ctx, s.publisher, "cart.checked_out", "cart-events", &cartv1.CartCheckedOut{
+		BuyerAuth0Id:          buyerAuth0ID,
+		OrderIds:              orderIDStrs,
+		StripePaymentIntentId: result.StripePaymentIntentID,
 		TotalAmount:           result.TotalAmount,
 		Currency:              result.Currency,
 	})

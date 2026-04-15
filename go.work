@@ -1,19 +1,27 @@
 go 1.25.3
 
 use (
-	./backend/gen/go
 	./backend/pkg
+	./backend/shared/api/gen/go
 	./backend/services/auth
 	./backend/services/cart
+	./backend/services/cart/api/gen/go
 	./backend/services/catalog
+	./backend/services/catalog/api/gen/go
 	./backend/services/gateway
 	./backend/services/inquiry
+	./backend/services/inquiry/api/gen/go
 	./backend/services/inventory
+	./backend/services/inventory/api/gen/go
 	./backend/services/notification
 	./backend/services/order
+	./backend/services/order/api/gen/go
 	./backend/services/recommend
 	./backend/services/review
+	./backend/services/review/api/gen/go
 	./backend/services/search
 	./backend/services/shipping
+	./backend/services/shipping/api/gen/go
 	./backend/services/subscription
+	./backend/services/subscription/api/gen/go
 )

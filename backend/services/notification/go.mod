@@ -4,9 +4,26 @@ go 1.25.3
 
 require (
 	github.com/Riku-KANO/ec-test/pkg v0.0.0
+	github.com/Riku-KANO/ec-test/services/inquiry/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/inventory/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/order/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/review/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/shipping/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
+	google.golang.org/protobuf v1.36.11
 )
+
+replace github.com/Riku-KANO/ec-test/services/shipping/api/gen/go => ../shipping/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/review/api/gen/go => ../review/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/inquiry/api/gen/go => ../inquiry/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/inventory/api/gen/go => ../inventory/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/order/api/gen/go => ../order/api/gen/go
 
 require (
 	cloud.google.com/go v0.123.0 // indirect

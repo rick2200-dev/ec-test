@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	subscriptionv1 "github.com/Riku-KANO/ec-test/gen/go/subscription/v1"
+	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/port"

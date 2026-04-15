@@ -14,7 +14,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"google.golang.org/grpc"
 
-	subscriptionv1 "github.com/Riku-KANO/ec-test/gen/go/subscription/v1"
+	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	grpcserver "github.com/Riku-KANO/ec-test/services/subscription/internal/adapter/grpc"

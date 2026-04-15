@@ -7,9 +7,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	catalogv1 "github.com/Riku-KANO/ec-test/gen/go/catalog/v1"
-	inventoryv1 "github.com/Riku-KANO/ec-test/gen/go/inventory/v1"
-	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
+	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 )
 

@@ -8,6 +8,7 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	inquiryv1 "github.com/Riku-KANO/ec-test/services/inquiry/api/gen/go/inquiry/v1"
 	"github.com/Riku-KANO/ec-test/services/inquiry/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/inquiry/internal/port"
 )
@@ -313,14 +314,13 @@ func (s *InquiryService) publishMessageEvent(
 	if len(preview) > 200 {
 		preview = preview[:200]
 	}
-	data := map[string]any{
-		"inquiry_id":     inq.ID.String(),
-		"seller_id":      inq.SellerID.String(),
-		"buyer_auth0_id": inq.BuyerAuth0ID,
-		"sender_type":    msg.SenderType,
-		"subject":        inq.Subject,
-		"product_name":   inq.ProductName,
-		"body_preview":   preview,
-	}
-	pubsub.PublishEvent(ctx, s.publisher, "inquiry.message_created", inquiryEventTopic, data)
+	pubsub.PublishProtoEvent(ctx, s.publisher, "inquiry.message_created", inquiryEventTopic, &inquiryv1.InquiryMessageCreated{
+		InquiryId:    inq.ID.String(),
+		SellerId:     inq.SellerID.String(),
+		BuyerAuth0Id: inq.BuyerAuth0ID,
+		SenderType:   string(msg.SenderType),
+		Subject:      inq.Subject,
+		ProductName:  inq.ProductName,
+		BodyPreview:  preview,
+	})
 }

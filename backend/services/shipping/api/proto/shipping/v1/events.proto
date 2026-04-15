@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package shipping.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/shipping/api/gen/go/shipping/v1;shippingv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Event type string constants published on the "shipping-events" topic.
+// Keep in sync with the event_type field of the Pub/Sub envelope.
+
+// ShipmentShipped is published when a seller registers a carrier + tracking
+// number for an order line. Subscribers: notification (buyer email),
+// order (status update to "shipped").
+message ShipmentShipped {
+  string shipment_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string carrier = 5;
+  string tracking_number = 6;
+  google.protobuf.Timestamp shipped_at = 7;
+}
+
+// ShipmentDelivered is published when a seller or carrier webhook marks a
+// shipment as delivered. Subscribers: notification (buyer email + review
+// prompt), order (status update to "delivered").
+message ShipmentDelivered {
+  string shipment_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  google.protobuf.Timestamp delivered_at = 5;
+}
+
+// ShipmentCancelled is published when a shipment is cancelled (driven by
+// order.cancelled). v1: audit log only.
+message ShipmentCancelled {
+  string shipment_id = 1;
+  string order_id = 2;
+  string reason = 3;
+}

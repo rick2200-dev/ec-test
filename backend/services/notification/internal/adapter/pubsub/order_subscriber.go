@@ -6,14 +6,27 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/templates"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 )
 
 const orderSubscription = "order-events-notification"
 
 // OrderSubscriber handles order-related events and sends notifications.
+// Payload schemas are defined in services/order/api/proto/order/v1/events.proto —
+// the order service is the single source of truth for field names.
+//
+// TODO(recipient-resolution): handlers currently pass synthetic "buyer:<auth0_id>",
+// "seller:<uuid>", "order:<order_id>" strings to email.Sender. This works for the
+// MVP LogSender but will break when an SMTPSender is wired in, since `to` must be
+// a real email address. Before enabling SMTP, introduce an auth-service
+// BatchResolveEmail RPC (or equivalent) and resolve recipients here. Grep this
+// file for "buyer:" / "seller:" / "order:" to find the call sites.
 type OrderSubscriber struct {
 	subscriber pubsub.Subscriber
 	sender     email.Sender
@@ -60,187 +73,129 @@ func (s *OrderSubscriber) handleEvent(ctx context.Context, event pubsub.Event) e
 	}
 }
 
-type orderCreatedData struct {
-	OrderID     string `json:"order_id"`
-	BuyerName   string `json:"buyer_name"`
-	BuyerEmail  string `json:"buyer_email"`
-	SellerName  string `json:"seller_name"`
-	TotalAmount int64  `json:"total_amount"`
-}
-
 func (s *OrderSubscriber) handleOrderCreated(ctx context.Context, event pubsub.Event) error {
-	var data orderCreatedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.OrderCreated
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.created data: %w", err)
 	}
 
-	subject, body := templates.OrderConfirmation(data.OrderID, data.BuyerName, data.TotalAmount, data.SellerName)
+	subject, body := templates.OrderConfirmation(data.OrderId, "buyer:"+data.BuyerAuth0Id, data.TotalAmount, "seller:"+data.SellerId)
+	recipient := "buyer:" + data.BuyerAuth0Id
 
 	slog.Info("sending order confirmation",
-		"order_id", data.OrderID,
-		"buyer_email", data.BuyerEmail,
+		"order_id", data.OrderId,
+		"recipient", recipient,
 	)
 
-	if err := s.sender.Send(ctx, data.BuyerEmail, subject, body); err != nil {
+	if err := s.sender.Send(ctx, recipient, subject, body); err != nil {
 		return fmt.Errorf("send order confirmation: %w", err)
 	}
 	return nil
 }
 
-type orderPaidData struct {
-	OrderID     string `json:"order_id"`
-	SellerName  string `json:"seller_name"`
-	SellerEmail string `json:"seller_email"`
-	TotalAmount int64  `json:"total_amount"`
-}
-
 func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Event) error {
-	var data orderPaidData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.OrderPaid
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.paid data: %w", err)
 	}
 
-	subject, body := templates.OrderPaidNotification(data.OrderID, data.SellerName, data.TotalAmount)
+	subject, body := templates.OrderPaidNotification(data.OrderId, "seller:"+data.SellerId, data.TotalAmount)
+	recipient := "seller:" + data.SellerId
 
 	slog.Info("sending payment notification to seller",
-		"order_id", data.OrderID,
-		"seller_email", data.SellerEmail,
+		"order_id", data.OrderId,
+		"recipient", recipient,
 	)
 
-	if err := s.sender.Send(ctx, data.SellerEmail, subject, body); err != nil {
+	if err := s.sender.Send(ctx, recipient, subject, body); err != nil {
 		return fmt.Errorf("send payment notification: %w", err)
 	}
 	return nil
 }
 
-type orderShippedData struct {
-	OrderID    string `json:"order_id"`
-	BuyerName  string `json:"buyer_name"`
-	BuyerEmail string `json:"buyer_email"`
-}
-
 func (s *OrderSubscriber) handleOrderShipped(ctx context.Context, event pubsub.Event) error {
-	var data orderShippedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.OrderShipped
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.shipped data: %w", err)
 	}
 
-	subject, body := templates.OrderShippedNotification(data.OrderID, data.BuyerName)
+	subject, body := templates.OrderShippedNotification(data.OrderId, "")
 
-	slog.Info("sending shipping notification",
-		"order_id", data.OrderID,
-		"buyer_email", data.BuyerEmail,
-	)
+	slog.Info("sending shipping notification", "order_id", data.OrderId)
 
-	if err := s.sender.Send(ctx, data.BuyerEmail, subject, body); err != nil {
+	if err := s.sender.Send(ctx, "order:"+data.OrderId, subject, body); err != nil {
 		return fmt.Errorf("send shipping notification: %w", err)
 	}
 	return nil
 }
 
-// ─── Cancellation event handlers ─────────────────────────────
-//
-// These four handlers consume events published by the order service's
-// cancellation package. Field names here must stay in sync with
-// backend/services/order/internal/cancellation/events.go — that file is
-// the source of truth for the payload contract.
-//
-// Today the LogSender just logs to stdout, so we use buyer_auth0_id /
-// seller_id as the "to" address. When a real SMTP backend is wired in
-// and user profiles are resolvable, these handlers will need to
-// translate auth0 sub → email, same as the existing order.created
-// handler will.
-
-type cancellationRequestedData struct {
-	OrderID      string `json:"order_id"`
-	SellerID     string `json:"seller_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	Reason       string `json:"reason"`
-}
-
 func (s *OrderSubscriber) handleCancellationRequested(ctx context.Context, event pubsub.Event) error {
-	var data cancellationRequestedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.CancellationRequested
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.cancellation_requested data: %w", err)
 	}
 
-	subject, body := templates.OrderCancellationRequested(data.OrderID, data.Reason)
+	subject, body := templates.OrderCancellationRequested(data.OrderId, data.Reason)
 
-	// The seller is the recipient — they need to act on the request.
-	if err := s.sender.Send(ctx, data.SellerID, subject, body); err != nil {
+	if err := s.sender.Send(ctx, "seller:"+data.SellerId, subject, body); err != nil {
 		return fmt.Errorf("send cancellation requested notification: %w", err)
 	}
 	return nil
 }
 
-type cancellationApprovedData struct {
-	OrderID      string `json:"order_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	RefundAmount int64  `json:"refund_amount"`
-}
-
 func (s *OrderSubscriber) handleCancellationApproved(ctx context.Context, event pubsub.Event) error {
-	var data cancellationApprovedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.CancellationApproved
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.cancellation_approved data: %w", err)
 	}
 
-	subject, body := templates.OrderCancellationApproved(data.OrderID, data.RefundAmount)
+	subject, body := templates.OrderCancellationApproved(data.OrderId, data.RefundAmount)
 
-	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+	if err := s.sender.Send(ctx, "buyer:"+data.BuyerAuth0Id, subject, body); err != nil {
 		return fmt.Errorf("send cancellation approved notification: %w", err)
 	}
 	return nil
 }
 
-type cancellationRejectedData struct {
-	OrderID       string `json:"order_id"`
-	BuyerAuth0ID  string `json:"buyer_auth0_id"`
-	SellerComment string `json:"seller_comment"`
-}
-
 func (s *OrderSubscriber) handleCancellationRejected(ctx context.Context, event pubsub.Event) error {
-	var data cancellationRejectedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.CancellationRejected
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.cancellation_rejected data: %w", err)
 	}
 
-	subject, body := templates.OrderCancellationRejected(data.OrderID, data.SellerComment)
+	subject, body := templates.OrderCancellationRejected(data.OrderId, data.SellerComment)
 
-	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+	if err := s.sender.Send(ctx, "buyer:"+data.BuyerAuth0Id, subject, body); err != nil {
 		return fmt.Errorf("send cancellation rejected notification: %w", err)
 	}
 	return nil
 }
 
-type orderCancelledNotificationData struct {
-	OrderID      string `json:"order_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	Reason       string `json:"reason"`
-}
-
 func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub.Event) error {
-	var data orderCancelledNotificationData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data orderv1.OrderCancelled
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode order.cancelled data: %w", err)
 	}
 
-	subject, body := templates.OrderCancelledNotification(data.OrderID, data.Reason)
+	subject, body := templates.OrderCancelledNotification(data.OrderId, data.Reason)
 
-	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+	if err := s.sender.Send(ctx, "buyer:"+data.BuyerAuth0Id, subject, body); err != nil {
 		return fmt.Errorf("send order cancelled notification: %w", err)
 	}
 	return nil
 }
 
-// decodeEventData converts event.Data (which may be a map or raw JSON) into the target struct.
-func decodeEventData(eventData any, target any) error {
+// decodeProtoEventData decodes the event payload into a proto message. Use for
+// events whose producer marshals the payload via protojson (producer-owned
+// api/proto/.../events.proto contracts).
+func decodeProtoEventData(eventData any, target protoreflect.ProtoMessage) error {
 	raw, err := json.Marshal(eventData)
 	if err != nil {
 		return fmt.Errorf("marshal event data: %w", err)
 	}
-	if err := json.Unmarshal(raw, target); err != nil {
-		return fmt.Errorf("unmarshal event data: %w", err)
+	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal(raw, target); err != nil {
+		return fmt.Errorf("unmarshal proto event data: %w", err)
 	}
 	return nil
 }

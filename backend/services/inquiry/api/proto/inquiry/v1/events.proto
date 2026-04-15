@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package inquiry.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/inquiry/api/gen/go/inquiry/v1;inquiryv1";
+
+// InquiryMessageCreated is published when a buyer or seller posts a new
+// message on an inquiry thread. Subscribers: notification (emails the
+// opposite party).
+message InquiryMessageCreated {
+  string inquiry_id = 1;
+  string seller_id = 2;
+  string buyer_auth0_id = 3;
+  // sender_type is "buyer" or "seller" — identifies who sent this message
+  // so the notification service can route the email to the opposite party.
+  string sender_type = 4;
+  string subject = 5;
+  string product_name = 6;
+  // body_preview is the message body truncated to 200 characters.
+  string body_preview = 7;
+}

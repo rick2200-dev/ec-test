@@ -118,7 +118,13 @@ test-go:
 
 # ─── Proto & OpenAPI ──────────────────────────────────────────
 proto-gen:
-	buf generate backend/proto
+	@set -e; \
+	for dir in backend/shared/api backend/services/*/api; do \
+		if [ -f $$dir/buf.gen.yaml ]; then \
+			echo "  buf generate $$dir"; \
+			( cd $$dir && buf generate ); \
+		fi; \
+	done
 
 openapi-gen:
 	pnpm --filter api-client generate

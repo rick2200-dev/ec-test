@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/shared/api/gen/go/common/v1;commonv1";
+
+// Money represents a monetary amount.
+message Money {
+  int64 amount = 1;   // Amount in smallest currency unit (e.g., cents/yen)
+  string currency = 2; // ISO 4217 currency code (e.g., "JPY")
+}
+
+// PaginationRequest holds pagination parameters.
+message PaginationRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+// PaginationResponse holds pagination metadata.
+message PaginationResponse {
+  int32 total = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+// RequestContext carries request-scoped identity (single-tenant deployment).
+message RequestContext {
+  string seller_id = 1;  // Empty for buyers and platform admins
+  string user_id = 2;
+  repeated string roles = 3;
+}

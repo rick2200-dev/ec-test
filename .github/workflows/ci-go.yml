@@ -5,8 +5,8 @@ on:
     paths:
       - "backend/services/**"
       - "backend/pkg/**"
-      - "backend/proto/**"
-      - "backend/gen/go/**"
+      - "backend/shared/api/**"
+      - "backend/services/*/api/**"
       - "go.work"
       - "go.work.sum"
       - "infra/db/migrations/**"
@@ -35,8 +35,9 @@ jobs:
             gateway:
               - 'backend/services/gateway/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -44,8 +45,9 @@ jobs:
             auth:
               - 'backend/services/auth/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -53,8 +55,9 @@ jobs:
             cart:
               - 'backend/services/cart/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -62,8 +65,9 @@ jobs:
             catalog:
               - 'backend/services/catalog/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -71,8 +75,9 @@ jobs:
             inventory:
               - 'backend/services/inventory/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -80,8 +85,9 @@ jobs:
             order:
               - 'backend/services/order/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -89,8 +95,9 @@ jobs:
             search:
               - 'backend/services/search/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -98,8 +105,9 @@ jobs:
             recommend:
               - 'backend/services/recommend/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -107,8 +115,9 @@ jobs:
             notification:
               - 'backend/services/notification/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'
@@ -116,8 +125,9 @@ jobs:
             inquiry:
               - 'backend/services/inquiry/**'
               - 'backend/pkg/**'
-              - 'backend/proto/**'
-              - 'backend/gen/go/**'
+              - 'backend/shared/api/**'
+
+              - 'backend/services/*/api/**'
               - 'go.work'
               - 'go.work.sum'
               - 'infra/db/migrations/**'

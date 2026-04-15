@@ -8,6 +8,7 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/templates"
+	reviewv1 "github.com/Riku-KANO/ec-test/services/review/api/gen/go/review/v1"
 )
 
 const reviewSubscription = "review-events-notification"
@@ -47,27 +48,17 @@ func (s *ReviewSubscriber) handleEvent(ctx context.Context, event pubsub.Event) 
 	}
 }
 
-type reviewCreatedData struct {
-	ReviewID     string `json:"review_id"`
-	ProductID    string `json:"product_id"`
-	SellerID     string `json:"seller_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	Rating       int    `json:"rating"`
-	Title        string `json:"title"`
-	ProductName  string `json:"product_name"`
-}
-
 func (s *ReviewSubscriber) handleReviewCreated(ctx context.Context, event pubsub.Event) error {
-	var data reviewCreatedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data reviewv1.ReviewCreated
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode review.created data: %w", err)
 	}
 
-	subject, body := templates.ReviewCreatedNotification(data.ProductName, data.Rating, data.Title)
-	recipientHint := "seller:" + data.SellerID
+	subject, body := templates.ReviewCreatedNotification(data.ProductName, int(data.Rating), data.Title)
+	recipientHint := "seller:" + data.SellerId
 
 	slog.Info("sending review notification",
-		"review_id", data.ReviewID,
+		"review_id", data.ReviewId,
 		"recipient", recipientHint,
 	)
 
@@ -77,26 +68,17 @@ func (s *ReviewSubscriber) handleReviewCreated(ctx context.Context, event pubsub
 	return nil
 }
 
-type reviewRepliedData struct {
-	ReviewID     string `json:"review_id"`
-	ProductID    string `json:"product_id"`
-	SellerID     string `json:"seller_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	ProductName  string `json:"product_name"`
-	ReplyPreview string `json:"reply_preview"`
-}
-
 func (s *ReviewSubscriber) handleReviewReplied(ctx context.Context, event pubsub.Event) error {
-	var data reviewRepliedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data reviewv1.ReviewReplied
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode review.replied data: %w", err)
 	}
 
 	subject, body := templates.ReviewRepliedNotification(data.ProductName, data.ReplyPreview)
-	recipientHint := "buyer:" + data.BuyerAuth0ID
+	recipientHint := "buyer:" + data.BuyerAuth0Id
 
 	slog.Info("sending review reply notification",
-		"review_id", data.ReviewID,
+		"review_id", data.ReviewId,
 		"recipient", recipientHint,
 	)
 

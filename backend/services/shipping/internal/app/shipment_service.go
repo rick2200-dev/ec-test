@@ -6,7 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	shippingv1 "github.com/Riku-KANO/ec-test/services/shipping/api/gen/go/shipping/v1"
 	"github.com/Riku-KANO/ec-test/services/shipping/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/shipping/internal/port"
 )
@@ -82,14 +86,14 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 	shipment.ShippedAt = shippedAt
 	shipment.Note = in.Note
 
-	shippedEvt := domain.ShipmentShippedEvent{
-		ShipmentID:     shipment.ID.String(),
-		OrderID:        shipment.OrderID.String(),
-		SellerID:       shipment.SellerID.String(),
-		BuyerAuth0ID:   shipment.BuyerAuth0ID,
+	shippedEvt := &shippingv1.ShipmentShipped{
+		ShipmentId:     shipment.ID.String(),
+		OrderId:        shipment.OrderID.String(),
+		SellerId:       shipment.SellerID.String(),
+		BuyerAuth0Id:   shipment.BuyerAuth0ID,
 		Carrier:        shipment.Carrier,
 		TrackingNumber: shipment.TrackingNumber,
-		ShippedAt:      *shipment.ShippedAt,
+		ShippedAt:      timestamppb.New(*shipment.ShippedAt),
 	}
 
 	err = s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
@@ -115,7 +119,7 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 		return s.repo.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: domain.EventTypeShipmentShipped,
 			Topic:     "shipping-events",
-			Payload:   mustJSON(shippedEvt),
+			Payload:   mustProtoJSON(shippedEvt),
 		})
 	})
 	if err != nil {
@@ -149,12 +153,12 @@ func (s *ShipmentService) MarkDelivered(ctx context.Context, in port.MarkDeliver
 	shipment.Status = domain.StatusDelivered
 	shipment.DeliveredAt = deliveredAt
 
-	deliveredEvt := domain.ShipmentDeliveredEvent{
-		ShipmentID:   shipment.ID.String(),
-		OrderID:      shipment.OrderID.String(),
-		SellerID:     shipment.SellerID.String(),
-		BuyerAuth0ID: shipment.BuyerAuth0ID,
-		DeliveredAt:  *shipment.DeliveredAt,
+	deliveredEvt := &shippingv1.ShipmentDelivered{
+		ShipmentId:   shipment.ID.String(),
+		OrderId:      shipment.OrderID.String(),
+		SellerId:     shipment.SellerID.String(),
+		BuyerAuth0Id: shipment.BuyerAuth0ID,
+		DeliveredAt:  timestamppb.New(*shipment.DeliveredAt),
 	}
 
 	err = s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
@@ -174,7 +178,7 @@ func (s *ShipmentService) MarkDelivered(ctx context.Context, in port.MarkDeliver
 		return s.repo.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: domain.EventTypeShipmentDelivered,
 			Topic:     "shipping-events",
-			Payload:   mustJSON(deliveredEvt),
+			Payload:   mustProtoJSON(deliveredEvt),
 		})
 	})
 	if err != nil {
@@ -249,5 +253,12 @@ func (s *ShipmentService) ListBySeller(ctx context.Context, in port.ListShipment
 
 func mustJSON(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
+	return b
+}
+
+// mustProtoJSON serializes a proto event payload using snake_case field names
+// so the envelope wire format stays compatible with snake_case consumers.
+func mustProtoJSON(m proto.Message) json.RawMessage {
+	b, _ := protojson.MarshalOptions{UseProtoNames: true}.Marshal(m)
 	return b
 }

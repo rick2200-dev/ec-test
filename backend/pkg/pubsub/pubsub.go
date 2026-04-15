@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // Event is the standard envelope for all Pub/Sub messages.
@@ -59,6 +61,25 @@ func Decode(data []byte) (Event, error) {
 		return Event{}, fmt.Errorf("unmarshal event: %w", err)
 	}
 	return event, nil
+}
+
+// PublishProtoEvent publishes an event whose payload is defined by a proto
+// contract (services/*/api/proto/*/events.proto). The payload is encoded as
+// protojson with snake_case field names so the wire format stays compatible
+// with existing JSON-based consumers. It is a no-op if publisher is nil.
+func PublishProtoEvent(ctx context.Context, publisher Publisher, eventType, topic string, payload proto.Message) {
+	if publisher == nil {
+		return
+	}
+	raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(payload)
+	if err != nil {
+		slog.Warn("failed to marshal proto event payload", "event_type", eventType, "error", err)
+		return
+	}
+	event := NewEvent(eventType, json.RawMessage(raw))
+	if err := publisher.Publish(ctx, topic, event); err != nil {
+		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
+	}
 }
 
 // PublishEvent publishes an event, logging a warning on failure.

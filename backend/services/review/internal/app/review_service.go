@@ -9,6 +9,7 @@ import (
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	reviewv1 "github.com/Riku-KANO/ec-test/services/review/api/gen/go/review/v1"
 	"github.com/Riku-KANO/ec-test/services/review/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/review/internal/port"
 )
@@ -128,14 +129,14 @@ func (s *ReviewService) CreateReview(
 		return nil, err
 	}
 
-	s.publishEvent(ctx, "review.created", map[string]any{
-		"review_id":      review.ID.String(),
-		"product_id":     review.ProductID.String(),
-		"seller_id":      review.SellerID.String(),
-		"buyer_auth0_id": review.BuyerAuth0ID,
-		"rating":         review.Rating,
-		"title":          review.Title,
-		"product_name":   review.ProductName,
+	pubsub.PublishProtoEvent(ctx, s.publisher, "review.created", reviewEventTopic, &reviewv1.ReviewCreated{
+		ReviewId:     review.ID.String(),
+		ProductId:    review.ProductID.String(),
+		SellerId:     review.SellerID.String(),
+		BuyerAuth0Id: review.BuyerAuth0ID,
+		Rating:       int32(review.Rating),
+		Title:        review.Title,
+		ProductName:  review.ProductName,
 	})
 
 	return review, nil
@@ -202,14 +203,14 @@ func (s *ReviewService) UpdateReview(
 		return nil, apperrors.Internal("failed to update review", err)
 	}
 
-	s.publishEvent(ctx, "review.updated", map[string]any{
-		"review_id":      review.ID.String(),
-		"product_id":     review.ProductID.String(),
-		"seller_id":      review.SellerID.String(),
-		"buyer_auth0_id": review.BuyerAuth0ID,
-		"old_rating":     oldRating,
-		"new_rating":     review.Rating,
-		"product_name":   review.ProductName,
+	pubsub.PublishProtoEvent(ctx, s.publisher, "review.updated", reviewEventTopic, &reviewv1.ReviewUpdated{
+		ReviewId:     review.ID.String(),
+		ProductId:    review.ProductID.String(),
+		SellerId:     review.SellerID.String(),
+		BuyerAuth0Id: review.BuyerAuth0ID,
+		OldRating:    int32(oldRating),
+		NewRating:    int32(review.Rating),
+		ProductName:  review.ProductName,
 	})
 
 	return review, nil
@@ -242,12 +243,12 @@ func (s *ReviewService) DeleteReview(
 		return apperrors.Internal("failed to delete review", err)
 	}
 
-	s.publishEvent(ctx, "review.deleted", map[string]any{
-		"review_id":      review.ID.String(),
-		"product_id":     review.ProductID.String(),
-		"seller_id":      review.SellerID.String(),
-		"buyer_auth0_id": review.BuyerAuth0ID,
-		"product_name":   review.ProductName,
+	pubsub.PublishProtoEvent(ctx, s.publisher, "review.deleted", reviewEventTopic, &reviewv1.ReviewDeleted{
+		ReviewId:     review.ID.String(),
+		ProductId:    review.ProductID.String(),
+		SellerId:     review.SellerID.String(),
+		BuyerAuth0Id: review.BuyerAuth0ID,
+		ProductName:  review.ProductName,
 	})
 
 	return nil
@@ -359,13 +360,13 @@ func (s *ReviewService) CreateReply(
 		return nil, err
 	}
 
-	s.publishEvent(ctx, "review.replied", map[string]any{
-		"review_id":      review.ID.String(),
-		"product_id":     review.ProductID.String(),
-		"seller_id":      review.SellerID.String(),
-		"buyer_auth0_id": review.BuyerAuth0ID,
-		"product_name":   review.ProductName,
-		"reply_preview":  truncate(in.Body, 200),
+	pubsub.PublishProtoEvent(ctx, s.publisher, "review.replied", reviewEventTopic, &reviewv1.ReviewReplied{
+		ReviewId:     review.ID.String(),
+		ProductId:    review.ProductID.String(),
+		SellerId:     review.SellerID.String(),
+		BuyerAuth0Id: review.BuyerAuth0ID,
+		ProductName:  review.ProductName,
+		ReplyPreview: truncate(in.Body, 200),
 	})
 
 	return reply, nil
@@ -429,11 +430,6 @@ func (s *ReviewService) DeleteReply(
 		return domain.ErrNotSellerOfProduct
 	}
 	return s.repo.DeleteReply(ctx, reviewID)
-}
-
-// publishEvent is a best-effort publisher for review events.
-func (s *ReviewService) publishEvent(ctx context.Context, eventType string, data map[string]any) {
-	pubsub.PublishEvent(ctx, s.publisher, eventType, reviewEventTopic, data)
 }
 
 func truncate(s string, maxLen int) string {

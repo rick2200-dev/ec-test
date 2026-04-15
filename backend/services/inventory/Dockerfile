@@ -7,7 +7,15 @@ WORKDIR /src
 # Copy go.work and all module files for dependency resolution.
 COPY go.work go.work
 COPY backend/pkg/go.mod backend/pkg/go.sum ./backend/pkg/
-COPY backend/gen/go/go.mod backend/gen/go/go.sum ./backend/gen/go/
+COPY backend/shared/api/gen/go/go.mod ./backend/shared/api/gen/go/
+COPY backend/services/cart/api/gen/go/go.mod ./backend/services/cart/api/gen/go/
+COPY backend/services/catalog/api/gen/go/go.mod ./backend/services/catalog/api/gen/go/
+COPY backend/services/inquiry/api/gen/go/go.mod ./backend/services/inquiry/api/gen/go/
+COPY backend/services/inventory/api/gen/go/go.mod ./backend/services/inventory/api/gen/go/
+COPY backend/services/order/api/gen/go/go.mod ./backend/services/order/api/gen/go/
+COPY backend/services/review/api/gen/go/go.mod ./backend/services/review/api/gen/go/
+COPY backend/services/shipping/api/gen/go/go.mod ./backend/services/shipping/api/gen/go/
+COPY backend/services/subscription/api/gen/go/go.mod ./backend/services/subscription/api/gen/go/
 COPY backend/services/auth/go.mod backend/services/auth/go.sum ./backend/services/auth/
 COPY backend/services/cart/go.mod backend/services/cart/go.sum ./backend/services/cart/
 COPY backend/services/catalog/go.mod backend/services/catalog/go.sum ./backend/services/catalog/
@@ -28,7 +36,15 @@ RUN go mod download
 # Copy source code.
 WORKDIR /src
 COPY backend/pkg/ ./backend/pkg/
-COPY backend/gen/go/ ./backend/gen/go/
+COPY backend/shared/api/gen/go/ ./backend/shared/api/gen/go/
+COPY backend/services/cart/api/gen/go/ ./backend/services/cart/api/gen/go/
+COPY backend/services/catalog/api/gen/go/ ./backend/services/catalog/api/gen/go/
+COPY backend/services/inquiry/api/gen/go/ ./backend/services/inquiry/api/gen/go/
+COPY backend/services/inventory/api/gen/go/ ./backend/services/inventory/api/gen/go/
+COPY backend/services/order/api/gen/go/ ./backend/services/order/api/gen/go/
+COPY backend/services/review/api/gen/go/ ./backend/services/review/api/gen/go/
+COPY backend/services/shipping/api/gen/go/ ./backend/services/shipping/api/gen/go/
+COPY backend/services/subscription/api/gen/go/ ./backend/services/subscription/api/gen/go/
 COPY backend/services/inventory/ ./backend/services/inventory/
 
 # Build the binary.

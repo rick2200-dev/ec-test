@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	catalogv1 "github.com/Riku-KANO/ec-test/gen/go/catalog/v1"
+	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 )
 

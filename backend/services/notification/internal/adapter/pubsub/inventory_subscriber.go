@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/templates"
 )
@@ -47,31 +48,26 @@ func (s *InventorySubscriber) handleEvent(ctx context.Context, event pubsub.Even
 	}
 }
 
-type lowStockData struct {
-	SKUCode      string `json:"sku_code"`
-	ProductName  string `json:"product_name"`
-	CurrentStock int    `json:"current_stock"`
-	Threshold    int    `json:"threshold"`
-	SellerEmail  string `json:"seller_email"`
-}
-
 func (s *InventorySubscriber) handleLowStock(ctx context.Context, event pubsub.Event) error {
-	var data lowStockData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data inventoryv1.LowStock
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode inventory.low_stock data: %w", err)
 	}
 
-	subject, body := templates.LowStockAlert(data.SKUCode, data.ProductName, data.CurrentStock, data.Threshold)
+	// Producer-owned contract carries sku_id/seller_id/quantity. Product
+	// name and seller email are not in the event; notification resolves
+	// the recipient by seller_id hint.
+	subject, body := templates.LowStockAlert(data.SkuId, "", int(data.QuantityAvailable), int(data.LowStockThreshold))
+	recipientHint := "seller:" + data.SellerId
 
 	slog.Info("sending low stock alert",
-		"sku_code", data.SKUCode,
-		"product_name", data.ProductName,
-		"current_stock", data.CurrentStock,
-		"threshold", data.Threshold,
-		"seller_email", data.SellerEmail,
+		"sku_id", data.SkuId,
+		"seller_id", data.SellerId,
+		"quantity_available", data.QuantityAvailable,
+		"low_stock_threshold", data.LowStockThreshold,
 	)
 
-	if err := s.sender.Send(ctx, data.SellerEmail, subject, body); err != nil {
+	if err := s.sender.Send(ctx, recipientHint, subject, body); err != nil {
 		return fmt.Errorf("send low stock alert: %w", err)
 	}
 	return nil

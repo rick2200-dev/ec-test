@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	inventoryv1 "github.com/Riku-KANO/ec-test/gen/go/inventory/v1"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/domain"
 )
 

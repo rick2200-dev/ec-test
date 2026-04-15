@@ -3,20 +3,20 @@ package cancellation
 import (
 	"context"
 
-	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 )
 
 // Pub/Sub topic that carries every order lifecycle event.
-// Kept in one place so the constant cannot drift between call sites.
 const orderEventsTopic = "order-events"
 
-// Event type names for the order-cancellation lifecycle. These strings
-// are the switch-on values for every downstream subscriber
-// (notification, inventory) and are therefore part of the public
-// event contract — renaming is a breaking change.
+// Event type names for the order-cancellation lifecycle. These strings are
+// the switch-on values for every downstream subscriber (notification,
+// inventory). The payload schemas are defined in
+// services/order/api/proto/order/v1/events.proto.
 const (
 	EventTypeCancellationRequested = "order.cancellation_requested"
 	EventTypeCancellationApproved  = "order.cancellation_approved"
@@ -24,133 +24,67 @@ const (
 	EventTypeOrderCancelled        = "order.cancelled"
 )
 
-// CancelledLineItem is the minimal per-line snapshot embedded in the
-// order.cancelled event so the inventory subscriber can release stock
-// without an RPC callback to the order service.
-type CancelledLineItem struct {
-	SKUID       uuid.UUID `json:"sku_id"`
-	ProductName string    `json:"product_name"`
-	SKUCode     string    `json:"sku_code"`
-	Quantity    int       `json:"quantity"`
-}
-
-// Typed event structs for the cancellation lifecycle. Using structs instead
-// of map[string]any makes the event schema self-documenting and catches field
-// name typos at compile time. The JSON tags are the public contract and must
-// not be changed without coordinating downstream subscribers.
-
-type cancellationRequestedEvent struct {
-	RequestID    string `json:"request_id"`
-	OrderID      string `json:"order_id"`
-	SellerID     string `json:"seller_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	Reason       string `json:"reason"`
-}
-
-type cancellationRejectedEvent struct {
-	RequestID     string `json:"request_id"`
-	OrderID       string `json:"order_id"`
-	SellerID      string `json:"seller_id"`
-	BuyerAuth0ID  string `json:"buyer_auth0_id"`
-	SellerComment string `json:"seller_comment"`
-}
-
-type cancellationApprovedEvent struct {
-	RequestID      string `json:"request_id"`
-	OrderID        string `json:"order_id"`
-	SellerID       string `json:"seller_id"`
-	BuyerAuth0ID   string `json:"buyer_auth0_id"`
-	StripeRefundID string `json:"stripe_refund_id"`
-	RefundAmount   int64  `json:"refund_amount"`
-}
-
-type orderCancelledEvent struct {
-	OrderID      string              `json:"order_id"`
-	SellerID     string              `json:"seller_id"`
-	BuyerAuth0ID string              `json:"buyer_auth0_id"`
-	RequestID    string              `json:"request_id"`
-	Reason       string              `json:"reason"`
-	LineItems    []CancelledLineItem `json:"line_items"`
-	CancelledAt  *string             `json:"cancelled_at,omitempty"`
-}
-
-// publishRequested fires order.cancellation_requested after a buyer
-// successfully opens a new request. Consumers: notification.
 func publishRequested(ctx context.Context, pub pubsub.Publisher, req *CancellationRequest, order *domain.Order) {
-	pubsub.PublishEvent(ctx, pub, EventTypeCancellationRequested, orderEventsTopic, cancellationRequestedEvent{
-		RequestID:    req.ID.String(),
-		OrderID:      req.OrderID.String(),
-		SellerID:     order.SellerID.String(),
-		BuyerAuth0ID: req.RequestedByAuth0ID,
+	pubsub.PublishProtoEvent(ctx, pub, EventTypeCancellationRequested, orderEventsTopic, &orderv1.CancellationRequested{
+		RequestId:    req.ID.String(),
+		OrderId:      req.OrderID.String(),
+		SellerId:     order.SellerID.String(),
+		BuyerAuth0Id: req.RequestedByAuth0ID,
 		Reason:       req.Reason,
 	})
 }
 
-// publishRejected fires order.cancellation_rejected after a seller
-// rejects a request. Consumers: notification.
 func publishRejected(ctx context.Context, pub pubsub.Publisher, req *CancellationRequest, order *domain.Order) {
 	comment := ""
 	if req.SellerComment != nil {
 		comment = *req.SellerComment
 	}
-	pubsub.PublishEvent(ctx, pub, EventTypeCancellationRejected, orderEventsTopic, cancellationRejectedEvent{
-		RequestID:     req.ID.String(),
-		OrderID:       req.OrderID.String(),
-		SellerID:      order.SellerID.String(),
-		BuyerAuth0ID:  req.RequestedByAuth0ID,
+	pubsub.PublishProtoEvent(ctx, pub, EventTypeCancellationRejected, orderEventsTopic, &orderv1.CancellationRejected{
+		RequestId:     req.ID.String(),
+		OrderId:       req.OrderID.String(),
+		SellerId:      order.SellerID.String(),
+		BuyerAuth0Id:  req.RequestedByAuth0ID,
 		SellerComment: comment,
 	})
 }
 
-// publishApproved fires order.cancellation_approved after the
-// approval orchestration (Stripe + DB) finishes successfully.
-// Consumers: notification.
 func publishApproved(ctx context.Context, pub pubsub.Publisher, req *CancellationRequest, order *domain.Order, refundAmount int64) {
 	refundID := ""
 	if req.StripeRefundID != nil {
 		refundID = *req.StripeRefundID
 	}
-	pubsub.PublishEvent(ctx, pub, EventTypeCancellationApproved, orderEventsTopic, cancellationApprovedEvent{
-		RequestID:      req.ID.String(),
-		OrderID:        req.OrderID.String(),
-		SellerID:       order.SellerID.String(),
-		BuyerAuth0ID:   req.RequestedByAuth0ID,
-		StripeRefundID: refundID,
+	pubsub.PublishProtoEvent(ctx, pub, EventTypeCancellationApproved, orderEventsTopic, &orderv1.CancellationApproved{
+		RequestId:      req.ID.String(),
+		OrderId:        req.OrderID.String(),
+		SellerId:       order.SellerID.String(),
+		BuyerAuth0Id:   req.RequestedByAuth0ID,
+		StripeRefundId: refundID,
 		RefundAmount:   refundAmount,
 	})
 }
 
-// publishOrderCancelled fires order.cancelled with per-line snapshots
-// so the inventory subscriber can release stock without a callback.
-// Consumers: notification, inventory.
-//
-// The payload intentionally embeds product_name / sku_code alongside
-// sku_id / quantity so the notification email does not need to look
-// up the catalog (orders are immutable for line_items after creation,
-// so these snapshots are already authoritative).
 func publishOrderCancelled(ctx context.Context, pub pubsub.Publisher, req *CancellationRequest, order *domain.Order, lines []domain.OrderLine) {
-	cancelledLines := make([]CancelledLineItem, 0, len(lines))
+	cancelledLines := make([]*orderv1.CancelledLineItem, 0, len(lines))
 	for _, l := range lines {
-		cancelledLines = append(cancelledLines, CancelledLineItem{
-			SKUID:       l.SKUID,
+		cancelledLines = append(cancelledLines, &orderv1.CancelledLineItem{
+			SkuId:       l.SKUID.String(),
 			ProductName: l.ProductName,
-			SKUCode:     l.SKUCode,
-			Quantity:    l.Quantity,
+			SkuCode:     l.SKUCode,
+			Quantity:    int32(l.Quantity),
 		})
 	}
 
-	evt := orderCancelledEvent{
-		OrderID:      order.ID.String(),
-		SellerID:     order.SellerID.String(),
-		BuyerAuth0ID: order.BuyerAuth0ID,
-		RequestID:    req.ID.String(),
+	evt := &orderv1.OrderCancelled{
+		OrderId:      order.ID.String(),
+		SellerId:     order.SellerID.String(),
+		BuyerAuth0Id: order.BuyerAuth0ID,
+		RequestId:    req.ID.String(),
 		Reason:       req.Reason,
 		LineItems:    cancelledLines,
 	}
 	if order.CancelledAt != nil {
-		s := order.CancelledAt.UTC().String()
-		evt.CancelledAt = &s
+		evt.CancelledAt = timestamppb.New(order.CancelledAt.UTC())
 	}
 
-	pubsub.PublishEvent(ctx, pub, EventTypeOrderCancelled, orderEventsTopic, evt)
+	pubsub.PublishProtoEvent(ctx, pub, EventTypeOrderCancelled, orderEventsTopic, evt)
 }

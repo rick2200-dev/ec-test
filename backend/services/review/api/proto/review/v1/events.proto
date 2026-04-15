@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package review.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/review/api/gen/go/review/v1;reviewv1";
+
+// ReviewCreated is published when a buyer posts a new review.
+// Subscribers: notification (email the seller).
+message ReviewCreated {
+  string review_id = 1;
+  string product_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  int32 rating = 5;
+  string title = 6;
+  string product_name = 7;
+}
+
+// ReviewUpdated is published when a buyer edits their review.
+message ReviewUpdated {
+  string review_id = 1;
+  string product_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  int32 old_rating = 5;
+  int32 new_rating = 6;
+  string product_name = 7;
+}
+
+// ReviewDeleted is published when a buyer deletes their review.
+message ReviewDeleted {
+  string review_id = 1;
+  string product_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string product_name = 5;
+}
+
+// ReviewReplied is published when a seller replies to a review.
+// Subscribers: notification (email the buyer).
+message ReviewReplied {
+  string review_id = 1;
+  string product_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string product_name = 5;
+  string reply_preview = 6;
+}

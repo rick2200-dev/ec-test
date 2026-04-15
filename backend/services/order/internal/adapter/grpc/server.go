@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	commonv1 "github.com/Riku-KANO/ec-test/gen/go/common/v1"
-	orderv1 "github.com/Riku-KANO/ec-test/gen/go/order/v1"
+	commonv1 "github.com/Riku-KANO/ec-test/shared/api/gen/go/common/v1"
+	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/port"

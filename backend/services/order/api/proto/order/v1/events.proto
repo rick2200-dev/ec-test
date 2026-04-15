@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package order.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1;orderv1";
+
+import "google/protobuf/timestamp.proto";
+
+// ─── order-events topic ──────────────────────────────────────
+
+// OrderCreated is published when a new order is persisted.
+message OrderCreated {
+  string order_id = 1;
+  string seller_id = 2;
+  string buyer_auth0_id = 3;
+  int64 total_amount = 4;
+  string currency = 5;
+  string stripe_payment_intent_id = 6;
+}
+
+// OrderPaid is published when a Stripe payment_intent.succeeded webhook is
+// processed and the order is marked paid. shipping_address_json is the
+// shipping address JSON snapshot at order creation time — the shipping
+// service uses it to create a shipment without calling back to order.
+message OrderPaid {
+  string order_id = 1;
+  string seller_id = 2;
+  string buyer_auth0_id = 3;
+  int64 total_amount = 4;
+  string stripe_payment_intent_id = 5;
+  string shipping_address_json = 6;
+}
+
+// OrderShipped is published when a seller marks an order as shipped.
+message OrderShipped {
+  string order_id = 1;
+}
+
+// CancelledLineItem is the minimal per-line snapshot embedded in OrderCancelled
+// so the inventory subscriber can release stock without calling back to order.
+message CancelledLineItem {
+  string sku_id = 1;
+  string product_name = 2;
+  string sku_code = 3;
+  int32 quantity = 4;
+}
+
+// CancellationRequested fires after a buyer successfully opens a new request.
+// Subscribers: notification.
+message CancellationRequested {
+  string request_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string reason = 5;
+}
+
+// CancellationRejected fires after a seller rejects a request.
+// Subscribers: notification.
+message CancellationRejected {
+  string request_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string seller_comment = 5;
+}
+
+// CancellationApproved fires after approval orchestration (Stripe + DB)
+// finishes successfully. Subscribers: notification.
+message CancellationApproved {
+  string request_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  string buyer_auth0_id = 4;
+  string stripe_refund_id = 5;
+  int64 refund_amount = 6;
+}
+
+// OrderCancelled fires after the cancellation completes. Subscribers:
+// notification, inventory (releases stock using line_items).
+message OrderCancelled {
+  string order_id = 1;
+  string seller_id = 2;
+  string buyer_auth0_id = 3;
+  string request_id = 4;
+  string reason = 5;
+  repeated CancelledLineItem line_items = 6;
+  google.protobuf.Timestamp cancelled_at = 7;
+}
+
+// ─── payout-events topic ─────────────────────────────────────
+
+// PayoutFailed is published when a Stripe Transfer fails during payment
+// success handling.
+message PayoutFailed {
+  string payout_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  string error = 4;
+}
+
+// PayoutCompleted is published when a Stripe Transfer succeeds and the
+// payout row is marked completed.
+message PayoutCompleted {
+  string payout_id = 1;
+  string order_id = 2;
+  string seller_id = 3;
+  int64 amount = 4;
+  string currency = 5;
+  string stripe_transfer_id = 6;
+}

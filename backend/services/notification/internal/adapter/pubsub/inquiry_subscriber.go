@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	inquiryv1 "github.com/Riku-KANO/ec-test/services/inquiry/api/gen/go/inquiry/v1"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/templates"
 )
@@ -46,23 +47,9 @@ func (s *InquirySubscriber) handleEvent(ctx context.Context, event pubsub.Event)
 	}
 }
 
-// inquiryMessageCreatedData is the expected shape of the event payload
-// emitted by the inquiry service. Recipient email is not carried on the
-// event — the subscriber logs the send without a real SMTP endpoint, so
-// this MVP just records who we would have emailed.
-type inquiryMessageCreatedData struct {
-	InquiryID    string `json:"inquiry_id"`
-	SellerID     string `json:"seller_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-	SenderType   string `json:"sender_type"`
-	Subject      string `json:"subject"`
-	ProductName  string `json:"product_name"`
-	BodyPreview  string `json:"body_preview"`
-}
-
 func (s *InquirySubscriber) handleMessageCreated(ctx context.Context, event pubsub.Event) error {
-	var data inquiryMessageCreatedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data inquiryv1.InquiryMessageCreated
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode inquiry.message_created data: %w", err)
 	}
 
@@ -73,11 +60,11 @@ func (s *InquirySubscriber) handleMessageCreated(ctx context.Context, event pubs
 	case "buyer":
 		senderLabel = "購入者"
 		recipientLabel = "出品者"
-		recipientHint = "seller:" + data.SellerID
+		recipientHint = "seller:" + data.SellerId
 	case "seller":
 		senderLabel = "出品者"
 		recipientLabel = "購入者"
-		recipientHint = "buyer:" + data.BuyerAuth0ID
+		recipientHint = "buyer:" + data.BuyerAuth0Id
 	default:
 		slog.Warn("unknown sender_type on inquiry event", "sender_type", data.SenderType)
 		return nil
@@ -88,7 +75,7 @@ func (s *InquirySubscriber) handleMessageCreated(ctx context.Context, event pubs
 	)
 
 	slog.Info("sending inquiry notification",
-		"inquiry_id", data.InquiryID,
+		"inquiry_id", data.InquiryId,
 		"recipient", recipientHint,
 	)
 

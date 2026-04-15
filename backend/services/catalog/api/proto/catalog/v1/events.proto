@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package catalog.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1;catalogv1";
+
+// ProductCreated is published when a seller adds a new product.
+// Subscribers: search (index), recommend (projection).
+message ProductCreated {
+  string id = 1;
+  string seller_id = 2;
+  string name = 3;
+  string slug = 4;
+  string description = 5;
+  string status = 6;
+}
+
+// ProductUpdated is published when a product's core fields change.
+// Subscribers: search (reindex), recommend (projection refresh).
+message ProductUpdated {
+  string id = 1;
+  string seller_id = 2;
+  string name = 3;
+  string slug = 4;
+  string description = 5;
+  string status = 6;
+}
+
+// ProductDeleted is published when a product is removed. Only the id is
+// required for consumers to evict their local read models.
+message ProductDeleted {
+  string id = 1;
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/notification/internal/email"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/port"
 	"github.com/Riku-KANO/ec-test/services/notification/internal/templates"
+	shippingv1 "github.com/Riku-KANO/ec-test/services/shipping/api/gen/go/shipping/v1"
 )
 
 const shippingSubscription = "shipping-events-notification"
@@ -136,57 +137,40 @@ func (s *ShippingSubscriber) handleEvent(ctx context.Context, event pkgpubsub.Ev
 	return nil
 }
 
-// shipmentShippedData mirrors domain.ShipmentShippedEvent from the shipping service.
-// Field names must stay in sync with shipping/internal/domain/events.go.
-type shipmentShippedData struct {
-	ShipmentID     string `json:"shipment_id"`
-	OrderID        string `json:"order_id"`
-	BuyerAuth0ID   string `json:"buyer_auth0_id"`
-	Carrier        string `json:"carrier"`
-	TrackingNumber string `json:"tracking_number"`
-}
-
 func (s *ShippingSubscriber) handleShipmentShipped(ctx context.Context, event pkgpubsub.Event) error {
-	var data shipmentShippedData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data shippingv1.ShipmentShipped
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode shipment.shipped data: %w", err)
 	}
 
-	subject, body := templates.ShipmentShippedNotification(data.OrderID, data.Carrier, data.TrackingNumber)
+	subject, body := templates.ShipmentShippedNotification(data.OrderId, data.Carrier, data.TrackingNumber)
 
 	slog.Info("sending shipment shipped notification",
-		"order_id", data.OrderID,
-		"buyer_auth0_id", data.BuyerAuth0ID,
+		"order_id", data.OrderId,
+		"buyer_auth0_id", data.BuyerAuth0Id,
 		"carrier", data.Carrier,
 	)
 
-	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+	if err := s.sender.Send(ctx, data.BuyerAuth0Id, subject, body); err != nil {
 		return fmt.Errorf("send shipment shipped notification: %w", err)
 	}
 	return nil
 }
 
-// shipmentDeliveredData mirrors domain.ShipmentDeliveredEvent.
-type shipmentDeliveredData struct {
-	ShipmentID   string `json:"shipment_id"`
-	OrderID      string `json:"order_id"`
-	BuyerAuth0ID string `json:"buyer_auth0_id"`
-}
-
 func (s *ShippingSubscriber) handleShipmentDelivered(ctx context.Context, event pkgpubsub.Event) error {
-	var data shipmentDeliveredData
-	if err := decodeEventData(event.Data, &data); err != nil {
+	var data shippingv1.ShipmentDelivered
+	if err := decodeProtoEventData(event.Data, &data); err != nil {
 		return fmt.Errorf("decode shipment.delivered data: %w", err)
 	}
 
-	subject, body := templates.ShipmentDeliveredNotification(data.OrderID)
+	subject, body := templates.ShipmentDeliveredNotification(data.OrderId)
 
 	slog.Info("sending shipment delivered notification",
-		"order_id", data.OrderID,
-		"buyer_auth0_id", data.BuyerAuth0ID,
+		"order_id", data.OrderId,
+		"buyer_auth0_id", data.BuyerAuth0Id,
 	)
 
-	if err := s.sender.Send(ctx, data.BuyerAuth0ID, subject, body); err != nil {
+	if err := s.sender.Send(ctx, data.BuyerAuth0Id, subject, body); err != nil {
 		return fmt.Errorf("send shipment delivered notification: %w", err)
 	}
 	return nil

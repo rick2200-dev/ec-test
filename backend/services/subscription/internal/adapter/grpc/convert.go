@@ -5,8 +5,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commonv1 "github.com/Riku-KANO/ec-test/gen/go/common/v1"
-	subscriptionv1 "github.com/Riku-KANO/ec-test/gen/go/subscription/v1"
+	commonv1 "github.com/Riku-KANO/ec-test/shared/api/gen/go/common/v1"
+	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
 )
 

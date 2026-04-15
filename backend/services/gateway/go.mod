@@ -3,8 +3,11 @@ module github.com/Riku-KANO/ec-test/services/gateway
 go 1.25.3
 
 require (
-	github.com/Riku-KANO/ec-test/gen/go v0.0.0-00010101000000-000000000000
 	github.com/Riku-KANO/ec-test/pkg v0.0.0
+	github.com/Riku-KANO/ec-test/services/catalog/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/inventory/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/services/order/api/gen/go v0.0.0-00010101000000-000000000000
+	github.com/Riku-KANO/ec-test/shared/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/alicebob/miniredis/v2 v2.37.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
@@ -39,4 +42,10 @@ require (
 
 replace github.com/Riku-KANO/ec-test/pkg => ../../pkg
 
-replace github.com/Riku-KANO/ec-test/gen/go => ../../gen/go
+replace github.com/Riku-KANO/ec-test/shared/api/gen/go => ../../shared/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/catalog/api/gen/go => ../catalog/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/inventory/api/gen/go => ../inventory/api/gen/go
+
+replace github.com/Riku-KANO/ec-test/services/order/api/gen/go => ../order/api/gen/go

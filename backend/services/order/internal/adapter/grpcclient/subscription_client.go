@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	subscriptionv1 "github.com/Riku-KANO/ec-test/gen/go/subscription/v1"
+	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 )
 
 // internalTokenCreds attaches the shared SUBSCRIPTION_INTERNAL_TOKEN to

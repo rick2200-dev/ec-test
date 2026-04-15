@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	inventoryv1 "github.com/Riku-KANO/ec-test/gen/go/inventory/v1"
+	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 )
 
 // ReserveStock calls the inventory gRPC service to reserve stock for a SKU.
