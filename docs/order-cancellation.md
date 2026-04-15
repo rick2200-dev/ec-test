@@ -50,7 +50,7 @@
 
 ### テーブル `order_svc.order_cancellation_requests`
 
-[`infra/db/migrations/000016_create_order_cancellation_requests.up.sql`](../infra/db/migrations/000016_create_order_cancellation_requests.up.sql)
+[`infra/db/migrations/order/004_create_order_cancellation_requests.up.sql`](../infra/db/migrations/order/004_create_order_cancellation_requests.up.sql)
 
 | カラム                      | 型                    | 用途                                           |
 | --------------------------- | --------------------- | ---------------------------------------------- |

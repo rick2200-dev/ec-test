@@ -22,7 +22,8 @@ done
 
 echo "[4/5] Running database migrations..."
 if command -v migrate >/dev/null 2>&1; then
-  migrate -path infra/db/migrations -database "postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=disable" up
+  DATABASE_URL="postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=disable" \
+    bash infra/scripts/migrate.sh up
 else
   echo "WARN: golang-migrate not found. Install with: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest"
 fi

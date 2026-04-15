@@ -131,7 +131,7 @@ order-cancellation 側では `shipped` 以降の注文はキャンセル申請�
 
 ### テーブル `shipping_svc.shipments`
 
-[`infra/db/migrations/000020_create_shipments.up.sql`](../infra/db/migrations/000020_create_shipments.up.sql)
+[`infra/db/migrations/shipping/001_create_shipments.up.sql`](../infra/db/migrations/shipping/001_create_shipments.up.sql)
 
 | カラム | 型 | 用途 |
 |---|---|---|

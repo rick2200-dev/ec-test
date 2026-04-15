@@ -28,15 +28,25 @@ deps-down:
 	docker compose -f infra/docker/docker-compose.deps.yaml down
 
 # ─── Database ──────────────────────────────────────────────────
+# Migrations are per-service (infra/db/migrations/<svc>/) with each service
+# tracking its own schema_migrations_<svc> version table. The wrapper script
+# runs them in a fixed dependency-respecting order.
 migrate:
-	migrate -path infra/db/migrations -database "$(DATABASE_URL)" up
+	DATABASE_URL="$(DATABASE_URL)" bash infra/scripts/migrate.sh up
 
 migrate-down:
-	migrate -path infra/db/migrations -database "$(DATABASE_URL)" down 1
+	DATABASE_URL="$(DATABASE_URL)" bash infra/scripts/migrate.sh down
+
+migrate-service:
+	@[ -n "$(SVC)" ] || { echo "Usage: make migrate-service SVC=<name>"; exit 1; }
+	DATABASE_URL="$(DATABASE_URL)" bash infra/scripts/migrate.sh up-service $(SVC)
 
 migrate-create:
-	@read -p "Migration name: " name; \
-	migrate create -ext sql -dir infra/db/migrations -seq $$name
+	@read -p "Service (auth/catalog/order/...): " svc; \
+	read -p "Migration name: " name; \
+	dir=infra/db/migrations/$$svc; \
+	[ -d $$dir ] || { echo "no such service dir: $$dir"; exit 1; }; \
+	migrate create -ext sql -dir $$dir -seq $$name
 
 seed:
 	psql "$(DATABASE_URL)" -f infra/db/seeds/dev_tenants.sql
