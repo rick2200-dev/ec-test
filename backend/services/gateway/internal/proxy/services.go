@@ -22,6 +22,7 @@ type Services struct {
 	Inquiry   *ServiceClient
 	Review       *ServiceClient
 	Subscription *ServiceClient
+	Shipping     *ServiceClient
 
 	// CatalogGRPC is used by the buyer read path (ListProducts, GetProduct).
 	// Other catalog routes still go through the HTTP Catalog client above.
@@ -47,5 +48,10 @@ func NewServices(cfg config.Config) *Services {
 		// clone so handler-level clones keep it.
 		Subscription: NewServiceClient(cfg.SubscriptionServiceURL).
 			WithHeader("X-Internal-Token", cfg.SubscriptionInternalToken),
+		// Shipping service gates every non-health route behind the shared
+		// X-Internal-Token secret. Attach at client construction so every
+		// proxied request carries the header automatically.
+		Shipping: NewServiceClient(cfg.ShippingServiceURL).
+			WithHeader("X-Internal-Token", cfg.ShippingInternalToken),
 	}
 }

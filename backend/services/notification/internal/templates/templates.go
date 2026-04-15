@@ -267,6 +267,31 @@ func LowStockAlert(skuCode, productName string, currentStock, threshold int) (su
 	return subject, body
 }
 
+// ReviewCreatedNotification generates a seller email notifying them
+// that a buyer posted a new review on one of their products.
+func ReviewCreatedNotification(productName string, rating int, title string) (subject, body string) {
+	subject = fmt.Sprintf("【レビュー】新着レビュー: %s", productName)
+	data := map[string]any{
+		"ProductName": productName,
+		"Rating":      rating,
+		"Title":       title,
+	}
+	body = render(reviewCreatedTmpl, data)
+	return subject, body
+}
+
+// ReviewRepliedNotification generates a buyer email notifying them
+// that a seller has replied to their review.
+func ReviewRepliedNotification(productName, replyPreview string) (subject, body string) {
+	subject = fmt.Sprintf("【レビュー返信】%s", productName)
+	data := map[string]any{
+		"ProductName":  productName,
+		"ReplyPreview": replyPreview,
+	}
+	body = render(reviewRepliedTmpl, data)
+	return subject, body
+}
+
 var shipmentShippedTmpl = template.Must(template.New("shipment_shipped").Parse(`
 <!DOCTYPE html>
 <html>
@@ -320,31 +345,6 @@ func ShipmentDeliveredNotification(orderID string) (subject, body string) {
 		"OrderID": orderID,
 	}
 	body = render(shipmentDeliveredTmpl, data)
-	return subject, body
-}
-
-// ReviewCreatedNotification generates a seller email notifying them
-// that a buyer posted a new review on one of their products.
-func ReviewCreatedNotification(productName string, rating int, title string) (subject, body string) {
-	subject = fmt.Sprintf("【レビュー】新着レビュー: %s", productName)
-	data := map[string]any{
-		"ProductName": productName,
-		"Rating":      rating,
-		"Title":       title,
-	}
-	body = render(reviewCreatedTmpl, data)
-	return subject, body
-}
-
-// ReviewRepliedNotification generates a buyer email notifying them
-// that a seller has replied to their review.
-func ReviewRepliedNotification(productName, replyPreview string) (subject, body string) {
-	subject = fmt.Sprintf("【レビュー返信】%s", productName)
-	data := map[string]any{
-		"ProductName":  productName,
-		"ReplyPreview": replyPreview,
-	}
-	body = render(reviewRepliedTmpl, data)
 	return subject, body
 }
 

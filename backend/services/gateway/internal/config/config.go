@@ -22,6 +22,7 @@ type Config struct {
 	InquiryServiceURL      string
 	ReviewServiceURL       string
 	SubscriptionServiceURL string
+	ShippingServiceURL     string
 
 	// JWT / Auth0 settings
 	JWTIssuer   string
@@ -37,6 +38,10 @@ type Config struct {
 	// gateway attaches it at client construction time. Must match
 	// SUBSCRIPTION_INTERNAL_TOKEN on the subscription service.
 	SubscriptionInternalToken string
+
+	// Shared secret for the shipping service. Must match
+	// SHIPPING_INTERNAL_TOKEN on the shipping service.
+	ShippingInternalToken string
 
 	// gRPC service addresses (host:port)
 	CatalogGRPCAddr   string
@@ -75,6 +80,7 @@ func Load() Config {
 		InquiryServiceURL:      getEnv("INQUIRY_SERVICE_URL", "http://localhost:8090"),
 		ReviewServiceURL:       getEnv("REVIEW_SERVICE_URL", "http://localhost:8091"),
 		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8089"),
+		ShippingServiceURL:     getEnv("SHIPPING_SERVICE_URL", "http://localhost:8092"),
 
 		JWTIssuer:   getEnv("JWT_ISSUER", "https://ecmarket.example.com/"),
 		JWTAudience: getEnv("JWT_AUDIENCE", "https://api.ecmarket.example.com"),
@@ -82,6 +88,7 @@ func Load() Config {
 
 		AuthInternalToken:         getEnv("AUTH_INTERNAL_TOKEN", ""),
 		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
+		ShippingInternalToken:     getEnv("SHIPPING_INTERNAL_TOKEN", ""),
 
 		// Note: catalog's GRPC_PORT default is 50052 (see
 		// backend/services/catalog/internal/config/config.go). Keep this in

@@ -22,6 +22,9 @@ services:
       SUBSCRIPTION_SERVICE_URL: http://subscription:8089
       # Must match SUBSCRIPTION_INTERNAL_TOKEN on the subscription service.
       SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
+      SHIPPING_SERVICE_URL: http://shipping:8092
+      # Must match SHIPPING_INTERNAL_TOKEN on the shipping service.
+      SHIPPING_INTERNAL_TOKEN: local-dev-shipping-internal-token
       # DB 8 is the API-token rate limiter's namespace; cart owns DB 7.
       REDIS_URL: redis://redis:6379/8
       # Must match auth service API_TOKEN_PREFIX.
@@ -40,6 +43,8 @@ services:
       redis:
         condition: service_healthy
       subscription:
+        condition: service_healthy
+      shipping:
         condition: service_healthy
     networks:
       - backend
@@ -339,6 +344,38 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8089/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  shipping:
+    build:
+      context: ../..
+      dockerfile: backend/services/shipping/Dockerfile
+    # Not publishing host ports: shipping is reached only by gateway over the
+    # backend docker network. Exposing 8092 to the host would bypass the
+    # X-Internal-Token shared-secret gate.
+    expose:
+      - "8092"
+      - "50059"
+    environment:
+      HTTP_PORT: "8092"
+      GRPC_PORT: "50059"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      PUBSUB_PROJECT_ID: local-project
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      # Must match SHIPPING_INTERNAL_TOKEN on the gateway.
+      SHIPPING_INTERNAL_TOKEN: local-dev-shipping-internal-token
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8092/healthz"]
       interval: 10s
       timeout: 3s
       retries: 5
