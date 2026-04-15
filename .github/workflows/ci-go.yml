@@ -132,6 +132,33 @@ jobs:
               - 'go.work.sum'
               - 'infra/db/migrations/**'
               - '.github/workflows/ci-go.yml'
+            review:
+              - 'backend/services/review/**'
+              - 'backend/pkg/**'
+              - 'backend/shared/api/**'
+              - 'backend/services/*/api/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            subscription:
+              - 'backend/services/subscription/**'
+              - 'backend/pkg/**'
+              - 'backend/shared/api/**'
+              - 'backend/services/*/api/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
+            shipping:
+              - 'backend/services/shipping/**'
+              - 'backend/pkg/**'
+              - 'backend/shared/api/**'
+              - 'backend/services/*/api/**'
+              - 'go.work'
+              - 'go.work.sum'
+              - 'infra/db/migrations/**'
+              - '.github/workflows/ci-go.yml'
 
   lint-and-test:
     needs: changes

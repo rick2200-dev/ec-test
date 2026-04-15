@@ -28,6 +28,7 @@ COPY backend/services/recommend/go.mod backend/services/recommend/go.sum ./backe
 COPY backend/services/review/go.mod backend/services/review/go.sum ./backend/services/review/
 COPY backend/services/search/go.mod backend/services/search/go.sum ./backend/services/search/
 COPY backend/services/subscription/go.mod backend/services/subscription/go.sum ./backend/services/subscription/
+COPY backend/services/shipping/go.mod backend/services/shipping/go.sum ./backend/services/shipping/
 
 WORKDIR /src/backend/services/subscription
 RUN go mod download
