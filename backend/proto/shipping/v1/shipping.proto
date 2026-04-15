@@ -25,23 +25,27 @@ service ShippingService {
 
 // Shipment represents a physical delivery associated with an order.
 message Shipment {
+  reserved 2;                    // was tenant_id (removed in single-tenant refactor)
+  reserved "tenant_id";
   string id              = 1;
-  string seller_id       = 2;
-  string order_id        = 3;
-  string buyer_auth0_id  = 4;
-  string status          = 5;  // pending | ready_to_ship | shipped | delivered | cancelled
-  string carrier         = 6;
-  string tracking_number = 7;
-  string note            = 8;
-  string shipping_address_json = 9;
-  google.protobuf.Timestamp shipped_at   = 10;
-  google.protobuf.Timestamp delivered_at = 11;
-  google.protobuf.Timestamp created_at   = 12;
-  google.protobuf.Timestamp updated_at   = 13;
+  string seller_id       = 3;
+  string order_id        = 4;
+  string buyer_auth0_id  = 5;
+  string status          = 6;  // pending | ready_to_ship | shipped | delivered | cancelled
+  string carrier         = 7;
+  string tracking_number = 8;
+  string note            = 9;
+  string shipping_address_json = 10;
+  google.protobuf.Timestamp shipped_at   = 11;
+  google.protobuf.Timestamp delivered_at = 12;
+  google.protobuf.Timestamp created_at   = 13;
+  google.protobuf.Timestamp updated_at   = 14;
 }
 
 message GetShipmentByOrderRequest {
-  string order_id  = 1;
+  reserved 2;                    // was tenant_id
+  reserved "tenant_id";
+  string order_id = 1;
 }
 
 message GetShipmentByOrderResponse {
@@ -49,12 +53,14 @@ message GetShipmentByOrderResponse {
 }
 
 message RegisterShipmentRequest {
+  reserved 2;                    // was tenant_id
+  reserved "tenant_id";
   string id              = 1;
-  string seller_id       = 2;
-  string carrier         = 3;
-  string tracking_number = 4;
-  string note            = 5;
-  google.protobuf.Timestamp shipped_at = 6;
+  string seller_id       = 3;
+  string carrier         = 4;
+  string tracking_number = 5;
+  string note            = 6;
+  google.protobuf.Timestamp shipped_at = 7;
 }
 
 message RegisterShipmentResponse {
@@ -62,9 +68,11 @@ message RegisterShipmentResponse {
 }
 
 message MarkDeliveredRequest {
+  reserved 2;                    // was tenant_id
+  reserved "tenant_id";
   string id        = 1;
-  string seller_id = 2;
-  google.protobuf.Timestamp delivered_at = 3;
+  string seller_id = 3;
+  google.protobuf.Timestamp delivered_at = 4;
 }
 
 message MarkDeliveredResponse {
