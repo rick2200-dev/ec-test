@@ -26,19 +26,18 @@ const (
 type Shipment struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId            string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId            string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	OrderId             string                 `protobuf:"bytes,4,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	BuyerAuth0Id        string                 `protobuf:"bytes,5,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	Status              string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // pending | ready_to_ship | shipped | delivered | cancelled
-	Carrier             string                 `protobuf:"bytes,7,opt,name=carrier,proto3" json:"carrier,omitempty"`
-	TrackingNumber      string                 `protobuf:"bytes,8,opt,name=tracking_number,json=trackingNumber,proto3" json:"tracking_number,omitempty"`
-	Note                string                 `protobuf:"bytes,9,opt,name=note,proto3" json:"note,omitempty"`
-	ShippingAddressJson string                 `protobuf:"bytes,10,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
-	ShippedAt           *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=shipped_at,json=shippedAt,proto3" json:"shipped_at,omitempty"`
-	DeliveredAt         *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=delivered_at,json=deliveredAt,proto3" json:"delivered_at,omitempty"`
-	CreatedAt           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt           *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	SellerId            string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	OrderId             string                 `protobuf:"bytes,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	BuyerAuth0Id        string                 `protobuf:"bytes,4,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	Status              string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"` // pending | ready_to_ship | shipped | delivered | cancelled
+	Carrier             string                 `protobuf:"bytes,6,opt,name=carrier,proto3" json:"carrier,omitempty"`
+	TrackingNumber      string                 `protobuf:"bytes,7,opt,name=tracking_number,json=trackingNumber,proto3" json:"tracking_number,omitempty"`
+	Note                string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
+	ShippingAddressJson string                 `protobuf:"bytes,9,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
+	ShippedAt           *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=shipped_at,json=shippedAt,proto3" json:"shipped_at,omitempty"`
+	DeliveredAt         *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=delivered_at,json=deliveredAt,proto3" json:"delivered_at,omitempty"`
+	CreatedAt           *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -76,13 +75,6 @@ func (*Shipment) Descriptor() ([]byte, []int) {
 func (x *Shipment) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *Shipment) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -174,7 +166,6 @@ func (x *Shipment) GetUpdatedAt() *timestamppb.Timestamp {
 type GetShipmentByOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -212,13 +203,6 @@ func (*GetShipmentByOrderRequest) Descriptor() ([]byte, []int) {
 func (x *GetShipmentByOrderRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
-	}
-	return ""
-}
-
-func (x *GetShipmentByOrderRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -270,12 +254,11 @@ func (x *GetShipmentByOrderResponse) GetShipment() *Shipment {
 type RegisterShipmentRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId       string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId       string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Carrier        string                 `protobuf:"bytes,4,opt,name=carrier,proto3" json:"carrier,omitempty"`
-	TrackingNumber string                 `protobuf:"bytes,5,opt,name=tracking_number,json=trackingNumber,proto3" json:"tracking_number,omitempty"`
-	Note           string                 `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
-	ShippedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=shipped_at,json=shippedAt,proto3" json:"shipped_at,omitempty"`
+	SellerId       string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Carrier        string                 `protobuf:"bytes,3,opt,name=carrier,proto3" json:"carrier,omitempty"`
+	TrackingNumber string                 `protobuf:"bytes,4,opt,name=tracking_number,json=trackingNumber,proto3" json:"tracking_number,omitempty"`
+	Note           string                 `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	ShippedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=shipped_at,json=shippedAt,proto3" json:"shipped_at,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -313,13 +296,6 @@ func (*RegisterShipmentRequest) Descriptor() ([]byte, []int) {
 func (x *RegisterShipmentRequest) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *RegisterShipmentRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -406,9 +382,8 @@ func (x *RegisterShipmentResponse) GetShipment() *Shipment {
 type MarkDeliveredRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	DeliveredAt   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=delivered_at,json=deliveredAt,proto3" json:"delivered_at,omitempty"`
+	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	DeliveredAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=delivered_at,json=deliveredAt,proto3" json:"delivered_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -446,13 +421,6 @@ func (*MarkDeliveredRequest) Descriptor() ([]byte, []int) {
 func (x *MarkDeliveredRequest) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *MarkDeliveredRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -519,47 +487,43 @@ var File_shipping_v1_shipping_proto protoreflect.FileDescriptor
 
 const file_shipping_v1_shipping_proto_rawDesc = "" +
 	"\n" +
-	"\x1ashipping/v1/shipping.proto\x12\vshipping.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa8\x04\n" +
+	"\x1ashipping/v1/shipping.proto\x12\vshipping.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x04\n" +
 	"\bShipment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x19\n" +
-	"\border_id\x18\x04 \x01(\tR\aorderId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x05 \x01(\tR\fbuyerAuth0Id\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\x12\x18\n" +
-	"\acarrier\x18\a \x01(\tR\acarrier\x12'\n" +
-	"\x0ftracking_number\x18\b \x01(\tR\x0etrackingNumber\x12\x12\n" +
-	"\x04note\x18\t \x01(\tR\x04note\x122\n" +
-	"\x15shipping_address_json\x18\n" +
-	" \x01(\tR\x13shippingAddressJson\x129\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x19\n" +
+	"\border_id\x18\x03 \x01(\tR\aorderId\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x04 \x01(\tR\fbuyerAuth0Id\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x18\n" +
+	"\acarrier\x18\x06 \x01(\tR\acarrier\x12'\n" +
+	"\x0ftracking_number\x18\a \x01(\tR\x0etrackingNumber\x12\x12\n" +
+	"\x04note\x18\b \x01(\tR\x04note\x122\n" +
+	"\x15shipping_address_json\x18\t \x01(\tR\x13shippingAddressJson\x129\n" +
 	"\n" +
-	"shipped_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tshippedAt\x12=\n" +
-	"\fdelivered_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vdeliveredAt\x129\n" +
+	"shipped_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tshippedAt\x12=\n" +
+	"\fdelivered_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\vdeliveredAt\x129\n" +
 	"\n" +
-	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"S\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"6\n" +
 	"\x19GetShipmentByOrderRequest\x12\x19\n" +
-	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"O\n" +
+	"\border_id\x18\x01 \x01(\tR\aorderId\"O\n" +
 	"\x1aGetShipmentByOrderResponse\x121\n" +
-	"\bshipment\x18\x01 \x01(\v2\x15.shipping.v1.ShipmentR\bshipment\"\xf5\x01\n" +
+	"\bshipment\x18\x01 \x01(\v2\x15.shipping.v1.ShipmentR\bshipment\"\xd8\x01\n" +
 	"\x17RegisterShipmentRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x18\n" +
-	"\acarrier\x18\x04 \x01(\tR\acarrier\x12'\n" +
-	"\x0ftracking_number\x18\x05 \x01(\tR\x0etrackingNumber\x12\x12\n" +
-	"\x04note\x18\x06 \x01(\tR\x04note\x129\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x18\n" +
+	"\acarrier\x18\x03 \x01(\tR\acarrier\x12'\n" +
+	"\x0ftracking_number\x18\x04 \x01(\tR\x0etrackingNumber\x12\x12\n" +
+	"\x04note\x18\x05 \x01(\tR\x04note\x129\n" +
 	"\n" +
-	"shipped_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tshippedAt\"M\n" +
+	"shipped_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tshippedAt\"M\n" +
 	"\x18RegisterShipmentResponse\x121\n" +
-	"\bshipment\x18\x01 \x01(\v2\x15.shipping.v1.ShipmentR\bshipment\"\x9f\x01\n" +
+	"\bshipment\x18\x01 \x01(\v2\x15.shipping.v1.ShipmentR\bshipment\"\x82\x01\n" +
 	"\x14MarkDeliveredRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12=\n" +
-	"\fdelivered_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vdeliveredAt\"J\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12=\n" +
+	"\fdelivered_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\vdeliveredAt\"J\n" +
 	"\x15MarkDeliveredResponse\x121\n" +
 	"\bshipment\x18\x01 \x01(\v2\x15.shipping.v1.ShipmentR\bshipment2\xb1\x02\n" +
 	"\x0fShippingService\x12e\n" +
