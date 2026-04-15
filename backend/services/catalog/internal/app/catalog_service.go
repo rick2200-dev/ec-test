@@ -278,6 +278,18 @@ func (s *CatalogService) CreateSKU(ctx context.Context, sku *domain.SKU) error {
 	return nil
 }
 
+// BatchGetSKUMappings resolves a batch of SKU ids to (sku_id, product_id,
+// seller_id) triples. Unknown ids are silently omitted from the response so
+// callers must tolerate length mismatch. Intended for internal callers
+// (order at checkout time) that snapshot product_id onto order lines.
+func (s *CatalogService) BatchGetSKUMappings(ctx context.Context, ids []uuid.UUID) ([]port.SKUMapping, error) {
+	mappings, err := s.skus.BatchGetMappings(ctx, ids)
+	if err != nil {
+		return nil, apperrors.Internal("failed to batch get sku mappings", err)
+	}
+	return mappings, nil
+}
+
 // GetSKU retrieves a SKU by its ID.
 func (s *CatalogService) GetSKU(ctx context.Context, id uuid.UUID) (*domain.SKU, error) {
 	sku, err := s.skus.GetByID(ctx, id)

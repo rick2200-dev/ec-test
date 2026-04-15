@@ -59,6 +59,19 @@ type SKUStore interface {
 	Update(ctx context.Context, s *domain.SKU) error
 	// UpdateStatus changes the active/archive status of a SKU.
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ProductStatus) error
+	// BatchGetMappings returns (sku_id, product_id, seller_id) for the given
+	// SKU ids. Unknown ids are silently omitted. Used by the BatchGetSKUs RPC
+	// so service-to-service callers can snapshot product_id without reading
+	// catalog_svc directly.
+	BatchGetMappings(ctx context.Context, ids []uuid.UUID) ([]SKUMapping, error)
+}
+
+// SKUMapping is the minimal (sku_id, product_id, seller_id) triple exposed
+// over BatchGetSKUs RPC.
+type SKUMapping struct {
+	SKUID     uuid.UUID
+	ProductID uuid.UUID
+	SellerID  uuid.UUID
 }
 
 // SKULookup is the shape returned by GetSKUWithProductName, used by the

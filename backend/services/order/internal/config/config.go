@@ -19,7 +19,18 @@ type Config struct {
 	// service's gRPC listener. The order service uses it to look up buyer
 	// free-shipping entitlements during checkout.
 	SubscriptionServiceGRPCAddr string
-	DefaultShippingFee          int64
+	// CatalogServiceGRPCAddr is the dial target for catalog's gRPC
+	// listener. Used by the order service to resolve sku_id -> product_id
+	// snapshots at checkout (replaces direct reads of catalog_svc).
+	CatalogServiceGRPCAddr string
+	// CatalogInternalToken is the shared secret attached to every RPC
+	// against CatalogServiceGRPCAddr.
+	CatalogInternalToken string
+	// AuthInternalToken is the shared secret sent as X-Internal-Token to
+	// auth's /internal/* HTTP endpoints (specifically /internal/sellers/
+	// batch-get at checkout).
+	AuthInternalToken  string
+	DefaultShippingFee int64
 
 	// Shared secret required on every request to /internal/*. Must match
 	// the value set on in-cluster callers (cart, inquiry). Empty value
@@ -45,6 +56,9 @@ func Load() Config {
 		PubSubEmulatorHost: getEnv("PUBSUB_EMULATOR_HOST", ""),
 		AuthServiceURL:              getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
 		SubscriptionServiceGRPCAddr: getEnv("SUBSCRIPTION_SERVICE_GRPC_ADDR", "localhost:50058"),
+		CatalogServiceGRPCAddr:      getEnv("CATALOG_SERVICE_GRPC_ADDR", "localhost:50054"),
+		CatalogInternalToken:        getEnv("CATALOG_INTERNAL_TOKEN", ""),
+		AuthInternalToken:           getEnv("AUTH_INTERNAL_TOKEN", ""),
 		DefaultShippingFee:          getEnvInt64("DEFAULT_SHIPPING_FEE", 500),
 		InternalToken:             getEnv("ORDER_INTERNAL_TOKEN", ""),
 		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),

@@ -180,3 +180,30 @@ func (r *SellerRepository) Update(ctx context.Context, s *domain.Seller) error {
 		return nil
 	})
 }
+
+// BatchGetByIDs returns sellers matching any of the given ids. Unknown ids
+// are silently omitted. Intended for internal batch lookup (order at
+// checkout time).
+func (r *SellerRepository) BatchGetByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Seller, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, auth0_org_id, name, slug, status, stripe_account_id, commission_rate_bps, settings, created_at, updated_at
+		 FROM auth_svc.sellers WHERE id = ANY($1)`,
+		ids,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch get sellers: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Seller, 0, len(ids))
+	for rows.Next() {
+		var s domain.Seller
+		if err := rows.Scan(&s.ID, &s.Auth0OrgID, &s.Name, &s.Slug, &s.Status, &s.StripeAccountID, &s.CommissionRateBPS, &s.Settings, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan seller: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}

@@ -69,6 +69,9 @@ func (m *mockSellerStore) Create(ctx context.Context, s *domain.Seller) error {
 	}
 	return nil
 }
+func (m *mockSellerStore) BatchGetByIDs(_ context.Context, _ []uuid.UUID) ([]domain.Seller, error) {
+	return nil, nil
+}
 
 type mockSellerUserStore struct {
 	GetByIDFn      func(ctx context.Context, id uuid.UUID) (*domain.SellerUser, error)

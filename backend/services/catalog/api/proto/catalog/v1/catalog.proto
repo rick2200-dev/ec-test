@@ -48,6 +48,12 @@ service CatalogService {
       body: "*"
     };
   }
+
+  // Internal. BatchGetSKUs resolves SKU ids to their parent product id so
+  // service-to-service callers (order at checkout time) can snapshot
+  // product_id onto order lines without reading catalog_svc directly.
+  // Unknown sku_ids are silently omitted from the response.
+  rpc BatchGetSKUs(BatchGetSKUsRequest) returns (BatchGetSKUsResponse);
 }
 
 // ─── Domain Messages ─────────────────────────────────────────
@@ -180,4 +186,20 @@ message CreateCategoryRequest {
 
 message CreateCategoryResponse {
   Category category = 1;
+}
+
+// ─── BatchGetSKUs ────────────────────────────────────────────
+
+message BatchGetSKUsRequest {
+  repeated string sku_ids = 1;
+}
+
+message SKUProductMapping {
+  string sku_id = 1;
+  string product_id = 2;
+  string seller_id = 3;
+}
+
+message BatchGetSKUsResponse {
+  repeated SKUProductMapping mappings = 1;
 }

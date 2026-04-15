@@ -75,6 +75,7 @@ func main() {
 	platformAdminHandler := handler.NewPlatformAdminHandler(rbacSvc)
 	internalAuthzHandler := handler.NewInternalAuthzHandler(rbacSvc, credentialSvc, cfg.InternalToken)
 	internalBuyerHandler := handler.NewInternalBuyerHandler(buyerSvc, cfg.InternalToken)
+	internalSellerHandler := handler.NewInternalSellerHandler(identitySvc, cfg.InternalToken)
 	healthHandler := handler.NewHealthHandler(pool)
 
 	// Router
@@ -107,6 +108,10 @@ func main() {
 	// Internal buyer profile upsert, called by the Next.js BFF on Auth0
 	// callback. Same shared-secret protection as /internal/authz.
 	r.Mount("/internal/buyers", internalBuyerHandler.Routes())
+
+	// Internal seller batch lookup used by order service at checkout time
+	// so it can snapshot seller_name without reading auth_svc directly.
+	r.Mount("/internal/sellers", internalSellerHandler.Routes())
 
 	// HTTP server
 	addr := ":" + cfg.HTTPPort

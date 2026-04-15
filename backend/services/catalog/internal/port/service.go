@@ -47,4 +47,7 @@ type CatalogUseCase interface {
 	UpdateSKU(ctx context.Context, sku *domain.SKU) error
 	// UpdateSKUStatus changes the active/archive status of a SKU.
 	UpdateSKUStatus(ctx context.Context, id uuid.UUID, status domain.ProductStatus) error
+	// BatchGetSKUMappings resolves a batch of SKU ids to their (product_id,
+	// seller_id). Unknown ids are silently omitted.
+	BatchGetSKUMappings(ctx context.Context, ids []uuid.UUID) ([]SKUMapping, error)
 }

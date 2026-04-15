@@ -1183,6 +1183,154 @@ func (x *CreateCategoryResponse) GetCategory() *Category {
 	return nil
 }
 
+type BatchGetSKUsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SkuIds        []string               `protobuf:"bytes,1,rep,name=sku_ids,json=skuIds,proto3" json:"sku_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetSKUsRequest) Reset() {
+	*x = BatchGetSKUsRequest{}
+	mi := &file_catalog_v1_catalog_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetSKUsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetSKUsRequest) ProtoMessage() {}
+
+func (x *BatchGetSKUsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_v1_catalog_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetSKUsRequest.ProtoReflect.Descriptor instead.
+func (*BatchGetSKUsRequest) Descriptor() ([]byte, []int) {
+	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *BatchGetSKUsRequest) GetSkuIds() []string {
+	if x != nil {
+		return x.SkuIds
+	}
+	return nil
+}
+
+type SKUProductMapping struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SkuId         string                 `protobuf:"bytes,1,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SKUProductMapping) Reset() {
+	*x = SKUProductMapping{}
+	mi := &file_catalog_v1_catalog_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SKUProductMapping) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SKUProductMapping) ProtoMessage() {}
+
+func (x *SKUProductMapping) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_v1_catalog_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SKUProductMapping.ProtoReflect.Descriptor instead.
+func (*SKUProductMapping) Descriptor() ([]byte, []int) {
+	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SKUProductMapping) GetSkuId() string {
+	if x != nil {
+		return x.SkuId
+	}
+	return ""
+}
+
+func (x *SKUProductMapping) GetProductId() string {
+	if x != nil {
+		return x.ProductId
+	}
+	return ""
+}
+
+func (x *SKUProductMapping) GetSellerId() string {
+	if x != nil {
+		return x.SellerId
+	}
+	return ""
+}
+
+type BatchGetSKUsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mappings      []*SKUProductMapping   `protobuf:"bytes,1,rep,name=mappings,proto3" json:"mappings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetSKUsResponse) Reset() {
+	*x = BatchGetSKUsResponse{}
+	mi := &file_catalog_v1_catalog_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetSKUsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetSKUsResponse) ProtoMessage() {}
+
+func (x *BatchGetSKUsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_v1_catalog_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetSKUsResponse.ProtoReflect.Descriptor instead.
+func (*BatchGetSKUsResponse) Descriptor() ([]byte, []int) {
+	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *BatchGetSKUsResponse) GetMappings() []*SKUProductMapping {
+	if x != nil {
+		return x.Mappings
+	}
+	return nil
+}
+
 var File_catalog_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_catalog_v1_catalog_proto_rawDesc = "" +
@@ -1284,7 +1432,16 @@ const file_catalog_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"sort_order\x18\x04 \x01(\x05R\tsortOrder\"J\n" +
 	"\x16CreateCategoryResponse\x120\n" +
-	"\bcategory\x18\x01 \x01(\v2\x14.catalog.v1.CategoryR\bcategory2\xb9\x06\n" +
+	"\bcategory\x18\x01 \x01(\v2\x14.catalog.v1.CategoryR\bcategory\".\n" +
+	"\x13BatchGetSKUsRequest\x12\x17\n" +
+	"\asku_ids\x18\x01 \x03(\tR\x06skuIds\"f\n" +
+	"\x11SKUProductMapping\x12\x15\n" +
+	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\x12\x1b\n" +
+	"\tseller_id\x18\x03 \x01(\tR\bsellerId\"Q\n" +
+	"\x14BatchGetSKUsResponse\x129\n" +
+	"\bmappings\x18\x01 \x03(\v2\x1d.catalog.v1.SKUProductMappingR\bmappings2\x8c\a\n" +
 	"\x0eCatalogService\x12g\n" +
 	"\fListProducts\x12\x1f.catalog.v1.ListProductsRequest\x1a .catalog.v1.ListProductsResponse\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/v1/products\x12h\n" +
 	"\n" +
@@ -1293,7 +1450,8 @@ const file_catalog_v1_catalog_proto_rawDesc = "" +
 	"\rUpdateProduct\x12 .catalog.v1.UpdateProductRequest\x1a!.catalog.v1.UpdateProductResponse\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\x1a\x11/v1/products/{id}\x12\x8b\x01\n" +
 	"\x13UpdateProductStatus\x12&.catalog.v1.UpdateProductStatusRequest\x1a'.catalog.v1.UpdateProductStatusResponse\"#\x82\xd3\xe4\x93\x02\x1d:\x01*2\x18/v1/products/{id}/status\x12o\n" +
 	"\x0eListCategories\x12!.catalog.v1.ListCategoriesRequest\x1a\".catalog.v1.ListCategoriesResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/v1/categories\x12r\n" +
-	"\x0eCreateCategory\x12!.catalog.v1.CreateCategoryRequest\x1a\".catalog.v1.CreateCategoryResponse\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/v1/categoriesBOZMgithub.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1;catalogv1b\x06proto3"
+	"\x0eCreateCategory\x12!.catalog.v1.CreateCategoryRequest\x1a\".catalog.v1.CreateCategoryResponse\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/v1/categories\x12Q\n" +
+	"\fBatchGetSKUs\x12\x1f.catalog.v1.BatchGetSKUsRequest\x1a .catalog.v1.BatchGetSKUsResponseBOZMgithub.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1;catalogv1b\x06proto3"
 
 var (
 	file_catalog_v1_catalog_proto_rawDescOnce sync.Once
@@ -1307,7 +1465,7 @@ func file_catalog_v1_catalog_proto_rawDescGZIP() []byte {
 	return file_catalog_v1_catalog_proto_rawDescData
 }
 
-var file_catalog_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_catalog_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_catalog_v1_catalog_proto_goTypes = []any{
 	(*Product)(nil),                     // 0: catalog.v1.Product
 	(*SKU)(nil),                         // 1: catalog.v1.SKU
@@ -1327,49 +1485,55 @@ var file_catalog_v1_catalog_proto_goTypes = []any{
 	(*ListCategoriesResponse)(nil),      // 15: catalog.v1.ListCategoriesResponse
 	(*CreateCategoryRequest)(nil),       // 16: catalog.v1.CreateCategoryRequest
 	(*CreateCategoryResponse)(nil),      // 17: catalog.v1.CreateCategoryResponse
-	(*timestamppb.Timestamp)(nil),       // 18: google.protobuf.Timestamp
-	(*v1.Money)(nil),                    // 19: common.v1.Money
-	(*v1.PaginationRequest)(nil),        // 20: common.v1.PaginationRequest
-	(*v1.PaginationResponse)(nil),       // 21: common.v1.PaginationResponse
+	(*BatchGetSKUsRequest)(nil),         // 18: catalog.v1.BatchGetSKUsRequest
+	(*SKUProductMapping)(nil),           // 19: catalog.v1.SKUProductMapping
+	(*BatchGetSKUsResponse)(nil),        // 20: catalog.v1.BatchGetSKUsResponse
+	(*timestamppb.Timestamp)(nil),       // 21: google.protobuf.Timestamp
+	(*v1.Money)(nil),                    // 22: common.v1.Money
+	(*v1.PaginationRequest)(nil),        // 23: common.v1.PaginationRequest
+	(*v1.PaginationResponse)(nil),       // 24: common.v1.PaginationResponse
 }
 var file_catalog_v1_catalog_proto_depIdxs = []int32{
 	1,  // 0: catalog.v1.Product.skus:type_name -> catalog.v1.SKU
-	18, // 1: catalog.v1.Product.created_at:type_name -> google.protobuf.Timestamp
-	18, // 2: catalog.v1.Product.updated_at:type_name -> google.protobuf.Timestamp
-	19, // 3: catalog.v1.SKU.price:type_name -> common.v1.Money
-	18, // 4: catalog.v1.SKU.created_at:type_name -> google.protobuf.Timestamp
-	18, // 5: catalog.v1.SKU.updated_at:type_name -> google.protobuf.Timestamp
-	18, // 6: catalog.v1.Category.created_at:type_name -> google.protobuf.Timestamp
-	20, // 7: catalog.v1.ListProductsRequest.pagination:type_name -> common.v1.PaginationRequest
+	21, // 1: catalog.v1.Product.created_at:type_name -> google.protobuf.Timestamp
+	21, // 2: catalog.v1.Product.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 3: catalog.v1.SKU.price:type_name -> common.v1.Money
+	21, // 4: catalog.v1.SKU.created_at:type_name -> google.protobuf.Timestamp
+	21, // 5: catalog.v1.SKU.updated_at:type_name -> google.protobuf.Timestamp
+	21, // 6: catalog.v1.Category.created_at:type_name -> google.protobuf.Timestamp
+	23, // 7: catalog.v1.ListProductsRequest.pagination:type_name -> common.v1.PaginationRequest
 	0,  // 8: catalog.v1.ListProductsResponse.products:type_name -> catalog.v1.Product
-	21, // 9: catalog.v1.ListProductsResponse.pagination:type_name -> common.v1.PaginationResponse
+	24, // 9: catalog.v1.ListProductsResponse.pagination:type_name -> common.v1.PaginationResponse
 	0,  // 10: catalog.v1.GetProductResponse.product:type_name -> catalog.v1.Product
 	8,  // 11: catalog.v1.CreateProductRequest.skus:type_name -> catalog.v1.CreateSKURequest
-	19, // 12: catalog.v1.CreateSKURequest.price:type_name -> common.v1.Money
+	22, // 12: catalog.v1.CreateSKURequest.price:type_name -> common.v1.Money
 	0,  // 13: catalog.v1.CreateProductResponse.product:type_name -> catalog.v1.Product
 	0,  // 14: catalog.v1.UpdateProductResponse.product:type_name -> catalog.v1.Product
 	0,  // 15: catalog.v1.UpdateProductStatusResponse.product:type_name -> catalog.v1.Product
 	2,  // 16: catalog.v1.ListCategoriesResponse.categories:type_name -> catalog.v1.Category
 	2,  // 17: catalog.v1.CreateCategoryResponse.category:type_name -> catalog.v1.Category
-	3,  // 18: catalog.v1.CatalogService.ListProducts:input_type -> catalog.v1.ListProductsRequest
-	5,  // 19: catalog.v1.CatalogService.GetProduct:input_type -> catalog.v1.GetProductRequest
-	7,  // 20: catalog.v1.CatalogService.CreateProduct:input_type -> catalog.v1.CreateProductRequest
-	10, // 21: catalog.v1.CatalogService.UpdateProduct:input_type -> catalog.v1.UpdateProductRequest
-	12, // 22: catalog.v1.CatalogService.UpdateProductStatus:input_type -> catalog.v1.UpdateProductStatusRequest
-	14, // 23: catalog.v1.CatalogService.ListCategories:input_type -> catalog.v1.ListCategoriesRequest
-	16, // 24: catalog.v1.CatalogService.CreateCategory:input_type -> catalog.v1.CreateCategoryRequest
-	4,  // 25: catalog.v1.CatalogService.ListProducts:output_type -> catalog.v1.ListProductsResponse
-	6,  // 26: catalog.v1.CatalogService.GetProduct:output_type -> catalog.v1.GetProductResponse
-	9,  // 27: catalog.v1.CatalogService.CreateProduct:output_type -> catalog.v1.CreateProductResponse
-	11, // 28: catalog.v1.CatalogService.UpdateProduct:output_type -> catalog.v1.UpdateProductResponse
-	13, // 29: catalog.v1.CatalogService.UpdateProductStatus:output_type -> catalog.v1.UpdateProductStatusResponse
-	15, // 30: catalog.v1.CatalogService.ListCategories:output_type -> catalog.v1.ListCategoriesResponse
-	17, // 31: catalog.v1.CatalogService.CreateCategory:output_type -> catalog.v1.CreateCategoryResponse
-	25, // [25:32] is the sub-list for method output_type
-	18, // [18:25] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	19, // 18: catalog.v1.BatchGetSKUsResponse.mappings:type_name -> catalog.v1.SKUProductMapping
+	3,  // 19: catalog.v1.CatalogService.ListProducts:input_type -> catalog.v1.ListProductsRequest
+	5,  // 20: catalog.v1.CatalogService.GetProduct:input_type -> catalog.v1.GetProductRequest
+	7,  // 21: catalog.v1.CatalogService.CreateProduct:input_type -> catalog.v1.CreateProductRequest
+	10, // 22: catalog.v1.CatalogService.UpdateProduct:input_type -> catalog.v1.UpdateProductRequest
+	12, // 23: catalog.v1.CatalogService.UpdateProductStatus:input_type -> catalog.v1.UpdateProductStatusRequest
+	14, // 24: catalog.v1.CatalogService.ListCategories:input_type -> catalog.v1.ListCategoriesRequest
+	16, // 25: catalog.v1.CatalogService.CreateCategory:input_type -> catalog.v1.CreateCategoryRequest
+	18, // 26: catalog.v1.CatalogService.BatchGetSKUs:input_type -> catalog.v1.BatchGetSKUsRequest
+	4,  // 27: catalog.v1.CatalogService.ListProducts:output_type -> catalog.v1.ListProductsResponse
+	6,  // 28: catalog.v1.CatalogService.GetProduct:output_type -> catalog.v1.GetProductResponse
+	9,  // 29: catalog.v1.CatalogService.CreateProduct:output_type -> catalog.v1.CreateProductResponse
+	11, // 30: catalog.v1.CatalogService.UpdateProduct:output_type -> catalog.v1.UpdateProductResponse
+	13, // 31: catalog.v1.CatalogService.UpdateProductStatus:output_type -> catalog.v1.UpdateProductStatusResponse
+	15, // 32: catalog.v1.CatalogService.ListCategories:output_type -> catalog.v1.ListCategoriesResponse
+	17, // 33: catalog.v1.CatalogService.CreateCategory:output_type -> catalog.v1.CreateCategoryResponse
+	20, // 34: catalog.v1.CatalogService.BatchGetSKUs:output_type -> catalog.v1.BatchGetSKUsResponse
+	27, // [27:35] is the sub-list for method output_type
+	19, // [19:27] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_catalog_v1_catalog_proto_init() }
@@ -1387,7 +1551,7 @@ func file_catalog_v1_catalog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_v1_catalog_proto_rawDesc), len(file_catalog_v1_catalog_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

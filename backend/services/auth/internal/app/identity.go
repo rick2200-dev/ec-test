@@ -100,6 +100,17 @@ func (s *IdentityService) ListSellers(ctx context.Context, limit, offset int) ([
 	return sellers, total, nil
 }
 
+// BatchGetSellers resolves a batch of seller ids. Unknown ids are silently
+// omitted from the result so callers must tolerate length mismatch. Used by
+// the /internal/sellers/batch-get endpoint for service-to-service snapshotting.
+func (s *IdentityService) BatchGetSellers(ctx context.Context, ids []uuid.UUID) ([]domain.Seller, error) {
+	sellers, err := s.sellers.BatchGetByIDs(ctx, ids)
+	if err != nil {
+		return nil, apperrors.Internal("failed to batch get sellers", err)
+	}
+	return sellers, nil
+}
+
 // ApproveSeller transitions a seller to the approved status.
 func (s *IdentityService) ApproveSeller(ctx context.Context, id uuid.UUID) error {
 	seller, err := s.sellers.GetByID(ctx, id)

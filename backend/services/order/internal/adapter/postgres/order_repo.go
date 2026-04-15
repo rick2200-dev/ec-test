@@ -31,33 +31,13 @@ func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
 }
 
 // Create inserts a new order and its lines within a single transaction.
-// Resolves seller_name (from auth_svc.sellers) and product_id
-// (from catalog_svc.skus) in the same transaction so the snapshots stored on
-// order_svc are always consistent with catalog state at the moment of sale.
+// The caller is responsible for resolving order.SellerName (via the auth
+// service's /internal/sellers/batch-get) and each line.ProductID (via
+// catalog's BatchGetSKUs RPC) BEFORE invoking this method. Phase 1.2
+// removed the cross-schema lookups that used to live here so order_svc
+// no longer depends on auth_svc / catalog_svc schemas at runtime.
 func (r *OrderRepository) Create(ctx context.Context, order *domain.Order, lines []domain.OrderLine) error {
 	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
-		sellerNames, err := lookupSellerNames(ctx, tx, []uuid.UUID{order.SellerID})
-		if err != nil {
-			return err
-		}
-		order.SellerName = sellerNames[order.SellerID]
-
-		skuIDs := make([]uuid.UUID, 0, len(lines))
-		for _, l := range lines {
-			skuIDs = append(skuIDs, l.SKUID)
-		}
-		productIDs, err := lookupSKUProductIDs(ctx, tx, skuIDs)
-		if err != nil {
-			return err
-		}
-		for i := range lines {
-			pid, ok := productIDs[lines[i].SKUID]
-			if !ok {
-				return fmt.Errorf("sku %s has no matching product", lines[i].SKUID)
-			}
-			lines[i].ProductID = pid
-		}
-
 		return insertOrderTx(ctx, tx, order, lines)
 	})
 }
@@ -104,64 +84,6 @@ func insertOrderTx(ctx context.Context, tx pgx.Tx, order *domain.Order, lines []
 	return nil
 }
 
-// lookupSellerNames resolves seller ids to their current company name by
-// querying auth_svc.sellers in the same transaction.
-// Returns a map keyed by seller id; callers must tolerate missing keys
-// (seller may have been deleted, in which case seller_name is stamped as
-// empty string).
-func lookupSellerNames(ctx context.Context, tx pgx.Tx, sellerIDs []uuid.UUID) (map[uuid.UUID]string, error) {
-	result := make(map[uuid.UUID]string, len(sellerIDs))
-	if len(sellerIDs) == 0 {
-		return result, nil
-	}
-	rows, err := tx.Query(ctx,
-		`SELECT id, name
-		 FROM auth_svc.sellers
-		 WHERE id = ANY($1)`,
-		sellerIDs,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("lookup seller names: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id uuid.UUID
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return nil, fmt.Errorf("scan seller name: %w", err)
-		}
-		result[id] = name
-	}
-	return result, rows.Err()
-}
-
-// lookupSKUProductIDs resolves SKU ids to their parent product id by querying
-// catalog_svc.skus in the same transaction.
-func lookupSKUProductIDs(ctx context.Context, tx pgx.Tx, skuIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
-	result := make(map[uuid.UUID]uuid.UUID, len(skuIDs))
-	if len(skuIDs) == 0 {
-		return result, nil
-	}
-	rows, err := tx.Query(ctx,
-		`SELECT id, product_id
-		 FROM catalog_svc.skus
-		 WHERE id = ANY($1)`,
-		skuIDs,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("lookup sku product ids: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, productID uuid.UUID
-		if err := rows.Scan(&id, &productID); err != nil {
-			return nil, fmt.Errorf("scan sku product id: %w", err)
-		}
-		result[id] = productID
-	}
-	return result, rows.Err()
-}
-
 // CheckoutBatchItem is re-exported from domain for backwards compatibility.
 // New code should prefer domain.CheckoutBatchItem.
 //
@@ -174,50 +96,11 @@ type CheckoutBatchItem = domain.CheckoutBatchItem
 // batch rolls back — so a multi-seller checkout either creates every order
 // cleanly or leaves the database untouched.
 //
-// Before inserts, this method resolves seller_name and sku->product_id
-// snapshots via two bulk cross-schema queries against auth_svc.sellers and
-// catalog_svc.skus respectively.
+// Callers must resolve order.SellerName + line.ProductID for every item
+// before calling (Phase 1.2 moved those lookups out of the repo).
 func (r *OrderRepository) CreateCheckoutBatch(ctx context.Context, items []CheckoutBatchItem) error {
 	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
-		// Collect unique seller ids and sku ids across the whole batch so
-		// we can resolve snapshots with exactly two queries regardless of
-		// how many sellers / lines the checkout has.
-		sellerIDSet := make(map[uuid.UUID]struct{})
-		skuIDSet := make(map[uuid.UUID]struct{})
 		for _, item := range items {
-			sellerIDSet[item.Order.SellerID] = struct{}{}
-			for _, l := range item.Lines {
-				skuIDSet[l.SKUID] = struct{}{}
-			}
-		}
-		sellerIDs := make([]uuid.UUID, 0, len(sellerIDSet))
-		for id := range sellerIDSet {
-			sellerIDs = append(sellerIDs, id)
-		}
-		skuIDs := make([]uuid.UUID, 0, len(skuIDSet))
-		for id := range skuIDSet {
-			skuIDs = append(skuIDs, id)
-		}
-
-		sellerNames, err := lookupSellerNames(ctx, tx, sellerIDs)
-		if err != nil {
-			return err
-		}
-		productIDs, err := lookupSKUProductIDs(ctx, tx, skuIDs)
-		if err != nil {
-			return err
-		}
-
-		for _, item := range items {
-			item.Order.SellerName = sellerNames[item.Order.SellerID]
-			for i := range item.Lines {
-				pid, ok := productIDs[item.Lines[i].SKUID]
-				if !ok {
-					return fmt.Errorf("sku %s has no matching product", item.Lines[i].SKUID)
-				}
-				item.Lines[i].ProductID = pid
-			}
-
 			if err := insertOrderTx(ctx, tx, item.Order, item.Lines); err != nil {
 				return err
 			}

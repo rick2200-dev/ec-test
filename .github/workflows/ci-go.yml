@@ -166,3 +166,13 @@ jobs:
           name: coverage-${{ matrix.service }}
           path: backend/services/${{ matrix.service }}/coverage.out
           retention-days: 7
+
+  schema-boundaries:
+    # Phase 1.4 guard: fail the pipeline if any service source file
+    # references another service's Postgres schema outside the transitional
+    # allowlist in infra/scripts/lint_schema_boundaries.sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint schema boundaries
+        run: bash infra/scripts/lint_schema_boundaries.sh

@@ -24,10 +24,16 @@ type OrderService struct {
 	stripe             port.StripePayments
 	publisher          pubsub.Publisher
 	buyerSubClient     port.BuyerSubscriptionChecker
+	sellerLookup       port.SellerLookup
+	skuLookup          port.SKULookup
 	defaultShippingFee int64
 }
 
-// NewOrderService creates a new OrderService.
+// NewOrderService creates a new OrderService. sellerLookup and skuLookup
+// replace the former cross-schema reads of auth_svc.sellers /
+// catalog_svc.skus; they are called before each insert transaction to
+// resolve the seller_name + product_id snapshots that the order row
+// persists. See Phase 1.2 in the refactor plan.
 func NewOrderService(
 	orderRepo port.OrderStore,
 	commissionRepo port.CommissionStore,
@@ -35,6 +41,8 @@ func NewOrderService(
 	stripe port.StripePayments,
 	publisher pubsub.Publisher,
 	buyerSubClient port.BuyerSubscriptionChecker,
+	sellerLookup port.SellerLookup,
+	skuLookup port.SKULookup,
 	defaultShippingFee int64,
 ) *OrderService {
 	return &OrderService{
@@ -44,6 +52,8 @@ func NewOrderService(
 		stripe:             stripe,
 		publisher:          publisher,
 		buyerSubClient:     buyerSubClient,
+		sellerLookup:       sellerLookup,
+		skuLookup:          skuLookup,
 		defaultShippingFee: defaultShippingFee,
 	}
 }
@@ -120,9 +130,34 @@ func (s *OrderService) CreateOrder(ctx context.Context, input domain.CreateOrder
 		return nil, "", apperrors.Internal("failed to create payment intent", err)
 	}
 
-	// 7. Save order + lines to DB.
+	// 7. Resolve seller_name + product_id snapshots from the owning
+	// services. These used to be cross-schema SELECTs in the order repo;
+	// Phase 1.2 moved the lookups here so order_svc no longer needs GRANT
+	// on auth_svc / catalog_svc.
+	sellerNames, err := s.sellerLookup.BatchGetSellerNames(ctx, []uuid.UUID{input.SellerID})
+	if err != nil {
+		return nil, "", apperrors.Internal("resolve seller name", err)
+	}
+	skuIDs := make([]uuid.UUID, 0, len(lines))
+	for _, l := range lines {
+		skuIDs = append(skuIDs, l.SKUID)
+	}
+	productIDs, err := s.skuLookup.BatchGetSKUProductIDs(ctx, skuIDs)
+	if err != nil {
+		return nil, "", apperrors.Internal("resolve sku product ids", err)
+	}
+	for i := range lines {
+		pid, ok := productIDs[lines[i].SKUID]
+		if !ok {
+			return nil, "", apperrors.BadRequest(fmt.Sprintf("sku %s has no matching product", lines[i].SKUID))
+		}
+		lines[i].ProductID = pid
+	}
+
+	// 8. Save order + lines to DB.
 	order := &domain.Order{
 		SellerID:              input.SellerID,
+		SellerName:            sellerNames[input.SellerID],
 		BuyerAuth0ID:          input.BuyerAuth0ID,
 		Status:                domain.StatusPending,
 		SubtotalAmount:        subtotal,
@@ -264,7 +299,44 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		})
 	}
 
-	// 4. Insert all orders + pending payouts atomically.
+	// 4. Resolve seller_name + product_id snapshots via the owning services'
+	// RPCs before writing. Replaces former cross-schema reads. See Phase 1.2.
+	sellerIDSet := make(map[uuid.UUID]struct{}, len(batch))
+	skuIDSet := make(map[uuid.UUID]struct{})
+	for _, item := range batch {
+		sellerIDSet[item.Order.SellerID] = struct{}{}
+		for _, l := range item.Lines {
+			skuIDSet[l.SKUID] = struct{}{}
+		}
+	}
+	sellerIDs := make([]uuid.UUID, 0, len(sellerIDSet))
+	for id := range sellerIDSet {
+		sellerIDs = append(sellerIDs, id)
+	}
+	skuIDs := make([]uuid.UUID, 0, len(skuIDSet))
+	for id := range skuIDSet {
+		skuIDs = append(skuIDs, id)
+	}
+	sellerNames, err := s.sellerLookup.BatchGetSellerNames(ctx, sellerIDs)
+	if err != nil {
+		return nil, apperrors.Internal("resolve seller names", err)
+	}
+	productIDs, err := s.skuLookup.BatchGetSKUProductIDs(ctx, skuIDs)
+	if err != nil {
+		return nil, apperrors.Internal("resolve sku product ids", err)
+	}
+	for _, item := range batch {
+		item.Order.SellerName = sellerNames[item.Order.SellerID]
+		for i := range item.Lines {
+			pid, ok := productIDs[item.Lines[i].SKUID]
+			if !ok {
+				return nil, apperrors.BadRequest(fmt.Sprintf("sku %s has no matching product", item.Lines[i].SKUID))
+			}
+			item.Lines[i].ProductID = pid
+		}
+	}
+
+	// 5. Insert all orders + pending payouts atomically.
 	if err := s.orderRepo.CreateCheckoutBatch(ctx, batch); err != nil {
 		return nil, apperrors.Internal("failed to create checkout batch", err)
 	}

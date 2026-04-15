@@ -26,6 +26,7 @@ const (
 	CatalogService_UpdateProductStatus_FullMethodName = "/catalog.v1.CatalogService/UpdateProductStatus"
 	CatalogService_ListCategories_FullMethodName      = "/catalog.v1.CatalogService/ListCategories"
 	CatalogService_CreateCategory_FullMethodName      = "/catalog.v1.CatalogService/CreateCategory"
+	CatalogService_BatchGetSKUs_FullMethodName        = "/catalog.v1.CatalogService/BatchGetSKUs"
 )
 
 // CatalogServiceClient is the client API for CatalogService service.
@@ -45,6 +46,11 @@ type CatalogServiceClient interface {
 	// Categories
 	ListCategories(ctx context.Context, in *ListCategoriesRequest, opts ...grpc.CallOption) (*ListCategoriesResponse, error)
 	CreateCategory(ctx context.Context, in *CreateCategoryRequest, opts ...grpc.CallOption) (*CreateCategoryResponse, error)
+	// Internal. BatchGetSKUs resolves SKU ids to their parent product id so
+	// service-to-service callers (order at checkout time) can snapshot
+	// product_id onto order lines without reading catalog_svc directly.
+	// Unknown sku_ids are silently omitted from the response.
+	BatchGetSKUs(ctx context.Context, in *BatchGetSKUsRequest, opts ...grpc.CallOption) (*BatchGetSKUsResponse, error)
 }
 
 type catalogServiceClient struct {
@@ -125,6 +131,16 @@ func (c *catalogServiceClient) CreateCategory(ctx context.Context, in *CreateCat
 	return out, nil
 }
 
+func (c *catalogServiceClient) BatchGetSKUs(ctx context.Context, in *BatchGetSKUsRequest, opts ...grpc.CallOption) (*BatchGetSKUsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchGetSKUsResponse)
+	err := c.cc.Invoke(ctx, CatalogService_BatchGetSKUs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CatalogServiceServer is the server API for CatalogService service.
 // All implementations must embed UnimplementedCatalogServiceServer
 // for forward compatibility.
@@ -142,6 +158,11 @@ type CatalogServiceServer interface {
 	// Categories
 	ListCategories(context.Context, *ListCategoriesRequest) (*ListCategoriesResponse, error)
 	CreateCategory(context.Context, *CreateCategoryRequest) (*CreateCategoryResponse, error)
+	// Internal. BatchGetSKUs resolves SKU ids to their parent product id so
+	// service-to-service callers (order at checkout time) can snapshot
+	// product_id onto order lines without reading catalog_svc directly.
+	// Unknown sku_ids are silently omitted from the response.
+	BatchGetSKUs(context.Context, *BatchGetSKUsRequest) (*BatchGetSKUsResponse, error)
 	mustEmbedUnimplementedCatalogServiceServer()
 }
 
@@ -172,6 +193,9 @@ func (UnimplementedCatalogServiceServer) ListCategories(context.Context, *ListCa
 }
 func (UnimplementedCatalogServiceServer) CreateCategory(context.Context, *CreateCategoryRequest) (*CreateCategoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCategory not implemented")
+}
+func (UnimplementedCatalogServiceServer) BatchGetSKUs(context.Context, *BatchGetSKUsRequest) (*BatchGetSKUsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchGetSKUs not implemented")
 }
 func (UnimplementedCatalogServiceServer) mustEmbedUnimplementedCatalogServiceServer() {}
 func (UnimplementedCatalogServiceServer) testEmbeddedByValue()                        {}
@@ -320,6 +344,24 @@ func _CatalogService_CreateCategory_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CatalogService_BatchGetSKUs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetSKUsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CatalogServiceServer).BatchGetSKUs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CatalogService_BatchGetSKUs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CatalogServiceServer).BatchGetSKUs(ctx, req.(*BatchGetSKUsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CatalogService_ServiceDesc is the grpc.ServiceDesc for CatalogService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -354,6 +396,10 @@ var CatalogService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateCategory",
 			Handler:    _CatalogService_CreateCategory_Handler,
+		},
+		{
+			MethodName: "BatchGetSKUs",
+			Handler:    _CatalogService_BatchGetSKUs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

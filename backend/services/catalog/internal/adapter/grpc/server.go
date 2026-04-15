@@ -185,6 +185,32 @@ func (s *CatalogServer) CreateCategory(ctx context.Context, req *catalogv1.Creat
 	}, nil
 }
 
+// BatchGetSKUs resolves SKU ids to (product_id, seller_id) for service-to-
+// service callers (order at checkout time). Unknown ids are silently omitted.
+func (s *CatalogServer) BatchGetSKUs(ctx context.Context, req *catalogv1.BatchGetSKUsRequest) (*catalogv1.BatchGetSKUsResponse, error) {
+	ids := make([]uuid.UUID, 0, len(req.SkuIds))
+	for _, raw := range req.SkuIds {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid sku_id %q: %v", raw, err)
+		}
+		ids = append(ids, id)
+	}
+	mappings, err := s.svc.BatchGetSKUMappings(ctx, ids)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	out := make([]*catalogv1.SKUProductMapping, 0, len(mappings))
+	for _, m := range mappings {
+		out = append(out, &catalogv1.SKUProductMapping{
+			SkuId:     m.SKUID.String(),
+			ProductId: m.ProductID.String(),
+			SellerId:  m.SellerID.String(),
+		})
+	}
+	return &catalogv1.BatchGetSKUsResponse{Mappings: out}, nil
+}
+
 // toGRPCError converts an application error to a gRPC status error.
 func toGRPCError(err error) error {
 	var appErr *apperrors.AppError

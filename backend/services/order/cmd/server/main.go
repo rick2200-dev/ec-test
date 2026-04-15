@@ -21,6 +21,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/grpc"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/grpcclient"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/httpclient"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/postgres"
 	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/adapter/stripe"
 	subscriber "github.com/Riku-KANO/ec-test/services/order/internal/adapter/pubsub"
@@ -122,8 +123,20 @@ func main() {
 	}
 	defer func() { _ = buyerSubClient.Close() }()
 
+	// Catalog gRPC client: resolves sku -> product_id at checkout so
+	// order_svc no longer needs to read catalog_svc directly.
+	catalogClient, err := grpcclient.NewCatalogClient(cfg.CatalogServiceGRPCAddr, cfg.CatalogInternalToken)
+	if err != nil {
+		slog.Error("failed to create catalog client", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = catalogClient.Close() }()
+
+	// Auth HTTP client: resolves seller_id -> name at checkout.
+	sellerClient := httpclient.NewSellerClient(cfg.AuthServiceURL, cfg.AuthInternalToken)
+
 	// Service
-	orderSvc := app.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, cfg.DefaultShippingFee)
+	orderSvc := app.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, sellerClient, catalogClient, cfg.DefaultShippingFee)
 
 	// Cancellation bounded context — see internal/cancellation/doc.go.
 	// Wired in parallel with (not nested under) the order service so

@@ -73,6 +73,24 @@ type StripePayments interface {
 	CreateTransfer(amount int64, currency string, sellerStripeAccountID string, paymentIntentID string) (transferID string, err error)
 }
 
+// SellerLookup is the driven port for resolving seller_id -> current name.
+// Implemented by a thin HTTP client against auth /internal/sellers/batch-get.
+// Replaces direct cross-schema reads of auth_svc.sellers.
+type SellerLookup interface {
+	// BatchGetSellerNames returns a map keyed by seller id. Unknown ids are
+	// omitted; callers must tolerate missing keys.
+	BatchGetSellerNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
+}
+
+// SKULookup is the driven port for resolving sku_id -> product_id snapshots.
+// Implemented by a gRPC client against catalog.BatchGetSKUs. Replaces direct
+// cross-schema reads of catalog_svc.skus.
+type SKULookup interface {
+	// BatchGetSKUProductIDs returns a map keyed by sku id. Unknown ids are
+	// omitted.
+	BatchGetSKUProductIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]uuid.UUID, error)
+}
+
 // BuyerSubscriptionChecker is the driven port for buyer subscription lookups.
 // *httpclient.BuyerSubscriptionClient satisfies this interface.
 type BuyerSubscriptionChecker interface {

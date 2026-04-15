@@ -34,6 +34,11 @@ type SellerStore interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SellerStatus) error
 	// Create persists a new seller (initial status: pending).
 	Create(ctx context.Context, s *domain.Seller) error
+	// BatchGetByIDs returns sellers for the given ids. Unknown ids are
+	// silently omitted. Used by the internal batch-get endpoint so
+	// service-to-service callers (order) can snapshot seller_name without
+	// reading auth_svc directly.
+	BatchGetByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.Seller, error)
 }
 
 // SellerUserStore is the driven port for seller_user persistence.

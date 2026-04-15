@@ -10,7 +10,10 @@ replace github.com/Riku-KANO/ec-test/shared/api/gen/go => ../../shared/api/gen/g
 
 replace github.com/Riku-KANO/ec-test/services/subscription/api/gen/go => ../subscription/api/gen/go
 
+replace github.com/Riku-KANO/ec-test/services/catalog/api/gen/go => ../catalog/api/gen/go
+
 require (
+	github.com/Riku-KANO/ec-test/services/catalog/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/Riku-KANO/ec-test/services/order/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/Riku-KANO/ec-test/services/subscription/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/Riku-KANO/ec-test/shared/api/gen/go v0.0.0-00010101000000-000000000000

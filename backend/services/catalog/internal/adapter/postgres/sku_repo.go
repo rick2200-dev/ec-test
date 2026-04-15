@@ -11,6 +11,7 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
+	"github.com/Riku-KANO/ec-test/services/catalog/internal/port"
 )
 
 // SKURepository handles persistence of SKUs.
@@ -142,4 +143,29 @@ func (r *SKURepository) UpdateStatus(ctx context.Context, id uuid.UUID, status d
 		}
 		return nil
 	})
+}
+
+// BatchGetMappings returns (id, product_id, seller_id) for each known SKU in
+// ids. Unknown ids are silently omitted.
+func (r *SKURepository) BatchGetMappings(ctx context.Context, ids []uuid.UUID) ([]port.SKUMapping, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, product_id, seller_id FROM catalog_svc.skus WHERE id = ANY($1)`,
+		ids,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch get sku mappings: %w", err)
+	}
+	defer rows.Close()
+	out := make([]port.SKUMapping, 0, len(ids))
+	for rows.Next() {
+		var m port.SKUMapping
+		if err := rows.Scan(&m.SKUID, &m.ProductID, &m.SellerID); err != nil {
+			return nil, fmt.Errorf("scan sku mapping: %w", err)
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
 }
