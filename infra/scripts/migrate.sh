@@ -19,6 +19,7 @@ SERVICES=(
   review
   shipping
   notification
+  grants
 )
 
 db_url_with_table() {

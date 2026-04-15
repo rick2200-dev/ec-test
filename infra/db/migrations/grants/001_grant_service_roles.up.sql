@@ -1,0 +1,105 @@
+-- Phase 1.1: grant each service role strict privileges on its own schema,
+-- plus a small explicitly-documented set of transitional cross-schema reads
+-- that Phase 1.2 will remove once legacy direct reads become gRPC calls.
+--
+-- This migration runs LAST (migrate.sh iterates SERVICES with "grants" at the
+-- end) so every schema created by any per-service migration already exists.
+--
+-- All GRANTs are idempotent; re-running is safe. ALTER DEFAULT PRIVILEGES
+-- ensures tables created by future migrations inherit the right grants as
+-- long as the migration runner keeps using the ecmarket superuser.
+
+-- ─── Owned-schema grants ──────────────────────────────────────
+
+-- auth
+GRANT USAGE ON SCHEMA auth_svc TO auth_role;
+GRANT ALL ON ALL TABLES IN SCHEMA auth_svc TO auth_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA auth_svc TO auth_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc GRANT ALL ON TABLES TO auth_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc GRANT ALL ON SEQUENCES TO auth_role;
+
+-- catalog
+GRANT USAGE ON SCHEMA catalog_svc TO catalog_role;
+GRANT ALL ON ALL TABLES IN SCHEMA catalog_svc TO catalog_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA catalog_svc TO catalog_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON TABLES TO catalog_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON SEQUENCES TO catalog_role;
+
+-- inventory
+GRANT USAGE ON SCHEMA inventory_svc TO inventory_role;
+GRANT ALL ON ALL TABLES IN SCHEMA inventory_svc TO inventory_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA inventory_svc TO inventory_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc GRANT ALL ON TABLES TO inventory_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc GRANT ALL ON SEQUENCES TO inventory_role;
+
+-- order (note: "order" is a reserved word so the role uses an underscore suffix)
+GRANT USAGE ON SCHEMA order_svc TO order_role;
+GRANT ALL ON ALL TABLES IN SCHEMA order_svc TO order_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA order_svc TO order_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON TABLES TO order_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON SEQUENCES TO order_role;
+
+-- subscription
+GRANT USAGE ON SCHEMA subscription_svc TO subscription_role;
+GRANT ALL ON ALL TABLES IN SCHEMA subscription_svc TO subscription_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA subscription_svc TO subscription_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc GRANT ALL ON TABLES TO subscription_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc GRANT ALL ON SEQUENCES TO subscription_role;
+
+-- inquiry
+GRANT USAGE ON SCHEMA inquiry_svc TO inquiry_role;
+GRANT ALL ON ALL TABLES IN SCHEMA inquiry_svc TO inquiry_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA inquiry_svc TO inquiry_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc GRANT ALL ON TABLES TO inquiry_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc GRANT ALL ON SEQUENCES TO inquiry_role;
+
+-- review
+GRANT USAGE ON SCHEMA review_svc TO review_role;
+GRANT ALL ON ALL TABLES IN SCHEMA review_svc TO review_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA review_svc TO review_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON TABLES TO review_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON SEQUENCES TO review_role;
+
+-- shipping
+GRANT USAGE ON SCHEMA shipping_svc TO shipping_role;
+GRANT ALL ON ALL TABLES IN SCHEMA shipping_svc TO shipping_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA shipping_svc TO shipping_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON TABLES TO shipping_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON SEQUENCES TO shipping_role;
+
+-- notification
+GRANT USAGE ON SCHEMA notification_svc TO notification_role;
+GRANT ALL ON ALL TABLES IN SCHEMA notification_svc TO notification_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA notification_svc TO notification_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc GRANT ALL ON TABLES TO notification_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc GRANT ALL ON SEQUENCES TO notification_role;
+
+-- ─── Read-only catalog consumers ──────────────────────────────
+-- search and recommend do not own a schema today; they project catalog data.
+-- Strict SELECT-only grant makes the data-flow direction unambiguous.
+
+GRANT USAGE ON SCHEMA catalog_svc TO search_role, recommend_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA catalog_svc TO search_role, recommend_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT SELECT ON TABLES TO search_role, recommend_role;
+
+-- recommend also writes to its own user_events table (currently co-located in
+-- catalog_svc). Phase 2.2 moves this to a dedicated recommend_svc schema.
+GRANT INSERT, UPDATE, DELETE ON catalog_svc.user_events TO recommend_role;
+
+-- ─── Transitional cross-schema reads (to be removed in Phase 1.2/2.1) ──
+
+-- order reads auth_svc.sellers (seller_name snapshot at checkout) and
+-- catalog_svc.products/skus during order creation. Phase 1.2 replaces these
+-- with auth.BatchGetSellers and catalog.BatchGetSKUs gRPC calls.
+GRANT USAGE ON SCHEMA auth_svc TO order_role;
+GRANT SELECT ON auth_svc.sellers TO order_role;
+GRANT USAGE ON SCHEMA catalog_svc TO order_role;
+GRANT SELECT ON catalog_svc.products, catalog_svc.skus TO order_role;
+
+-- catalog matview seller_plan_boost joins auth_svc.sellers +
+-- subscription_svc.subscription_plans. Phase 2.1 moves this to a local
+-- projection fed by events.
+GRANT USAGE ON SCHEMA auth_svc TO catalog_role;
+GRANT SELECT ON auth_svc.sellers, auth_svc.seller_subscriptions TO catalog_role;
+GRANT USAGE ON SCHEMA subscription_svc TO catalog_role;
+GRANT SELECT ON subscription_svc.subscription_plans TO catalog_role;

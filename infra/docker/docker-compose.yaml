@@ -59,7 +59,7 @@ services:
       HTTP_PORT: "8081"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://auth_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: local-dev-secret-do-not-use-in-production
       # Shared secret gating /internal/authz and /internal/buyers.
@@ -89,7 +89,7 @@ services:
       HTTP_PORT: "8082"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://catalog_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/1
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match cart.CATALOG_INTERNAL_TOKEN.
@@ -118,7 +118,7 @@ services:
       HTTP_PORT: "8083"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://order_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/2
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       INVENTORY_SERVICE_URL: http://inventory:8084
@@ -157,7 +157,7 @@ services:
       HTTP_PORT: "8084"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://inventory_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/3
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
@@ -184,7 +184,7 @@ services:
       HTTP_PORT: "8085"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://search_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/4
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
@@ -211,7 +211,7 @@ services:
       HTTP_PORT: "8086"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://recommend_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/5
       CATALOG_SERVICE_URL: http://catalog:8082
     depends_on:
@@ -238,7 +238,7 @@ services:
       HTTP_PORT: "8087"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://notification_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/6
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
@@ -299,7 +299,7 @@ services:
       HTTP_PORT: "8090"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://inquiry_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       ORDER_SERVICE_URL: http://order:8083
       AUTH_SERVICE_URL: http://auth:8081
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
@@ -336,7 +336,7 @@ services:
       GRPC_PORT: "50058"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://subscription_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       # Must match SUBSCRIPTION_INTERNAL_TOKEN on gateway + order.
       SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
     depends_on:
@@ -366,7 +366,7 @@ services:
       GRPC_PORT: "50059"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://shipping_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match SHIPPING_INTERNAL_TOKEN on the gateway.
@@ -393,7 +393,7 @@ services:
       HTTP_PORT: "8091"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://ecmarket:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      DATABASE_URL: postgres://review_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
