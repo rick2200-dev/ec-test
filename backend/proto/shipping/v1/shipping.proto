@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package shipping.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/gen/go/shipping/v1;shippingv1";
+
+import "google/protobuf/timestamp.proto";
+
+// ShippingService manages shipments for orders.
+//
+// NOTE: All RPCs below are currently unimplemented (codes.Unimplemented) on the
+// server. The primary call path for v1 is HTTP proxied through the gateway.
+// gRPC will be enabled once a gRPC auth interceptor is in place so that
+// caller identity can be propagated securely in metadata.
+service ShippingService {
+  // GetShipmentByOrder retrieves the shipment for a given order.
+  rpc GetShipmentByOrder(GetShipmentByOrderRequest) returns (GetShipmentByOrderResponse);
+
+  // RegisterShipment marks a shipment as shipped and records the tracking number.
+  rpc RegisterShipment(RegisterShipmentRequest) returns (RegisterShipmentResponse);
+
+  // MarkDelivered marks a shipment as delivered.
+  rpc MarkDelivered(MarkDeliveredRequest) returns (MarkDeliveredResponse);
+}
+
+// Shipment represents a physical delivery associated with an order.
+message Shipment {
+  string id              = 1;
+  string tenant_id       = 2;
+  string seller_id       = 3;
+  string order_id        = 4;
+  string buyer_auth0_id  = 5;
+  string status          = 6;  // pending | ready_to_ship | shipped | delivered | cancelled
+  string carrier         = 7;
+  string tracking_number = 8;
+  string note            = 9;
+  string shipping_address_json = 10;
+  google.protobuf.Timestamp shipped_at   = 11;
+  google.protobuf.Timestamp delivered_at = 12;
+  google.protobuf.Timestamp created_at   = 13;
+  google.protobuf.Timestamp updated_at   = 14;
+}
+
+message GetShipmentByOrderRequest {
+  string order_id  = 1;
+  string tenant_id = 2;
+}
+
+message GetShipmentByOrderResponse {
+  Shipment shipment = 1;
+}
+
+message RegisterShipmentRequest {
+  string id              = 1;
+  string tenant_id       = 2;
+  string seller_id       = 3;
+  string carrier         = 4;
+  string tracking_number = 5;
+  string note            = 6;
+  google.protobuf.Timestamp shipped_at = 7;
+}
+
+message RegisterShipmentResponse {
+  Shipment shipment = 1;
+}
+
+message MarkDeliveredRequest {
+  string id        = 1;
+  string tenant_id = 2;
+  string seller_id = 3;
+  google.protobuf.Timestamp delivered_at = 4;
+}
+
+message MarkDeliveredResponse {
+  Shipment shipment = 1;
+}

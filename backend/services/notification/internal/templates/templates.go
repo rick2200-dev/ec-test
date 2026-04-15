@@ -267,6 +267,62 @@ func LowStockAlert(skuCode, productName string, currentStock, threshold int) (su
 	return subject, body
 }
 
+var shipmentShippedTmpl = template.Must(template.New("shipment_shipped").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>商品発送のお知らせ</h2>
+<p>お客様</p>
+<p>ご注文の商品が発送されました。</p>
+<table>
+  <tr><td><strong>注文番号:</strong></td><td>{{.OrderID}}</td></tr>
+  <tr><td><strong>配送業者:</strong></td><td>{{.Carrier}}</td></tr>
+  <tr><td><strong>追跡番号:</strong></td><td>{{.TrackingNumber}}</td></tr>
+</table>
+<p>上記の追跡番号を配送業者のウェブサイトでご確認いただくと、最新の配送状況をご確認いただけます。</p>
+<p>お届けまでしばらくお待ちください。</p>
+</body>
+</html>
+`))
+
+var shipmentDeliveredTmpl = template.Must(template.New("shipment_delivered").Parse(`
+<!DOCTYPE html>
+<html>
+<body>
+<h2>商品のお届けが完了しました</h2>
+<p>お客様</p>
+<p>ご注文の商品がお届けされました。</p>
+<table>
+  <tr><td><strong>注文番号:</strong></td><td>{{.OrderID}}</td></tr>
+</table>
+<p>商品のご利用はいかがでしたか？レビューを投稿して他のお客様の参考にしてください。</p>
+<p>ご利用ありがとうございました。</p>
+</body>
+</html>
+`))
+
+// ShipmentShippedNotification generates a buyer email with tracking info.
+func ShipmentShippedNotification(orderID, carrier, trackingNumber string) (subject, body string) {
+	subject = fmt.Sprintf("【発送完了】注文番号: %s", orderID)
+	data := map[string]any{
+		"OrderID":        orderID,
+		"Carrier":        carrier,
+		"TrackingNumber": trackingNumber,
+	}
+	body = render(shipmentShippedTmpl, data)
+	return subject, body
+}
+
+// ShipmentDeliveredNotification generates a buyer email on delivery completion.
+func ShipmentDeliveredNotification(orderID string) (subject, body string) {
+	subject = fmt.Sprintf("【配達完了】注文番号: %s", orderID)
+	data := map[string]any{
+		"OrderID": orderID,
+	}
+	body = render(shipmentDeliveredTmpl, data)
+	return subject, body
+}
+
 // ReviewCreatedNotification generates a seller email notifying them
 // that a buyer posted a new review on one of their products.
 func ReviewCreatedNotification(productName string, rating int, title string) (subject, body string) {
