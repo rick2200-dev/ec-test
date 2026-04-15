@@ -54,17 +54,10 @@ func NewBuyerHandler(svc *proxy.Services) *BuyerHandler {
 // catalog HTTP handler previously produced, so the frontend contract is
 // unchanged.
 func (h *BuyerHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	tc, err := tenant.FromContext(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "missing tenant context"})
-		return
-	}
-
 	p := pagination.FromRequest(r)
 
 	req := &catalogv1.ListProductsRequest{
-		TenantId: tc.TenantID.String(),
-		Status:   "active",
+		Status: "active",
 		Pagination: &commonv1.PaginationRequest{
 			Limit:  int32(p.Limit),
 			Offset: int32(p.Offset),
@@ -100,19 +93,12 @@ func (h *BuyerHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 // slug, including its SKUs.
 // GET /products/{slug}
 func (h *BuyerHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	tc, err := tenant.FromContext(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "missing tenant context"})
-		return
-	}
-
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
 		slug = r.PathValue("slug")
 	}
 
 	req := &catalogv1.GetProductRequest{
-		TenantId:   tc.TenantID.String(),
 		Identifier: &catalogv1.GetProductRequest_Slug{Slug: slug},
 	}
 
@@ -238,7 +224,6 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 			}
 
 			resp, err := h.catalogGRPC.GetProduct(gctx, &catalogv1.GetProductRequest{
-				TenantId:   tc.TenantID.String(),
 				Identifier: &catalogv1.GetProductRequest_Id{Id: line.ProductID},
 			})
 			if err != nil {
@@ -266,7 +251,6 @@ func (h *BuyerHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	resp := orderDetailResponseJSON{
 		ID:                    detail.ID,
-		TenantID:              detail.TenantID,
 		SellerID:              detail.SellerID,
 		SellerName:            detail.SellerName,
 		Status:                detail.Status,

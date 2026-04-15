@@ -48,7 +48,7 @@ func NewOrderService(
 }
 
 // CreateOrder creates a new order with Stripe PaymentIntent.
-func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
+func (s *OrderService) CreateOrder(ctx context.Context, input domain.CreateOrderInput) (*domain.OrderWithLines, string, error) {
 	if len(input.Lines) == 0 {
 		return nil, "", domain.ErrEmptyOrder
 	}
@@ -71,7 +71,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 
 	// 2. Find applicable commission rule.
 	// For MVP, category_id is nil (applies to all categories).
-	rule, err := s.commissionRepo.GetApplicableRule(ctx, tenantID, input.SellerID, nil)
+	rule, err := s.commissionRepo.GetApplicableRule(ctx, input.SellerID, nil)
 	if err != nil {
 		return nil, "", apperrors.Internal("failed to get commission rule", err)
 	}
@@ -84,7 +84,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 
 	// 4. Determine shipping fee based on buyer's subscription status.
 	shippingFee := s.defaultShippingFee
-	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, tenantID, input.BuyerAuth0ID); err != nil {
+	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, input.BuyerAuth0ID); err != nil {
 		slog.Warn("failed to check buyer subscription, charging standard shipping", "error", err)
 	} else if hasFree {
 		shippingFee = 0
@@ -100,7 +100,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 
 	// 6. Create Stripe PaymentIntent.
 	metadata := map[string]string{
-		"tenant_id": tenantID.String(),
 		"seller_id": input.SellerID.String(),
 	}
 
@@ -134,7 +133,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 		StripePaymentIntentID: &piID,
 	}
 
-	if err := s.orderRepo.Create(ctx, tenantID, order, lines); err != nil {
+	if err := s.orderRepo.Create(ctx, order, lines); err != nil {
 		return nil, "", apperrors.Internal("failed to create order", err)
 	}
 
@@ -143,9 +142,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 		Lines: lines,
 	}
 
-	slog.Info("order created", "order_id", order.ID, "tenant_id", tenantID, "total", totalAmount)
+	slog.Info("order created", "order_id", order.ID, "total", totalAmount)
 
-	pubsub.PublishEvent(ctx, s.publisher, tenantID, domain.EventTypeOrderCreated, "order-events", domain.OrderCreatedEvent{
+	pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", domain.OrderCreatedEvent{
 		OrderID:      order.ID.String(),
 		SellerID:     order.SellerID.String(),
 		BuyerAuth0ID: order.BuyerAuth0ID,
@@ -158,11 +157,11 @@ func (s *OrderService) CreateOrder(ctx context.Context, tenantID uuid.UUID, inpu
 }
 
 // CreateCheckout creates one Order (plus a pending Payout) per seller for a
-// multi-seller cart, all inside a single tenant transaction, then issues a
-// single Stripe PaymentIntent covering the full cart. The returned orders
-// all share the same stripe_payment_intent_id, which is the grouping key
-// the webhook handler uses to distribute funds via per-seller Transfers.
-func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, input domain.CheckoutInput) (*domain.CheckoutResult, error) {
+// multi-seller cart, all inside a single transaction, then issues a single
+// Stripe PaymentIntent covering the full cart. The returned orders all share
+// the same stripe_payment_intent_id, which is the grouping key the webhook
+// handler uses to distribute funds via per-seller Transfers.
+func (s *OrderService) CreateCheckout(ctx context.Context, input domain.CheckoutInput) (*domain.CheckoutResult, error) {
 	if len(input.Lines) == 0 {
 		return nil, domain.ErrEmptyOrder
 	}
@@ -196,11 +195,9 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 		g.lines = append(g.lines, line)
 	}
 
-	// 2. Determine shipping fee per order based on buyer subscription. The
-	//    fee is charged once per order (one per seller); premium buyers get
-	//    free shipping on every order in the checkout.
+	// 2. Determine shipping fee per order based on buyer subscription.
 	shippingFeePerOrder := s.defaultShippingFee
-	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, tenantID, input.BuyerAuth0ID); err != nil {
+	if hasFree, err := s.buyerSubClient.HasFreeShipping(ctx, input.BuyerAuth0ID); err != nil {
 		slog.Warn("failed to check buyer subscription, charging standard shipping", "error", err)
 	} else if hasFree {
 		shippingFeePerOrder = 0
@@ -228,7 +225,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 			})
 		}
 
-		rule, err := s.commissionRepo.GetApplicableRule(ctx, tenantID, sellerID, nil)
+		rule, err := s.commissionRepo.GetApplicableRule(ctx, sellerID, nil)
 		if err != nil {
 			return nil, apperrors.Internal("failed to get commission rule", err)
 		}
@@ -267,7 +264,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 	}
 
 	// 4. Insert all orders + pending payouts atomically.
-	if err := s.orderRepo.CreateCheckoutBatch(ctx, tenantID, batch); err != nil {
+	if err := s.orderRepo.CreateCheckoutBatch(ctx, batch); err != nil {
 		return nil, apperrors.Internal("failed to create checkout batch", err)
 	}
 
@@ -275,7 +272,6 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 	//    and Transfers). Funds land on the platform; per-seller Transfers
 	//    will be created by the webhook once payment succeeds.
 	metadata := map[string]string{
-		"tenant_id":      tenantID.String(),
 		"buyer_auth0_id": input.BuyerAuth0ID,
 		"order_count":    fmt.Sprintf("%d", len(batch)),
 	}
@@ -289,7 +285,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 
 	// 6. Stamp the PI id on every order we just created.
 	for i := range batch {
-		if err := s.orderRepo.SetStripePaymentIntentID(ctx, tenantID, batch[i].Order.ID, piID); err != nil {
+		if err := s.orderRepo.SetStripePaymentIntentID(ctx, batch[i].Order.ID, piID); err != nil {
 			return nil, apperrors.Internal("failed to attach payment intent to order", err)
 		}
 		batch[i].Order.StripePaymentIntentID = &piID
@@ -298,7 +294,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 	// 7. Publish order.created for each order in the checkout.
 	for i := range batch {
 		o := batch[i].Order
-		pubsub.PublishEvent(ctx, s.publisher, tenantID, domain.EventTypeOrderCreated, "order-events", domain.OrderCreatedEvent{
+		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", domain.OrderCreatedEvent{
 			OrderID:               o.ID.String(),
 			SellerID:              o.SellerID.String(),
 			BuyerAuth0ID:          o.BuyerAuth0ID,
@@ -309,7 +305,6 @@ func (s *OrderService) CreateCheckout(ctx context.Context, tenantID uuid.UUID, i
 	}
 
 	slog.Info("checkout created",
-		"tenant_id", tenantID,
 		"buyer_auth0_id", input.BuyerAuth0ID,
 		"order_count", len(batch),
 		"total", cartTotal,
@@ -356,7 +351,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		//    reverting a cancelled order back to paid (and therefore
 		//    triggering a Stripe Transfer against funds that have
 		//    already been refunded and reversed).
-		if err := s.orderRepo.SetPaid(ctx, order.TenantID, order.ID, now, stripePaymentIntentID); err != nil {
+		if err := s.orderRepo.SetPaid(ctx, order.ID, now, stripePaymentIntentID); err != nil {
 			if errors.Is(err, domain.ErrOrderNotPending) {
 				slog.Info("skipping payment success for order that is not in pending status",
 					"order_id", order.ID,
@@ -369,7 +364,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		}
 
 		// 2. Locate the pending payout we inserted during checkout.
-		payout, err := s.payoutRepo.GetByOrderID(ctx, order.TenantID, order.ID)
+		payout, err := s.payoutRepo.GetByOrderID(ctx, order.ID)
 		if err != nil {
 			return apperrors.Internal("failed to get payout for order", err)
 		}
@@ -378,11 +373,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 				"order_id", order.ID, "payment_intent", stripePaymentIntentID)
 			continue
 		}
-		// 2b. Belt-and-braces payout status guard. The SetPaid guard
-		//     already blocks the main replay path, but if anything slips
-		//     through (e.g. a manual cancellation that did not touch the
-		//     order row) we must not retransfer against a payout that is
-		//     already completed / reversed / failed.
+		// 2b. Belt-and-braces payout status guard.
 		if payout.Status != domain.PayoutStatusPending {
 			slog.Info("skipping payment success for non-pending payout",
 				"order_id", order.ID,
@@ -393,10 +384,8 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			continue
 		}
 
-		// 3. Resolve the seller's connected Stripe account id. This is a
-		//    stub until sellers are onboarded through Stripe Connect; see
-		//    docs/payment.md (known limitations) for the real lookup path.
-		sellerStripeAccountID := getSellerStripeAccountID(order.TenantID, order.SellerID)
+		// 3. Resolve the seller's connected Stripe account id.
+		sellerStripeAccountID := getSellerStripeAccountID(order.SellerID)
 
 		// 4. Create the Stripe Transfer on the platform-held funds.
 		transferID, transferErr := s.stripe.CreateTransfer(
@@ -412,10 +401,10 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 				"payout_id", payout.ID,
 				"amount", payout.Amount,
 			)
-			if failErr := s.payoutRepo.UpdateStatus(ctx, order.TenantID, payout.ID, domain.PayoutStatusFailed, nil); failErr != nil {
+			if failErr := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusFailed, nil); failErr != nil {
 				slog.Error("failed to mark payout failed", "error", failErr, "payout_id", payout.ID)
 			}
-			pubsub.PublishEvent(ctx, s.publisher, order.TenantID, domain.EventTypePayoutFailed, "payout-events", domain.PayoutFailedEvent{
+			pubsub.PublishEvent(ctx, s.publisher, domain.EventTypePayoutFailed, "payout-events", domain.PayoutFailedEvent{
 				PayoutID: payout.ID.String(),
 				OrderID:  order.ID.String(),
 				SellerID: order.SellerID.String(),
@@ -425,7 +414,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		}
 
 		// 5. Mark the payout completed with the transfer id.
-		if err := s.payoutRepo.UpdateStatus(ctx, order.TenantID, payout.ID, domain.PayoutStatusCompleted, &transferID); err != nil {
+		if err := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusCompleted, &transferID); err != nil {
 			return apperrors.Internal("failed to mark payout completed", err)
 		}
 
@@ -436,7 +425,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		)
 
 		// 6. Publish order.paid and payout.completed.
-		pubsub.PublishEvent(ctx, s.publisher, order.TenantID, domain.EventTypeOrderPaid, "order-events", domain.OrderPaidEvent{
+		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", domain.OrderPaidEvent{
 			OrderID:               order.ID.String(),
 			SellerID:              order.SellerID.String(),
 			BuyerAuth0ID:          order.BuyerAuth0ID,
@@ -444,7 +433,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			StripePaymentIntentID: stripePaymentIntentID,
 			ShippingAddressJSON:   string(order.ShippingAddress),
 		})
-		pubsub.PublishEvent(ctx, s.publisher, order.TenantID, domain.EventTypePayoutCompleted, "payout-events", domain.PayoutCompletedEvent{
+		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", domain.PayoutCompletedEvent{
 			PayoutID:         payout.ID.String(),
 			OrderID:          order.ID.String(),
 			SellerID:         order.SellerID.String(),
@@ -462,7 +451,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 // real implementation must look up sellers.stripe_account_id via the auth
 // service (or a shared seller lookup API). Tracked as a known limitation in
 // docs/payment.md.
-func getSellerStripeAccountID(_, sellerID uuid.UUID) string {
+func getSellerStripeAccountID(sellerID uuid.UUID) string {
 	return "acct_stub_" + sellerID.String()
 }
 
@@ -471,11 +460,11 @@ func getSellerStripeAccountID(_, sellerID uuid.UUID) string {
 // before allowing a buyer to open a new thread. Failure to find a matching
 // purchase is NOT an error — it returns Purchased=false so the caller can
 // respond with 403 to the buyer.
-func (s *OrderService) CheckPurchase(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
+func (s *OrderService) CheckPurchase(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
 	if buyerAuth0ID == "" {
 		return nil, domain.ErrBuyerRequired
 	}
-	rec, err := s.orderRepo.HasPurchasedSKU(ctx, tenantID, buyerAuth0ID, sellerID, skuID)
+	rec, err := s.orderRepo.HasPurchasedSKU(ctx, buyerAuth0ID, sellerID, skuID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to check purchase", err)
 	}
@@ -491,8 +480,8 @@ func (s *OrderService) CheckPurchase(ctx context.Context, tenantID uuid.UUID, bu
 }
 
 // GetOrder retrieves an order with its lines.
-func (s *OrderService) GetOrder(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.OrderWithLines, error) {
-	order, err := s.orderRepo.GetByID(ctx, tenantID, orderID)
+func (s *OrderService) GetOrder(ctx context.Context, orderID uuid.UUID) (*domain.OrderWithLines, error) {
+	order, err := s.orderRepo.GetByID(ctx, orderID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get order", err)
 	}
@@ -503,8 +492,8 @@ func (s *OrderService) GetOrder(ctx context.Context, tenantID, orderID uuid.UUID
 }
 
 // ListBuyerOrders returns paginated orders for a buyer.
-func (s *OrderService) ListBuyerOrders(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error) {
-	orders, total, err := s.orderRepo.ListByBuyer(ctx, tenantID, buyerAuth0ID, limit, offset)
+func (s *OrderService) ListBuyerOrders(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]domain.Order, int, error) {
+	orders, total, err := s.orderRepo.ListByBuyer(ctx, buyerAuth0ID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list buyer orders", err)
 	}
@@ -512,8 +501,8 @@ func (s *OrderService) ListBuyerOrders(ctx context.Context, tenantID uuid.UUID, 
 }
 
 // ListSellerOrders returns paginated orders for a seller.
-func (s *OrderService) ListSellerOrders(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Order, int, error) {
-	orders, total, err := s.orderRepo.ListBySeller(ctx, tenantID, sellerID, status, limit, offset)
+func (s *OrderService) ListSellerOrders(ctx context.Context, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Order, int, error) {
+	orders, total, err := s.orderRepo.ListBySeller(ctx, sellerID, status, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list seller orders", err)
 	}
@@ -527,17 +516,8 @@ func (s *OrderService) ListSellerOrders(ctx context.Context, tenantID, sellerID 
 // authenticated seller id, and this method fetches the order and
 // verifies seller_id matches before delegating to the repository.
 // Mismatches return 404 (not 403) to avoid leaking the existence of
-// another seller's order — same information-leak pattern the buyer
-// ownership checks in the cancellation package use.
-//
-// Note: the cancellation package has its own ownership helpers and a
-// dedicated ApproveCancellation path that already moves orders into
-// `cancelled`. Callers should not use UpdateOrderStatus to cancel
-// orders — doing so skips the Stripe refund / transfer reversal /
-// inventory release orchestration. The `cancelled` case is kept in
-// the allow-list here only to preserve the pre-existing contract
-// while the seller UI is migrated off it.
-func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, sellerID, orderID uuid.UUID, status string) error {
+// another seller's order.
+func (s *OrderService) UpdateOrderStatus(ctx context.Context, sellerID, orderID uuid.UUID, status string) error {
 	// Validate allowed status transitions.
 	switch status {
 	case domain.StatusProcessing, domain.StatusShipped, domain.StatusDelivered, domain.StatusCompleted, domain.StatusCancelled:
@@ -547,9 +527,8 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, sellerID
 	}
 
 	// Ownership check: load the order and confirm this seller owns it
-	// before the repository UPDATE. Without this guard, any
-	// authenticated tenant caller could advance any order's status.
-	existing, err := s.orderRepo.GetByID(ctx, tenantID, orderID)
+	// before the repository UPDATE.
+	existing, err := s.orderRepo.GetByID(ctx, orderID)
 	if err != nil {
 		return apperrors.Internal("failed to load order", err)
 	}
@@ -560,12 +539,12 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, sellerID
 		return domain.ErrOrderNotFound
 	}
 
-	if err := s.orderRepo.UpdateStatus(ctx, tenantID, orderID, status); err != nil {
+	if err := s.orderRepo.UpdateStatus(ctx, orderID, status); err != nil {
 		return apperrors.Internal("failed to update order status", err)
 	}
 
 	if status == domain.StatusShipped {
-		pubsub.PublishEvent(ctx, s.publisher, tenantID, domain.EventTypeOrderShipped, "order-events", domain.OrderShippedEvent{
+		pubsub.PublishEvent(ctx, s.publisher, domain.EventTypeOrderShipped, "order-events", domain.OrderShippedEvent{
 			OrderID: orderID.String(),
 		})
 	}
@@ -574,8 +553,8 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, tenantID, sellerID
 }
 
 // ListPayouts returns paginated payouts for a seller.
-func (s *OrderService) ListPayouts(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
-	payouts, total, err := s.payoutRepo.ListBySeller(ctx, tenantID, sellerID, limit, offset)
+func (s *OrderService) ListPayouts(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
+	payouts, total, err := s.payoutRepo.ListBySeller(ctx, sellerID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list payouts", err)
 	}
@@ -583,8 +562,8 @@ func (s *OrderService) ListPayouts(ctx context.Context, tenantID, sellerID uuid.
 }
 
 // ListCommissionRules returns paginated commission rules.
-func (s *OrderService) ListCommissionRules(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.CommissionRule, int, error) {
-	rules, total, err := s.commissionRepo.List(ctx, tenantID, limit, offset)
+func (s *OrderService) ListCommissionRules(ctx context.Context, limit, offset int) ([]domain.CommissionRule, int, error) {
+	rules, total, err := s.commissionRepo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list commission rules", err)
 	}
@@ -592,8 +571,8 @@ func (s *OrderService) ListCommissionRules(ctx context.Context, tenantID uuid.UU
 }
 
 // CreateCommissionRule creates a new commission rule.
-func (s *OrderService) CreateCommissionRule(ctx context.Context, tenantID uuid.UUID, rule *domain.CommissionRule) error {
-	if err := s.commissionRepo.Create(ctx, tenantID, rule); err != nil {
+func (s *OrderService) CreateCommissionRule(ctx context.Context, rule *domain.CommissionRule) error {
+	if err := s.commissionRepo.Create(ctx, rule); err != nil {
 		return apperrors.Internal("failed to create commission rule", err)
 	}
 	return nil

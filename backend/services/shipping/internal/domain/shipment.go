@@ -9,18 +9,17 @@ import (
 
 // Status constants for shipment lifecycle.
 const (
-	StatusPending      = "pending"
-	StatusReadyToShip  = "ready_to_ship"
-	StatusShipped      = "shipped"
-	StatusDelivered    = "delivered"
-	StatusCancelled    = "cancelled"
+	StatusPending     = "pending"
+	StatusReadyToShip = "ready_to_ship"
+	StatusShipped     = "shipped"
+	StatusDelivered   = "delivered"
+	StatusCancelled   = "cancelled"
 )
 
 // Shipment is the root aggregate for a single delivery.
 // In v1 there is a 1:1 relationship between an order and a shipment.
 type Shipment struct {
 	ID              uuid.UUID
-	TenantID        uuid.UUID
 	SellerID        uuid.UUID
 	OrderID         uuid.UUID
 	BuyerAuth0ID    string
@@ -38,7 +37,6 @@ type Shipment struct {
 // ShipmentEvent records a single status transition on a shipment.
 type ShipmentEvent struct {
 	ID         uuid.UUID
-	TenantID   uuid.UUID
 	ShipmentID uuid.UUID
 	FromStatus string
 	ToStatus   string

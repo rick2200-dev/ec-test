@@ -10,7 +10,6 @@ import (
 // One review per buyer per product is enforced at the database level.
 type Review struct {
 	ID           uuid.UUID    `json:"id"`
-	TenantID     uuid.UUID    `json:"tenant_id"`
 	BuyerAuth0ID string       `json:"buyer_auth0_id"`
 	ProductID    uuid.UUID    `json:"product_id"`
 	SellerID     uuid.UUID    `json:"seller_id"`
@@ -27,7 +26,6 @@ type Review struct {
 // One reply per review is enforced at the database level.
 type ReviewReply struct {
 	ID            uuid.UUID `json:"id"`
-	TenantID      uuid.UUID `json:"tenant_id"`
 	ReviewID      uuid.UUID `json:"review_id"`
 	SellerAuth0ID string    `json:"seller_auth0_id"`
 	Body          string    `json:"body"`
@@ -37,7 +35,6 @@ type ReviewReply struct {
 
 // ProductRating is the denormalized aggregate rating for a product.
 type ProductRating struct {
-	TenantID      uuid.UUID `json:"tenant_id"`
 	ProductID     uuid.UUID `json:"product_id"`
 	AverageRating float64   `json:"average_rating"`
 	ReviewCount   int       `json:"review_count"`

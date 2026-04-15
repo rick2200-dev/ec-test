@@ -87,7 +87,6 @@ func shippedEvent(eventID string) pubsub.Event {
 	return pubsub.Event{
 		ID:        eventID,
 		Type:      "shipment.shipped",
-		TenantID:  uuid.New().String(),
 		Timestamp: time.Now(),
 		Data: map[string]any{
 			"shipment_id":     uuid.New().String(),
@@ -103,7 +102,6 @@ func deliveredEvent(eventID string) pubsub.Event {
 	return pubsub.Event{
 		ID:        eventID,
 		Type:      "shipment.delivered",
-		TenantID:  uuid.New().String(),
 		Timestamp: time.Now(),
 		Data: map[string]any{
 			"shipment_id":    uuid.New().String(),
@@ -259,7 +257,7 @@ func TestShippingSubscriber_UnknownEventTypeReleasesAndReturnsNil(t *testing.T) 
 
 	err := sub.handleEvent(context.Background(), pubsub.Event{
 		ID: eventID, Type: "shipment.unknown",
-		TenantID: uuid.New().String(), Data: map[string]any{},
+		Data: map[string]any{},
 	})
 	if err != nil {
 		t.Fatalf("handleEvent returned error for unknown type: %v", err)

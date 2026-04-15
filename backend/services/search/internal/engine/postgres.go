@@ -35,9 +35,6 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 		return fmt.Sprintf("$%d", argIdx)
 	}
 
-	// Always filter by tenant
-	conditions = append(conditions, fmt.Sprintf("p.tenant_id = %s", nextArg(req.TenantID)))
-
 	// Full-text search condition
 	hasQuery := strings.TrimSpace(req.Query) != ""
 	if hasQuery {
@@ -68,12 +65,15 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 		conditions = append(conditions, fmt.Sprintf("s.price_amount <= %s", nextArg(*req.MaxPrice)))
 	}
 
-	whereClause := "WHERE " + strings.Join(conditions, " AND ")
+	var whereClause string
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
 
 	// Build rank expression (boosted by seller plan)
 	rankExpr := "COALESCE(spb.search_boost, 1.0)"
 	if hasQuery {
-		rankExpr = "ts_rank(p.search_vector, to_tsquery('simple', $2)) * COALESCE(spb.search_boost, 1.0)"
+		rankExpr = "ts_rank(p.search_vector, to_tsquery('simple', $1)) * COALESCE(spb.search_boost, 1.0)"
 	}
 
 	// Sort
@@ -94,7 +94,7 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 	countQuery := fmt.Sprintf(`
 		SELECT COUNT(DISTINCT p.id)
 		FROM catalog_svc.products p
-		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
+		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
 		%s
 	`, whereClause)
 
@@ -106,17 +106,17 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 	// Main search query
 	searchQuery := fmt.Sprintf(`
 		SELECT DISTINCT ON (p.id)
-			p.id, p.tenant_id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
+			p.id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
 			p.status,
 			COALESCE(s.price_amount, 0), COALESCE(s.price_currency, 'JPY'),
 			COALESCE(sel.name, ''), COALESCE(c.name, ''),
 			%s AS rank,
 			COALESCE(spb.plan_tier, 0)
 		FROM catalog_svc.products p
-		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
-		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id AND sel.tenant_id = p.tenant_id
-		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id AND c.tenant_id = p.tenant_id
-		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id AND spb.tenant_id = p.tenant_id
+		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
+		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id
+		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
+		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
 		%s
 		%s
 		LIMIT %s OFFSET %s
@@ -132,7 +132,7 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 	for rows.Next() {
 		var h domain.ProductHit
 		if err := rows.Scan(
-			&h.ID, &h.TenantID, &h.SellerID, &h.Name, &h.Slug, &h.Description,
+			&h.ID, &h.SellerID, &h.Name, &h.Slug, &h.Description,
 			&h.Status,
 			&h.PriceAmount, &h.PriceCurrency,
 			&h.SellerName, &h.CategoryName,
@@ -150,14 +150,14 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 	// Fetch promoted products for the first page only.
 	var promotedProducts []domain.ProductHit
 	if req.Offset == 0 {
-		promotedProducts, err = e.fetchPromotedProducts(ctx, req, hasQuery, args)
+		promotedProducts, err = e.fetchPromotedProducts(ctx, req, hasQuery)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// Facets: categories
-	facets, err := e.buildFacets(ctx, args[:1], req.TenantID) // reuse first arg (tenant_id)
+	facets, err := e.buildFacets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 }
 
 // fetchPromotedProducts returns promoted products from sellers with promoted_results > 0.
-func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.SearchRequest, hasQuery bool, baseArgs []any) ([]domain.ProductHit, error) {
+func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.SearchRequest, hasQuery bool) ([]domain.ProductHit, error) {
 	var (
 		conditions []string
 		args       []any
@@ -184,11 +184,10 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 		return fmt.Sprintf("$%d", argIdx)
 	}
 
-	conditions = append(conditions, fmt.Sprintf("p.tenant_id = %s", nextArg(req.TenantID)))
 	conditions = append(conditions, "p.status = 'active'")
 	conditions = append(conditions, "spb.promoted_results > 0")
 
-	if hasQuery && len(baseArgs) >= 2 {
+	if hasQuery {
 		terms := strings.Fields(req.Query)
 		tsTerms := make([]string, len(terms))
 		for i, t := range terms {
@@ -202,17 +201,17 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 
 	query := fmt.Sprintf(`
 		SELECT DISTINCT ON (p.id)
-			p.id, p.tenant_id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
+			p.id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
 			p.status,
 			COALESCE(s.price_amount, 0), COALESCE(s.price_currency, 'JPY'),
 			COALESCE(sel.name, ''), COALESCE(c.name, ''),
 			COALESCE(spb.search_boost, 1.0) AS rank,
 			COALESCE(spb.plan_tier, 0)
 		FROM catalog_svc.products p
-		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
-		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id AND sel.tenant_id = p.tenant_id
-		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id AND c.tenant_id = p.tenant_id
-		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id AND spb.tenant_id = p.tenant_id
+		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
+		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id
+		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
+		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
 		%s
 		ORDER BY RANDOM()
 		LIMIT 3
@@ -228,7 +227,7 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 	for rows.Next() {
 		var h domain.ProductHit
 		if err := rows.Scan(
-			&h.ID, &h.TenantID, &h.SellerID, &h.Name, &h.Slug, &h.Description,
+			&h.ID, &h.SellerID, &h.Name, &h.Slug, &h.Description,
 			&h.Status,
 			&h.PriceAmount, &h.PriceCurrency,
 			&h.SellerName, &h.CategoryName,
@@ -246,20 +245,20 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 	return promoted, nil
 }
 
-// buildFacets generates category and price range facets for the tenant.
-func (e *PostgresEngine) buildFacets(ctx context.Context, _ []any, tenantID uuid.UUID) ([]domain.Facet, error) {
+// buildFacets generates category and price range facets.
+func (e *PostgresEngine) buildFacets(ctx context.Context) ([]domain.Facet, error) {
 	var facets []domain.Facet
 
 	// Category facet
 	catRows, err := e.pool.Query(ctx, `
 		SELECT c.name, COUNT(p.id)
 		FROM catalog_svc.products p
-		JOIN catalog_svc.categories c ON c.id = p.category_id AND c.tenant_id = p.tenant_id
-		WHERE p.tenant_id = $1 AND p.status = 'active'
+		JOIN catalog_svc.categories c ON c.id = p.category_id
+		WHERE p.status = 'active'
 		GROUP BY c.name
 		ORDER BY COUNT(p.id) DESC
 		LIMIT 20
-	`, tenantID)
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("query category facets: %w", err)
 	}
@@ -289,11 +288,11 @@ func (e *PostgresEngine) buildFacets(ctx context.Context, _ []any, tenantID uuid
 			END AS price_range,
 			COUNT(DISTINCT p.id)
 		FROM catalog_svc.products p
-		JOIN catalog_svc.skus s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
-		WHERE p.tenant_id = $1 AND p.status = 'active'
+		JOIN catalog_svc.skus s ON s.product_id = p.id
+		WHERE p.status = 'active'
 		GROUP BY price_range
 		ORDER BY price_range
-	`, tenantID)
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("query price facets: %w", err)
 	}
@@ -323,7 +322,7 @@ func (e *PostgresEngine) IndexProduct(_ context.Context, _ domain.ProductEvent) 
 
 // DeleteProduct is a no-op for PostgreSQL since deleting the product row
 // automatically removes it from the search index.
-func (e *PostgresEngine) DeleteProduct(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
+func (e *PostgresEngine) DeleteProduct(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
 

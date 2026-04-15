@@ -23,12 +23,12 @@ func NewRBACAuditRepository(pool *pgxpool.Pool) *RBACAuditRepository {
 }
 
 // withTx uses the transaction from ctx if one was placed there by
-// database.WithTx, otherwise opens a new tenant-scoped transaction.
-func (r *RBACAuditRepository) withTx(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
+// database.WithTx, otherwise opens a new transaction.
+func (r *RBACAuditRepository) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return fn(tx)
 	}
-	return database.TenantTx(ctx, r.pool, tenantID, fn)
+	return database.Tx(ctx, r.pool, fn)
 }
 
 // Append inserts a new audit entry. When ctx carries a transaction it joins
@@ -38,40 +38,37 @@ func (r *RBACAuditRepository) Append(ctx context.Context, e *domain.RBACAuditEnt
 	if e.ID == uuid.Nil {
 		e.ID = uuid.New()
 	}
-	return r.withTx(ctx, e.TenantID, func(tx pgx.Tx) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO auth_svc.rbac_audit_log
-			    (id, tenant_id, actor_auth0_user_id, target_auth0_user_id, scope, scope_id, action, before_role, after_role)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), NULLIF($9, ''))
+			    (id, actor_auth0_user_id, target_auth0_user_id, scope, scope_id, action, before_role, after_role)
+			 VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''))
 			 RETURNING created_at`,
-			e.ID, e.TenantID, e.ActorAuth0UserID, e.TargetAuth0UserID,
+			e.ID, e.ActorAuth0UserID, e.TargetAuth0UserID,
 			e.Scope, e.ScopeID, e.Action, e.BeforeRole, e.AfterRole,
 		).Scan(&e.CreatedAt)
 	})
 }
 
-// ListByTenant returns a paginated list of audit entries for a tenant,
-// ordered by created_at DESC.
-func (r *RBACAuditRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]domain.RBACAuditEntry, int, error) {
+// List returns a paginated list of audit entries, ordered by created_at DESC.
+func (r *RBACAuditRepository) List(ctx context.Context, limit, offset int) ([]domain.RBACAuditEntry, int, error) {
 	var entries []domain.RBACAuditEntry
 	var total int
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
-			`SELECT COUNT(*) FROM auth_svc.rbac_audit_log WHERE tenant_id = $1`,
-			tenantID,
+			`SELECT COUNT(*) FROM auth_svc.rbac_audit_log`,
 		).Scan(&total); err != nil {
 			return err
 		}
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, actor_auth0_user_id, target_auth0_user_id,
+			`SELECT id, actor_auth0_user_id, target_auth0_user_id,
 			        scope, scope_id, action,
 			        COALESCE(before_role, ''), COALESCE(after_role, ''),
 			        created_at
 			 FROM auth_svc.rbac_audit_log
-			 WHERE tenant_id = $1
 			 ORDER BY created_at DESC
-			 LIMIT $2 OFFSET $3`,
-			tenantID, limit, offset,
+			 LIMIT $1 OFFSET $2`,
+			limit, offset,
 		)
 		if err != nil {
 			return err
@@ -80,7 +77,7 @@ func (r *RBACAuditRepository) ListByTenant(ctx context.Context, tenantID uuid.UU
 		for rows.Next() {
 			var e domain.RBACAuditEntry
 			if err := rows.Scan(
-				&e.ID, &e.TenantID, &e.ActorAuth0UserID, &e.TargetAuth0UserID,
+				&e.ID, &e.ActorAuth0UserID, &e.TargetAuth0UserID,
 				&e.Scope, &e.ScopeID, &e.Action,
 				&e.BeforeRole, &e.AfterRole,
 				&e.CreatedAt,

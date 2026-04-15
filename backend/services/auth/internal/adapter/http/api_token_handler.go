@@ -9,7 +9,6 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/pagination"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/auth/internal/port"
 )
@@ -63,26 +62,21 @@ type issueAPITokenResponse struct {
 	Token string `json:"token"`
 }
 
-// parseContext extracts tenantID + sellerID from the request. Writes its
+// parseSellerID extracts sellerID from the request URL params. Writes its
 // own error response on failure and returns ok=false.
-func (h *APITokenHandler) parseContext(w http.ResponseWriter, r *http.Request) (tenantID, sellerID uuid.UUID, ok bool) {
-	tid, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return uuid.Nil, uuid.Nil, false
-	}
+func (h *APITokenHandler) parseSellerID(w http.ResponseWriter, r *http.Request) (sellerID uuid.UUID, ok bool) {
 	sidStr := chi.URLParam(r, "sellerID")
 	sid, err := uuid.Parse(sidStr)
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid seller id"})
-		return uuid.Nil, uuid.Nil, false
+		return uuid.Nil, false
 	}
-	return tid, sid, true
+	return sid, true
 }
 
 // Issue handles POST /sellers/{sellerID}/api-tokens.
 func (h *APITokenHandler) Issue(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -93,7 +87,6 @@ func (h *APITokenHandler) Issue(w http.ResponseWriter, r *http.Request) {
 	}
 	token, plaintext, err := h.svc.IssueAPIToken(
 		r.Context(),
-		tenantID,
 		sellerID,
 		req.Name,
 		req.Scopes,
@@ -114,12 +107,12 @@ func (h *APITokenHandler) Issue(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /sellers/{sellerID}/api-tokens.
 func (h *APITokenHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
 	p := pagination.FromRequest(r)
-	tokens, total, err := h.svc.ListAPITokens(r.Context(), tenantID, sellerID, p.Limit, p.Offset)
+	tokens, total, err := h.svc.ListAPITokens(r.Context(), sellerID, p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -135,7 +128,7 @@ func (h *APITokenHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Get handles GET /sellers/{sellerID}/api-tokens/{id}.
 func (h *APITokenHandler) Get(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -144,7 +137,7 @@ func (h *APITokenHandler) Get(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid token id"})
 		return
 	}
-	t, err := h.svc.GetAPIToken(r.Context(), tenantID, sellerID, id)
+	t, err := h.svc.GetAPIToken(r.Context(), sellerID, id)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -166,7 +159,7 @@ type revokeAPITokenResponse struct {
 
 // Revoke handles DELETE /sellers/{sellerID}/api-tokens/{id}.
 func (h *APITokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -175,7 +168,7 @@ func (h *APITokenHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid token id"})
 		return
 	}
-	prefix, lookup, err := h.svc.RevokeAPIToken(r.Context(), tenantID, sellerID, id)
+	prefix, lookup, err := h.svc.RevokeAPIToken(r.Context(), sellerID, id)
 	if err != nil {
 		httputil.Error(w, err)
 		return

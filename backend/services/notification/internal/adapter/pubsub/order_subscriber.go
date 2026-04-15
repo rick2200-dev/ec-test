@@ -37,7 +37,6 @@ func (s *OrderSubscriber) handleEvent(ctx context.Context, event pubsub.Event) e
 	slog.Info("received order event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 
 	switch event.Type {
@@ -80,7 +79,6 @@ func (s *OrderSubscriber) handleOrderCreated(ctx context.Context, event pubsub.E
 	slog.Info("sending order confirmation",
 		"order_id", data.OrderID,
 		"buyer_email", data.BuyerEmail,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, data.BuyerEmail, subject, body); err != nil {
@@ -107,7 +105,6 @@ func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Even
 	slog.Info("sending payment notification to seller",
 		"order_id", data.OrderID,
 		"seller_email", data.SellerEmail,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, data.SellerEmail, subject, body); err != nil {
@@ -133,7 +130,6 @@ func (s *OrderSubscriber) handleOrderShipped(ctx context.Context, event pubsub.E
 	slog.Info("sending shipping notification",
 		"order_id", data.OrderID,
 		"buyer_email", data.BuyerEmail,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, data.BuyerEmail, subject, body); err != nil {

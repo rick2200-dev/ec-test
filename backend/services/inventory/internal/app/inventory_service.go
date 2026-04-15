@@ -24,13 +24,13 @@ func NewInventoryService(repo port.InventoryStore, publisher pubsub.Publisher) *
 }
 
 // publishEvent publishes an event if the publisher is configured.
-func (s *InventoryService) publishEvent(ctx context.Context, tenantID uuid.UUID, eventType, topic string, data any) {
-	pubsub.PublishEvent(ctx, s.publisher, tenantID, eventType, topic, data)
+func (s *InventoryService) publishEvent(ctx context.Context, eventType, topic string, data any) {
+	pubsub.PublishEvent(ctx, s.publisher, eventType, topic, data)
 }
 
 // GetInventory retrieves inventory for a specific SKU.
-func (s *InventoryService) GetInventory(ctx context.Context, tenantID, skuID uuid.UUID) (*domain.Inventory, error) {
-	inv, err := s.repo.GetBySKUID(ctx, tenantID, skuID)
+func (s *InventoryService) GetInventory(ctx context.Context, skuID uuid.UUID) (*domain.Inventory, error) {
+	inv, err := s.repo.GetBySKUID(ctx, skuID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get inventory", err)
 	}
@@ -41,8 +41,8 @@ func (s *InventoryService) GetInventory(ctx context.Context, tenantID, skuID uui
 }
 
 // ListInventory returns a paginated list of inventory for a seller.
-func (s *InventoryService) ListInventory(ctx context.Context, tenantID, sellerID uuid.UUID, limit, offset int) ([]domain.Inventory, int, error) {
-	items, total, err := s.repo.List(ctx, tenantID, sellerID, limit, offset)
+func (s *InventoryService) ListInventory(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Inventory, int, error) {
+	items, total, err := s.repo.List(ctx, sellerID, limit, offset)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list inventory", err)
 	}
@@ -50,8 +50,8 @@ func (s *InventoryService) ListInventory(ctx context.Context, tenantID, sellerID
 }
 
 // UpdateStock upserts an inventory record and records a movement.
-func (s *InventoryService) UpdateStock(ctx context.Context, tenantID uuid.UUID, inv *domain.Inventory) error {
-	if err := s.repo.Upsert(ctx, tenantID, inv); err != nil {
+func (s *InventoryService) UpdateStock(ctx context.Context, inv *domain.Inventory) error {
+	if err := s.repo.Upsert(ctx, inv); err != nil {
 		return apperrors.Internal("failed to update stock", err)
 	}
 
@@ -61,13 +61,13 @@ func (s *InventoryService) UpdateStock(ctx context.Context, tenantID uuid.UUID, 
 		Quantity:      inv.QuantityAvailable,
 		ReferenceType: "stock_update",
 	}
-	if err := s.repo.RecordMovement(ctx, tenantID, movement); err != nil {
+	if err := s.repo.RecordMovement(ctx, movement); err != nil {
 		slog.Warn("failed to record stock movement", "error", err, "sku_id", inv.SKUID)
 	}
 
-	slog.Info("stock updated", "tenant_id", tenantID, "sku_id", inv.SKUID)
+	slog.Info("stock updated", "sku_id", inv.SKUID)
 
-	s.publishEvent(ctx, tenantID, "inventory.updated", "inventory-events", map[string]any{
+	s.publishEvent(ctx, "inventory.updated", "inventory-events", map[string]any{
 		"sku_id":             inv.SKUID.String(),
 		"seller_id":          inv.SellerID.String(),
 		"quantity_available": inv.QuantityAvailable,
@@ -78,12 +78,12 @@ func (s *InventoryService) UpdateStock(ctx context.Context, tenantID uuid.UUID, 
 }
 
 // ReserveStock reserves quantity for a SKU and records the movement.
-func (s *InventoryService) ReserveStock(ctx context.Context, tenantID, skuID uuid.UUID, quantity int) error {
+func (s *InventoryService) ReserveStock(ctx context.Context, skuID uuid.UUID, quantity int) error {
 	if quantity <= 0 {
 		return domain.ErrInvalidQuantity
 	}
 
-	if err := s.repo.Reserve(ctx, tenantID, skuID, quantity); err != nil {
+	if err := s.repo.Reserve(ctx, skuID, quantity); err != nil {
 		return apperrors.Conflict("failed to reserve stock: " + err.Error())
 	}
 
@@ -93,14 +93,14 @@ func (s *InventoryService) ReserveStock(ctx context.Context, tenantID, skuID uui
 		Quantity:      quantity,
 		ReferenceType: "reservation",
 	}
-	if err := s.repo.RecordMovement(ctx, tenantID, movement); err != nil {
+	if err := s.repo.RecordMovement(ctx, movement); err != nil {
 		slog.Warn("failed to record reserve movement", "error", err, "sku_id", skuID)
 	}
 
-	slog.Info("stock reserved", "tenant_id", tenantID, "sku_id", skuID, "quantity", quantity)
+	slog.Info("stock reserved", "sku_id", skuID, "quantity", quantity)
 
 	// Check for low stock after reservation.
-	inv, invErr := s.repo.GetBySKUID(ctx, tenantID, skuID)
+	inv, invErr := s.repo.GetBySKUID(ctx, skuID)
 	if invErr == nil && inv != nil {
 		eventData := map[string]any{
 			"sku_id":             inv.SKUID.String(),
@@ -109,7 +109,7 @@ func (s *InventoryService) ReserveStock(ctx context.Context, tenantID, skuID uui
 			"quantity_reserved":  inv.QuantityReserved,
 		}
 		if inv.QuantityAvailable <= inv.LowStockThreshold {
-			s.publishEvent(ctx, tenantID, "inventory.low_stock", "inventory-events", eventData)
+			s.publishEvent(ctx, "inventory.low_stock", "inventory-events", eventData)
 		}
 	}
 
@@ -117,12 +117,12 @@ func (s *InventoryService) ReserveStock(ctx context.Context, tenantID, skuID uui
 }
 
 // ReleaseStock releases reserved stock and records the movement.
-func (s *InventoryService) ReleaseStock(ctx context.Context, tenantID, skuID uuid.UUID, quantity int) error {
+func (s *InventoryService) ReleaseStock(ctx context.Context, skuID uuid.UUID, quantity int) error {
 	if quantity <= 0 {
 		return domain.ErrInvalidQuantity
 	}
 
-	if err := s.repo.Release(ctx, tenantID, skuID, quantity); err != nil {
+	if err := s.repo.Release(ctx, skuID, quantity); err != nil {
 		return apperrors.Conflict("failed to release stock: " + err.Error())
 	}
 
@@ -132,11 +132,11 @@ func (s *InventoryService) ReleaseStock(ctx context.Context, tenantID, skuID uui
 		Quantity:      quantity,
 		ReferenceType: "release",
 	}
-	if err := s.repo.RecordMovement(ctx, tenantID, movement); err != nil {
+	if err := s.repo.RecordMovement(ctx, movement); err != nil {
 		slog.Warn("failed to record release movement", "error", err, "sku_id", skuID)
 	}
 
-	slog.Info("stock released", "tenant_id", tenantID, "sku_id", skuID, "quantity", quantity)
+	slog.Info("stock released", "sku_id", skuID, "quantity", quantity)
 	return nil
 }
 
@@ -150,7 +150,7 @@ func (s *InventoryService) ReleaseStock(ctx context.Context, tenantID, skuID uui
 // the end-to-end flow.
 func (s *InventoryService) ReleaseStockForOrderCancellation(
 	ctx context.Context,
-	tenantID, orderID uuid.UUID,
+	orderID uuid.UUID,
 	lines []domain.CancellationLine,
 ) error {
 	if len(lines) == 0 {
@@ -158,20 +158,18 @@ func (s *InventoryService) ReleaseStockForOrderCancellation(
 		return nil
 	}
 
-	already, err := s.repo.ReleaseForOrderCancellation(ctx, tenantID, orderID, lines)
+	already, err := s.repo.ReleaseForOrderCancellation(ctx, orderID, lines)
 	if err != nil {
 		return apperrors.Internal("release stock for order cancellation", err)
 	}
 	if already {
 		slog.Info("order cancellation already released",
-			"tenant_id", tenantID,
 			"order_id", orderID,
 		)
 		return nil
 	}
 
 	slog.Info("order cancellation stock released",
-		"tenant_id", tenantID,
 		"order_id", orderID,
 		"line_count", len(lines),
 	)
@@ -179,12 +177,12 @@ func (s *InventoryService) ReleaseStockForOrderCancellation(
 }
 
 // ConfirmSold confirms that reserved stock has been sold and records the movement.
-func (s *InventoryService) ConfirmSold(ctx context.Context, tenantID, skuID uuid.UUID, quantity int) error {
+func (s *InventoryService) ConfirmSold(ctx context.Context, skuID uuid.UUID, quantity int) error {
 	if quantity <= 0 {
 		return domain.ErrInvalidQuantity
 	}
 
-	if err := s.repo.ConfirmSold(ctx, tenantID, skuID, quantity); err != nil {
+	if err := s.repo.ConfirmSold(ctx, skuID, quantity); err != nil {
 		return apperrors.Conflict("failed to confirm sold: " + err.Error())
 	}
 
@@ -194,10 +192,10 @@ func (s *InventoryService) ConfirmSold(ctx context.Context, tenantID, skuID uuid
 		Quantity:      quantity,
 		ReferenceType: "sale",
 	}
-	if err := s.repo.RecordMovement(ctx, tenantID, movement); err != nil {
+	if err := s.repo.RecordMovement(ctx, movement); err != nil {
 		slog.Warn("failed to record sold movement", "error", err, "sku_id", skuID)
 	}
 
-	slog.Info("stock sold confirmed", "tenant_id", tenantID, "sku_id", skuID, "quantity", quantity)
+	slog.Info("stock sold confirmed", "sku_id", skuID, "quantity", quantity)
 	return nil
 }

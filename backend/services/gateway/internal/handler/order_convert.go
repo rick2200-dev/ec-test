@@ -16,7 +16,6 @@ const nilUUIDString = "00000000-0000-0000-0000-000000000000"
 // backend/services/order/internal/domain/order.go OrderLine.
 type orderLineJSON struct {
 	ID          string    `json:"id"`
-	TenantID    string    `json:"tenant_id"`
 	OrderID     string    `json:"order_id"`
 	SKUID       string    `json:"sku_id"`
 	ProductID   string    `json:"product_id"`
@@ -33,7 +32,6 @@ type orderLineJSON struct {
 // struct and then enriches each line via catalog gRPC before returning.
 type orderDetailJSON struct {
 	ID                    string          `json:"id"`
-	TenantID              string          `json:"tenant_id"`
 	SellerID              string          `json:"seller_id"`
 	SellerName            string          `json:"seller_name"`
 	BuyerAuth0ID          string          `json:"buyer_auth0_id"`
@@ -84,7 +82,6 @@ type enrichedLineJSON struct {
 // not need a second round-trip; lines are replaced with enriched lines.
 type orderDetailResponseJSON struct {
 	ID                    string             `json:"id"`
-	TenantID              string             `json:"tenant_id"`
 	SellerID              string             `json:"seller_id"`
 	SellerName            string             `json:"seller_name"`
 	Status                string             `json:"status"`

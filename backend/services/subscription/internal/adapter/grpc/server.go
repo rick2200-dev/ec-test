@@ -25,24 +25,10 @@ func NewServer(svc port.SubscriptionUseCase) *Server {
 	return &Server{svc: svc}
 }
 
-// parseTenant parses the tenant_id request field. TenantTx takes tenantID
-// explicitly as a parameter so there's no need to stash it in ctx.
-func parseTenant(raw string) (uuid.UUID, error) {
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return uuid.Nil, status.Error(codes.InvalidArgument, "invalid tenant_id")
-	}
-	return id, nil
-}
-
 // --- Seller Plans ---
 
-func (s *Server) ListSellerPlans(ctx context.Context, req *subscriptionv1.ListSellerPlansRequest) (*subscriptionv1.ListSellerPlansResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
-	plans, err := s.svc.ListPlans(ctx, tid)
+func (s *Server) ListSellerPlans(ctx context.Context, _ *subscriptionv1.ListSellerPlansRequest) (*subscriptionv1.ListSellerPlansResponse, error) {
+	plans, err := s.svc.ListPlans(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -54,15 +40,11 @@ func (s *Server) ListSellerPlans(ctx context.Context, req *subscriptionv1.ListSe
 }
 
 func (s *Server) GetSellerPlan(ctx context.Context, req *subscriptionv1.GetSellerPlanRequest) (*subscriptionv1.GetSellerPlanResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	pid, err := uuid.Parse(req.GetPlanId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid plan_id")
 	}
-	p, err := s.svc.GetPlan(ctx, tid, pid)
+	p, err := s.svc.GetPlan(ctx, pid)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -70,10 +52,6 @@ func (s *Server) GetSellerPlan(ctx context.Context, req *subscriptionv1.GetSelle
 }
 
 func (s *Server) CreateSellerPlan(ctx context.Context, req *subscriptionv1.CreateSellerPlanRequest) (*subscriptionv1.CreateSellerPlanResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	plan := &domain.SubscriptionPlan{
 		Name:          req.GetName(),
 		Slug:          req.GetSlug(),
@@ -84,17 +62,13 @@ func (s *Server) CreateSellerPlan(ctx context.Context, req *subscriptionv1.Creat
 		StripePriceID: req.GetStripePriceId(),
 		Status:        req.GetStatus(),
 	}
-	if err := s.svc.CreatePlan(ctx, tid, plan); err != nil {
+	if err := s.svc.CreatePlan(ctx, plan); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &subscriptionv1.CreateSellerPlanResponse{Plan: sellerPlanToProto(plan)}, nil
 }
 
 func (s *Server) UpdateSellerPlan(ctx context.Context, req *subscriptionv1.UpdateSellerPlanRequest) (*subscriptionv1.UpdateSellerPlanResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	pid, err := uuid.Parse(req.GetPlanId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid plan_id")
@@ -110,7 +84,7 @@ func (s *Server) UpdateSellerPlan(ctx context.Context, req *subscriptionv1.Updat
 		StripePriceID: req.GetStripePriceId(),
 		Status:        req.GetStatus(),
 	}
-	if err := s.svc.UpdatePlan(ctx, tid, plan); err != nil {
+	if err := s.svc.UpdatePlan(ctx, plan); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &subscriptionv1.UpdateSellerPlanResponse{Plan: sellerPlanToProto(plan)}, nil
@@ -119,15 +93,11 @@ func (s *Server) UpdateSellerPlan(ctx context.Context, req *subscriptionv1.Updat
 // --- Seller Subscriptions ---
 
 func (s *Server) GetSellerSubscription(ctx context.Context, req *subscriptionv1.GetSellerSubscriptionRequest) (*subscriptionv1.GetSellerSubscriptionResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	sid, err := uuid.Parse(req.GetSellerId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid seller_id")
 	}
-	sub, err := s.svc.GetSellerSubscription(ctx, tid, sid)
+	sub, err := s.svc.GetSellerSubscription(ctx, sid)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -135,10 +105,6 @@ func (s *Server) GetSellerSubscription(ctx context.Context, req *subscriptionv1.
 }
 
 func (s *Server) SubscribeSeller(ctx context.Context, req *subscriptionv1.SubscribeSellerRequest) (*subscriptionv1.SubscribeSellerResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	sid, err := uuid.Parse(req.GetSellerId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid seller_id")
@@ -147,7 +113,7 @@ func (s *Server) SubscribeSeller(ctx context.Context, req *subscriptionv1.Subscr
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid plan_id")
 	}
-	sub, err := s.svc.SubscribeSeller(ctx, tid, sid, pid)
+	sub, err := s.svc.SubscribeSeller(ctx, sid, pid)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -156,12 +122,8 @@ func (s *Server) SubscribeSeller(ctx context.Context, req *subscriptionv1.Subscr
 
 // --- Buyer Plans ---
 
-func (s *Server) ListBuyerPlans(ctx context.Context, req *subscriptionv1.ListBuyerPlansRequest) (*subscriptionv1.ListBuyerPlansResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
-	plans, err := s.svc.ListBuyerPlans(ctx, tid)
+func (s *Server) ListBuyerPlans(ctx context.Context, _ *subscriptionv1.ListBuyerPlansRequest) (*subscriptionv1.ListBuyerPlansResponse, error) {
+	plans, err := s.svc.ListBuyerPlans(ctx)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -173,15 +135,11 @@ func (s *Server) ListBuyerPlans(ctx context.Context, req *subscriptionv1.ListBuy
 }
 
 func (s *Server) GetBuyerPlan(ctx context.Context, req *subscriptionv1.GetBuyerPlanRequest) (*subscriptionv1.GetBuyerPlanResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	pid, err := uuid.Parse(req.GetPlanId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid plan_id")
 	}
-	p, err := s.svc.GetBuyerPlan(ctx, tid, pid)
+	p, err := s.svc.GetBuyerPlan(ctx, pid)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -189,10 +147,6 @@ func (s *Server) GetBuyerPlan(ctx context.Context, req *subscriptionv1.GetBuyerP
 }
 
 func (s *Server) CreateBuyerPlan(ctx context.Context, req *subscriptionv1.CreateBuyerPlanRequest) (*subscriptionv1.CreateBuyerPlanResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	plan := &domain.BuyerPlan{
 		Name:          req.GetName(),
 		Slug:          req.GetSlug(),
@@ -202,17 +156,13 @@ func (s *Server) CreateBuyerPlan(ctx context.Context, req *subscriptionv1.Create
 		StripePriceID: req.GetStripePriceId(),
 		Status:        req.GetStatus(),
 	}
-	if err := s.svc.CreateBuyerPlan(ctx, tid, plan); err != nil {
+	if err := s.svc.CreateBuyerPlan(ctx, plan); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &subscriptionv1.CreateBuyerPlanResponse{Plan: buyerPlanToProto(plan)}, nil
 }
 
 func (s *Server) UpdateBuyerPlan(ctx context.Context, req *subscriptionv1.UpdateBuyerPlanRequest) (*subscriptionv1.UpdateBuyerPlanResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	pid, err := uuid.Parse(req.GetPlanId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid plan_id")
@@ -227,7 +177,7 @@ func (s *Server) UpdateBuyerPlan(ctx context.Context, req *subscriptionv1.Update
 		StripePriceID: req.GetStripePriceId(),
 		Status:        req.GetStatus(),
 	}
-	if err := s.svc.UpdateBuyerPlan(ctx, tid, plan); err != nil {
+	if err := s.svc.UpdateBuyerPlan(ctx, plan); err != nil {
 		return nil, toGRPCError(err)
 	}
 	return &subscriptionv1.UpdateBuyerPlanResponse{Plan: buyerPlanToProto(plan)}, nil
@@ -236,11 +186,7 @@ func (s *Server) UpdateBuyerPlan(ctx context.Context, req *subscriptionv1.Update
 // --- Buyer Subscriptions ---
 
 func (s *Server) GetBuyerSubscription(ctx context.Context, req *subscriptionv1.GetBuyerSubscriptionRequest) (*subscriptionv1.GetBuyerSubscriptionResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
-	sub, err := s.svc.GetBuyerSubscription(ctx, tid, req.GetBuyerAuth0Id())
+	sub, err := s.svc.GetBuyerSubscription(ctx, req.GetBuyerAuth0Id())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -248,15 +194,11 @@ func (s *Server) GetBuyerSubscription(ctx context.Context, req *subscriptionv1.G
 }
 
 func (s *Server) SubscribeBuyer(ctx context.Context, req *subscriptionv1.SubscribeBuyerRequest) (*subscriptionv1.SubscribeBuyerResponse, error) {
-	tid, err := parseTenant(req.GetTenantId())
-	if err != nil {
-		return nil, err
-	}
 	pid, err := uuid.Parse(req.GetPlanId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid plan_id")
 	}
-	sub, err := s.svc.SubscribeBuyer(ctx, tid, req.GetBuyerAuth0Id(), pid)
+	sub, err := s.svc.SubscribeBuyer(ctx, req.GetBuyerAuth0Id(), pid)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

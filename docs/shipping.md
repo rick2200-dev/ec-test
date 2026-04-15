@@ -136,7 +136,6 @@ order-cancellation 側では `shipped` 以降の注文はキャンセル申請�
 | カラム | 型 | 用途 |
 |---|---|---|
 | `id` | UUID PK | shipment ID |
-| `tenant_id` | UUID NOT NULL | RLS + マルチテナント境界 |
 | `seller_id` | UUID NOT NULL | 出荷責任を持つセラー |
 | `order_id` | UUID NOT NULL UNIQUE | 紐付く注文 (v1: 1:1) |
 | `buyer_auth0_id` | VARCHAR(255) NOT NULL | 通知 / 認可チェックに使用 |
@@ -152,15 +151,12 @@ order-cancellation 側では `shipped` 以降の注文はキャンセル申請�
 **制約**:
 - `UNIQUE (order_id)` — 同一注文に対して shipment は 1 件のみ
 - `CHECK (status IN ('pending','ready_to_ship','shipped','delivered','cancelled'))`
-- `ENABLE + FORCE ROW LEVEL SECURITY` (000015_force_rls パターンを踏襲)
-- `tenant_isolation` ポリシー: `USING (tenant_id = current_setting('app.current_tenant_id')::uuid)`
 
 ### テーブル `shipping_svc.shipment_events` (監査ログ)
 
 | カラム | 型 | 用途 |
 |---|---|---|
 | `id` | UUID PK | |
-| `tenant_id` | UUID NOT NULL | RLS |
 | `shipment_id` | UUID NOT NULL FK → `shipments(id)` | |
 | `from_status` | VARCHAR(20) NULL | 遷移前ステータス |
 | `to_status` | VARCHAR(20) NOT NULL | 遷移後ステータス |
@@ -279,7 +275,7 @@ sequenceDiagram
 
 ## API 仕様
 
-全エンドポイントは gateway の `/api/v1` プレフィックス配下。gateway が tenant.Context を解決した上で shipping サービスに HTTP プロキシする。
+全エンドポイントは gateway の `/api/v1` プレフィックス配下。gateway が呼び出し元コンテキスト（seller_id / Auth0 sub）を解決した上で shipping サービスに HTTP プロキシする。
 
 ### セラー向け (UI-only subtree — `apitoken.Block` 済み)
 
@@ -363,9 +359,9 @@ shipment 単一取得。
 
 | Type | ペイロード | 購読側 |
 |------|-----------|--------|
-| `shipment.shipped` | `{shipment_id, order_id, tenant_id, seller_id, buyer_auth0_id, carrier, tracking_number, shipped_at}` | notification (追跡番号入りメール), order (orders.status→shipped) |
-| `shipment.delivered` | `{shipment_id, order_id, tenant_id, seller_id, buyer_auth0_id, delivered_at}` | notification (配達完了メール), order (orders.status→delivered) |
-| `shipment.cancelled` | `{shipment_id, order_id, tenant_id, reason}` | 監査ログのみ (v1) |
+| `shipment.shipped` | `{shipment_id, order_id, seller_id, buyer_auth0_id, carrier, tracking_number, shipped_at}` | notification (追跡番号入りメール), order (orders.status→shipped) |
+| `shipment.delivered` | `{shipment_id, order_id, seller_id, buyer_auth0_id, delivered_at}` | notification (配達完了メール), order (orders.status→delivered) |
+| `shipment.cancelled` | `{shipment_id, order_id, reason}` | 監査ログのみ (v1) |
 
 ### 購読側のサブスクリプション
 
@@ -494,7 +490,7 @@ exactly-once 配信はコンシューマ側の責務であり、サービス単�
 
 ## 関連ドキュメント
 
-- [アーキテクチャ設計書](./architecture.md) — 全体像、RLS、イベント駆動アーキテクチャ
+- [アーキテクチャ設計書](./architecture.md) — 全体像、イベント駆動アーキテクチャ
 - [注文キャンセル申請設計書](./order-cancellation.md) — shipped 以降はキャンセル不可のルール
 - [決済設計書](./payment.md) — Stripe 決済フローと order.paid の発行
 - [カート・チェックアウト設計書](./cart-and-checkout.md) — 複数セラー checkout の詳細

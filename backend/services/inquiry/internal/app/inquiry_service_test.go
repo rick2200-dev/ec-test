@@ -17,71 +17,71 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockStore struct {
-	createFn        func(ctx context.Context, tenantID uuid.UUID, inq *domain.Inquiry, msg *domain.InquiryMessage) (*domain.InquiryWithMessages, error)
-	getByIDFn       func(ctx context.Context, tenantID, inquiryID uuid.UUID) (*domain.InquiryWithMessages, error)
-	listByBuyerFn   func(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]domain.Inquiry, int, error)
-	listBySellerFn  func(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Inquiry, int, error)
-	appendMessageFn func(ctx context.Context, tenantID uuid.UUID, msg *domain.InquiryMessage) error
-	markReadFn      func(ctx context.Context, tenantID, inquiryID uuid.UUID, readerType string) error
-	closeFn         func(ctx context.Context, tenantID, inquiryID uuid.UUID) error
+	createFn        func(ctx context.Context, inq *domain.Inquiry, msg *domain.InquiryMessage) (*domain.InquiryWithMessages, error)
+	getByIDFn       func(ctx context.Context, inquiryID uuid.UUID) (*domain.InquiryWithMessages, error)
+	listByBuyerFn   func(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]domain.Inquiry, int, error)
+	listBySellerFn  func(ctx context.Context, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Inquiry, int, error)
+	appendMessageFn func(ctx context.Context, msg *domain.InquiryMessage) error
+	markReadFn      func(ctx context.Context, inquiryID uuid.UUID, readerType string) error
+	closeFn         func(ctx context.Context, inquiryID uuid.UUID) error
 }
 
-func (m *mockStore) Create(ctx context.Context, tenantID uuid.UUID, inq *domain.Inquiry, msg *domain.InquiryMessage) (*domain.InquiryWithMessages, error) {
+func (m *mockStore) Create(ctx context.Context, inq *domain.Inquiry, msg *domain.InquiryMessage) (*domain.InquiryWithMessages, error) {
 	if m.createFn != nil {
-		return m.createFn(ctx, tenantID, inq, msg)
+		return m.createFn(ctx, inq, msg)
 	}
 	return &domain.InquiryWithMessages{Inquiry: *inq, Messages: []domain.InquiryMessage{*msg}}, nil
 }
 
-func (m *mockStore) GetByID(ctx context.Context, tenantID, inquiryID uuid.UUID) (*domain.InquiryWithMessages, error) {
+func (m *mockStore) GetByID(ctx context.Context, inquiryID uuid.UUID) (*domain.InquiryWithMessages, error) {
 	if m.getByIDFn != nil {
-		return m.getByIDFn(ctx, tenantID, inquiryID)
+		return m.getByIDFn(ctx, inquiryID)
 	}
 	return nil, nil
 }
 
-func (m *mockStore) ListByBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, limit, offset int) ([]domain.Inquiry, int, error) {
+func (m *mockStore) ListByBuyer(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]domain.Inquiry, int, error) {
 	if m.listByBuyerFn != nil {
-		return m.listByBuyerFn(ctx, tenantID, buyerAuth0ID, limit, offset)
+		return m.listByBuyerFn(ctx, buyerAuth0ID, limit, offset)
 	}
 	return nil, 0, nil
 }
 
-func (m *mockStore) ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Inquiry, int, error) {
+func (m *mockStore) ListBySeller(ctx context.Context, sellerID uuid.UUID, status string, limit, offset int) ([]domain.Inquiry, int, error) {
 	if m.listBySellerFn != nil {
-		return m.listBySellerFn(ctx, tenantID, sellerID, status, limit, offset)
+		return m.listBySellerFn(ctx, sellerID, status, limit, offset)
 	}
 	return nil, 0, nil
 }
 
-func (m *mockStore) AppendMessage(ctx context.Context, tenantID uuid.UUID, msg *domain.InquiryMessage) error {
+func (m *mockStore) AppendMessage(ctx context.Context, msg *domain.InquiryMessage) error {
 	if m.appendMessageFn != nil {
-		return m.appendMessageFn(ctx, tenantID, msg)
+		return m.appendMessageFn(ctx, msg)
 	}
 	return nil
 }
 
-func (m *mockStore) MarkRead(ctx context.Context, tenantID, inquiryID uuid.UUID, readerType string) error {
+func (m *mockStore) MarkRead(ctx context.Context, inquiryID uuid.UUID, readerType string) error {
 	if m.markReadFn != nil {
-		return m.markReadFn(ctx, tenantID, inquiryID, readerType)
+		return m.markReadFn(ctx, inquiryID, readerType)
 	}
 	return nil
 }
 
-func (m *mockStore) Close(ctx context.Context, tenantID, inquiryID uuid.UUID) error {
+func (m *mockStore) Close(ctx context.Context, inquiryID uuid.UUID) error {
 	if m.closeFn != nil {
-		return m.closeFn(ctx, tenantID, inquiryID)
+		return m.closeFn(ctx, inquiryID)
 	}
 	return nil
 }
 
 type mockPurchaseChecker struct {
-	checkFn func(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error)
+	checkFn func(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error)
 }
 
-func (m *mockPurchaseChecker) CheckPurchase(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
+func (m *mockPurchaseChecker) CheckPurchase(ctx context.Context, buyerAuth0ID string, sellerID, skuID uuid.UUID) (*port.PurchaseCheckResult, error) {
 	if m.checkFn != nil {
-		return m.checkFn(ctx, tenantID, buyerAuth0ID, sellerID, skuID)
+		return m.checkFn(ctx, buyerAuth0ID, sellerID, skuID)
 	}
 	return &port.PurchaseCheckResult{
 		Purchased:   true,
@@ -124,11 +124,10 @@ func TestCreateInquiry_Success(t *testing.T) {
 	checker := &mockPurchaseChecker{}
 	svc := newService(store, checker)
 
-	tenantID := uuid.New()
 	buyerAuth0ID := "auth0|buyer1"
 	in := validCreateInput()
 
-	result, err := svc.CreateInquiry(context.Background(), tenantID, buyerAuth0ID, in)
+	result, err := svc.CreateInquiry(context.Background(), buyerAuth0ID, in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -163,7 +162,7 @@ func TestCreateInquiry_EmptyBuyer(t *testing.T) {
 
 	svc := newService(&mockStore{}, &mockPurchaseChecker{})
 
-	_, err := svc.CreateInquiry(context.Background(), uuid.New(), "", validCreateInput())
+	_, err := svc.CreateInquiry(context.Background(), "", validCreateInput())
 	if err == nil {
 		t.Fatal("expected error for empty buyer_auth0_id")
 	}
@@ -179,7 +178,7 @@ func TestCreateInquiry_EmptySellerID(t *testing.T) {
 	in := validCreateInput()
 	in.SellerID = uuid.Nil
 
-	_, err := svc.CreateInquiry(context.Background(), uuid.New(), "auth0|buyer1", in)
+	_, err := svc.CreateInquiry(context.Background(), "auth0|buyer1", in)
 	if err == nil {
 		t.Fatal("expected error for nil seller_id")
 	}
@@ -195,7 +194,7 @@ func TestCreateInquiry_EmptySKUID(t *testing.T) {
 	in := validCreateInput()
 	in.SKUID = uuid.Nil
 
-	_, err := svc.CreateInquiry(context.Background(), uuid.New(), "auth0|buyer1", in)
+	_, err := svc.CreateInquiry(context.Background(), "auth0|buyer1", in)
 	if err == nil {
 		t.Fatal("expected error for nil sku_id")
 	}
@@ -211,7 +210,7 @@ func TestCreateInquiry_EmptySubject(t *testing.T) {
 	in := validCreateInput()
 	in.Subject = ""
 
-	_, err := svc.CreateInquiry(context.Background(), uuid.New(), "auth0|buyer1", in)
+	_, err := svc.CreateInquiry(context.Background(), "auth0|buyer1", in)
 	if err == nil {
 		t.Fatal("expected error for empty subject")
 	}
@@ -227,7 +226,7 @@ func TestCreateInquiry_EmptyBody(t *testing.T) {
 	in := validCreateInput()
 	in.InitialBody = ""
 
-	_, err := svc.CreateInquiry(context.Background(), uuid.New(), "auth0|buyer1", in)
+	_, err := svc.CreateInquiry(context.Background(), "auth0|buyer1", in)
 	if err == nil {
 		t.Fatal("expected error for empty initial_body")
 	}
@@ -240,13 +239,13 @@ func TestCreateInquiry_PurchaseNotFound(t *testing.T) {
 	t.Parallel()
 
 	checker := &mockPurchaseChecker{
-		checkFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
+		checkFn: func(_ context.Context, _ string, _, _ uuid.UUID) (*port.PurchaseCheckResult, error) {
 			return &port.PurchaseCheckResult{Purchased: false}, nil
 		},
 	}
 	svc := newService(&mockStore{}, checker)
 
-	_, err := svc.CreateInquiry(context.Background(), uuid.New(), "auth0|buyer1", validCreateInput())
+	_, err := svc.CreateInquiry(context.Background(), "auth0|buyer1", validCreateInput())
 	if !errors.Is(err, domain.ErrPurchaseRequired) {
 		t.Errorf("error = %v, want ErrPurchaseRequired", err)
 	}
@@ -262,14 +261,12 @@ func TestPostMessage_SuccessAsBuyer(t *testing.T) {
 	buyerAuth0ID := "auth0|buyer1"
 	sellerID := uuid.New()
 	inquiryID := uuid.New()
-	tenantID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
-					TenantID:     tenantID,
 					BuyerAuth0ID: buyerAuth0ID,
 					SellerID:     sellerID,
 					Status:       domain.InquiryStatusOpen,
@@ -285,7 +282,7 @@ func TestPostMessage_SuccessAsBuyer(t *testing.T) {
 		Body:       "follow-up question",
 	}
 
-	msg, err := svc.PostMessage(context.Background(), tenantID, buyerAuth0ID, nil, in)
+	msg, err := svc.PostMessage(context.Background(), buyerAuth0ID, nil, in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -310,14 +307,12 @@ func TestPostMessage_SuccessAsSeller(t *testing.T) {
 	sellerAuth0ID := "auth0|seller1"
 	sellerID := uuid.New()
 	inquiryID := uuid.New()
-	tenantID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
-					TenantID:     tenantID,
 					BuyerAuth0ID: buyerAuth0ID,
 					SellerID:     sellerID,
 					Status:       domain.InquiryStatusOpen,
@@ -333,7 +328,7 @@ func TestPostMessage_SuccessAsSeller(t *testing.T) {
 		Body:       "seller reply",
 	}
 
-	msg, err := svc.PostMessage(context.Background(), tenantID, sellerAuth0ID, ptrUUID(sellerID), in)
+	msg, err := svc.PostMessage(context.Background(), sellerAuth0ID, ptrUUID(sellerID), in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -359,7 +354,7 @@ func TestPostMessage_InvalidSenderType(t *testing.T) {
 		Body:       "hello",
 	}
 
-	_, err := svc.PostMessage(context.Background(), uuid.New(), "auth0|x", nil, in)
+	_, err := svc.PostMessage(context.Background(), "auth0|x", nil, in)
 	if !errors.Is(err, domain.ErrInvalidSenderType) {
 		t.Errorf("error = %v, want ErrInvalidSenderType", err)
 	}
@@ -369,7 +364,7 @@ func TestPostMessage_InquiryNotFound(t *testing.T) {
 	t.Parallel()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return nil, nil
 		},
 	}
@@ -381,7 +376,7 @@ func TestPostMessage_InquiryNotFound(t *testing.T) {
 		Body:       "hello",
 	}
 
-	_, err := svc.PostMessage(context.Background(), uuid.New(), "auth0|buyer1", nil, in)
+	_, err := svc.PostMessage(context.Background(), "auth0|buyer1", nil, in)
 	if !errors.Is(err, domain.ErrInquiryNotFound) {
 		t.Errorf("error = %v, want ErrInquiryNotFound", err)
 	}
@@ -394,7 +389,7 @@ func TestPostMessage_InquiryClosed(t *testing.T) {
 	inquiryID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
@@ -413,7 +408,7 @@ func TestPostMessage_InquiryClosed(t *testing.T) {
 		Body:       "hello",
 	}
 
-	_, err := svc.PostMessage(context.Background(), uuid.New(), buyerAuth0ID, nil, in)
+	_, err := svc.PostMessage(context.Background(), buyerAuth0ID, nil, in)
 	if !errors.Is(err, domain.ErrInquiryClosed) {
 		t.Errorf("error = %v, want ErrInquiryClosed", err)
 	}
@@ -425,7 +420,7 @@ func TestPostMessage_NotParticipant(t *testing.T) {
 	inquiryID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
@@ -445,7 +440,7 @@ func TestPostMessage_NotParticipant(t *testing.T) {
 	}
 
 	// An actor whose auth0 id does not match the buyer on the inquiry.
-	_, err := svc.PostMessage(context.Background(), uuid.New(), "auth0|imposter", nil, in)
+	_, err := svc.PostMessage(context.Background(), "auth0|imposter", nil, in)
 	if !errors.Is(err, domain.ErrNotParticipant) {
 		t.Errorf("error = %v, want ErrNotParticipant", err)
 	}
@@ -461,12 +456,10 @@ func TestGetInquiry_Success(t *testing.T) {
 	buyerAuth0ID := "auth0|buyer1"
 	sellerID := uuid.New()
 	inquiryID := uuid.New()
-	tenantID := uuid.New()
 
 	thread := &domain.InquiryWithMessages{
 		Inquiry: domain.Inquiry{
 			ID:           inquiryID,
-			TenantID:     tenantID,
 			BuyerAuth0ID: buyerAuth0ID,
 			SellerID:     sellerID,
 			Status:       domain.InquiryStatusOpen,
@@ -478,14 +471,14 @@ func TestGetInquiry_Success(t *testing.T) {
 	}
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return thread, nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
 	// Buyer access.
-	result, err := svc.GetInquiry(context.Background(), tenantID, inquiryID, buyerAuth0ID, nil)
+	result, err := svc.GetInquiry(context.Background(), inquiryID, buyerAuth0ID, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -497,7 +490,7 @@ func TestGetInquiry_Success(t *testing.T) {
 	}
 
 	// Seller access.
-	result2, err2 := svc.GetInquiry(context.Background(), tenantID, inquiryID, "", ptrUUID(sellerID))
+	result2, err2 := svc.GetInquiry(context.Background(), inquiryID, "", ptrUUID(sellerID))
 	if err2 != nil {
 		t.Fatalf("unexpected error for seller access: %v", err2)
 	}
@@ -510,13 +503,13 @@ func TestGetInquiry_NotFound(t *testing.T) {
 	t.Parallel()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return nil, nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	_, err := svc.GetInquiry(context.Background(), uuid.New(), uuid.New(), "auth0|buyer1", nil)
+	_, err := svc.GetInquiry(context.Background(), uuid.New(), "auth0|buyer1", nil)
 	if !errors.Is(err, domain.ErrInquiryNotFound) {
 		t.Errorf("error = %v, want ErrInquiryNotFound", err)
 	}
@@ -526,7 +519,7 @@ func TestGetInquiry_NotParticipant(t *testing.T) {
 	t.Parallel()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           uuid.New(),
@@ -540,7 +533,7 @@ func TestGetInquiry_NotParticipant(t *testing.T) {
 	svc := newService(store, &mockPurchaseChecker{})
 
 	// Neither buyer nor seller matches.
-	_, err := svc.GetInquiry(context.Background(), uuid.New(), uuid.New(), "auth0|stranger", ptrUUID(uuid.New()))
+	_, err := svc.GetInquiry(context.Background(), uuid.New(), "auth0|stranger", ptrUUID(uuid.New()))
 	// The service returns ErrInquiryNotFound (rather than ErrNotParticipant) to
 	// avoid leaking existence of the thread to non-participants.
 	if !errors.Is(err, domain.ErrInquiryNotFound) {
@@ -556,20 +549,19 @@ func TestListForBuyer_Success(t *testing.T) {
 	t.Parallel()
 
 	buyerAuth0ID := "auth0|buyer1"
-	tenantID := uuid.New()
 	expected := []domain.Inquiry{
 		{ID: uuid.New(), BuyerAuth0ID: buyerAuth0ID, Subject: "q1"},
 		{ID: uuid.New(), BuyerAuth0ID: buyerAuth0ID, Subject: "q2"},
 	}
 
 	store := &mockStore{
-		listByBuyerFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ int) ([]domain.Inquiry, int, error) {
+		listByBuyerFn: func(_ context.Context, _ string, _, _ int) ([]domain.Inquiry, int, error) {
 			return expected, 2, nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	items, total, err := svc.ListForBuyer(context.Background(), tenantID, buyerAuth0ID, 20, 0)
+	items, total, err := svc.ListForBuyer(context.Background(), buyerAuth0ID, 20, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -586,7 +578,7 @@ func TestListForBuyer_EmptyBuyerAuth0ID(t *testing.T) {
 
 	svc := newService(&mockStore{}, &mockPurchaseChecker{})
 
-	_, _, err := svc.ListForBuyer(context.Background(), uuid.New(), "", 20, 0)
+	_, _, err := svc.ListForBuyer(context.Background(), "", 20, 0)
 	if err == nil {
 		t.Fatal("expected error for empty buyer_auth0_id")
 	}
@@ -603,19 +595,18 @@ func TestListForSeller_Success(t *testing.T) {
 	t.Parallel()
 
 	sellerID := uuid.New()
-	tenantID := uuid.New()
 	expected := []domain.Inquiry{
 		{ID: uuid.New(), SellerID: sellerID, Subject: "q1"},
 	}
 
 	store := &mockStore{
-		listBySellerFn: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ string, _, _ int) ([]domain.Inquiry, int, error) {
+		listBySellerFn: func(_ context.Context, _ uuid.UUID, _ string, _, _ int) ([]domain.Inquiry, int, error) {
 			return expected, 1, nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	items, total, err := svc.ListForSeller(context.Background(), tenantID, sellerID, "", 20, 0)
+	items, total, err := svc.ListForSeller(context.Background(), sellerID, "", 20, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -632,7 +623,7 @@ func TestListForSeller_NilSellerID(t *testing.T) {
 
 	svc := newService(&mockStore{}, &mockPurchaseChecker{})
 
-	_, _, err := svc.ListForSeller(context.Background(), uuid.New(), uuid.Nil, "", 20, 0)
+	_, _, err := svc.ListForSeller(context.Background(), uuid.Nil, "", 20, 0)
 	if err == nil {
 		t.Fatal("expected error for nil seller_id")
 	}
@@ -651,29 +642,27 @@ func TestMarkRead_Success(t *testing.T) {
 	buyerAuth0ID := "auth0|buyer1"
 	sellerID := uuid.New()
 	inquiryID := uuid.New()
-	tenantID := uuid.New()
 	markReadCalled := false
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
-					TenantID:     tenantID,
 					BuyerAuth0ID: buyerAuth0ID,
 					SellerID:     sellerID,
 					Status:       domain.InquiryStatusOpen,
 				},
 			}, nil
 		},
-		markReadFn: func(_ context.Context, _, _ uuid.UUID, _ string) error {
+		markReadFn: func(_ context.Context, _ uuid.UUID, _ string) error {
 			markReadCalled = true
 			return nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	err := svc.MarkRead(context.Background(), tenantID, inquiryID, domain.SenderTypeBuyer, buyerAuth0ID, nil)
+	err := svc.MarkRead(context.Background(), inquiryID, domain.SenderTypeBuyer, buyerAuth0ID, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -686,13 +675,13 @@ func TestMarkRead_NotFound(t *testing.T) {
 	t.Parallel()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return nil, nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	err := svc.MarkRead(context.Background(), uuid.New(), uuid.New(), domain.SenderTypeBuyer, "auth0|buyer1", nil)
+	err := svc.MarkRead(context.Background(), uuid.New(), domain.SenderTypeBuyer, "auth0|buyer1", nil)
 	if !errors.Is(err, domain.ErrInquiryNotFound) {
 		t.Errorf("error = %v, want ErrInquiryNotFound", err)
 	}
@@ -705,7 +694,7 @@ func TestMarkRead_InvalidReaderType(t *testing.T) {
 	inquiryID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
@@ -718,7 +707,7 @@ func TestMarkRead_InvalidReaderType(t *testing.T) {
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	err := svc.MarkRead(context.Background(), uuid.New(), inquiryID, "admin", buyerAuth0ID, nil)
+	err := svc.MarkRead(context.Background(), inquiryID, "admin", buyerAuth0ID, nil)
 	if !errors.Is(err, domain.ErrInvalidReaderType) {
 		t.Errorf("error = %v, want ErrInvalidReaderType", err)
 	}
@@ -733,29 +722,27 @@ func TestCloseInquiry_Success(t *testing.T) {
 
 	sellerID := uuid.New()
 	inquiryID := uuid.New()
-	tenantID := uuid.New()
 	closeCalled := false
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
-					TenantID:     tenantID,
 					BuyerAuth0ID: "auth0|buyer1",
 					SellerID:     sellerID,
 					Status:       domain.InquiryStatusOpen,
 				},
 			}, nil
 		},
-		closeFn: func(_ context.Context, _, _ uuid.UUID) error {
+		closeFn: func(_ context.Context, _ uuid.UUID) error {
 			closeCalled = true
 			return nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	err := svc.CloseInquiry(context.Background(), tenantID, inquiryID, ptrUUID(sellerID))
+	err := svc.CloseInquiry(context.Background(), inquiryID, ptrUUID(sellerID))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -768,13 +755,13 @@ func TestCloseInquiry_NotFound(t *testing.T) {
 	t.Parallel()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return nil, nil
 		},
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	err := svc.CloseInquiry(context.Background(), uuid.New(), uuid.New(), ptrUUID(uuid.New()))
+	err := svc.CloseInquiry(context.Background(), uuid.New(), ptrUUID(uuid.New()))
 	if !errors.Is(err, domain.ErrInquiryNotFound) {
 		t.Errorf("error = %v, want ErrInquiryNotFound", err)
 	}
@@ -786,7 +773,7 @@ func TestCloseInquiry_NilSellerID(t *testing.T) {
 	inquiryID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
@@ -799,7 +786,7 @@ func TestCloseInquiry_NilSellerID(t *testing.T) {
 	}
 	svc := newService(store, &mockPurchaseChecker{})
 
-	err := svc.CloseInquiry(context.Background(), uuid.New(), inquiryID, nil)
+	err := svc.CloseInquiry(context.Background(), inquiryID, nil)
 	if !errors.Is(err, domain.ErrNotParticipant) {
 		t.Errorf("error = %v, want ErrNotParticipant", err)
 	}
@@ -811,7 +798,7 @@ func TestCloseInquiry_WrongSellerID(t *testing.T) {
 	inquiryID := uuid.New()
 
 	store := &mockStore{
-		getByIDFn: func(_ context.Context, _, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
+		getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.InquiryWithMessages, error) {
 			return &domain.InquiryWithMessages{
 				Inquiry: domain.Inquiry{
 					ID:           inquiryID,
@@ -825,7 +812,7 @@ func TestCloseInquiry_WrongSellerID(t *testing.T) {
 	svc := newService(store, &mockPurchaseChecker{})
 
 	wrongSeller := uuid.New()
-	err := svc.CloseInquiry(context.Background(), uuid.New(), inquiryID, ptrUUID(wrongSeller))
+	err := svc.CloseInquiry(context.Background(), inquiryID, ptrUUID(wrongSeller))
 	if !errors.Is(err, domain.ErrNotParticipant) {
 		t.Errorf("error = %v, want ErrNotParticipant", err)
 	}

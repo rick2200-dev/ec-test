@@ -25,7 +25,7 @@ func TestLoader_CachesActiveResponses(t *testing.T) {
 			Status: "active",
 			Token: &lookupTokenField{
 				ID:                  uuid.New(),
-				TenantID:            uuid.New(),
+
 				SellerID:            uuid.New(),
 				Scopes:              []string{"products:read"},
 				IssuedByAuth0UserID: "auth0|x",
@@ -62,7 +62,7 @@ func TestLoader_Evict(t *testing.T) {
 			Status: "active",
 			Token: &lookupTokenField{
 				ID:                  uuid.New(),
-				TenantID:            uuid.New(),
+
 				SellerID:            uuid.New(),
 				IssuedByAuth0UserID: "auth0|x",
 			},

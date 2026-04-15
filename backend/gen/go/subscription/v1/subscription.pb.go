@@ -97,16 +97,15 @@ func (x *PlanFeatures) GetPromotedResults() int32 {
 type SellerPlan struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Tier          int32                  `protobuf:"varint,5,opt,name=tier,proto3" json:"tier,omitempty"`
-	Price         *v1.Money              `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"`
-	Features      *PlanFeatures          `protobuf:"bytes,7,opt,name=features,proto3" json:"features,omitempty"`
-	StripePriceId string                 `protobuf:"bytes,8,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Status        string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Tier          int32                  `protobuf:"varint,4,opt,name=tier,proto3" json:"tier,omitempty"`
+	Price         *v1.Money              `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
+	Features      *PlanFeatures          `protobuf:"bytes,6,opt,name=features,proto3" json:"features,omitempty"`
+	StripePriceId string                 `protobuf:"bytes,7,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -144,13 +143,6 @@ func (*SellerPlan) Descriptor() ([]byte, []int) {
 func (x *SellerPlan) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *SellerPlan) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -221,21 +213,20 @@ func (x *SellerPlan) GetUpdatedAt() *timestamppb.Timestamp {
 type SellerSubscription struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId             string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId             string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	PlanId               string                 `protobuf:"bytes,4,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
-	StripeSubscriptionId string                 `protobuf:"bytes,5,opt,name=stripe_subscription_id,json=stripeSubscriptionId,proto3" json:"stripe_subscription_id,omitempty"`
-	StripeCustomerId     string                 `protobuf:"bytes,6,opt,name=stripe_customer_id,json=stripeCustomerId,proto3" json:"stripe_customer_id,omitempty"`
-	Status               string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	CurrentPeriodStart   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=current_period_start,json=currentPeriodStart,proto3" json:"current_period_start,omitempty"`
-	CurrentPeriodEnd     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
-	CanceledAt           *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
-	CreatedAt            *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt            *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	SellerId             string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	PlanId               string                 `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	StripeSubscriptionId string                 `protobuf:"bytes,4,opt,name=stripe_subscription_id,json=stripeSubscriptionId,proto3" json:"stripe_subscription_id,omitempty"`
+	StripeCustomerId     string                 `protobuf:"bytes,5,opt,name=stripe_customer_id,json=stripeCustomerId,proto3" json:"stripe_customer_id,omitempty"`
+	Status               string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CurrentPeriodStart   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=current_period_start,json=currentPeriodStart,proto3" json:"current_period_start,omitempty"`
+	CurrentPeriodEnd     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
+	CanceledAt           *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
+	CreatedAt            *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt            *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Plan summary fields, joined server-side so callers don't round-trip.
-	PlanName      string `protobuf:"bytes,13,opt,name=plan_name,json=planName,proto3" json:"plan_name,omitempty"`
-	PlanSlug      string `protobuf:"bytes,14,opt,name=plan_slug,json=planSlug,proto3" json:"plan_slug,omitempty"`
-	PlanTier      int32  `protobuf:"varint,15,opt,name=plan_tier,json=planTier,proto3" json:"plan_tier,omitempty"`
+	PlanName      string `protobuf:"bytes,12,opt,name=plan_name,json=planName,proto3" json:"plan_name,omitempty"`
+	PlanSlug      string `protobuf:"bytes,13,opt,name=plan_slug,json=planSlug,proto3" json:"plan_slug,omitempty"`
+	PlanTier      int32  `protobuf:"varint,14,opt,name=plan_tier,json=planTier,proto3" json:"plan_tier,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -273,13 +264,6 @@ func (*SellerSubscription) Descriptor() ([]byte, []int) {
 func (x *SellerSubscription) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *SellerSubscription) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -424,15 +408,14 @@ func (x *BuyerPlanFeatures) GetFreeShipping() bool {
 type BuyerPlan struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Price         *v1.Money              `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
-	Features      *BuyerPlanFeatures     `protobuf:"bytes,6,opt,name=features,proto3" json:"features,omitempty"`
-	StripePriceId string                 `protobuf:"bytes,7,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Price         *v1.Money              `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"`
+	Features      *BuyerPlanFeatures     `protobuf:"bytes,5,opt,name=features,proto3" json:"features,omitempty"`
+	StripePriceId string                 `protobuf:"bytes,6,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -470,13 +453,6 @@ func (*BuyerPlan) Descriptor() ([]byte, []int) {
 func (x *BuyerPlan) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *BuyerPlan) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -540,20 +516,19 @@ func (x *BuyerPlan) GetUpdatedAt() *timestamppb.Timestamp {
 type BuyerSubscription struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId             string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id         string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	PlanId               string                 `protobuf:"bytes,4,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
-	StripeSubscriptionId string                 `protobuf:"bytes,5,opt,name=stripe_subscription_id,json=stripeSubscriptionId,proto3" json:"stripe_subscription_id,omitempty"`
-	StripeCustomerId     string                 `protobuf:"bytes,6,opt,name=stripe_customer_id,json=stripeCustomerId,proto3" json:"stripe_customer_id,omitempty"`
-	Status               string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	CurrentPeriodStart   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=current_period_start,json=currentPeriodStart,proto3" json:"current_period_start,omitempty"`
-	CurrentPeriodEnd     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
-	CanceledAt           *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
-	CreatedAt            *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt            *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	PlanName             string                 `protobuf:"bytes,13,opt,name=plan_name,json=planName,proto3" json:"plan_name,omitempty"`
-	PlanSlug             string                 `protobuf:"bytes,14,opt,name=plan_slug,json=planSlug,proto3" json:"plan_slug,omitempty"`
-	Features             *BuyerPlanFeatures     `protobuf:"bytes,15,opt,name=features,proto3" json:"features,omitempty"`
+	BuyerAuth0Id         string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	PlanId               string                 `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	StripeSubscriptionId string                 `protobuf:"bytes,4,opt,name=stripe_subscription_id,json=stripeSubscriptionId,proto3" json:"stripe_subscription_id,omitempty"`
+	StripeCustomerId     string                 `protobuf:"bytes,5,opt,name=stripe_customer_id,json=stripeCustomerId,proto3" json:"stripe_customer_id,omitempty"`
+	Status               string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CurrentPeriodStart   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=current_period_start,json=currentPeriodStart,proto3" json:"current_period_start,omitempty"`
+	CurrentPeriodEnd     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=current_period_end,json=currentPeriodEnd,proto3" json:"current_period_end,omitempty"`
+	CanceledAt           *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=canceled_at,json=canceledAt,proto3" json:"canceled_at,omitempty"`
+	CreatedAt            *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt            *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	PlanName             string                 `protobuf:"bytes,12,opt,name=plan_name,json=planName,proto3" json:"plan_name,omitempty"`
+	PlanSlug             string                 `protobuf:"bytes,13,opt,name=plan_slug,json=planSlug,proto3" json:"plan_slug,omitempty"`
+	Features             *BuyerPlanFeatures     `protobuf:"bytes,14,opt,name=features,proto3" json:"features,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -591,13 +566,6 @@ func (*BuyerSubscription) Descriptor() ([]byte, []int) {
 func (x *BuyerSubscription) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *BuyerSubscription) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -695,7 +663,6 @@ func (x *BuyerSubscription) GetFeatures() *BuyerPlanFeatures {
 
 type ListSellerPlansRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -728,13 +695,6 @@ func (x *ListSellerPlansRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListSellerPlansRequest.ProtoReflect.Descriptor instead.
 func (*ListSellerPlansRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *ListSellerPlansRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 type ListSellerPlansResponse struct {
@@ -783,8 +743,7 @@ func (x *ListSellerPlansResponse) GetPlans() []*SellerPlan {
 
 type GetSellerPlanRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	PlanId        string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -817,13 +776,6 @@ func (x *GetSellerPlanRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetSellerPlanRequest.ProtoReflect.Descriptor instead.
 func (*GetSellerPlanRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *GetSellerPlanRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetSellerPlanRequest) GetPlanId() string {
@@ -879,14 +831,13 @@ func (x *GetSellerPlanResponse) GetPlan() *SellerPlan {
 
 type CreateSellerPlanRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
-	Tier          int32                  `protobuf:"varint,4,opt,name=tier,proto3" json:"tier,omitempty"`
-	Price         *v1.Money              `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
-	Features      *PlanFeatures          `protobuf:"bytes,6,opt,name=features,proto3" json:"features,omitempty"`
-	StripePriceId string                 `protobuf:"bytes,7,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Tier          int32                  `protobuf:"varint,3,opt,name=tier,proto3" json:"tier,omitempty"`
+	Price         *v1.Money              `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"`
+	Features      *PlanFeatures          `protobuf:"bytes,5,opt,name=features,proto3" json:"features,omitempty"`
+	StripePriceId string                 `protobuf:"bytes,6,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -919,13 +870,6 @@ func (x *CreateSellerPlanRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateSellerPlanRequest.ProtoReflect.Descriptor instead.
 func (*CreateSellerPlanRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *CreateSellerPlanRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateSellerPlanRequest) GetName() string {
@@ -1023,15 +967,14 @@ func (x *CreateSellerPlanResponse) GetPlan() *SellerPlan {
 
 type UpdateSellerPlanRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Tier          int32                  `protobuf:"varint,5,opt,name=tier,proto3" json:"tier,omitempty"`
-	Price         *v1.Money              `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"`
-	Features      *PlanFeatures          `protobuf:"bytes,7,opt,name=features,proto3" json:"features,omitempty"`
-	StripePriceId string                 `protobuf:"bytes,8,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Status        string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
+	PlanId        string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Tier          int32                  `protobuf:"varint,4,opt,name=tier,proto3" json:"tier,omitempty"`
+	Price         *v1.Money              `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
+	Features      *PlanFeatures          `protobuf:"bytes,6,opt,name=features,proto3" json:"features,omitempty"`
+	StripePriceId string                 `protobuf:"bytes,7,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1064,13 +1007,6 @@ func (x *UpdateSellerPlanRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateSellerPlanRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSellerPlanRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *UpdateSellerPlanRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateSellerPlanRequest) GetPlanId() string {
@@ -1175,8 +1111,7 @@ func (x *UpdateSellerPlanResponse) GetPlan() *SellerPlan {
 
 type GetSellerSubscriptionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1209,13 +1144,6 @@ func (x *GetSellerSubscriptionRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetSellerSubscriptionRequest.ProtoReflect.Descriptor instead.
 func (*GetSellerSubscriptionRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *GetSellerSubscriptionRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetSellerSubscriptionRequest) GetSellerId() string {
@@ -1271,9 +1199,8 @@ func (x *GetSellerSubscriptionResponse) GetSubscription() *SellerSubscription {
 
 type SubscribeSellerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	PlanId        string                 `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1306,13 +1233,6 @@ func (x *SubscribeSellerRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SubscribeSellerRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeSellerRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *SubscribeSellerRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *SubscribeSellerRequest) GetSellerId() string {
@@ -1375,7 +1295,6 @@ func (x *SubscribeSellerResponse) GetSubscription() *SellerSubscription {
 
 type ListBuyerPlansRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1408,13 +1327,6 @@ func (x *ListBuyerPlansRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListBuyerPlansRequest.ProtoReflect.Descriptor instead.
 func (*ListBuyerPlansRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *ListBuyerPlansRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 type ListBuyerPlansResponse struct {
@@ -1463,8 +1375,7 @@ func (x *ListBuyerPlansResponse) GetPlans() []*BuyerPlan {
 
 type GetBuyerPlanRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	PlanId        string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1497,13 +1408,6 @@ func (x *GetBuyerPlanRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetBuyerPlanRequest.ProtoReflect.Descriptor instead.
 func (*GetBuyerPlanRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *GetBuyerPlanRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetBuyerPlanRequest) GetPlanId() string {
@@ -1559,13 +1463,12 @@ func (x *GetBuyerPlanResponse) GetPlan() *BuyerPlan {
 
 type CreateBuyerPlanRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
-	Price         *v1.Money              `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"`
-	Features      *BuyerPlanFeatures     `protobuf:"bytes,5,opt,name=features,proto3" json:"features,omitempty"`
-	StripePriceId string                 `protobuf:"bytes,6,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Price         *v1.Money              `protobuf:"bytes,3,opt,name=price,proto3" json:"price,omitempty"`
+	Features      *BuyerPlanFeatures     `protobuf:"bytes,4,opt,name=features,proto3" json:"features,omitempty"`
+	StripePriceId string                 `protobuf:"bytes,5,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1598,13 +1501,6 @@ func (x *CreateBuyerPlanRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateBuyerPlanRequest.ProtoReflect.Descriptor instead.
 func (*CreateBuyerPlanRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *CreateBuyerPlanRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateBuyerPlanRequest) GetName() string {
@@ -1695,14 +1591,13 @@ func (x *CreateBuyerPlanResponse) GetPlan() *BuyerPlan {
 
 type UpdateBuyerPlanRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Price         *v1.Money              `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
-	Features      *BuyerPlanFeatures     `protobuf:"bytes,6,opt,name=features,proto3" json:"features,omitempty"`
-	StripePriceId string                 `protobuf:"bytes,7,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
-	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
+	PlanId        string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Price         *v1.Money              `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"`
+	Features      *BuyerPlanFeatures     `protobuf:"bytes,5,opt,name=features,proto3" json:"features,omitempty"`
+	StripePriceId string                 `protobuf:"bytes,6,opt,name=stripe_price_id,json=stripePriceId,proto3" json:"stripe_price_id,omitempty"`
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1735,13 +1630,6 @@ func (x *UpdateBuyerPlanRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateBuyerPlanRequest.ProtoReflect.Descriptor instead.
 func (*UpdateBuyerPlanRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *UpdateBuyerPlanRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateBuyerPlanRequest) GetPlanId() string {
@@ -1839,8 +1727,7 @@ func (x *UpdateBuyerPlanResponse) GetPlan() *BuyerPlan {
 
 type GetBuyerSubscriptionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1873,13 +1760,6 @@ func (x *GetBuyerSubscriptionRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetBuyerSubscriptionRequest.ProtoReflect.Descriptor instead.
 func (*GetBuyerSubscriptionRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *GetBuyerSubscriptionRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetBuyerSubscriptionRequest) GetBuyerAuth0Id() string {
@@ -1935,9 +1815,8 @@ func (x *GetBuyerSubscriptionResponse) GetSubscription() *BuyerSubscription {
 
 type SubscribeBuyerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	PlanId        string                 `protobuf:"bytes,3,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1970,13 +1849,6 @@ func (x *SubscribeBuyerRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SubscribeBuyerRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeBuyerRequest) Descriptor() ([]byte, []int) {
 	return file_subscription_v1_subscription_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *SubscribeBuyerRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *SubscribeBuyerRequest) GetBuyerAuth0Id() string {
@@ -2046,90 +1918,93 @@ const file_subscription_v1_subscription_proto_rawDesc = "" +
 	"\fmax_products\x18\x01 \x01(\x05R\vmaxProducts\x12!\n" +
 	"\fsearch_boost\x18\x02 \x01(\x01R\vsearchBoost\x12%\n" +
 	"\x0efeatured_slots\x18\x03 \x01(\x05R\rfeaturedSlots\x12)\n" +
-	"\x10promoted_results\x18\x04 \x01(\x05R\x0fpromotedResults\"\x8e\x03\n" +
+	"\x10promoted_results\x18\x04 \x01(\x05R\x0fpromotedResults\"\xf1\x02\n" +
 	"\n" +
 	"SellerPlan\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x04 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04tier\x18\x05 \x01(\x05R\x04tier\x12&\n" +
-	"\x05price\x18\x06 \x01(\v2\x10.common.v1.MoneyR\x05price\x129\n" +
-	"\bfeatures\x18\a \x01(\v2\x1d.subscription.v1.PlanFeaturesR\bfeatures\x12&\n" +
-	"\x0fstripe_price_id\x18\b \x01(\tR\rstripePriceId\x12\x16\n" +
-	"\x06status\x18\t \x01(\tR\x06status\x129\n" +
-	"\n" +
-	"created_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x95\x05\n" +
-	"\x12SellerSubscription\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x17\n" +
-	"\aplan_id\x18\x04 \x01(\tR\x06planId\x124\n" +
-	"\x16stripe_subscription_id\x18\x05 \x01(\tR\x14stripeSubscriptionId\x12,\n" +
-	"\x12stripe_customer_id\x18\x06 \x01(\tR\x10stripeCustomerId\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\x12L\n" +
-	"\x14current_period_start\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x12currentPeriodStart\x12H\n" +
-	"\x12current_period_end\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\x12;\n" +
-	"\vcanceled_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"canceledAt\x129\n" +
-	"\n" +
-	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
-	"\tplan_name\x18\r \x01(\tR\bplanName\x12\x1b\n" +
-	"\tplan_slug\x18\x0e \x01(\tR\bplanSlug\x12\x1b\n" +
-	"\tplan_tier\x18\x0f \x01(\x05R\bplanTier\"8\n" +
-	"\x11BuyerPlanFeatures\x12#\n" +
-	"\rfree_shipping\x18\x01 \x01(\bR\ffreeShipping\"\xfe\x02\n" +
-	"\tBuyerPlan\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x04 \x01(\tR\x04slug\x12&\n" +
-	"\x05price\x18\x05 \x01(\v2\x10.common.v1.MoneyR\x05price\x12>\n" +
-	"\bfeatures\x18\x06 \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\x12&\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\x12\x12\n" +
+	"\x04tier\x18\x04 \x01(\x05R\x04tier\x12&\n" +
+	"\x05price\x18\x05 \x01(\v2\x10.common.v1.MoneyR\x05price\x129\n" +
+	"\bfeatures\x18\x06 \x01(\v2\x1d.subscription.v1.PlanFeaturesR\bfeatures\x12&\n" +
 	"\x0fstripe_price_id\x18\a \x01(\tR\rstripePriceId\x12\x16\n" +
 	"\x06status\x18\b \x01(\tR\x06status\x129\n" +
 	"\n" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xc0\x05\n" +
-	"\x11BuyerSubscription\x12\x0e\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xf8\x04\n" +
+	"\x12SellerSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\x12\x17\n" +
-	"\aplan_id\x18\x04 \x01(\tR\x06planId\x124\n" +
-	"\x16stripe_subscription_id\x18\x05 \x01(\tR\x14stripeSubscriptionId\x12,\n" +
-	"\x12stripe_customer_id\x18\x06 \x01(\tR\x10stripeCustomerId\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\x12L\n" +
-	"\x14current_period_start\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x12currentPeriodStart\x12H\n" +
-	"\x12current_period_end\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\x12;\n" +
-	"\vcanceled_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x17\n" +
+	"\aplan_id\x18\x03 \x01(\tR\x06planId\x124\n" +
+	"\x16stripe_subscription_id\x18\x04 \x01(\tR\x14stripeSubscriptionId\x12,\n" +
+	"\x12stripe_customer_id\x18\x05 \x01(\tR\x10stripeCustomerId\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12L\n" +
+	"\x14current_period_start\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x12currentPeriodStart\x12H\n" +
+	"\x12current_period_end\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\x12;\n" +
+	"\vcanceled_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"canceledAt\x129\n" +
 	"\n" +
-	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
-	"\tplan_name\x18\r \x01(\tR\bplanName\x12\x1b\n" +
-	"\tplan_slug\x18\x0e \x01(\tR\bplanSlug\x12>\n" +
-	"\bfeatures\x18\x0f \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\"5\n" +
-	"\x16ListSellerPlansRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"L\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
+	"\tplan_name\x18\f \x01(\tR\bplanName\x12\x1b\n" +
+	"\tplan_slug\x18\r \x01(\tR\bplanSlug\x12\x1b\n" +
+	"\tplan_tier\x18\x0e \x01(\x05R\bplanTier\"8\n" +
+	"\x11BuyerPlanFeatures\x12#\n" +
+	"\rfree_shipping\x18\x01 \x01(\bR\ffreeShipping\"\xe1\x02\n" +
+	"\tBuyerPlan\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\x12&\n" +
+	"\x05price\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x05price\x12>\n" +
+	"\bfeatures\x18\x05 \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\x12&\n" +
+	"\x0fstripe_price_id\x18\x06 \x01(\tR\rstripePriceId\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\x129\n" +
+	"\n" +
+	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xa3\x05\n" +
+	"\x11BuyerSubscription\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x17\n" +
+	"\aplan_id\x18\x03 \x01(\tR\x06planId\x124\n" +
+	"\x16stripe_subscription_id\x18\x04 \x01(\tR\x14stripeSubscriptionId\x12,\n" +
+	"\x12stripe_customer_id\x18\x05 \x01(\tR\x10stripeCustomerId\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12L\n" +
+	"\x14current_period_start\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x12currentPeriodStart\x12H\n" +
+	"\x12current_period_end\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\x12;\n" +
+	"\vcanceled_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"canceledAt\x129\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
+	"\tplan_name\x18\f \x01(\tR\bplanName\x12\x1b\n" +
+	"\tplan_slug\x18\r \x01(\tR\bplanSlug\x12>\n" +
+	"\bfeatures\x18\x0e \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\"\x18\n" +
+	"\x16ListSellerPlansRequest\"L\n" +
 	"\x17ListSellerPlansResponse\x121\n" +
-	"\x05plans\x18\x01 \x03(\v2\x1b.subscription.v1.SellerPlanR\x05plans\"L\n" +
-	"\x14GetSellerPlanRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
-	"\aplan_id\x18\x02 \x01(\tR\x06planId\"H\n" +
+	"\x05plans\x18\x01 \x03(\v2\x1b.subscription.v1.SellerPlanR\x05plans\"/\n" +
+	"\x14GetSellerPlanRequest\x12\x17\n" +
+	"\aplan_id\x18\x01 \x01(\tR\x06planId\"H\n" +
 	"\x15GetSellerPlanResponse\x12/\n" +
-	"\x04plan\x18\x01 \x01(\v2\x1b.subscription.v1.SellerPlanR\x04plan\"\x95\x02\n" +
-	"\x17CreateSellerPlanRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x12\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1b.subscription.v1.SellerPlanR\x04plan\"\xf8\x01\n" +
+	"\x17CreateSellerPlanRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x12\n" +
+	"\x04tier\x18\x03 \x01(\x05R\x04tier\x12&\n" +
+	"\x05price\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x05price\x129\n" +
+	"\bfeatures\x18\x05 \x01(\v2\x1d.subscription.v1.PlanFeaturesR\bfeatures\x12&\n" +
+	"\x0fstripe_price_id\x18\x06 \x01(\tR\rstripePriceId\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\"K\n" +
+	"\x18CreateSellerPlanResponse\x12/\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1b.subscription.v1.SellerPlanR\x04plan\"\x91\x02\n" +
+	"\x17UpdateSellerPlanRequest\x12\x17\n" +
+	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x12\x12\n" +
 	"\x04tier\x18\x04 \x01(\x05R\x04tier\x12&\n" +
@@ -2137,70 +2012,50 @@ const file_subscription_v1_subscription_proto_rawDesc = "" +
 	"\bfeatures\x18\x06 \x01(\v2\x1d.subscription.v1.PlanFeaturesR\bfeatures\x12&\n" +
 	"\x0fstripe_price_id\x18\a \x01(\tR\rstripePriceId\x12\x16\n" +
 	"\x06status\x18\b \x01(\tR\x06status\"K\n" +
-	"\x18CreateSellerPlanResponse\x12/\n" +
-	"\x04plan\x18\x01 \x01(\v2\x1b.subscription.v1.SellerPlanR\x04plan\"\xae\x02\n" +
-	"\x17UpdateSellerPlanRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
-	"\aplan_id\x18\x02 \x01(\tR\x06planId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x04 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04tier\x18\x05 \x01(\x05R\x04tier\x12&\n" +
-	"\x05price\x18\x06 \x01(\v2\x10.common.v1.MoneyR\x05price\x129\n" +
-	"\bfeatures\x18\a \x01(\v2\x1d.subscription.v1.PlanFeaturesR\bfeatures\x12&\n" +
-	"\x0fstripe_price_id\x18\b \x01(\tR\rstripePriceId\x12\x16\n" +
-	"\x06status\x18\t \x01(\tR\x06status\"K\n" +
 	"\x18UpdateSellerPlanResponse\x12/\n" +
-	"\x04plan\x18\x01 \x01(\v2\x1b.subscription.v1.SellerPlanR\x04plan\"X\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1b.subscription.v1.SellerPlanR\x04plan\";\n" +
 	"\x1cGetSellerSubscriptionRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\"h\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\"h\n" +
 	"\x1dGetSellerSubscriptionResponse\x12G\n" +
-	"\fsubscription\x18\x01 \x01(\v2#.subscription.v1.SellerSubscriptionR\fsubscription\"k\n" +
+	"\fsubscription\x18\x01 \x01(\v2#.subscription.v1.SellerSubscriptionR\fsubscription\"N\n" +
 	"\x16SubscribeSellerRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x17\n" +
-	"\aplan_id\x18\x03 \x01(\tR\x06planId\"b\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12\x17\n" +
+	"\aplan_id\x18\x02 \x01(\tR\x06planId\"b\n" +
 	"\x17SubscribeSellerResponse\x12G\n" +
-	"\fsubscription\x18\x01 \x01(\v2#.subscription.v1.SellerSubscriptionR\fsubscription\"4\n" +
-	"\x15ListBuyerPlansRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"J\n" +
+	"\fsubscription\x18\x01 \x01(\v2#.subscription.v1.SellerSubscriptionR\fsubscription\"\x17\n" +
+	"\x15ListBuyerPlansRequest\"J\n" +
 	"\x16ListBuyerPlansResponse\x120\n" +
-	"\x05plans\x18\x01 \x03(\v2\x1a.subscription.v1.BuyerPlanR\x05plans\"K\n" +
-	"\x13GetBuyerPlanRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
-	"\aplan_id\x18\x02 \x01(\tR\x06planId\"F\n" +
+	"\x05plans\x18\x01 \x03(\v2\x1a.subscription.v1.BuyerPlanR\x05plans\".\n" +
+	"\x13GetBuyerPlanRequest\x12\x17\n" +
+	"\aplan_id\x18\x01 \x01(\tR\x06planId\"F\n" +
 	"\x14GetBuyerPlanResponse\x12.\n" +
-	"\x04plan\x18\x01 \x01(\v2\x1a.subscription.v1.BuyerPlanR\x04plan\"\x85\x02\n" +
-	"\x16CreateBuyerPlanRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x12\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1a.subscription.v1.BuyerPlanR\x04plan\"\xe8\x01\n" +
+	"\x16CreateBuyerPlanRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12&\n" +
+	"\x05price\x18\x03 \x01(\v2\x10.common.v1.MoneyR\x05price\x12>\n" +
+	"\bfeatures\x18\x04 \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\x12&\n" +
+	"\x0fstripe_price_id\x18\x05 \x01(\tR\rstripePriceId\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"I\n" +
+	"\x17CreateBuyerPlanResponse\x12.\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1a.subscription.v1.BuyerPlanR\x04plan\"\x81\x02\n" +
+	"\x16UpdateBuyerPlanRequest\x12\x17\n" +
+	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x12&\n" +
 	"\x05price\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x05price\x12>\n" +
 	"\bfeatures\x18\x05 \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\x12&\n" +
 	"\x0fstripe_price_id\x18\x06 \x01(\tR\rstripePriceId\x12\x16\n" +
 	"\x06status\x18\a \x01(\tR\x06status\"I\n" +
-	"\x17CreateBuyerPlanResponse\x12.\n" +
-	"\x04plan\x18\x01 \x01(\v2\x1a.subscription.v1.BuyerPlanR\x04plan\"\x9e\x02\n" +
-	"\x16UpdateBuyerPlanRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
-	"\aplan_id\x18\x02 \x01(\tR\x06planId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x04 \x01(\tR\x04slug\x12&\n" +
-	"\x05price\x18\x05 \x01(\v2\x10.common.v1.MoneyR\x05price\x12>\n" +
-	"\bfeatures\x18\x06 \x01(\v2\".subscription.v1.BuyerPlanFeaturesR\bfeatures\x12&\n" +
-	"\x0fstripe_price_id\x18\a \x01(\tR\rstripePriceId\x12\x16\n" +
-	"\x06status\x18\b \x01(\tR\x06status\"I\n" +
 	"\x17UpdateBuyerPlanResponse\x12.\n" +
-	"\x04plan\x18\x01 \x01(\v2\x1a.subscription.v1.BuyerPlanR\x04plan\"`\n" +
-	"\x1bGetBuyerSubscriptionRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\"f\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1a.subscription.v1.BuyerPlanR\x04plan\"C\n" +
+	"\x1bGetBuyerSubscriptionRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\"f\n" +
 	"\x1cGetBuyerSubscriptionResponse\x12F\n" +
-	"\fsubscription\x18\x01 \x01(\v2\".subscription.v1.BuyerSubscriptionR\fsubscription\"s\n" +
-	"\x15SubscribeBuyerRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x17\n" +
-	"\aplan_id\x18\x03 \x01(\tR\x06planId\"`\n" +
+	"\fsubscription\x18\x01 \x01(\v2\".subscription.v1.BuyerSubscriptionR\fsubscription\"V\n" +
+	"\x15SubscribeBuyerRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12\x17\n" +
+	"\aplan_id\x18\x02 \x01(\tR\x06planId\"`\n" +
 	"\x16SubscribeBuyerResponse\x12F\n" +
 	"\fsubscription\x18\x01 \x01(\v2\".subscription.v1.BuyerSubscriptionR\fsubscription2\xef\t\n" +
 	"\x13SubscriptionService\x12d\n" +

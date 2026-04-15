@@ -15,7 +15,6 @@ import (
 func orderToProto(o *domain.Order, lines []domain.OrderLine) *orderv1.Order {
 	pb := &orderv1.Order{
 		Id:           o.ID.String(),
-		TenantId:     o.TenantID.String(),
 		SellerId:     o.SellerID.String(),
 		SellerName:   o.SellerName,
 		BuyerAuth0Id: o.BuyerAuth0ID,
@@ -86,7 +85,6 @@ func orderSummaryToProto(o *domain.Order) *orderv1.Order {
 func payoutToProto(p *domain.Payout) *orderv1.Payout {
 	pb := &orderv1.Payout{
 		Id:       p.ID.String(),
-		TenantId: p.TenantID.String(),
 		SellerId: p.SellerID.String(),
 		OrderId:  p.OrderID.String(),
 		Amount: &commonv1.Money{

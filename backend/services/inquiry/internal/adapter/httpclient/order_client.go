@@ -48,7 +48,6 @@ type buyerSubResp struct {
 // paid-or-later order containing skuID from the given seller.
 func (c *OrderClient) CheckPurchase(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	sellerID, skuID uuid.UUID,
 ) (*port.PurchaseCheckResult, error) {
@@ -68,7 +67,6 @@ func (c *OrderClient) CheckPurchase(
 		return nil, apperrors.Internal("build purchase check request", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Tenant-ID", tenantID.String())
 	req.Header.Set("X-User-ID", buyerAuth0ID)
 	req.Header.Set("X-Internal-Token", c.internalToken)
 

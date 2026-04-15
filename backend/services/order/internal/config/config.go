@@ -14,7 +14,7 @@ type Config struct {
 	StripeWebhookSecret string
 	PubSubProjectID    string
 	PubSubEmulatorHost string
-	AuthServiceURL      string
+	AuthServiceURL     string
 	// SubscriptionServiceGRPCAddr is the dial target for the subscription
 	// service's gRPC listener. The order service uses it to look up buyer
 	// free-shipping entitlements during checkout.
@@ -41,8 +41,8 @@ func Load() Config {
 		GRPCPort:            getEnv("GRPC_PORT", "50053"),
 		StripeSecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
-		PubSubProjectID:     getEnv("PUBSUB_PROJECT_ID", ""),
-		PubSubEmulatorHost:  getEnv("PUBSUB_EMULATOR_HOST", ""),
+		PubSubProjectID:    getEnv("PUBSUB_PROJECT_ID", ""),
+		PubSubEmulatorHost: getEnv("PUBSUB_EMULATOR_HOST", ""),
 		AuthServiceURL:              getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
 		SubscriptionServiceGRPCAddr: getEnv("SUBSCRIPTION_SERVICE_GRPC_ADDR", "localhost:50058"),
 		DefaultShippingFee:          getEnvInt64("DEFAULT_SHIPPING_FEE", 500),

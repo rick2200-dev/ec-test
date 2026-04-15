@@ -42,25 +42,22 @@ func NewInquiryRepository(pool *pgxpool.Pool) *InquiryRepository {
 
 // Create inserts a new inquiry + its first message atomically.
 //
-// If a thread already exists for (tenant, buyer, seller, sku), the unique
+// If a thread already exists for (buyer, seller, sku), the unique
 // constraint `uq_inquiry_per_sku` trips and Create instead loads the
 // existing row and appends the new message to it — giving callers
 // idempotent "open a thread" semantics. The in parameter is mutated with
 // the final id/timestamps on success.
 func (r *InquiryRepository) Create(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	inq *domain.Inquiry,
 	firstMsg *domain.InquiryMessage,
 ) (*domain.InquiryWithMessages, error) {
 	var result *domain.InquiryWithMessages
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		// Check for existing thread (idempotent create: same buyer+seller+sku
-		// collapses to one thread). We're already inside a tenant-scoped
-		// transaction so a concurrent insert will trip the unique constraint
-		// on INSERT below — see the fallback path there.
-		existing, err := loadInquiryByParticipantsTx(ctx, tx, tenantID, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID)
+		// collapses to one thread).
+		existing, err := loadInquiryByParticipantsTx(ctx, tx, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID)
 		if err != nil {
 			return err
 		}
@@ -68,22 +65,21 @@ func (r *InquiryRepository) Create(
 			*inq = *existing
 		} else {
 			inq.ID = uuid.New()
-			inq.TenantID = tenantID
 			inq.Status = domain.InquiryStatusOpen
 
 			err := tx.QueryRow(ctx,
 				`INSERT INTO inquiry_svc.inquiries
-				 (id, tenant_id, buyer_auth0_id, seller_id, sku_id, product_name, sku_code, subject, status)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+				 (id, buyer_auth0_id, seller_id, sku_id, product_name, sku_code, subject, status)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				 RETURNING last_message_at, created_at, updated_at`,
-				inq.ID, inq.TenantID, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID,
+				inq.ID, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID,
 				inq.ProductName, inq.SKUCode, inq.Subject, inq.Status,
 			).Scan(&inq.LastMessageAt, &inq.CreatedAt, &inq.UpdatedAt)
 			if err != nil {
 				// A concurrent create lost the race and hit uq_inquiry_per_sku.
 				// Fall back to the existing row.
 				if isUniqueViolation(err, "uq_inquiry_per_sku") {
-					row, loadErr := loadInquiryByParticipantsTx(ctx, tx, tenantID, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID)
+					row, loadErr := loadInquiryByParticipantsTx(ctx, tx, inq.BuyerAuth0ID, inq.SellerID, inq.SKUID)
 					if loadErr != nil {
 						return loadErr
 					}
@@ -99,12 +95,12 @@ func (r *InquiryRepository) Create(
 
 		// Append the first message + bump last_message_at.
 		firstMsg.InquiryID = inq.ID
-		if err := appendMessageTx(ctx, tx, tenantID, firstMsg); err != nil {
+		if err := appendMessageTx(ctx, tx, firstMsg); err != nil {
 			return err
 		}
 		inq.LastMessageAt = firstMsg.CreatedAt
 
-		messages, err := loadMessagesTx(ctx, tx, tenantID, inq.ID)
+		messages, err := loadMessagesTx(ctx, tx, inq.ID)
 		if err != nil {
 			return err
 		}
@@ -122,19 +118,19 @@ func (r *InquiryRepository) Create(
 }
 
 // GetByID returns an inquiry with the full message thread, or nil if the
-// id is unknown within this tenant.
-func (r *InquiryRepository) GetByID(ctx context.Context, tenantID, inquiryID uuid.UUID) (*domain.InquiryWithMessages, error) {
+// id is unknown.
+func (r *InquiryRepository) GetByID(ctx context.Context, inquiryID uuid.UUID) (*domain.InquiryWithMessages, error) {
 	var result *domain.InquiryWithMessages
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		inq, err := loadInquiryByIDTx(ctx, tx, tenantID, inquiryID)
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		inq, err := loadInquiryByIDTx(ctx, tx, inquiryID)
 		if err != nil {
 			return err
 		}
 		if inq == nil {
 			return nil
 		}
-		messages, err := loadMessagesTx(ctx, tx, tenantID, inq.ID)
+		messages, err := loadMessagesTx(ctx, tx, inq.ID)
 		if err != nil {
 			return err
 		}
@@ -152,11 +148,10 @@ func (r *InquiryRepository) GetByID(ctx context.Context, tenantID, inquiryID uui
 // yet marked as read.
 func (r *InquiryRepository) ListByBuyer(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	limit, offset int,
 ) ([]domain.Inquiry, int, error) {
-	return r.listByRole(ctx, tenantID, listFilter{
+	return r.listByRole(ctx, listFilter{
 		role:         "buyer",
 		buyerAuth0ID: buyerAuth0ID,
 	}, limit, offset)
@@ -166,11 +161,11 @@ func (r *InquiryRepository) ListByBuyer(
 // empty to include both open and closed.
 func (r *InquiryRepository) ListBySeller(
 	ctx context.Context,
-	tenantID, sellerID uuid.UUID,
+	sellerID uuid.UUID,
 	status string,
 	limit, offset int,
 ) ([]domain.Inquiry, int, error) {
-	return r.listByRole(ctx, tenantID, listFilter{
+	return r.listByRole(ctx, listFilter{
 		role:     "seller",
 		sellerID: sellerID,
 		status:   status,
@@ -186,24 +181,23 @@ type listFilter struct {
 
 func (r *InquiryRepository) listByRole(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	f listFilter,
 	limit, offset int,
 ) ([]domain.Inquiry, int, error) {
 	var out []domain.Inquiry
 	var total int
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		conds := "tenant_id = $1"
-		args := []any{tenantID}
-		idx := 2
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		var conds string
+		var args []any
+		idx := 1
 
 		if f.role == "buyer" {
-			conds += fmt.Sprintf(" AND buyer_auth0_id = $%d", idx)
+			conds = fmt.Sprintf("buyer_auth0_id = $%d", idx)
 			args = append(args, f.buyerAuth0ID)
 			idx++
 		} else {
-			conds += fmt.Sprintf(" AND seller_id = $%d", idx)
+			conds = fmt.Sprintf("seller_id = $%d", idx)
 			args = append(args, f.sellerID)
 			idx++
 		}
@@ -228,14 +222,13 @@ func (r *InquiryRepository) listByRole(
 		}
 
 		listQuery := fmt.Sprintf(
-			`SELECT i.id, i.tenant_id, i.buyer_auth0_id, i.seller_id, i.sku_id,
+			`SELECT i.id, i.buyer_auth0_id, i.seller_id, i.sku_id,
 			        i.product_name, i.sku_code, i.subject, i.status,
 			        i.last_message_at, i.created_at, i.updated_at,
 			        COALESCE((
 			            SELECT COUNT(*)
 			              FROM inquiry_svc.inquiry_messages m
 			             WHERE m.inquiry_id = i.id
-			               AND m.tenant_id  = i.tenant_id
 			               AND m.sender_type = $%d
 			               AND m.read_at IS NULL
 			        ), 0) AS unread_count
@@ -256,7 +249,7 @@ func (r *InquiryRepository) listByRole(
 		for rows.Next() {
 			var inq domain.Inquiry
 			if err := rows.Scan(
-				&inq.ID, &inq.TenantID, &inq.BuyerAuth0ID, &inq.SellerID, &inq.SKUID,
+				&inq.ID, &inq.BuyerAuth0ID, &inq.SellerID, &inq.SKUID,
 				&inq.ProductName, &inq.SKUCode, &inq.Subject, &inq.Status,
 				&inq.LastMessageAt, &inq.CreatedAt, &inq.UpdatedAt, &inq.UnreadCount,
 			); err != nil {
@@ -274,31 +267,30 @@ func (r *InquiryRepository) listByRole(
 
 // AppendMessage inserts a new message into an existing thread and bumps
 // last_message_at atomically.
-func (r *InquiryRepository) AppendMessage(ctx context.Context, tenantID uuid.UUID, msg *domain.InquiryMessage) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		return appendMessageTx(ctx, tx, tenantID, msg)
+func (r *InquiryRepository) AppendMessage(ctx context.Context, msg *domain.InquiryMessage) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		return appendMessageTx(ctx, tx, msg)
 	})
 }
 
 // MarkRead stamps read_at = NOW() on unread messages written by the *other*
 // participant. readerType is either SenderTypeBuyer or SenderTypeSeller —
 // messages authored by that role are left alone.
-func (r *InquiryRepository) MarkRead(ctx context.Context, tenantID, inquiryID uuid.UUID, readerType string) error {
+func (r *InquiryRepository) MarkRead(ctx context.Context, inquiryID uuid.UUID, readerType string) error {
 	// Determine the author side whose messages should be marked read.
 	otherSide := domain.SenderTypeSeller
 	if readerType == domain.SenderTypeSeller {
 		otherSide = domain.SenderTypeBuyer
 	}
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx,
 			`UPDATE inquiry_svc.inquiry_messages
 			    SET read_at = NOW()
-			  WHERE tenant_id  = $1
-			    AND inquiry_id = $2
-			    AND sender_type = $3
+			  WHERE inquiry_id = $1
+			    AND sender_type = $2
 			    AND read_at IS NULL`,
-			tenantID, inquiryID, otherSide,
+			inquiryID, otherSide,
 		)
 		if err != nil {
 			return fmt.Errorf("mark messages read: %w", err)
@@ -308,13 +300,13 @@ func (r *InquiryRepository) MarkRead(ctx context.Context, tenantID, inquiryID uu
 }
 
 // Close transitions the thread to status = closed.
-func (r *InquiryRepository) Close(ctx context.Context, tenantID, inquiryID uuid.UUID) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *InquiryRepository) Close(ctx context.Context, inquiryID uuid.UUID) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE inquiry_svc.inquiries
-			    SET status = $3, updated_at = NOW()
-			  WHERE id = $1 AND tenant_id = $2`,
-			inquiryID, tenantID, domain.InquiryStatusClosed,
+			    SET status = $2, updated_at = NOW()
+			  WHERE id = $1`,
+			inquiryID, domain.InquiryStatusClosed,
 		)
 		if err != nil {
 			return fmt.Errorf("close inquiry: %w", err)
@@ -328,17 +320,17 @@ func (r *InquiryRepository) Close(ctx context.Context, tenantID, inquiryID uuid.
 
 // --- internal helpers ---
 
-func loadInquiryByIDTx(ctx context.Context, tx pgx.Tx, tenantID, inquiryID uuid.UUID) (*domain.Inquiry, error) {
+func loadInquiryByIDTx(ctx context.Context, tx pgx.Tx, inquiryID uuid.UUID) (*domain.Inquiry, error) {
 	var inq domain.Inquiry
 	err := tx.QueryRow(ctx,
-		`SELECT id, tenant_id, buyer_auth0_id, seller_id, sku_id,
+		`SELECT id, buyer_auth0_id, seller_id, sku_id,
 		        product_name, sku_code, subject, status,
 		        last_message_at, created_at, updated_at
 		   FROM inquiry_svc.inquiries
-		  WHERE id = $1 AND tenant_id = $2`,
-		inquiryID, tenantID,
+		  WHERE id = $1`,
+		inquiryID,
 	).Scan(
-		&inq.ID, &inq.TenantID, &inq.BuyerAuth0ID, &inq.SellerID, &inq.SKUID,
+		&inq.ID, &inq.BuyerAuth0ID, &inq.SellerID, &inq.SKUID,
 		&inq.ProductName, &inq.SKUCode, &inq.Subject, &inq.Status,
 		&inq.LastMessageAt, &inq.CreatedAt, &inq.UpdatedAt,
 	)
@@ -354,23 +346,21 @@ func loadInquiryByIDTx(ctx context.Context, tx pgx.Tx, tenantID, inquiryID uuid.
 func loadInquiryByParticipantsTx(
 	ctx context.Context,
 	tx pgx.Tx,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	sellerID, skuID uuid.UUID,
 ) (*domain.Inquiry, error) {
 	var inq domain.Inquiry
 	err := tx.QueryRow(ctx,
-		`SELECT id, tenant_id, buyer_auth0_id, seller_id, sku_id,
+		`SELECT id, buyer_auth0_id, seller_id, sku_id,
 		        product_name, sku_code, subject, status,
 		        last_message_at, created_at, updated_at
 		   FROM inquiry_svc.inquiries
-		  WHERE tenant_id = $1
-		    AND buyer_auth0_id = $2
-		    AND seller_id = $3
-		    AND sku_id = $4`,
-		tenantID, buyerAuth0ID, sellerID, skuID,
+		  WHERE buyer_auth0_id = $1
+		    AND seller_id = $2
+		    AND sku_id = $3`,
+		buyerAuth0ID, sellerID, skuID,
 	).Scan(
-		&inq.ID, &inq.TenantID, &inq.BuyerAuth0ID, &inq.SellerID, &inq.SKUID,
+		&inq.ID, &inq.BuyerAuth0ID, &inq.SellerID, &inq.SKUID,
 		&inq.ProductName, &inq.SKUCode, &inq.Subject, &inq.Status,
 		&inq.LastMessageAt, &inq.CreatedAt, &inq.UpdatedAt,
 	)
@@ -383,16 +373,15 @@ func loadInquiryByParticipantsTx(
 	return &inq, nil
 }
 
-func appendMessageTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, msg *domain.InquiryMessage) error {
+func appendMessageTx(ctx context.Context, tx pgx.Tx, msg *domain.InquiryMessage) error {
 	msg.ID = uuid.New()
-	msg.TenantID = tenantID
 
 	err := tx.QueryRow(ctx,
 		`INSERT INTO inquiry_svc.inquiry_messages
-		 (id, tenant_id, inquiry_id, sender_type, sender_id, body)
-		 VALUES ($1, $2, $3, $4, $5, $6)
+		 (id, inquiry_id, sender_type, sender_id, body)
+		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING created_at`,
-		msg.ID, msg.TenantID, msg.InquiryID, msg.SenderType, msg.SenderID, msg.Body,
+		msg.ID, msg.InquiryID, msg.SenderType, msg.SenderID, msg.Body,
 	).Scan(&msg.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("insert message: %w", err)
@@ -401,9 +390,9 @@ func appendMessageTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, msg *do
 	// Bump parent thread's last_message_at so list queries can sort without a JOIN.
 	_, err = tx.Exec(ctx,
 		`UPDATE inquiry_svc.inquiries
-		    SET last_message_at = $3, updated_at = NOW()
-		  WHERE id = $1 AND tenant_id = $2`,
-		msg.InquiryID, tenantID, msg.CreatedAt,
+		    SET last_message_at = $2, updated_at = NOW()
+		  WHERE id = $1`,
+		msg.InquiryID, msg.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("bump last_message_at: %w", err)
@@ -411,13 +400,13 @@ func appendMessageTx(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, msg *do
 	return nil
 }
 
-func loadMessagesTx(ctx context.Context, tx pgx.Tx, tenantID, inquiryID uuid.UUID) ([]domain.InquiryMessage, error) {
+func loadMessagesTx(ctx context.Context, tx pgx.Tx, inquiryID uuid.UUID) ([]domain.InquiryMessage, error) {
 	rows, err := tx.Query(ctx,
-		`SELECT id, tenant_id, inquiry_id, sender_type, sender_id, body, read_at, created_at
+		`SELECT id, inquiry_id, sender_type, sender_id, body, read_at, created_at
 		   FROM inquiry_svc.inquiry_messages
-		  WHERE inquiry_id = $1 AND tenant_id = $2
+		  WHERE inquiry_id = $1
 		  ORDER BY created_at ASC`,
-		inquiryID, tenantID,
+		inquiryID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("load messages: %w", err)
@@ -428,7 +417,7 @@ func loadMessagesTx(ctx context.Context, tx pgx.Tx, tenantID, inquiryID uuid.UUI
 	for rows.Next() {
 		var m domain.InquiryMessage
 		if err := rows.Scan(
-			&m.ID, &m.TenantID, &m.InquiryID, &m.SenderType, &m.SenderID, &m.Body, &m.ReadAt, &m.CreatedAt,
+			&m.ID, &m.InquiryID, &m.SenderType, &m.SenderID, &m.Body, &m.ReadAt, &m.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan message: %w", err)
 		}

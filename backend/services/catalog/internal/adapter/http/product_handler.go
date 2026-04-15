@@ -9,7 +9,6 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/pagination"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/port"
 )
@@ -56,12 +55,6 @@ type createSKUReq struct {
 
 // Create handles POST /products.
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	var req createProductRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, mapError(err))
@@ -87,7 +80,7 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if err := h.svc.CreateProduct(r.Context(), tenantID, p, skus); err != nil {
+	if err := h.svc.CreateProduct(r.Context(), p, skus); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -97,14 +90,8 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GetBySlug handles GET /products/{slug}.
 func (h *ProductHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	slug := chi.URLParam(r, "slug")
-	p, err := h.svc.GetProduct(r.Context(), tenantID, slug)
+	p, err := h.svc.GetProduct(r.Context(), slug)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -115,17 +102,9 @@ func (h *ProductHandler) GetBySlug(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /products.
 func (h *ProductHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	p := pagination.FromRequest(r)
 
-	filter := domain.ProductFilter{
-		TenantID: tenantID,
-	}
+	filter := domain.ProductFilter{}
 
 	// Optional query filters.
 	if sellerStr := r.URL.Query().Get("seller_id"); sellerStr != "" {
@@ -171,12 +150,6 @@ type updateProductRequest struct {
 
 // Update handles PUT /products/{id}.
 func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -199,7 +172,7 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Attributes:  req.Attributes,
 	}
 
-	if err := h.svc.UpdateProduct(r.Context(), tenantID, p); err != nil {
+	if err := h.svc.UpdateProduct(r.Context(), p); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -214,12 +187,6 @@ type updateStatusRequest struct {
 
 // UpdateStatus handles PUT /products/{id}/status.
 func (h *ProductHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "tenant_id required"})
-		return
-	}
-
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -233,7 +200,7 @@ func (h *ProductHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.UpdateProductStatus(r.Context(), tenantID, id, req.Status); err != nil {
+	if err := h.svc.UpdateProductStatus(r.Context(), id, req.Status); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

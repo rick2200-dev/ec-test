@@ -44,7 +44,8 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *domain.Shipment) err
 	if len(s.ShippingAddress) > 0 {
 		addrJSON = s.ShippingAddress
 	}
-	return database.TenantTx(ctx, r.pool, s.TenantID, func(tx pgx.Tx) error {
+	return database.TxCtx(ctx, r.pool, func(txCtx context.Context) error {
+		tx, _ := database.TxFromContext(txCtx)
 		// Serialize with CancelByOrderID on the same order so the tombstone
 		// check and shipment insert are never interleaved with a concurrent
 		// cancel that would otherwise win the race.
@@ -56,47 +57,48 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *domain.Shipment) err
 		// ON CONFLICT handles duplicate order.paid re-deliveries.
 		_, err := tx.Exec(ctx,
 			`INSERT INTO shipping_svc.shipments
-			 (id, tenant_id, seller_id, order_id, buyer_auth0_id, status, shipping_address, created_at, updated_at)
-			 SELECT $1,$2,$3,$4,$5,$6,$7,NOW(),NOW()
+			 (id, seller_id, order_id, buyer_auth0_id, status, shipping_address, created_at, updated_at)
+			 SELECT $1,$2,$3,$4,$5,$6,NOW(),NOW()
 			 WHERE NOT EXISTS (
-			     SELECT 1 FROM shipping_svc.cancelled_order_tombstones WHERE order_id = $4
+			     SELECT 1 FROM shipping_svc.cancelled_order_tombstones WHERE order_id = $3
 			 )
 			 ON CONFLICT (order_id) DO NOTHING`,
-			s.ID, s.TenantID, s.SellerID, s.OrderID, s.BuyerAuth0ID, domain.StatusReadyToShip, addrJSON,
+			s.ID, s.SellerID, s.OrderID, s.BuyerAuth0ID, domain.StatusReadyToShip, addrJSON,
 		)
 		return err
 	})
 }
 
-// GetByID returns the shipment with the given id scoped to the tenant.
-func (r *ShipmentRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Shipment, error) {
-	return r.fetchOne(ctx, tenantID,
-		`SELECT id,tenant_id,seller_id,order_id,buyer_auth0_id,status,shipping_address,
+// GetByID returns the shipment with the given id.
+func (r *ShipmentRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Shipment, error) {
+	return r.fetchOne(ctx,
+		`SELECT id,seller_id,order_id,buyer_auth0_id,status,shipping_address,
 		        carrier,tracking_number,shipped_at,delivered_at,note,created_at,updated_at
 		 FROM shipping_svc.shipments
-		 WHERE id=$1 AND tenant_id=$2`,
-		id, tenantID,
+		 WHERE id=$1`,
+		id,
 	)
 }
 
-// GetByOrderID returns the shipment for the given order scoped to the tenant.
-func (r *ShipmentRepository) GetByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.Shipment, error) {
-	return r.fetchOne(ctx, tenantID,
-		`SELECT id,tenant_id,seller_id,order_id,buyer_auth0_id,status,shipping_address,
+// GetByOrderID returns the shipment for the given order.
+func (r *ShipmentRepository) GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domain.Shipment, error) {
+	return r.fetchOne(ctx,
+		`SELECT id,seller_id,order_id,buyer_auth0_id,status,shipping_address,
 		        carrier,tracking_number,shipped_at,delivered_at,note,created_at,updated_at
 		 FROM shipping_svc.shipments
-		 WHERE order_id=$1 AND tenant_id=$2`,
-		orderID, tenantID,
+		 WHERE order_id=$1`,
+		orderID,
 	)
 }
 
 // ListBySeller returns paginated shipments for a seller.
-func (r *ShipmentRepository) ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]*domain.Shipment, int, error) {
+func (r *ShipmentRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID, status string, limit, offset int) ([]*domain.Shipment, int, error) {
 	var total int
 	var items []*domain.Shipment
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
-		args := []any{tenantID, sellerID}
+	err := database.TxCtx(ctx, r.pool, func(txCtx context.Context) error {
+		tx, _ := database.TxFromContext(txCtx)
+		args := []any{sellerID}
 		statusFilter := ""
 		if status != "" {
 			args = append(args, status)
@@ -104,7 +106,7 @@ func (r *ShipmentRepository) ListBySeller(ctx context.Context, tenantID, sellerI
 		}
 
 		if err := tx.QueryRow(ctx,
-			"SELECT COUNT(*) FROM shipping_svc.shipments WHERE tenant_id=$1 AND seller_id=$2"+statusFilter,
+			"SELECT COUNT(*) FROM shipping_svc.shipments WHERE seller_id=$1"+statusFilter,
 			args...,
 		).Scan(&total); err != nil {
 			return fmt.Errorf("count shipments: %w", err)
@@ -112,10 +114,10 @@ func (r *ShipmentRepository) ListBySeller(ctx context.Context, tenantID, sellerI
 
 		args = append(args, limit, offset)
 		rows, err := tx.Query(ctx,
-			`SELECT id,tenant_id,seller_id,order_id,buyer_auth0_id,status,shipping_address,
+			`SELECT id,seller_id,order_id,buyer_auth0_id,status,shipping_address,
 			        carrier,tracking_number,shipped_at,delivered_at,note,created_at,updated_at
 			 FROM shipping_svc.shipments
-			 WHERE tenant_id=$1 AND seller_id=$2`+statusFilter+
+			 WHERE seller_id=$1`+statusFilter+
 				fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", len(args)-1, len(args)),
 			args...,
 		)
@@ -147,9 +149,9 @@ func (r *ShipmentRepository) UpdateStatus(ctx context.Context, s *domain.Shipmen
 		tag, err := tx.Exec(ctx,
 			`UPDATE shipping_svc.shipments
 			 SET status=$1, carrier=$2, tracking_number=$3, shipped_at=$4, delivered_at=$5, note=$6, updated_at=NOW()
-			 WHERE id=$7 AND tenant_id=$8 AND status=$9`,
+			 WHERE id=$7 AND status=$8`,
 			s.Status, s.Carrier, s.TrackingNumber, s.ShippedAt, s.DeliveredAt, s.Note,
-			s.ID, s.TenantID, expectedStatus,
+			s.ID, expectedStatus,
 		)
 		if err != nil {
 			return fmt.Errorf("update shipment status: %w", err)
@@ -163,7 +165,7 @@ func (r *ShipmentRepository) UpdateStatus(ctx context.Context, s *domain.Shipmen
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return exec(tx)
 	}
-	return database.TenantTx(ctx, r.pool, s.TenantID, exec)
+	return database.Tx(ctx, r.pool, exec)
 }
 
 // CancelByOrderID transitions the shipment for the given order to cancelled,
@@ -180,8 +182,9 @@ func (r *ShipmentRepository) UpdateStatus(ctx context.Context, s *domain.Shipmen
 // The tombstone is only written when the shipment is truly absent — not when
 // it already exists in a non-cancellable state — so the table meaning stays
 // "cancel arrived before paid" rather than "cancel arrived".
-func (r *ShipmentRepository) CancelByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *ShipmentRepository) CancelByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	return database.TxCtx(ctx, r.pool, func(txCtx context.Context) error {
+		tx, _ := database.TxFromContext(txCtx)
 		// Serialize with Create on the same order.
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, orderLockKey(orderID)); err != nil {
 			return fmt.Errorf("acquire order advisory lock: %w", err)
@@ -190,8 +193,8 @@ func (r *ShipmentRepository) CancelByOrderID(ctx context.Context, tenantID, orde
 		tag, err := tx.Exec(ctx,
 			`UPDATE shipping_svc.shipments
 			 SET status='cancelled', updated_at=NOW()
-			 WHERE order_id=$1 AND tenant_id=$2 AND status IN ('pending','ready_to_ship')`,
-			orderID, tenantID,
+			 WHERE order_id=$1 AND status IN ('pending','ready_to_ship')`,
+			orderID,
 		)
 		if err != nil {
 			return err
@@ -204,8 +207,8 @@ func (r *ShipmentRepository) CancelByOrderID(ctx context.Context, tenantID, orde
 		// already shipped/delivered. Only insert a tombstone in the first case.
 		var shipmentExists bool
 		if err := tx.QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM shipping_svc.shipments WHERE order_id=$1 AND tenant_id=$2)`,
-			orderID, tenantID,
+			`SELECT EXISTS(SELECT 1 FROM shipping_svc.shipments WHERE order_id=$1)`,
+			orderID,
 		).Scan(&shipmentExists); err != nil {
 			return fmt.Errorf("check shipment existence: %w", err)
 		}
@@ -216,9 +219,9 @@ func (r *ShipmentRepository) CancelByOrderID(ctx context.Context, tenantID, orde
 
 		// No shipment yet: record tombstone so a future order.paid is absorbed.
 		_, err = tx.Exec(ctx,
-			`INSERT INTO shipping_svc.cancelled_order_tombstones (order_id, tenant_id)
-			 VALUES ($1, $2) ON CONFLICT (order_id) DO NOTHING`,
-			orderID, tenantID,
+			`INSERT INTO shipping_svc.cancelled_order_tombstones (order_id)
+			 VALUES ($1) ON CONFLICT (order_id) DO NOTHING`,
+			orderID,
 		)
 		return err
 	})
@@ -237,9 +240,9 @@ func (r *ShipmentRepository) AppendEvent(ctx context.Context, e *domain.Shipment
 	exec := func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx,
 			`INSERT INTO shipping_svc.shipment_events
-			 (id, tenant_id, shipment_id, from_status, to_status, actor_type, actor_id, payload, created_at)
-			 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())`,
-			e.ID, e.TenantID, e.ShipmentID, nullableStr(e.FromStatus), e.ToStatus,
+			 (id, shipment_id, from_status, to_status, actor_type, actor_id, payload, created_at)
+			 VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
+			e.ID, e.ShipmentID, nullableStr(e.FromStatus), e.ToStatus,
 			e.ActorType, nullableStr(e.ActorID), payload,
 		)
 		return err
@@ -248,13 +251,14 @@ func (r *ShipmentRepository) AppendEvent(ctx context.Context, e *domain.Shipment
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return exec(tx)
 	}
-	return database.TenantTx(ctx, r.pool, e.TenantID, exec)
+	return database.Tx(ctx, r.pool, exec)
 }
 
 // fetchOne runs a SELECT ... and scans a single Shipment row.
-func (r *ShipmentRepository) fetchOne(ctx context.Context, tenantID uuid.UUID, query string, args ...any) (*domain.Shipment, error) {
+func (r *ShipmentRepository) fetchOne(ctx context.Context, query string, args ...any) (*domain.Shipment, error) {
 	var s *domain.Shipment
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.TxCtx(ctx, r.pool, func(txCtx context.Context) error {
+		tx, _ := database.TxFromContext(txCtx)
 		row := tx.QueryRow(ctx, query, args...)
 		var err error
 		s, err = scanShipmentRow(row)
@@ -277,7 +281,7 @@ func scanShipment(row pgx.Rows) (*domain.Shipment, error) {
 	var shippedAt, deliveredAt *time.Time
 
 	if err := row.Scan(
-		&s.ID, &s.TenantID, &s.SellerID, &s.OrderID, &s.BuyerAuth0ID, &s.Status,
+		&s.ID, &s.SellerID, &s.OrderID, &s.BuyerAuth0ID, &s.Status,
 		&addrJSON, &carrier, &tracking, &shippedAt, &deliveredAt, &note,
 		&s.CreatedAt, &s.UpdatedAt,
 	); err != nil {
@@ -308,7 +312,7 @@ func scanShipmentRow(row pgx.Row) (*domain.Shipment, error) {
 	var shippedAt, deliveredAt *time.Time
 
 	if err := row.Scan(
-		&s.ID, &s.TenantID, &s.SellerID, &s.OrderID, &s.BuyerAuth0ID, &s.Status,
+		&s.ID, &s.SellerID, &s.OrderID, &s.BuyerAuth0ID, &s.Status,
 		&addrJSON, &carrier, &tracking, &shippedAt, &deliveredAt, &note,
 		&s.CreatedAt, &s.UpdatedAt,
 	); err != nil {
@@ -341,16 +345,16 @@ func (r *ShipmentRepository) AppendOutboxEvent(ctx context.Context, e port.Outbo
 	}
 	exec := func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx,
-			`INSERT INTO shipping_svc.outbox_events (id, event_type, topic, tenant_id, payload, created_at)
-			 VALUES ($1,$2,$3,$4,$5,NOW())`,
-			e.ID, e.EventType, e.Topic, e.TenantID, e.Payload,
+			`INSERT INTO shipping_svc.outbox_events (id, event_type, topic, payload, created_at)
+			 VALUES ($1,$2,$3,$4,NOW())`,
+			e.ID, e.EventType, e.Topic, e.Payload,
 		)
 		return err
 	}
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return exec(tx)
 	}
-	return database.TenantTx(ctx, r.pool, e.TenantID, exec)
+	return database.Tx(ctx, r.pool, exec)
 }
 
 // orderLockKey converts a UUID to a stable int64 suitable for
@@ -366,4 +370,3 @@ func nullableStr(s string) *string {
 	}
 	return &s
 }
-

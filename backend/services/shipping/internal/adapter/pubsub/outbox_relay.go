@@ -66,7 +66,6 @@ type outboxRow struct {
 	id        uuid.UUID
 	eventType string
 	topic     string
-	tenantID  uuid.UUID
 	payload   json.RawMessage
 	createdAt time.Time // used as stable envelope Timestamp across retries
 }
@@ -120,7 +119,6 @@ func (r *OutboxRelay) Run(ctx context.Context) error {
 		event := pkgpubsub.Event{
 			ID:        row.id.String(),     // stable across retries — dedup key for consumers
 			Type:      row.eventType,
-			TenantID:  row.tenantID.String(),
 			Timestamp: row.createdAt.UTC(), // stable: original event time, not retry time
 			Data:      row.payload,
 		}
@@ -197,7 +195,6 @@ func (s *pgxOutboxStore) claimBatch(ctx context.Context) ([]outboxRow, error) {
 			shipping_svc.outbox_events.id,
 			event_type,
 			topic,
-			tenant_id,
 			payload,
 			created_at`)
 	if err != nil {
@@ -208,7 +205,7 @@ func (s *pgxOutboxStore) claimBatch(ctx context.Context) ([]outboxRow, error) {
 	var batch []outboxRow
 	for rows.Next() {
 		var row outboxRow
-		if err := rows.Scan(&row.id, &row.eventType, &row.topic, &row.tenantID, &row.payload, &row.createdAt); err != nil {
+		if err := rows.Scan(&row.id, &row.eventType, &row.topic, &row.payload, &row.createdAt); err != nil {
 			return nil, fmt.Errorf("scan outbox row: %w", err)
 		}
 		batch = append(batch, row)

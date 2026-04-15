@@ -10,7 +10,6 @@ import (
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/order/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/order/internal/port"
 )
@@ -61,12 +60,6 @@ type purchaseCheckResponse struct {
 
 // CheckPurchase handles POST /internal/purchase-check.
 func (h *InternalHandler) CheckPurchase(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
-
 	var req purchaseCheckRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, mapError(err))
@@ -85,7 +78,7 @@ func (h *InternalHandler) CheckPurchase(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	result, err := h.svc.CheckPurchase(r.Context(), tenantID, req.BuyerAuth0ID, req.SellerID, req.SKUID)
+	result, err := h.svc.CheckPurchase(r.Context(), req.BuyerAuth0ID, req.SellerID, req.SKUID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -127,12 +120,6 @@ type checkoutResponse struct {
 
 // CreateCheckout handles POST /internal/checkouts.
 func (h *InternalHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
-
 	var req checkoutRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, mapError(err))
@@ -161,7 +148,7 @@ func (h *InternalHandler) CreateCheckout(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	result, err := h.svc.CreateCheckout(r.Context(), tenantID, domain.CheckoutInput{
+	result, err := h.svc.CreateCheckout(r.Context(), domain.CheckoutInput{
 		BuyerAuth0ID:    req.BuyerAuth0ID,
 		Lines:           lines,
 		ShippingAddress: shippingJSON,

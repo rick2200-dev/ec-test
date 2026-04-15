@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
-	"github.com/Riku-KANO/ec-test/services/search/internal/domain"
 )
 
 // mapError converts domain sentinel errors to HTTP-aware AppErrors.
@@ -15,10 +14,5 @@ func mapError(err error) error {
 	if errors.As(err, &appErr) {
 		return appErr
 	}
-	switch {
-	case errors.Is(err, domain.ErrMissingTenantID):
-		return apperrors.BadRequest(err.Error())
-	default:
-		return apperrors.Internal("internal error", err)
-	}
+	return apperrors.Internal("internal error", err)
 }

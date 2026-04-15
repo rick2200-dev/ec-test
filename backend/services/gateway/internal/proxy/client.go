@@ -83,7 +83,6 @@ func (c *ServiceClient) do(ctx context.Context, method, url string, body io.Read
 
 	// Forward tenant context headers.
 	if tc, err := tenant.FromContext(ctx); err == nil {
-		req.Header.Set("X-Tenant-ID", tc.TenantID.String())
 		req.Header.Set("X-User-ID", tc.UserID)
 		if tc.SellerID != nil {
 			req.Header.Set("X-Seller-ID", tc.SellerID.String())

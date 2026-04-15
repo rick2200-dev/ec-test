@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/port"
 )
@@ -41,13 +40,7 @@ func (h *SubscriptionHandler) SubscriptionRoutes() chi.Router {
 }
 
 func (h *SubscriptionHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
-	plans, err := h.svc.ListPlans(r.Context(), tenantID)
+	plans, err := h.svc.ListPlans(r.Context())
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -67,12 +60,6 @@ type createPlanRequest struct {
 }
 
 func (h *SubscriptionHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	var req createPlanRequest
 	if err := httputil.Decode(r, &req); err != nil {
 		httputil.Error(w, err)
@@ -89,7 +76,7 @@ func (h *SubscriptionHandler) CreatePlan(w http.ResponseWriter, r *http.Request)
 		StripePriceID: req.StripePriceID,
 	}
 
-	if err := h.svc.CreatePlan(r.Context(), tenantID, plan); err != nil {
+	if err := h.svc.CreatePlan(r.Context(), plan); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -98,19 +85,13 @@ func (h *SubscriptionHandler) CreatePlan(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *SubscriptionHandler) GetPlan(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid plan id"})
 		return
 	}
 
-	plan, err := h.svc.GetPlan(r.Context(), tenantID, id)
+	plan, err := h.svc.GetPlan(r.Context(), id)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -131,12 +112,6 @@ type updatePlanRequest struct {
 }
 
 func (h *SubscriptionHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid plan id"})
@@ -161,7 +136,7 @@ func (h *SubscriptionHandler) UpdatePlan(w http.ResponseWriter, r *http.Request)
 		Status:        req.Status,
 	}
 
-	if err := h.svc.UpdatePlan(r.Context(), tenantID, plan); err != nil {
+	if err := h.svc.UpdatePlan(r.Context(), plan); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -170,19 +145,13 @@ func (h *SubscriptionHandler) UpdatePlan(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *SubscriptionHandler) GetSellerSubscription(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	sellerID, err := uuid.Parse(chi.URLParam(r, "sellerID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid seller id"})
 		return
 	}
 
-	sub, err := h.svc.GetSellerSubscription(r.Context(), tenantID, sellerID)
+	sub, err := h.svc.GetSellerSubscription(r.Context(), sellerID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -196,12 +165,6 @@ type subscribeRequest struct {
 }
 
 func (h *SubscriptionHandler) SubscribeSeller(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	sellerID, err := uuid.Parse(chi.URLParam(r, "sellerID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid seller id"})
@@ -220,7 +183,7 @@ func (h *SubscriptionHandler) SubscribeSeller(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	sub, err := h.svc.SubscribeSeller(r.Context(), tenantID, sellerID, planID)
+	sub, err := h.svc.SubscribeSeller(r.Context(), sellerID, planID)
 	if err != nil {
 		httputil.Error(w, err)
 		return

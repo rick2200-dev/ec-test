@@ -12,7 +12,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 )
 
-// SellerUserRepository handles persistence of seller_users within a tenant scope.
+// SellerUserRepository handles persistence of seller_users.
 type SellerUserRepository struct {
 	pool *pgxpool.Pool
 }
@@ -23,12 +23,12 @@ func NewSellerUserRepository(pool *pgxpool.Pool) *SellerUserRepository {
 }
 
 // withTx uses the transaction from ctx if one was placed there by
-// database.WithTx, otherwise opens a new tenant-scoped transaction.
-func (r *SellerUserRepository) withTx(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
+// database.WithTx, otherwise opens a new transaction.
+func (r *SellerUserRepository) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
 	if tx, ok := database.TxFromContext(ctx); ok {
 		return fn(tx)
 	}
-	return database.TenantTx(ctx, r.pool, tenantID, fn)
+	return database.Tx(ctx, r.pool, fn)
 }
 
 // Create inserts a new seller_user row. When ctx carries a transaction (placed
@@ -38,27 +38,27 @@ func (r *SellerUserRepository) Create(ctx context.Context, su *domain.SellerUser
 	if su.ID == uuid.Nil {
 		su.ID = uuid.New()
 	}
-	return r.withTx(ctx, su.TenantID, func(tx pgx.Tx) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
-			`INSERT INTO auth_svc.seller_users (id, tenant_id, seller_id, auth0_user_id, role)
-			 VALUES ($1, $2, $3, $4, $5)
+			`INSERT INTO auth_svc.seller_users (id, seller_id, auth0_user_id, role)
+			 VALUES ($1, $2, $3, $4)
 			 RETURNING created_at`,
-			su.ID, su.TenantID, su.SellerID, su.Auth0UserID, su.Role,
+			su.ID, su.SellerID, su.Auth0UserID, su.Role,
 		).Scan(&su.CreatedAt)
 	})
 }
 
-// GetByID retrieves a seller_user by its primary key within a tenant scope.
-func (r *SellerUserRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.SellerUser, error) {
+// GetByID retrieves a seller_user by its primary key.
+func (r *SellerUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.SellerUser, error) {
 	var su domain.SellerUser
 	var found bool
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, auth0_user_id, role, created_at
+			`SELECT id, seller_id, auth0_user_id, role, created_at
 			 FROM auth_svc.seller_users
-			 WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID,
-		).Scan(&su.ID, &su.TenantID, &su.SellerID, &su.Auth0UserID, &su.Role, &su.CreatedAt)
+			 WHERE id = $1`,
+			id,
+		).Scan(&su.ID, &su.SellerID, &su.Auth0UserID, &su.Role, &su.CreatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -77,17 +77,17 @@ func (r *SellerUserRepository) GetByID(ctx context.Context, tenantID, id uuid.UU
 	return &su, nil
 }
 
-// GetByAuth0ID retrieves a seller_user by (tenant, seller, auth0_user_id).
-func (r *SellerUserRepository) GetByAuth0ID(ctx context.Context, tenantID, sellerID uuid.UUID, auth0UserID string) (*domain.SellerUser, error) {
+// GetByAuth0ID retrieves a seller_user by (seller_id, auth0_user_id).
+func (r *SellerUserRepository) GetByAuth0ID(ctx context.Context, sellerID uuid.UUID, auth0UserID string) (*domain.SellerUser, error) {
 	var su domain.SellerUser
 	var found bool
-	err := r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+	err := r.withTx(ctx, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, auth0_user_id, role, created_at
+			`SELECT id, seller_id, auth0_user_id, role, created_at
 			 FROM auth_svc.seller_users
-			 WHERE tenant_id = $1 AND seller_id = $2 AND auth0_user_id = $3`,
-			tenantID, sellerID, auth0UserID,
-		).Scan(&su.ID, &su.TenantID, &su.SellerID, &su.Auth0UserID, &su.Role, &su.CreatedAt)
+			 WHERE seller_id = $1 AND auth0_user_id = $2`,
+			sellerID, auth0UserID,
+		).Scan(&su.ID, &su.SellerID, &su.Auth0UserID, &su.Role, &su.CreatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -107,15 +107,15 @@ func (r *SellerUserRepository) GetByAuth0ID(ctx context.Context, tenantID, selle
 }
 
 // ListBySeller returns all users belonging to a seller organization.
-func (r *SellerUserRepository) ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID) ([]domain.SellerUser, error) {
+func (r *SellerUserRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID) ([]domain.SellerUser, error) {
 	var users []domain.SellerUser
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, seller_id, auth0_user_id, role, created_at
+			`SELECT id, seller_id, auth0_user_id, role, created_at
 			 FROM auth_svc.seller_users
-			 WHERE tenant_id = $1 AND seller_id = $2
+			 WHERE seller_id = $1
 			 ORDER BY created_at ASC`,
-			tenantID, sellerID,
+			sellerID,
 		)
 		if err != nil {
 			return err
@@ -123,7 +123,7 @@ func (r *SellerUserRepository) ListBySeller(ctx context.Context, tenantID, selle
 		defer rows.Close()
 		for rows.Next() {
 			var su domain.SellerUser
-			if err := rows.Scan(&su.ID, &su.TenantID, &su.SellerID, &su.Auth0UserID, &su.Role, &su.CreatedAt); err != nil {
+			if err := rows.Scan(&su.ID, &su.SellerID, &su.Auth0UserID, &su.Role, &su.CreatedAt); err != nil {
 				return err
 			}
 			users = append(users, su)
@@ -138,11 +138,11 @@ func (r *SellerUserRepository) ListBySeller(ctx context.Context, tenantID, selle
 
 // UpdateRole changes the role of a seller_user. When ctx carries a
 // transaction it joins that transaction; otherwise opens its own.
-func (r *SellerUserRepository) UpdateRole(ctx context.Context, tenantID, id uuid.UUID, role domain.SellerUserRole) error {
-	return r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+func (r *SellerUserRepository) UpdateRole(ctx context.Context, id uuid.UUID, role domain.SellerUserRole) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`UPDATE auth_svc.seller_users SET role = $3 WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID, role,
+			`UPDATE auth_svc.seller_users SET role = $2 WHERE id = $1`,
+			id, role,
 		)
 		if err != nil {
 			return fmt.Errorf("update seller_user role: %w", err)
@@ -156,11 +156,11 @@ func (r *SellerUserRepository) UpdateRole(ctx context.Context, tenantID, id uuid
 
 // Delete removes a seller_user row. When ctx carries a transaction it joins
 // that transaction; otherwise opens its own.
-func (r *SellerUserRepository) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
-	return r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+func (r *SellerUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`DELETE FROM auth_svc.seller_users WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID,
+			`DELETE FROM auth_svc.seller_users WHERE id = $1`,
+			id,
 		)
 		if err != nil {
 			return fmt.Errorf("delete seller_user: %w", err)
@@ -175,13 +175,13 @@ func (r *SellerUserRepository) Delete(ctx context.Context, tenantID, id uuid.UUI
 // CountByRole returns the number of seller_users in a seller organization that
 // have the given role. When ctx carries a transaction it joins that
 // transaction; otherwise opens its own.
-func (r *SellerUserRepository) CountByRole(ctx context.Context, tenantID, sellerID uuid.UUID, role domain.SellerUserRole) (int, error) {
+func (r *SellerUserRepository) CountByRole(ctx context.Context, sellerID uuid.UUID, role domain.SellerUserRole) (int, error) {
 	var n int
-	err := r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+	err := r.withTx(ctx, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`SELECT COUNT(*) FROM auth_svc.seller_users
-			 WHERE tenant_id = $1 AND seller_id = $2 AND role = $3`,
-			tenantID, sellerID, role,
+			 WHERE seller_id = $1 AND role = $2`,
+			sellerID, role,
 		).Scan(&n)
 	})
 	if err != nil {
@@ -195,13 +195,13 @@ func (r *SellerUserRepository) CountByRole(ctx context.Context, tenantID, seller
 // carries a transaction it joins that transaction; otherwise opens its own.
 // Returns ("", nil) when the user is not found; returns ("", err) on
 // unexpected database errors.
-func (r *SellerUserRepository) CheckRole(ctx context.Context, tenantID, sellerID uuid.UUID, auth0UserID string) (domain.SellerUserRole, error) {
+func (r *SellerUserRepository) CheckRole(ctx context.Context, sellerID uuid.UUID, auth0UserID string) (domain.SellerUserRole, error) {
 	var role domain.SellerUserRole
-	err := r.withTx(ctx, tenantID, func(tx pgx.Tx) error {
+	err := r.withTx(ctx, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
 			`SELECT role FROM auth_svc.seller_users
-			 WHERE tenant_id = $1 AND seller_id = $2 AND auth0_user_id = $3`,
-			tenantID, sellerID, auth0UserID,
+			 WHERE seller_id = $1 AND auth0_user_id = $2`,
+			sellerID, auth0UserID,
 		).Scan(&role)
 		if err == pgx.ErrNoRows {
 			return nil

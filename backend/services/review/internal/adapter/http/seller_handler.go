@@ -38,7 +38,7 @@ func (h *SellerHandler) Routes() chi.Router {
 func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -47,7 +47,7 @@ func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, offset := parsePagination(r)
 
-	items, total, err := h.svc.ListForSeller(r.Context(), tc.TenantID, *tc.SellerID, limit, offset)
+	items, total, err := h.svc.ListForSeller(r.Context(), *tc.SellerID, limit, offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -59,7 +59,7 @@ func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -72,7 +72,7 @@ func (h *SellerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	review, err := h.svc.GetReview(r.Context(), tc.TenantID, id)
+	review, err := h.svc.GetReview(r.Context(), id)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -93,7 +93,7 @@ type replyRequest struct {
 func (h *SellerHandler) CreateReply(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -111,7 +111,7 @@ func (h *SellerHandler) CreateReply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reply, err := h.svc.CreateReply(r.Context(), tc.TenantID, id, tc.UserID, *tc.SellerID, domain.CreateReplyInput{
+	reply, err := h.svc.CreateReply(r.Context(), id, tc.UserID, *tc.SellerID, domain.CreateReplyInput{
 		Body: req.Body,
 	})
 	if err != nil {
@@ -125,7 +125,7 @@ func (h *SellerHandler) CreateReply(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) UpdateReply(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -143,7 +143,7 @@ func (h *SellerHandler) UpdateReply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reply, err := h.svc.UpdateReply(r.Context(), tc.TenantID, id, tc.UserID, *tc.SellerID, domain.UpdateReplyInput{
+	reply, err := h.svc.UpdateReply(r.Context(), id, tc.UserID, *tc.SellerID, domain.UpdateReplyInput{
 		Body: req.Body,
 	})
 	if err != nil {
@@ -157,7 +157,7 @@ func (h *SellerHandler) UpdateReply(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) DeleteReply(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -170,7 +170,7 @@ func (h *SellerHandler) DeleteReply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteReply(r.Context(), tc.TenantID, id, *tc.SellerID); err != nil {
+	if err := h.svc.DeleteReply(r.Context(), id, *tc.SellerID); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

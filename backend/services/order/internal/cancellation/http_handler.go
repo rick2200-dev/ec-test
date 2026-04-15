@@ -96,7 +96,7 @@ func (h *HTTPHandler) createRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	reason := strings.TrimSpace(body.Reason)
 
-	req, err := h.svc.RequestCancellation(r.Context(), tc.TenantID, orderID, tc.UserID, reason)
+	req, err := h.svc.RequestCancellation(r.Context(), orderID, tc.UserID, reason)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -115,7 +115,7 @@ func (h *HTTPHandler) getLatestForOrder(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	req, err := h.svc.GetLatestForOrder(r.Context(), tc.TenantID, orderID, tc.UserID)
+	req, err := h.svc.GetLatestForOrder(r.Context(), orderID, tc.UserID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -148,7 +148,7 @@ func (h *HTTPHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := pagination.FromRequest(r)
-	requests, total, err := h.svc.ListByStatus(r.Context(), tc.TenantID, *tc.SellerID, status, p.Limit, p.Offset)
+	requests, total, err := h.svc.ListByStatus(r.Context(), *tc.SellerID, status, p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -179,7 +179,7 @@ func (h *HTTPHandler) getByID(w http.ResponseWriter, r *http.Request) {
 	// Use the seller-scoped variant so a multi-seller tenant cannot fetch
 	// another seller's cancellation reason / buyer identifier via the
 	// id-lookup endpoint.
-	req, err := h.svc.GetByIDForSeller(r.Context(), tc.TenantID, *tc.SellerID, requestID)
+	req, err := h.svc.GetByIDForSeller(r.Context(), *tc.SellerID, requestID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -209,7 +209,7 @@ func (h *HTTPHandler) approve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	updated, err := h.svc.ApproveCancellation(r.Context(), tc.TenantID, requestID, *tc.SellerID, strings.TrimSpace(body.SellerComment))
+	updated, err := h.svc.ApproveCancellation(r.Context(), requestID, *tc.SellerID, strings.TrimSpace(body.SellerComment))
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -242,7 +242,7 @@ func (h *HTTPHandler) reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := h.svc.RejectCancellation(r.Context(), tc.TenantID, requestID, *tc.SellerID, comment)
+	updated, err := h.svc.RejectCancellation(r.Context(), requestID, *tc.SellerID, comment)
 	if err != nil {
 		httputil.Error(w, err)
 		return

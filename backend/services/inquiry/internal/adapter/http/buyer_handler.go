@@ -39,12 +39,12 @@ func (h *BuyerHandler) Routes() chi.Router {
 func (h *BuyerHandler) List(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	limit, offset := parsePagination(r)
 
-	items, total, err := h.svc.ListForBuyer(r.Context(), tc.TenantID, tc.UserID, limit, offset)
+	items, total, err := h.svc.ListForBuyer(r.Context(), tc.UserID, limit, offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -64,7 +64,7 @@ type createInquiryRequest struct {
 func (h *BuyerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	var req createInquiryRequest
@@ -73,7 +73,7 @@ func (h *BuyerHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.svc.CreateInquiry(r.Context(), tc.TenantID, tc.UserID, domain.CreateInquiryInput{
+	result, err := h.svc.CreateInquiry(r.Context(), tc.UserID, domain.CreateInquiryInput{
 		SellerID:    req.SellerID,
 		SKUID:       req.SKUID,
 		Subject:     req.Subject,
@@ -90,7 +90,7 @@ func (h *BuyerHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *BuyerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -98,7 +98,7 @@ func (h *BuyerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, apperrors.BadRequest("invalid inquiry id"))
 		return
 	}
-	result, err := h.svc.GetInquiry(r.Context(), tc.TenantID, id, tc.UserID, tc.SellerID)
+	result, err := h.svc.GetInquiry(r.Context(), id, tc.UserID, tc.SellerID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -115,7 +115,7 @@ type postMessageRequest struct {
 func (h *BuyerHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -128,7 +128,7 @@ func (h *BuyerHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, mapError(err))
 		return
 	}
-	msg, err := h.svc.PostMessage(r.Context(), tc.TenantID, tc.UserID, tc.SellerID, domain.PostMessageInput{
+	msg, err := h.svc.PostMessage(r.Context(), tc.UserID, tc.SellerID, domain.PostMessageInput{
 		InquiryID:  id,
 		SenderType: domain.SenderTypeBuyer,
 		Body:       req.Body,
@@ -144,7 +144,7 @@ func (h *BuyerHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 func (h *BuyerHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -152,7 +152,7 @@ func (h *BuyerHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, apperrors.BadRequest("invalid inquiry id"))
 		return
 	}
-	if err := h.svc.MarkRead(r.Context(), tc.TenantID, id, domain.SenderTypeBuyer, tc.UserID, tc.SellerID); err != nil {
+	if err := h.svc.MarkRead(r.Context(), id, domain.SenderTypeBuyer, tc.UserID, tc.SellerID); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

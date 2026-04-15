@@ -10,19 +10,8 @@
 --                      give the gateway an O(1) DB probe per request
 --     secret         — ~43-char base62 (32 random bytes); SHA-256'd on the
 --                      server and compared in constant time
---
--- NOTE on RLS: the gateway hot-path `GetByLookup` resolves the tenant_id
--- *from* this row, so it cannot set `app.current_tenant_id` before the
--- lookup. In the current single-role deployment (service and migrations
--- both run as `ecmarket`) the auth service owns the table and therefore
--- bypasses RLS policies. Migration 000015 deliberately does NOT apply
--- FORCE ROW LEVEL SECURITY to this table for the same reason. If the
--- deployment ever moves to separate DB roles, `GetByLookup` must be
--- reimplemented as a `SECURITY DEFINER` SQL function owned by a role that
--- can bypass RLS for this one query.
 CREATE TABLE auth_svc.seller_api_tokens (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       UUID NOT NULL REFERENCES auth_svc.tenants(id) ON DELETE CASCADE,
     seller_id       UUID NOT NULL REFERENCES auth_svc.sellers(id) ON DELETE CASCADE,
 
     -- Human-readable label chosen by the issuer, e.g. "ERP sync (staging)".
@@ -66,8 +55,4 @@ CREATE UNIQUE INDEX idx_seller_api_tokens_lookup
 
 -- Listing for the dashboard (newest first).
 CREATE INDEX idx_seller_api_tokens_seller
-    ON auth_svc.seller_api_tokens(tenant_id, seller_id, created_at DESC);
-
-ALTER TABLE auth_svc.seller_api_tokens ENABLE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON auth_svc.seller_api_tokens
-    USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
+    ON auth_svc.seller_api_tokens(seller_id, created_at DESC);

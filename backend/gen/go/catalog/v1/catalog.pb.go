@@ -26,18 +26,17 @@ const (
 type Product struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId       string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId       string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Name           string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Slug           string                 `protobuf:"bytes,5,opt,name=slug,proto3" json:"slug,omitempty"`
-	Description    string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
-	Status         string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	AttributesJson string                 `protobuf:"bytes,8,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
-	Skus           []*SKU                 `protobuf:"bytes,9,rep,name=skus,proto3" json:"skus,omitempty"`
-	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	SellerId       string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Slug           string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
+	Description    string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Status         string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	AttributesJson string                 `protobuf:"bytes,7,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
+	Skus           []*SKU                 `protobuf:"bytes,8,rep,name=skus,proto3" json:"skus,omitempty"`
+	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Primary image URL. Empty string if no image has been uploaded yet.
-	ImageUrl      string `protobuf:"bytes,12,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	ImageUrl      string `protobuf:"bytes,11,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,13 +74,6 @@ func (*Product) Descriptor() ([]byte, []int) {
 func (x *Product) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *Product) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -159,15 +151,14 @@ func (x *Product) GetImageUrl() string {
 type SKU struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId       string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ProductId      string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	SellerId       string                 `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	SkuCode        string                 `protobuf:"bytes,5,opt,name=sku_code,json=skuCode,proto3" json:"sku_code,omitempty"`
-	Price          *v1.Money              `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"`
-	AttributesJson string                 `protobuf:"bytes,7,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
-	Status         string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ProductId      string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	SellerId       string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	SkuCode        string                 `protobuf:"bytes,4,opt,name=sku_code,json=skuCode,proto3" json:"sku_code,omitempty"`
+	Price          *v1.Money              `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
+	AttributesJson string                 `protobuf:"bytes,6,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
+	Status         string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -205,13 +196,6 @@ func (*SKU) Descriptor() ([]byte, []int) {
 func (x *SKU) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *SKU) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -275,12 +259,11 @@ func (x *SKU) GetUpdatedAt() *timestamppb.Timestamp {
 type Category struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ParentId      string                 `protobuf:"bytes,3,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,5,opt,name=slug,proto3" json:"slug,omitempty"`
-	SortOrder     int32                  `protobuf:"varint,6,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ParentId      string                 `protobuf:"bytes,2,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
+	SortOrder     int32                  `protobuf:"varint,5,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -322,13 +305,6 @@ func (x *Category) GetId() string {
 	return ""
 }
 
-func (x *Category) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *Category) GetParentId() string {
 	if x != nil {
 		return x.ParentId
@@ -366,11 +342,10 @@ func (x *Category) GetCreatedAt() *timestamppb.Timestamp {
 
 type ListProductsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`       // Optional: filter by seller
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`                           // Optional: filter by status
-	CategoryId    string                 `protobuf:"bytes,4,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"` // Optional: filter by category
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,5,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`       // Optional: filter by seller
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`                           // Optional: filter by status
+	CategoryId    string                 `protobuf:"bytes,3,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"` // Optional: filter by category
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,4,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -403,13 +378,6 @@ func (x *ListProductsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListProductsRequest.ProtoReflect.Descriptor instead.
 func (*ListProductsRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *ListProductsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListProductsRequest) GetSellerId() string {
@@ -493,8 +461,7 @@ func (x *ListProductsResponse) GetPagination() *v1.PaginationResponse {
 }
 
 type GetProductRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Identifier:
 	//
 	//	*GetProductRequest_Id
@@ -534,13 +501,6 @@ func (*GetProductRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GetProductRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *GetProductRequest) GetIdentifier() isGetProductRequest_Identifier {
 	if x != nil {
 		return x.Identifier
@@ -571,11 +531,11 @@ type isGetProductRequest_Identifier interface {
 }
 
 type GetProductRequest_Id struct {
-	Id string `protobuf:"bytes,2,opt,name=id,proto3,oneof"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3,oneof"`
 }
 
 type GetProductRequest_Slug struct {
-	Slug string `protobuf:"bytes,3,opt,name=slug,proto3,oneof"`
+	Slug string `protobuf:"bytes,2,opt,name=slug,proto3,oneof"`
 }
 
 func (*GetProductRequest_Id) isGetProductRequest_Identifier() {}
@@ -628,14 +588,13 @@ func (x *GetProductResponse) GetProduct() *Product {
 
 type CreateProductRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantId       string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId       string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug           string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Description    string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	AttributesJson string                 `protobuf:"bytes,6,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
-	Skus           []*CreateSKURequest    `protobuf:"bytes,7,rep,name=skus,proto3" json:"skus,omitempty"`
-	CategoryIds    []string               `protobuf:"bytes,8,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
+	SellerId       string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug           string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Description    string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	AttributesJson string                 `protobuf:"bytes,5,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
+	Skus           []*CreateSKURequest    `protobuf:"bytes,6,rep,name=skus,proto3" json:"skus,omitempty"`
+	CategoryIds    []string               `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -668,13 +627,6 @@ func (x *CreateProductRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateProductRequest.ProtoReflect.Descriptor instead.
 func (*CreateProductRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *CreateProductRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateProductRequest) GetSellerId() string {
@@ -832,11 +784,10 @@ func (x *CreateProductResponse) GetProduct() *Product {
 
 type UpdateProductRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	TenantId       string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id             string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Description    string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	AttributesJson string                 `protobuf:"bytes,5,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description    string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	AttributesJson string                 `protobuf:"bytes,4,opt,name=attributes_json,json=attributesJson,proto3" json:"attributes_json,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -869,13 +820,6 @@ func (x *UpdateProductRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateProductRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProductRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *UpdateProductRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateProductRequest) GetId() string {
@@ -952,9 +896,8 @@ func (x *UpdateProductResponse) GetProduct() *Product {
 
 type UpdateProductStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // draft, active, archived
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // draft, active, archived
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -987,13 +930,6 @@ func (x *UpdateProductStatusRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateProductStatusRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProductStatusRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *UpdateProductStatusRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateProductStatusRequest) GetId() string {
@@ -1056,7 +992,6 @@ func (x *UpdateProductStatusResponse) GetProduct() *Product {
 
 type ListCategoriesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1089,13 +1024,6 @@ func (x *ListCategoriesRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListCategoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListCategoriesRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *ListCategoriesRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 type ListCategoriesResponse struct {
@@ -1144,11 +1072,10 @@ func (x *ListCategoriesResponse) GetCategories() []*Category {
 
 type CreateCategoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
-	ParentId      string                 `protobuf:"bytes,4,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"` // Optional
-	SortOrder     int32                  `protobuf:"varint,5,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	ParentId      string                 `protobuf:"bytes,3,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"` // Optional
+	SortOrder     int32                  `protobuf:"varint,4,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1181,13 +1108,6 @@ func (x *CreateCategoryRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateCategoryRequest.ProtoReflect.Descriptor instead.
 func (*CreateCategoryRequest) Descriptor() ([]byte, []int) {
 	return file_catalog_v1_catalog_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *CreateCategoryRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateCategoryRequest) GetName() string {
@@ -1267,112 +1187,101 @@ var File_catalog_v1_catalog_proto protoreflect.FileDescriptor
 const file_catalog_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"\x18catalog/v1/catalog.proto\x12\n" +
-	"catalog.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x96\x03\n" +
+	"catalog.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xf9\x02\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x05 \x01(\tR\x04slug\x12 \n" +
-	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\x12'\n" +
-	"\x0fattributes_json\x18\b \x01(\tR\x0eattributesJson\x12#\n" +
-	"\x04skus\x18\t \x03(\v2\x0f.catalog.v1.SKUR\x04skus\x129\n" +
-	"\n" +
-	"created_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
-	"\timage_url\x18\f \x01(\tR\bimageUrl\"\xe8\x02\n" +
-	"\x03SKU\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1d\n" +
-	"\n" +
-	"product_id\x18\x03 \x01(\tR\tproductId\x12\x1b\n" +
-	"\tseller_id\x18\x04 \x01(\tR\bsellerId\x12\x19\n" +
-	"\bsku_code\x18\x05 \x01(\tR\askuCode\x12&\n" +
-	"\x05price\x18\x06 \x01(\v2\x10.common.v1.MoneyR\x05price\x12'\n" +
-	"\x0fattributes_json\x18\a \x01(\tR\x0eattributesJson\x12\x16\n" +
-	"\x06status\x18\b \x01(\tR\x06status\x129\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x04 \x01(\tR\x04slug\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12'\n" +
+	"\x0fattributes_json\x18\a \x01(\tR\x0eattributesJson\x12#\n" +
+	"\x04skus\x18\b \x03(\v2\x0f.catalog.v1.SKUR\x04skus\x129\n" +
 	"\n" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xd6\x01\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
+	"\timage_url\x18\v \x01(\tR\bimageUrl\"\xcb\x02\n" +
+	"\x03SKU\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\x12\x1b\n" +
+	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x19\n" +
+	"\bsku_code\x18\x04 \x01(\tR\askuCode\x12&\n" +
+	"\x05price\x18\x05 \x01(\v2\x10.common.v1.MoneyR\x05price\x12'\n" +
+	"\x0fattributes_json\x18\x06 \x01(\tR\x0eattributesJson\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\x129\n" +
+	"\n" +
+	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb9\x01\n" +
 	"\bCategory\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tparent_id\x18\x03 \x01(\tR\bparentId\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x05 \x01(\tR\x04slug\x12\x1d\n" +
+	"\tparent_id\x18\x02 \x01(\tR\bparentId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x04 \x01(\tR\x04slug\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\x06 \x01(\x05R\tsortOrder\x129\n" +
+	"sort_order\x18\x05 \x01(\x05R\tsortOrder\x129\n" +
 	"\n" +
-	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xc6\x01\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xa9\x01\n" +
 	"\x13ListProductsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1f\n" +
-	"\vcategory_id\x18\x04 \x01(\tR\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1f\n" +
+	"\vcategory_id\x18\x03 \x01(\tR\n" +
 	"categoryId\x12<\n" +
 	"\n" +
-	"pagination\x18\x05 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x18\x04 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\"\x86\x01\n" +
 	"\x14ListProductsResponse\x12/\n" +
 	"\bproducts\x18\x01 \x03(\v2\x13.catalog.v1.ProductR\bproducts\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"f\n" +
-	"\x11GetProductRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x10\n" +
-	"\x02id\x18\x02 \x01(\tH\x00R\x02id\x12\x14\n" +
-	"\x04slug\x18\x03 \x01(\tH\x00R\x04slugB\f\n" +
+	"pagination\"I\n" +
+	"\x11GetProductRequest\x12\x10\n" +
+	"\x02id\x18\x01 \x01(\tH\x00R\x02id\x12\x14\n" +
+	"\x04slug\x18\x02 \x01(\tH\x00R\x04slugB\f\n" +
 	"\n" +
 	"identifier\"C\n" +
 	"\x12GetProductResponse\x12-\n" +
-	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"\x98\x02\n" +
+	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"\xfb\x01\n" +
 	"\x14CreateProductRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x04 \x01(\tR\x04slug\x12 \n" +
-	"\vdescription\x18\x05 \x01(\tR\vdescription\x12'\n" +
-	"\x0fattributes_json\x18\x06 \x01(\tR\x0eattributesJson\x120\n" +
-	"\x04skus\x18\a \x03(\v2\x1c.catalog.v1.CreateSKURequestR\x04skus\x12!\n" +
-	"\fcategory_ids\x18\b \x03(\tR\vcategoryIds\"~\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12'\n" +
+	"\x0fattributes_json\x18\x05 \x01(\tR\x0eattributesJson\x120\n" +
+	"\x04skus\x18\x06 \x03(\v2\x1c.catalog.v1.CreateSKURequestR\x04skus\x12!\n" +
+	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\"~\n" +
 	"\x10CreateSKURequest\x12\x19\n" +
 	"\bsku_code\x18\x01 \x01(\tR\askuCode\x12&\n" +
 	"\x05price\x18\x02 \x01(\v2\x10.common.v1.MoneyR\x05price\x12'\n" +
 	"\x0fattributes_json\x18\x03 \x01(\tR\x0eattributesJson\"F\n" +
 	"\x15CreateProductResponse\x12-\n" +
-	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"\xa2\x01\n" +
-	"\x14UpdateProductRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescription\x12'\n" +
-	"\x0fattributes_json\x18\x05 \x01(\tR\x0eattributesJson\"F\n" +
+	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"\x85\x01\n" +
+	"\x14UpdateProductRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12'\n" +
+	"\x0fattributes_json\x18\x04 \x01(\tR\x0eattributesJson\"F\n" +
 	"\x15UpdateProductResponse\x12-\n" +
-	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"a\n" +
-	"\x1aUpdateProductStatusRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\"L\n" +
+	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"D\n" +
+	"\x1aUpdateProductStatusRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"L\n" +
 	"\x1bUpdateProductStatusResponse\x12-\n" +
-	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"4\n" +
-	"\x15ListCategoriesRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"N\n" +
+	"\aproduct\x18\x01 \x01(\v2\x13.catalog.v1.ProductR\aproduct\"\x17\n" +
+	"\x15ListCategoriesRequest\"N\n" +
 	"\x16ListCategoriesResponse\x124\n" +
 	"\n" +
 	"categories\x18\x01 \x03(\v2\x14.catalog.v1.CategoryR\n" +
-	"categories\"\x98\x01\n" +
-	"\x15CreateCategoryRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x03 \x01(\tR\x04slug\x12\x1b\n" +
-	"\tparent_id\x18\x04 \x01(\tR\bparentId\x12\x1d\n" +
+	"categories\"{\n" +
+	"\x15CreateCategoryRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x1b\n" +
+	"\tparent_id\x18\x03 \x01(\tR\bparentId\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\x05 \x01(\x05R\tsortOrder\"J\n" +
+	"sort_order\x18\x04 \x01(\x05R\tsortOrder\"J\n" +
 	"\x16CreateCategoryResponse\x120\n" +
 	"\bcategory\x18\x01 \x01(\v2\x14.catalog.v1.CategoryR\bcategory2\xf6\x04\n" +
 	"\x0eCatalogService\x12Q\n" +

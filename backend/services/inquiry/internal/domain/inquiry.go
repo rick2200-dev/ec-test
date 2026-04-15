@@ -19,7 +19,6 @@ const (
 // buyer has already purchased.
 type Inquiry struct {
 	ID            uuid.UUID `json:"id"`
-	TenantID      uuid.UUID `json:"tenant_id"`
 	BuyerAuth0ID  string    `json:"buyer_auth0_id"`
 	SellerID      uuid.UUID `json:"seller_id"`
 	SKUID         uuid.UUID `json:"sku_id"`
@@ -39,7 +38,6 @@ type Inquiry struct {
 // InquiryMessage is one message within a thread.
 type InquiryMessage struct {
 	ID         uuid.UUID  `json:"id"`
-	TenantID   uuid.UUID  `json:"tenant_id"`
 	InquiryID  uuid.UUID  `json:"inquiry_id"`
 	SenderType string     `json:"sender_type"`
 	SenderID   string     `json:"sender_id"`

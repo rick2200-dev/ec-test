@@ -63,18 +63,12 @@ func (s *EventSubscriber) handleUserEvent(ctx context.Context, event pubsub.Even
 		return fmt.Errorf("unmarshal user event data: %w", err)
 	}
 
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		return fmt.Errorf("parse tenant_id: %w", err)
-	}
-
 	productID, err := uuid.Parse(data.ProductID)
 	if err != nil {
 		return fmt.Errorf("parse product_id: %w", err)
 	}
 
 	ue := domain.UserEvent{
-		TenantID:  tenantID,
 		UserID:    data.UserID,
 		EventType: domain.UserEventType(data.EventType),
 		ProductID: productID,
@@ -120,11 +114,6 @@ func (s *EventSubscriber) handleOrderEvent(ctx context.Context, event pubsub.Eve
 		return fmt.Errorf("unmarshal order event data: %w", err)
 	}
 
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		return fmt.Errorf("parse tenant_id: %w", err)
-	}
-
 	for _, line := range data.Lines {
 		productID, err := uuid.Parse(line.ProductID)
 		if err != nil {
@@ -133,7 +122,6 @@ func (s *EventSubscriber) handleOrderEvent(ctx context.Context, event pubsub.Eve
 		}
 
 		ue := domain.UserEvent{
-			TenantID:  tenantID,
 			UserID:    data.UserID,
 			EventType: domain.Purchased,
 			ProductID: productID,

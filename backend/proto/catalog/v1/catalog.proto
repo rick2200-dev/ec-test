@@ -25,51 +25,47 @@ service CatalogService {
 
 message Product {
   string id = 1;
-  string tenant_id = 2;
-  string seller_id = 3;
-  string name = 4;
-  string slug = 5;
-  string description = 6;
-  string status = 7;
-  string attributes_json = 8;
-  repeated SKU skus = 9;
-  google.protobuf.Timestamp created_at = 10;
-  google.protobuf.Timestamp updated_at = 11;
+  string seller_id = 2;
+  string name = 3;
+  string slug = 4;
+  string description = 5;
+  string status = 6;
+  string attributes_json = 7;
+  repeated SKU skus = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
   // Primary image URL. Empty string if no image has been uploaded yet.
-  string image_url = 12;
+  string image_url = 11;
 }
 
 message SKU {
   string id = 1;
-  string tenant_id = 2;
-  string product_id = 3;
-  string seller_id = 4;
-  string sku_code = 5;
-  common.v1.Money price = 6;
-  string attributes_json = 7;
-  string status = 8;
-  google.protobuf.Timestamp created_at = 9;
-  google.protobuf.Timestamp updated_at = 10;
+  string product_id = 2;
+  string seller_id = 3;
+  string sku_code = 4;
+  common.v1.Money price = 5;
+  string attributes_json = 6;
+  string status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 message Category {
   string id = 1;
-  string tenant_id = 2;
-  string parent_id = 3;
-  string name = 4;
-  string slug = 5;
-  int32 sort_order = 6;
-  google.protobuf.Timestamp created_at = 7;
+  string parent_id = 2;
+  string name = 3;
+  string slug = 4;
+  int32 sort_order = 5;
+  google.protobuf.Timestamp created_at = 6;
 }
 
 // ─── ListProducts ────────────────────────────────────────────
 
 message ListProductsRequest {
-  string tenant_id = 1;
-  string seller_id = 2;    // Optional: filter by seller
-  string status = 3;       // Optional: filter by status
-  string category_id = 4;  // Optional: filter by category
-  common.v1.PaginationRequest pagination = 5;
+  string seller_id = 1;    // Optional: filter by seller
+  string status = 2;       // Optional: filter by status
+  string category_id = 3;  // Optional: filter by category
+  common.v1.PaginationRequest pagination = 4;
 }
 
 message ListProductsResponse {
@@ -80,10 +76,9 @@ message ListProductsResponse {
 // ─── GetProduct ──────────────────────────────────────────────
 
 message GetProductRequest {
-  string tenant_id = 1;
   oneof identifier {
-    string id = 2;
-    string slug = 3;
+    string id = 1;
+    string slug = 2;
   }
 }
 
@@ -94,14 +89,13 @@ message GetProductResponse {
 // ─── CreateProduct ───────────────────────────────────────────
 
 message CreateProductRequest {
-  string tenant_id = 1;
-  string seller_id = 2;
-  string name = 3;
-  string slug = 4;
-  string description = 5;
-  string attributes_json = 6;
-  repeated CreateSKURequest skus = 7;
-  repeated string category_ids = 8;
+  string seller_id = 1;
+  string name = 2;
+  string slug = 3;
+  string description = 4;
+  string attributes_json = 5;
+  repeated CreateSKURequest skus = 6;
+  repeated string category_ids = 7;
 }
 
 message CreateSKURequest {
@@ -117,11 +111,10 @@ message CreateProductResponse {
 // ─── UpdateProduct ───────────────────────────────────────────
 
 message UpdateProductRequest {
-  string tenant_id = 1;
-  string id = 2;
-  string name = 3;
-  string description = 4;
-  string attributes_json = 5;
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string attributes_json = 4;
 }
 
 message UpdateProductResponse {
@@ -131,9 +124,8 @@ message UpdateProductResponse {
 // ─── UpdateProductStatus ─────────────────────────────────────
 
 message UpdateProductStatusRequest {
-  string tenant_id = 1;
-  string id = 2;
-  string status = 3;  // draft, active, archived
+  string id = 1;
+  string status = 2;  // draft, active, archived
 }
 
 message UpdateProductStatusResponse {
@@ -142,9 +134,7 @@ message UpdateProductStatusResponse {
 
 // ─── ListCategories ──────────────────────────────────────────
 
-message ListCategoriesRequest {
-  string tenant_id = 1;
-}
+message ListCategoriesRequest {}
 
 message ListCategoriesResponse {
   repeated Category categories = 1;
@@ -153,11 +143,10 @@ message ListCategoriesResponse {
 // ─── CreateCategory ──────────────────────────────────────────
 
 message CreateCategoryRequest {
-  string tenant_id = 1;
-  string name = 2;
-  string slug = 3;
-  string parent_id = 4;  // Optional
-  int32 sort_order = 5;
+  string name = 1;
+  string slug = 2;
+  string parent_id = 3;  // Optional
+  int32 sort_order = 4;
 }
 
 message CreateCategoryResponse {

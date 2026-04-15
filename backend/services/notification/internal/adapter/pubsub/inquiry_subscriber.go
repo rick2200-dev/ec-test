@@ -35,7 +35,6 @@ func (s *InquirySubscriber) handleEvent(ctx context.Context, event pubsub.Event)
 	slog.Info("received inquiry event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 
 	switch event.Type {
@@ -91,7 +90,6 @@ func (s *InquirySubscriber) handleMessageCreated(ctx context.Context, event pubs
 	slog.Info("sending inquiry notification",
 		"inquiry_id", data.InquiryID,
 		"recipient", recipientHint,
-		"tenant_id", event.TenantID,
 	)
 
 	if err := s.sender.Send(ctx, recipientHint, subject, body); err != nil {

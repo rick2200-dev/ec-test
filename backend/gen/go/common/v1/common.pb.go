@@ -188,31 +188,30 @@ func (x *PaginationResponse) GetOffset() int32 {
 	return 0
 }
 
-// TenantContext carries tenant-scoped identity.
-type TenantContext struct {
+// RequestContext carries request-scoped identity (single-tenant deployment).
+type RequestContext struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"` // Empty for buyers and platform admins
-	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Roles         []string               `protobuf:"bytes,4,rep,name=roles,proto3" json:"roles,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"` // Empty for buyers and platform admins
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Roles         []string               `protobuf:"bytes,3,rep,name=roles,proto3" json:"roles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *TenantContext) Reset() {
-	*x = TenantContext{}
+func (x *RequestContext) Reset() {
+	*x = RequestContext{}
 	mi := &file_common_v1_common_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *TenantContext) String() string {
+func (x *RequestContext) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*TenantContext) ProtoMessage() {}
+func (*RequestContext) ProtoMessage() {}
 
-func (x *TenantContext) ProtoReflect() protoreflect.Message {
+func (x *RequestContext) ProtoReflect() protoreflect.Message {
 	mi := &file_common_v1_common_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -224,33 +223,26 @@ func (x *TenantContext) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TenantContext.ProtoReflect.Descriptor instead.
-func (*TenantContext) Descriptor() ([]byte, []int) {
+// Deprecated: Use RequestContext.ProtoReflect.Descriptor instead.
+func (*RequestContext) Descriptor() ([]byte, []int) {
 	return file_common_v1_common_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *TenantContext) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
-func (x *TenantContext) GetSellerId() string {
+func (x *RequestContext) GetSellerId() string {
 	if x != nil {
 		return x.SellerId
 	}
 	return ""
 }
 
-func (x *TenantContext) GetUserId() string {
+func (x *RequestContext) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
 	return ""
 }
 
-func (x *TenantContext) GetRoles() []string {
+func (x *RequestContext) GetRoles() []string {
 	if x != nil {
 		return x.Roles
 	}
@@ -271,12 +263,11 @@ const file_common_v1_common_proto_rawDesc = "" +
 	"\x12PaginationResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"x\n" +
-	"\rTenantContext\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05roles\x18\x04 \x03(\tR\x05rolesB8Z6github.com/Riku-KANO/ec-test/gen/go/common/v1;commonv1b\x06proto3"
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\\\n" +
+	"\x0eRequestContext\x12\x1b\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05roles\x18\x03 \x03(\tR\x05rolesB8Z6github.com/Riku-KANO/ec-test/gen/go/common/v1;commonv1b\x06proto3"
 
 var (
 	file_common_v1_common_proto_rawDescOnce sync.Once
@@ -295,7 +286,7 @@ var file_common_v1_common_proto_goTypes = []any{
 	(*Money)(nil),              // 0: common.v1.Money
 	(*PaginationRequest)(nil),  // 1: common.v1.PaginationRequest
 	(*PaginationResponse)(nil), // 2: common.v1.PaginationResponse
-	(*TenantContext)(nil),      // 3: common.v1.TenantContext
+	(*RequestContext)(nil),     // 3: common.v1.RequestContext
 }
 var file_common_v1_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type

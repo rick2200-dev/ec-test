@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS shipping_svc.outbox_events (
     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     event_type    TEXT        NOT NULL,
     topic         TEXT        NOT NULL,
-    tenant_id     UUID        NOT NULL,
     payload       JSONB       NOT NULL,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- NULL = unpublished; non-NULL = relay has successfully published.

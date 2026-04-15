@@ -55,7 +55,6 @@
 | カラム                      | 型                    | 用途                                           |
 | --------------------------- | --------------------- | ---------------------------------------------- |
 | `id`                        | UUID PK               | 申請 ID                                        |
-| `tenant_id`                 | UUID NOT NULL         | RLS + マルチテナント境界                       |
 | `order_id`                  | UUID NOT NULL         | 対象注文 (FK)                                  |
 | `requested_by_auth0_id`     | VARCHAR(255) NOT NULL | 申請した買い手の Auth0 sub                     |
 | `reason`                    | TEXT NOT NULL         | 買い手が入力した申請理由                       |
@@ -71,7 +70,6 @@
 
 - `ux_cancellation_pending_per_order`: `WHERE status = 'pending'` の部分ユニーク索引。**同一注文に同時 2 件の申請を作成できない** ことを DB で強制する
 - `CHECK (status IN ('pending','approved','rejected','failed'))`
-- `ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` + `tenant_isolation` ポリシー (000015 の規則を踏襲)
 
 ### `orders` テーブルへの追加カラム
 
@@ -121,7 +119,7 @@ sequenceDiagram
     participant Seller as Seller Frontend
 
     Buyer->>GW: POST /buyer/orders/{id}/cancellation-request
-    GW->>Order: Proxy + tenant headers
+    GW->>Order: Proxy
     Order->>DB: SELECT order (FOR validation)
     Order->>Order: canOrderBeCancelled? buyer ownership?
     Order->>DB: INSERT cancellation_request (pending)
@@ -265,7 +263,7 @@ sequenceDiagram
 | Code                                     | HTTP | 意味                                                 |
 | ---------------------------------------- | ---- | ---------------------------------------------------- |
 | `ORDER_NOT_CANCELLABLE`                  | 409  | 注文ステータスがキャンセル可能な範囲外               |
-| `CANCELLATION_REQUEST_NOT_FOUND`         | 404  | 申請 ID が存在しない / テナント違い                  |
+| `CANCELLATION_REQUEST_NOT_FOUND`         | 404  | 申請 ID が存在しない                                 |
 | `CANCELLATION_REQUEST_ALREADY_EXISTS`    | 409  | pending 申請が既に存在                               |
 | `CANCELLATION_REQUEST_ALREADY_PROCESSED` | 409  | 既に承認 / 却下 / 失敗済み                           |
 | `REFUND_FAILED`                          | 502  | Stripe CreateRefund が失敗                           |
@@ -363,7 +361,6 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
 ```json
 {
   "order_id": "uuid",
-  "tenant_id": "uuid",
   "seller_id": "uuid",
   "buyer_auth0_id": "auth0|...",
   "request_id": "uuid",
@@ -404,12 +401,12 @@ Pub/Sub subscription 自体のプロビジョニングは `infra/` 側に TODO �
 
 ### Pub/Sub / inventory 層
 
-`order.cancelled` はトピックから複数配信される可能性がある (at-least-once)。inventory 側は `stock_movements` テーブルに `reference_type = 'order_cancellation'`, `reference_id = order_id` で記録し、同じ (tenant, reference) が既にあれば **repository が no-op で返す**:
+`order.cancelled` はトピックから複数配信される可能性がある (at-least-once)。inventory 側は `stock_movements` テーブルに `reference_type = 'order_cancellation'`, `reference_id = order_id` で記録し、同じ reference が既にあれば **repository が no-op で返す**:
 
 ```sql
 -- 擬似コード (実装: inventory/internal/repository/inventory_repository.go)
 SELECT 1 FROM stock_movements
-WHERE tenant_id = $1 AND reference_type = 'order_cancellation' AND reference_id = $2
+WHERE reference_type = 'order_cancellation' AND reference_id = $1
 LIMIT 1
 ```
 
@@ -477,6 +474,6 @@ Stripe 管理画面からオペレータが手動で返金した場合、その�
 
 - [決済設計書](./payment.md) — Separate Charges and Transfers モデルと Transfer / Refund の関係
 - [カート・チェックアウト設計書](./cart-and-checkout.md) — 複数セラー checkout の詳細
-- [アーキテクチャ設計書](./architecture.md) — 全体像、RLS、イベント駆動アーキテクチャ
+- [アーキテクチャ設計書](./architecture.md) — 全体像、イベント駆動アーキテクチャ
 - [Stripe Refunds 公式ドキュメント](https://stripe.com/docs/refunds)
 - [Stripe Transfer Reversal 公式ドキュメント](https://stripe.com/docs/connect/charges-transfers#reversing-transfers)

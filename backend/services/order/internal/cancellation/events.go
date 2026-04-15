@@ -42,7 +42,6 @@ type CancelledLineItem struct {
 type cancellationRequestedEvent struct {
 	RequestID    string `json:"request_id"`
 	OrderID      string `json:"order_id"`
-	TenantID     string `json:"tenant_id"`
 	SellerID     string `json:"seller_id"`
 	BuyerAuth0ID string `json:"buyer_auth0_id"`
 	Reason       string `json:"reason"`
@@ -51,7 +50,6 @@ type cancellationRequestedEvent struct {
 type cancellationRejectedEvent struct {
 	RequestID     string `json:"request_id"`
 	OrderID       string `json:"order_id"`
-	TenantID      string `json:"tenant_id"`
 	SellerID      string `json:"seller_id"`
 	BuyerAuth0ID  string `json:"buyer_auth0_id"`
 	SellerComment string `json:"seller_comment"`
@@ -60,7 +58,6 @@ type cancellationRejectedEvent struct {
 type cancellationApprovedEvent struct {
 	RequestID      string `json:"request_id"`
 	OrderID        string `json:"order_id"`
-	TenantID       string `json:"tenant_id"`
 	SellerID       string `json:"seller_id"`
 	BuyerAuth0ID   string `json:"buyer_auth0_id"`
 	StripeRefundID string `json:"stripe_refund_id"`
@@ -69,7 +66,6 @@ type cancellationApprovedEvent struct {
 
 type orderCancelledEvent struct {
 	OrderID      string              `json:"order_id"`
-	TenantID     string              `json:"tenant_id"`
 	SellerID     string              `json:"seller_id"`
 	BuyerAuth0ID string              `json:"buyer_auth0_id"`
 	RequestID    string              `json:"request_id"`
@@ -81,10 +77,9 @@ type orderCancelledEvent struct {
 // publishRequested fires order.cancellation_requested after a buyer
 // successfully opens a new request. Consumers: notification.
 func publishRequested(ctx context.Context, pub pubsub.Publisher, req *CancellationRequest, order *domain.Order) {
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationRequested, orderEventsTopic, cancellationRequestedEvent{
+	pubsub.PublishEvent(ctx, pub, EventTypeCancellationRequested, orderEventsTopic, cancellationRequestedEvent{
 		RequestID:    req.ID.String(),
 		OrderID:      req.OrderID.String(),
-		TenantID:     req.TenantID.String(),
 		SellerID:     order.SellerID.String(),
 		BuyerAuth0ID: req.RequestedByAuth0ID,
 		Reason:       req.Reason,
@@ -98,10 +93,9 @@ func publishRejected(ctx context.Context, pub pubsub.Publisher, req *Cancellatio
 	if req.SellerComment != nil {
 		comment = *req.SellerComment
 	}
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationRejected, orderEventsTopic, cancellationRejectedEvent{
+	pubsub.PublishEvent(ctx, pub, EventTypeCancellationRejected, orderEventsTopic, cancellationRejectedEvent{
 		RequestID:     req.ID.String(),
 		OrderID:       req.OrderID.String(),
-		TenantID:      req.TenantID.String(),
 		SellerID:      order.SellerID.String(),
 		BuyerAuth0ID:  req.RequestedByAuth0ID,
 		SellerComment: comment,
@@ -116,10 +110,9 @@ func publishApproved(ctx context.Context, pub pubsub.Publisher, req *Cancellatio
 	if req.StripeRefundID != nil {
 		refundID = *req.StripeRefundID
 	}
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeCancellationApproved, orderEventsTopic, cancellationApprovedEvent{
+	pubsub.PublishEvent(ctx, pub, EventTypeCancellationApproved, orderEventsTopic, cancellationApprovedEvent{
 		RequestID:      req.ID.String(),
 		OrderID:        req.OrderID.String(),
-		TenantID:       req.TenantID.String(),
 		SellerID:       order.SellerID.String(),
 		BuyerAuth0ID:   req.RequestedByAuth0ID,
 		StripeRefundID: refundID,
@@ -148,7 +141,6 @@ func publishOrderCancelled(ctx context.Context, pub pubsub.Publisher, req *Cance
 
 	evt := orderCancelledEvent{
 		OrderID:      order.ID.String(),
-		TenantID:     order.TenantID.String(),
 		SellerID:     order.SellerID.String(),
 		BuyerAuth0ID: order.BuyerAuth0ID,
 		RequestID:    req.ID.String(),
@@ -160,5 +152,5 @@ func publishOrderCancelled(ctx context.Context, pub pubsub.Publisher, req *Cance
 		evt.CancelledAt = &s
 	}
 
-	pubsub.PublishEvent(ctx, pub, req.TenantID, EventTypeOrderCancelled, orderEventsTopic, evt)
+	pubsub.PublishEvent(ctx, pub, EventTypeOrderCancelled, orderEventsTopic, evt)
 }

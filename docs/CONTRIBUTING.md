@@ -62,7 +62,7 @@ make dev-auth         # Auth 起動後 → http://localhost:8081/healthz
 | `refactor/`    | リファクタリング     | `refactor/extract-payment-service` |
 | `chore/`       | 設定変更・依存更新等 | `chore/upgrade-go-1.26`            |
 | `test/`        | テスト追加・修正     | `test/add-catalog-integration`     |
-| `hotfix/`      | 本番緊急修正         | `hotfix/fix-rls-policy`            |
+| `hotfix/`      | 本番緊急修正         | `hotfix/fix-payment-webhook`       |
 
 **命名ルール:**
 
@@ -174,41 +174,36 @@ if product == nil {
 - **定数**: `PascalCase` (Go の慣例に従う)
 - **テーブルカラム**: `snake_case` (SQL 側)
 
-### テナントコンテキスト
+### リクエストコンテキスト
 
-全てのテナントスコープ操作で `backend/pkg/tenant` パッケージを使用します:
+seller や user の情報を参照する場合は `backend/pkg/tenant` パッケージを使用します:
 
 ```go
 import "github.com/Riku-KANO/ec-test/pkg/tenant"
 
 func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (*Product, error) {
-    // テナント ID はコンテキストから取得 (ミドルウェアが設定済み)
-    tc, err := tenant.FromContext(ctx)
+    // SellerID / UserID はコンテキストから取得 (ミドルウェアが設定済み)
+    rc, err := tenant.FromContext(ctx)
     if err != nil {
         return nil, err
     }
-    return s.repo.FindByID(ctx, tc.TenantID, id)
+    return s.repo.FindByID(ctx, rc.SellerID, id)
 }
 ```
 
-### DB アクセスと RLS
+### DB アクセス
 
 ```go
 import "github.com/Riku-KANO/ec-test/pkg/database"
 
-// DB 操作前に必ず SET app.current_tenant_id を実行
-// pkg/database のヘルパー関数が自動的に処理
-func (r *Repository) FindByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Product, error) {
-    conn, err := r.pool.Acquire(ctx)
+func (r *Repository) FindByID(ctx context.Context, sellerID uuid.UUID, id uuid.UUID) (*Product, error) {
+    tx, err := r.pool.Begin(ctx)
     if err != nil {
         return nil, err
     }
-    defer conn.Release()
+    defer tx.Rollback(ctx)
 
-    // RLS 用テナント設定
-    database.SetTenant(ctx, conn, tenantID)
-
-    // クエリ実行 (RLS が自動的に tenant_id で絞り込み)
+    // クエリ実行
     // ...
 }
 ```
@@ -220,7 +215,7 @@ func (r *Repository) FindByID(ctx context.Context, tenantID uuid.UUID, id uuid.U
 ```go
 slog.Info("order created",
     "order_id", order.ID,
-    "tenant_id", tc.TenantID,
+    "seller_id", rc.SellerID,
     "total", order.TotalAmount,
 )
 ```
@@ -283,7 +278,6 @@ frontend/apps/<app>/
 
 ### レビュー観点
 
-- **テナント分離**: RLS ポリシーが正しく適用されているか
 - **エラーハンドリング**: 適切なエラー型を使用しているか
 - **セキュリティ**: SQL インジェクション、認証バイパスの可能性がないか
 - **パフォーマンス**: N+1 クエリ、不要なデータ取得がないか
@@ -398,27 +392,14 @@ make migrate-create
 
 CREATE TABLE <schema>_svc.<table_name> (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
     -- カラム定義...
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- tenant_id インデックス (必須)
-CREATE INDEX idx_<table>_tenant ON <schema>_svc.<table_name>(tenant_id);
-
--- Row-Level Security (必須)
-ALTER TABLE <schema>_svc.<table_name> ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON <schema>_svc.<table_name>
-    USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
 **重要なルール:**
 
-- **全テーブルに `tenant_id` カラムを追加** (テナント分離のため)
-- **全テーブルに RLS ポリシーを設定** (`tenant_isolation` ポリシー)
-- **`tenant_id` に対するインデックスを作成**
 - **サービス固有の PostgreSQL スキーマを使用** (`auth_svc`, `catalog_svc` 等)
 - **金額は BIGINT (最小通貨単位)** で保存 (例: 1000 = 1000円)
 
@@ -459,7 +440,6 @@ catalog.product_updated
 ```go
 // pkg/pubsub/events.go
 type OrderCreatedEvent struct {
-    TenantID  string    `json:"tenant_id"`
     OrderID   string    `json:"order_id"`
     SellerID  string    `json:"seller_id"`
     BuyerID   string    `json:"buyer_id"`
@@ -468,8 +448,6 @@ type OrderCreatedEvent struct {
     CreatedAt time.Time `json:"created_at"`
 }
 ```
-
-**全イベントに `tenant_id` を含めること** (サブスクライバーがテナントコンテキストを復元するため)。
 
 ### 3. パブリッシャー実装
 
@@ -481,8 +459,8 @@ func (s *OrderService) CreateOrder(ctx context.Context, req CreateOrderRequest) 
 
     // イベント発行
     err := s.publisher.Publish(ctx, "order.created", pubsub.OrderCreatedEvent{
-        TenantID: tc.TenantID.String(),
         OrderID:  order.ID.String(),
+        SellerID: rc.SellerID.String(),
         // ...
     })
     if err != nil {
@@ -505,9 +483,9 @@ func (h *NotificationHandler) HandleOrderCreated(ctx context.Context, msg *pubsu
         return fmt.Errorf("unmarshal event: %w", err)
     }
 
-    // テナントコンテキスト復元
-    tenantID, _ := uuid.Parse(event.TenantID)
-    ctx = tenant.WithContext(ctx, tenant.Context{TenantID: tenantID})
+    // リクエストコンテキスト復元
+    sellerID, _ := uuid.Parse(event.SellerID)
+    ctx = tenant.WithContext(ctx, tenant.Context{SellerID: sellerID})
 
     // 処理実行
     return h.sendOrderConfirmation(ctx, event)
@@ -560,19 +538,8 @@ Test<Function>_<Scenario>
 
 例: `TestCreateProduct_DuplicateSlug`, `TestGetOrder_NotFound`
 
-### テナント分離テスト
-
-マルチテナントのデータ分離が正しく機能していることを必ずテスト:
-
-```go
-func TestProductRepository_TenantIsolation(t *testing.T) {
-    // テナント A のコンテキストでテナント B のデータにアクセスできないことを確認
-}
-```
-
 ### テストデータ
 
-- テストではテスト用のテナント ID を使用
 - DB テストでは `t.Cleanup()` で確実にクリーンアップ
 - 共通のテストヘルパーを `internal/testutil/` に配置
 

@@ -23,7 +23,6 @@ const defaultCacheTTL = 30 * time.Second
 // Keep this in sync with apiTokenSummary in the auth service handler.
 type TokenInfo struct {
 	ID                  uuid.UUID
-	TenantID            uuid.UUID
 	SellerID            uuid.UUID
 	Scopes              []string
 	RateLimitRPS        int // 0 = use gateway default
@@ -94,7 +93,6 @@ type lookupResponse struct {
 
 type lookupTokenField struct {
 	ID                  uuid.UUID `json:"id"`
-	TenantID            uuid.UUID `json:"tenant_id"`
 	SellerID            uuid.UUID `json:"seller_id"`
 	Scopes              []string  `json:"scopes"`
 	RateLimitRPS        *int      `json:"rate_limit_rps,omitempty"`
@@ -151,7 +149,6 @@ func (l *Loader) Load(ctx context.Context, prefix, lookup, secret string) (Token
 
 	info := TokenInfo{
 		ID:                  resp.Token.ID,
-		TenantID:            resp.Token.TenantID,
 		SellerID:            resp.Token.SellerID,
 		Scopes:              resp.Token.Scopes,
 		IssuedByAuth0UserID: resp.Token.IssuedByAuth0UserID,

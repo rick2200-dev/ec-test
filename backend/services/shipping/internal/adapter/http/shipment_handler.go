@@ -55,7 +55,6 @@ func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := h.svc.ListBySeller(r.Context(), port.ListShipmentsInput{
-		TenantID: tc.TenantID,
 		SellerID: *tc.SellerID,
 		Status:   r.URL.Query().Get("status"),
 		Limit:    limit,
@@ -93,7 +92,7 @@ func (h *SellerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shipment, err := h.svc.GetByID(r.Context(), tc.TenantID, *tc.SellerID, id)
+	shipment, err := h.svc.GetByID(r.Context(), *tc.SellerID, id)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -135,7 +134,6 @@ func (h *SellerHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	in := port.RegisterShipmentInput{
 		ShipmentID:     id,
-		TenantID:       tc.TenantID,
 		SellerID:       *tc.SellerID,
 		Carrier:        req.Carrier,
 		TrackingNumber: req.TrackingNumber,
@@ -186,7 +184,6 @@ func (h *SellerHandler) Deliver(w http.ResponseWriter, r *http.Request) {
 
 	in := port.MarkDeliveredInput{
 		ShipmentID: id,
-		TenantID:   tc.TenantID,
 		SellerID:   *tc.SellerID,
 	}
 	if req.DeliveredAt != nil {
@@ -235,7 +232,7 @@ func (h *SellerOrderShipmentHandler) GetByOrder(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	shipment, err := h.svc.GetByOrderIDSeller(r.Context(), tc.TenantID, *tc.SellerID, orderID)
+	shipment, err := h.svc.GetByOrderIDSeller(r.Context(), *tc.SellerID, orderID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -268,7 +265,7 @@ func (h *BuyerHandler) GetByOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shipment, err := h.svc.GetByOrderIDBuyer(r.Context(), tc.TenantID, tc.UserID, orderID)
+	shipment, err := h.svc.GetByOrderIDBuyer(r.Context(), tc.UserID, orderID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -296,34 +293,32 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 // --- response helpers ---
 
 type shipmentResponse struct {
-	ID              string  `json:"id"`
-	TenantID        string  `json:"tenant_id"`
-	SellerID        string  `json:"seller_id"`
-	OrderID         string  `json:"order_id"`
-	BuyerAuth0ID    string  `json:"buyer_auth0_id"`
-	Status          string  `json:"status"`
-	Carrier         string  `json:"carrier,omitempty"`
-	TrackingNumber  string  `json:"tracking_number,omitempty"`
-	Note            string  `json:"note,omitempty"`
-	ShippedAt       *string `json:"shipped_at,omitempty"`
-	DeliveredAt     *string `json:"delivered_at,omitempty"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	ID             string  `json:"id"`
+	SellerID       string  `json:"seller_id"`
+	OrderID        string  `json:"order_id"`
+	BuyerAuth0ID   string  `json:"buyer_auth0_id"`
+	Status         string  `json:"status"`
+	Carrier        string  `json:"carrier,omitempty"`
+	TrackingNumber string  `json:"tracking_number,omitempty"`
+	Note           string  `json:"note,omitempty"`
+	ShippedAt      *string `json:"shipped_at,omitempty"`
+	DeliveredAt    *string `json:"delivered_at,omitempty"`
+	CreatedAt      string  `json:"created_at"`
+	UpdatedAt      string  `json:"updated_at"`
 }
 
 func toResponse(s *domain.Shipment) shipmentResponse {
 	resp := shipmentResponse{
-		ID:           s.ID.String(),
-		TenantID:     s.TenantID.String(),
-		SellerID:     s.SellerID.String(),
-		OrderID:      s.OrderID.String(),
-		BuyerAuth0ID: s.BuyerAuth0ID,
-		Status:       s.Status,
-		Carrier:      s.Carrier,
+		ID:             s.ID.String(),
+		SellerID:       s.SellerID.String(),
+		OrderID:        s.OrderID.String(),
+		BuyerAuth0ID:   s.BuyerAuth0ID,
+		Status:         s.Status,
+		Carrier:        s.Carrier,
 		TrackingNumber: s.TrackingNumber,
-		Note:         s.Note,
-		CreatedAt:    s.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:    s.UpdatedAt.Format(time.RFC3339),
+		Note:           s.Note,
+		CreatedAt:      s.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:      s.UpdatedAt.Format(time.RFC3339),
 	}
 	if s.ShippedAt != nil {
 		t := s.ShippedAt.Format(time.RFC3339)
@@ -343,4 +338,3 @@ func toResponseList(items []*domain.Shipment) []shipmentResponse {
 	}
 	return out
 }
-

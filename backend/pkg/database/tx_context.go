@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -11,8 +10,8 @@ import (
 type txKey struct{}
 
 // WithTx returns a child context that carries tx. Repository methods call
-// TxFromContext to reuse an outer tenant-scoped transaction started by the
-// service layer, instead of opening a new independent transaction.
+// TxFromContext to reuse an outer transaction started by the service layer,
+// instead of opening a new independent transaction.
 func WithTx(ctx context.Context, tx pgx.Tx) context.Context {
 	return context.WithValue(ctx, txKey{}, tx)
 }
@@ -24,15 +23,15 @@ func TxFromContext(ctx context.Context) (pgx.Tx, bool) {
 	return tx, ok
 }
 
-// TenantTxCtx is the context-propagating form of TenantTx. It embeds the
-// opened transaction in the context before calling fn, so repository methods
-// that receive the context can extract the tx via TxFromContext and join the
-// outer transaction without receiving pgx.Tx as an explicit parameter.
+// TxCtx is the context-propagating form of Tx. It embeds the opened
+// transaction in the context before calling fn, so repository methods that
+// receive the context can extract the tx via TxFromContext and join the outer
+// transaction without receiving pgx.Tx as an explicit parameter.
 //
 // This is the preferred form for service-layer TxRunner interfaces because it
 // keeps pgx out of service/port signatures.
-func TenantTxCtx(ctx context.Context, pool *pgxpool.Pool, tenantID uuid.UUID, fn func(ctx context.Context) error) error {
-	return TenantTx(ctx, pool, tenantID, func(tx pgx.Tx) error {
+func TxCtx(ctx context.Context, pool *pgxpool.Pool, fn func(ctx context.Context) error) error {
+	return Tx(ctx, pool, func(tx pgx.Tx) error {
 		return fn(WithTx(ctx, tx))
 	})
 }

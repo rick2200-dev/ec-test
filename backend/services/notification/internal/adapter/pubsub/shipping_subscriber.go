@@ -62,7 +62,6 @@ func (s *ShippingSubscriber) handleEvent(ctx context.Context, event pkgpubsub.Ev
 	slog.Info("received shipping event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 
 	outcome, claimErr := s.dedup.TryClaim(ctx, event.ID, event.Type)

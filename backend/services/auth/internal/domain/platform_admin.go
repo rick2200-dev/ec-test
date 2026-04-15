@@ -40,10 +40,9 @@ func (r PlatformAdminRole) Valid() bool {
 	return r.Rank() > 0
 }
 
-// PlatformAdmin represents a platform administrator scoped to a tenant.
+// PlatformAdmin represents a platform administrator.
 type PlatformAdmin struct {
 	ID          uuid.UUID         `json:"id"`
-	TenantID    uuid.UUID         `json:"tenant_id"`
 	Auth0UserID string            `json:"auth0_user_id"`
 	Role        PlatformAdminRole `json:"role"`
 	CreatedAt   time.Time         `json:"created_at"`

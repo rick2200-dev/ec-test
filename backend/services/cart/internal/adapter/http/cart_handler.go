@@ -39,11 +39,11 @@ func (h *CartHandler) Routes() chi.Router {
 func (h *CartHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 
-	cart, err := h.svc.GetCart(r.Context(), tc.TenantID, tc.UserID)
+	cart, err := h.svc.GetCart(r.Context(), tc.UserID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -55,11 +55,11 @@ func (h *CartHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *CartHandler) Clear(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 
-	cart, err := h.svc.ClearCart(r.Context(), tc.TenantID, tc.UserID)
+	cart, err := h.svc.ClearCart(r.Context(), tc.UserID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -77,7 +77,7 @@ type addItemRequest struct {
 func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cart, err := h.svc.AddItem(r.Context(), tc.TenantID, tc.UserID, req.SKUID, req.Quantity)
+	cart, err := h.svc.AddItem(r.Context(), tc.UserID, req.SKUID, req.Quantity)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -104,7 +104,7 @@ type updateItemRequest struct {
 func (h *CartHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *CartHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cart, err := h.svc.UpdateItemQuantity(r.Context(), tc.TenantID, tc.UserID, skuID, req.Quantity)
+	cart, err := h.svc.UpdateItemQuantity(r.Context(), tc.UserID, skuID, req.Quantity)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -132,7 +132,7 @@ func (h *CartHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cart, err := h.svc.RemoveItem(r.Context(), tc.TenantID, tc.UserID, skuID)
+	cart, err := h.svc.RemoveItem(r.Context(), tc.UserID, skuID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -160,7 +160,7 @@ type checkoutRequest struct {
 func (h *CartHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.Unauthorized("authentication required"))
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *CartHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.svc.Checkout(r.Context(), tc.TenantID, tc.UserID, req.ShippingAddress, req.Currency)
+	result, err := h.svc.Checkout(r.Context(), tc.UserID, req.ShippingAddress, req.Currency)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return

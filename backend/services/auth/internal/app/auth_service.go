@@ -19,7 +19,6 @@ type AuthService struct {
 // NewAuthService constructs the composite facade.
 func NewAuthService(
 	db port.TxRunner,
-	tenants port.TenantStore,
 	sellers port.SellerStore,
 	sellerUsers port.SellerUserStore,
 	platformAdmins port.PlatformAdminStore,
@@ -27,7 +26,7 @@ func NewAuthService(
 	apiTokens port.APITokenStore,
 ) *AuthService {
 	return &AuthService{
-		IdentityService:   NewIdentityService(db, tenants, sellers, sellerUsers),
+		IdentityService:   NewIdentityService(db, sellers, sellerUsers),
 		RBACService:       NewRBACService(db, sellerUsers, platformAdmins, rbacAudit),
 		CredentialService: NewCredentialService(db, apiTokens, sellerUsers),
 	}

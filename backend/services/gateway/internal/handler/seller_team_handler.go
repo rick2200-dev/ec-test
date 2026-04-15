@@ -82,8 +82,6 @@ func (h *SellerTeamHandler) Add(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "seller context required"})
 		return
 	}
-	tc, _ := tenant.FromContext(r.Context())
-
 	// Buffer the body so we can both forward it and read the auth0 user id
 	// for cache eviction.
 	bodyBytes, _ := io.ReadAll(r.Body)
@@ -98,7 +96,7 @@ func (h *SellerTeamHandler) Add(w http.ResponseWriter, r *http.Request) {
 			Auth0UserID string `json:"auth0_user_id"`
 		}
 		if json.Unmarshal(bodyBytes, &payload) == nil && payload.Auth0UserID != "" {
-			h.loader.EvictSellerRole(tc.TenantID, *sellerID, payload.Auth0UserID)
+			h.loader.EvictSellerRole(*sellerID, payload.Auth0UserID)
 		}
 	}
 	writeRaw(w, status, body)
@@ -162,7 +160,7 @@ func (h *SellerTeamHandler) TransferOwnership(w http.ResponseWriter, r *http.Req
 	// Evict the actor's cache entry so subsequent requests reflect the new
 	// role immediately.
 	if status >= 200 && status < 300 {
-		h.loader.EvictSellerRole(tc.TenantID, *sellerID, tc.UserID)
+		h.loader.EvictSellerRole(*sellerID, tc.UserID)
 	}
 	writeRaw(w, status, body)
 }

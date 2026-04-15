@@ -43,7 +43,6 @@ const (
 // membership on the hot path.
 type Context struct {
 	ID             uuid.UUID
-	TenantID       uuid.UUID
 	SellerID       uuid.UUID
 	Scopes         map[string]struct{}
 	RateLimitRPS   int // 0 = use gateway default

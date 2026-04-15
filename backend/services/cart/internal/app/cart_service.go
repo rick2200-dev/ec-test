@@ -40,14 +40,13 @@ func NewCartService(
 }
 
 // GetCart returns the buyer's current cart, or an empty cart if none exists.
-func (s *CartService) GetCart(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.Cart, error) {
-	cart, err := s.cartRepo.Get(ctx, tenantID, buyerAuth0ID)
+func (s *CartService) GetCart(ctx context.Context, buyerAuth0ID string) (*domain.Cart, error) {
+	cart, err := s.cartRepo.Get(ctx, buyerAuth0ID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load cart", err)
 	}
 	if cart == nil {
 		return &domain.Cart{
-			TenantID:     tenantID,
 			BuyerAuth0ID: buyerAuth0ID,
 			Items:        []domain.CartItem{},
 			UpdatedAt:    time.Now().UTC(),
@@ -59,12 +58,12 @@ func (s *CartService) GetCart(ctx context.Context, tenantID uuid.UUID, buyerAuth
 // AddItem adds or increments a SKU in the buyer's cart. Quantity must be
 // positive. If the SKU is already in the cart, its quantity is increased
 // by the supplied amount (price snapshot is NOT refreshed).
-func (s *CartService) AddItem(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, skuID uuid.UUID, quantity int) (*domain.Cart, error) {
+func (s *CartService) AddItem(ctx context.Context, buyerAuth0ID string, skuID uuid.UUID, quantity int) (*domain.Cart, error) {
 	if quantity <= 0 {
 		return nil, domain.ErrInvalidQuantity
 	}
 
-	cart, err := s.GetCart(ctx, tenantID, buyerAuth0ID)
+	cart, err := s.GetCart(ctx, buyerAuth0ID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +71,7 @@ func (s *CartService) AddItem(ctx context.Context, tenantID uuid.UUID, buyerAuth
 	if cart.FindItem(skuID) >= 0 {
 		cart.AddItem(domain.CartItem{SKUID: skuID, Quantity: quantity})
 	} else {
-		sku, err := s.catalogClient.LookupSKU(ctx, tenantID, skuID)
+		sku, err := s.catalogClient.LookupSKU(ctx, skuID)
 		if err != nil {
 			return nil, err
 		}
@@ -96,15 +95,15 @@ func (s *CartService) AddItem(ctx context.Context, tenantID uuid.UUID, buyerAuth
 
 // UpdateItemQuantity sets the absolute quantity of a SKU in the cart.
 // Passing quantity == 0 is equivalent to RemoveItem.
-func (s *CartService) UpdateItemQuantity(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, skuID uuid.UUID, quantity int) (*domain.Cart, error) {
+func (s *CartService) UpdateItemQuantity(ctx context.Context, buyerAuth0ID string, skuID uuid.UUID, quantity int) (*domain.Cart, error) {
 	if quantity < 0 {
 		return nil, domain.ErrNonNegativeQuantity
 	}
 	if quantity == 0 {
-		return s.RemoveItem(ctx, tenantID, buyerAuth0ID, skuID)
+		return s.RemoveItem(ctx, buyerAuth0ID, skuID)
 	}
 
-	cart, err := s.GetCart(ctx, tenantID, buyerAuth0ID)
+	cart, err := s.GetCart(ctx, buyerAuth0ID)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +120,8 @@ func (s *CartService) UpdateItemQuantity(ctx context.Context, tenantID uuid.UUID
 
 // RemoveItem removes a SKU from the cart. Removing a non-existent SKU is
 // a no-op (returns the cart unchanged).
-func (s *CartService) RemoveItem(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, skuID uuid.UUID) (*domain.Cart, error) {
-	cart, err := s.GetCart(ctx, tenantID, buyerAuth0ID)
+func (s *CartService) RemoveItem(ctx context.Context, buyerAuth0ID string, skuID uuid.UUID) (*domain.Cart, error) {
+	cart, err := s.GetCart(ctx, buyerAuth0ID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,12 +135,11 @@ func (s *CartService) RemoveItem(ctx context.Context, tenantID uuid.UUID, buyerA
 }
 
 // ClearCart removes all items from the cart by deleting the Redis key.
-func (s *CartService) ClearCart(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.Cart, error) {
-	if err := s.cartRepo.Delete(ctx, tenantID, buyerAuth0ID); err != nil {
+func (s *CartService) ClearCart(ctx context.Context, buyerAuth0ID string) (*domain.Cart, error) {
+	if err := s.cartRepo.Delete(ctx, buyerAuth0ID); err != nil {
 		return nil, apperrors.Internal("failed to clear cart", err)
 	}
 	return &domain.Cart{
-		TenantID:     tenantID,
 		BuyerAuth0ID: buyerAuth0ID,
 		Items:        []domain.CartItem{},
 		UpdatedAt:    time.Now().UTC(),
@@ -155,15 +153,14 @@ func (s *CartService) ClearCart(ctx context.Context, tenantID uuid.UUID, buyerAu
 //  4. On failure: leave cart intact, propagate error
 //
 // The order service is responsible for grouping by seller, creating one
-// Order per seller in a single TenantTx, and calling Stripe exactly once.
+// Order per seller in a single Tx, and calling Stripe exactly once.
 func (s *CartService) Checkout(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	buyerAuth0ID string,
 	shippingAddress json.RawMessage,
 	currency string,
 ) (*domain.CheckoutResult, error) {
-	cart, err := s.cartRepo.Get(ctx, tenantID, buyerAuth0ID)
+	cart, err := s.cartRepo.Get(ctx, buyerAuth0ID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load cart", err)
 	}
@@ -198,16 +195,16 @@ func (s *CartService) Checkout(
 		Lines:               lines,
 	}
 
-	result, err := s.orderClient.CreateCheckout(ctx, tenantID, input)
+	result, err := s.orderClient.CreateCheckout(ctx, input)
 	if err != nil {
 		return nil, err
 	}
 
 	// Clear cart only after the order service has committed.
-	if err := s.cartRepo.Delete(ctx, tenantID, buyerAuth0ID); err != nil {
+	if err := s.cartRepo.Delete(ctx, buyerAuth0ID); err != nil {
 		// Non-fatal: orders exist, PaymentIntent exists — log and carry on.
 		slog.Warn("failed to clear cart after checkout",
-			"tenant_id", tenantID, "buyer_auth0_id", buyerAuth0ID, "error", err)
+			"buyer_auth0_id", buyerAuth0ID, "error", err)
 	}
 
 	orderIDStrs := make([]string, 0, len(result.OrderIDs))
@@ -215,7 +212,7 @@ func (s *CartService) Checkout(
 		orderIDStrs = append(orderIDStrs, id.String())
 	}
 
-	pubsub.PublishEvent(ctx, s.publisher, tenantID, "cart.checked_out", "cart-events", domain.CartCheckedOutEvent{
+	pubsub.PublishEvent(ctx, s.publisher, "cart.checked_out", "cart-events", domain.CartCheckedOutEvent{
 		BuyerAuth0ID:          buyerAuth0ID,
 		OrderIDs:              orderIDStrs,
 		StripePaymentIntentID: result.StripePaymentIntentID,
@@ -224,7 +221,6 @@ func (s *CartService) Checkout(
 	})
 
 	slog.Info("cart checked out",
-		"tenant_id", tenantID,
 		"buyer_auth0_id", buyerAuth0ID,
 		"order_count", len(result.OrderIDs),
 		"total", result.TotalAmount,

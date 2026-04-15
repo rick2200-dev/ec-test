@@ -130,7 +130,6 @@ func TestOrJWT_NonMatchingPrefix_DelegatesToJWT(t *testing.T) {
 // path: everything downstream depends on it.
 func TestOrJWT_ValidTokenInjectsContexts(t *testing.T) {
 	tokenID := uuid.New()
-	tenantID := uuid.New()
 	sellerID := uuid.New()
 
 	loader := newTestLoader(t, func(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +155,6 @@ func TestOrJWT_ValidTokenInjectsContexts(t *testing.T) {
 			Status: "active",
 			Token: &lookupTokenField{
 				ID:                  tokenID,
-				TenantID:            tenantID,
 				SellerID:            sellerID,
 				Scopes:              []string{"products:read", "orders:read"},
 				IssuedByAuth0UserID: "auth0|user-42",
@@ -193,9 +191,6 @@ func TestOrJWT_ValidTokenInjectsContexts(t *testing.T) {
 	}
 	if !captured.ok {
 		t.Fatal("apitoken.Context should be present")
-	}
-	if captured.tenant.TenantID != tenantID {
-		t.Errorf("tenant id = %s, want %s", captured.tenant.TenantID, tenantID)
 	}
 	if captured.tenant.SellerID == nil || *captured.tenant.SellerID != sellerID {
 		t.Errorf("seller id = %v, want %s", captured.tenant.SellerID, sellerID)

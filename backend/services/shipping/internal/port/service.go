@@ -12,7 +12,6 @@ import (
 // RegisterShipmentInput holds the parameters for marking a shipment as shipped.
 type RegisterShipmentInput struct {
 	ShipmentID     uuid.UUID
-	TenantID       uuid.UUID
 	SellerID       uuid.UUID
 	Carrier        string
 	TrackingNumber string
@@ -23,14 +22,12 @@ type RegisterShipmentInput struct {
 // MarkDeliveredInput holds the parameters for marking a shipment as delivered.
 type MarkDeliveredInput struct {
 	ShipmentID  uuid.UUID
-	TenantID    uuid.UUID
 	SellerID    uuid.UUID
 	DeliveredAt *time.Time // nil → current time
 }
 
 // CreateShipmentInput holds the parameters for auto-creating a shipment on order.paid.
 type CreateShipmentInput struct {
-	TenantID        uuid.UUID
 	SellerID        uuid.UUID
 	OrderID         uuid.UUID
 	BuyerAuth0ID    string
@@ -39,7 +36,6 @@ type CreateShipmentInput struct {
 
 // ListShipmentsInput holds the pagination and filter params for listing.
 type ListShipmentsInput struct {
-	TenantID uuid.UUID
 	SellerID uuid.UUID
 	Status   string
 	Limit    int
@@ -68,16 +64,16 @@ type ShipmentUseCase interface {
 
 	// CancelShipment transitions to cancelled (driven by order.cancelled).
 	// Idempotent — if the shipment is already shipped/delivered, it is a no-op.
-	CancelShipment(ctx context.Context, tenantID, orderID uuid.UUID) error
+	CancelShipment(ctx context.Context, orderID uuid.UUID) error
 
 	// GetByID returns a shipment by its ID. Verifies seller ownership.
-	GetByID(ctx context.Context, tenantID, sellerID, id uuid.UUID) (*domain.Shipment, error)
+	GetByID(ctx context.Context, sellerID, id uuid.UUID) (*domain.Shipment, error)
 
 	// GetByOrderIDSeller returns a shipment by order ID. Verifies seller ownership.
-	GetByOrderIDSeller(ctx context.Context, tenantID, sellerID, orderID uuid.UUID) (*domain.Shipment, error)
+	GetByOrderIDSeller(ctx context.Context, sellerID, orderID uuid.UUID) (*domain.Shipment, error)
 
 	// GetByOrderIDBuyer returns a shipment by order ID. Verifies buyer identity.
-	GetByOrderIDBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, orderID uuid.UUID) (*domain.Shipment, error)
+	GetByOrderIDBuyer(ctx context.Context, buyerAuth0ID string, orderID uuid.UUID) (*domain.Shipment, error)
 
 	// ListBySeller returns paginated shipments for a seller.
 	ListBySeller(ctx context.Context, in ListShipmentsInput) (*ListShipmentsResult, error)

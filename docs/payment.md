@@ -57,7 +57,7 @@ Stripe Connect には主に 2 つのマーケットプレイス決済モデル�
 
 **本書執筆時点の実装状況**:
 
-- `sellers.stripe_account_id` カラムは既に存在する (`infra/db/migrations/000002_create_tenants.up.sql` / `auth_svc.sellers`)
+- `sellers.stripe_account_id` カラムは既に存在する (`infra/db/migrations/` / `auth_svc.sellers`)
 - オンボーディングフロー自体は未実装
 - `order service` 側は `acct_stub_<seller_id>` を返す関数 (`getSellerStripeAccountID`) をプレースホルダとして使用している
 
@@ -81,7 +81,7 @@ sequenceDiagram
 
     Buyer->>GW: POST /api/v1/buyer/cart/checkout
     GW->>Cart: POST /cart/checkout (X-Tenant-ID, X-User-ID)
-    Cart->>Cart: Redis から cart:{tenant}:{buyer} 取得
+    Cart->>Cart: Redis から cart:{buyer} 取得
     Cart->>Order: POST /internal/checkouts (items[], shipping_address)
     Order->>Order: seller_id でグループ化 (N グループ)
 
@@ -117,7 +117,7 @@ sequenceDiagram
     note over Order,DB: 取得した N 個の注文すべてに対して送金と状態更新
     loop 各注文
       Order->>DB: UPDATE orders SET status='paid', paid_at=now()
-      Order->>Order: getSellerStripeAccountID(tenant, seller)
+      Order->>Order: getSellerStripeAccountID(seller)
       Order->>Stripe: Transfers.create (amount=subtotal-commission, destination=acct_xxx, source_transaction=pi_xxx)
       Stripe-->>Order: transfer_id
       Order->>DB: UPDATE payouts SET status='completed', stripe_transfer_id=?, completed_at=now()
@@ -181,7 +181,7 @@ commission_amount = subtotal × rate_bps ÷ 10000
 
 ### マルチセラー checkout での呼び出しパターン
 
-CreateCheckout 内で **セラーごとに 1 回** `GetApplicableRule(ctx, tenantID, sellerID, nil)` を呼ぶ。カテゴリ別コミッションは現状 MVP では未使用のため `category_id` は常に `nil`。
+CreateCheckout 内で **セラーごとに 1 回** `GetApplicableRule(ctx, sellerID, nil)` を呼ぶ。カテゴリ別コミッションは現状 MVP では未使用のため `category_id` は常に `nil`。
 
 ---
 
@@ -238,9 +238,7 @@ POST /webhooks/stripe
 
 ### マルチ order 検索
 
-Webhook は 1 つの PaymentIntent に対応する **複数の注文** を処理する必要がある。`order_repo.FindAllByStripePaymentIntentID(ctx, piID)` が RLS を無視してクロステナント検索を行う (webhook は `X-Tenant-ID` を持たないため)。
-
-> **重要**: クロステナント検索は webhook など明確に信頼できるパスからのみ呼び出す。通常のアプリケーションパスからは `FindByID(ctx, tenantID, orderID)` 系を使うこと。
+Webhook は 1 つの PaymentIntent に対応する **複数の注文** を処理する必要がある。`order_repo.FindAllByStripePaymentIntentID(ctx, piID)` で検索する (webhook は認証コンテキストを持たないため、内部信頼パスから直接 DB クエリを実行する)。
 
 ---
 
@@ -250,7 +248,7 @@ Webhook は 1 つの PaymentIntent に対応する **複数の注文** を処理
 
 | 失敗箇所                                | 対応                                                                                                                                                                    |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DB トランザクション #1                  | `TenantTx` のロールバックで注文と payout をすべて巻き戻す。buyer にエラーレスポンスを返す。                                                                             |
+| DB トランザクション #1                  | `database.Tx` のロールバックで注文と payout をすべて巻き戻す。buyer にエラーレスポンスを返す。                                                                          |
 | PaymentIntent 作成失敗                  | 作成済みの注文を `status='cancelled'` にマークする補償処理を実行。buyer にエラーレスポンスを返す。cart は削除しない。                                                   |
 | DB トランザクション #2 (PI ID 書き戻し) | 注文は作成されるが `stripe_payment_intent_id` が NULL のまま。buyer にエラーレスポンスを返す。運用者が PaymentIntent を手動でキャンセルするか、再試行バッチで補正する。 |
 
@@ -328,7 +326,7 @@ MVP 段階で残っている制約事項:
 
 **現状**: `"acct_stub_" + sellerID.String()` を返すスタブ実装
 
-**あるべき姿**: auth service に `GetSellerStripeAccountID(ctx, tenantID, sellerID)` RPC を追加し、`auth_svc.sellers.stripe_account_id` カラムから取得する。null の場合は「Stripe 未連携」エラーを返し、checkout 自体をブロックする。
+**あるべき姿**: auth service に `GetSellerStripeAccountID(ctx, sellerID)` RPC を追加し、`auth_svc.sellers.stripe_account_id` カラムから取得する。null の場合は「Stripe 未連携」エラーを返し、checkout 自体をブロックする。
 
 **影響**: 本番環境では Transfer API が `acct_stub_xxx` を宛先にした時点で失敗する。本番リリース前に必ず解消すること。
 
@@ -361,5 +359,5 @@ MVP 段階で残っている制約事項:
 ## 関連ドキュメント
 
 - [カート・チェックアウト設計書](./cart-and-checkout.md) — カート側の詳細
-- [アーキテクチャ設計書](./architecture.md) — 全体像、データモデル、RLS
+- [アーキテクチャ設計書](./architecture.md) — 全体像、データモデル
 - [Stripe Connect 公式ドキュメント](https://stripe.com/docs/connect) — Separate Charges and Transfers の詳細

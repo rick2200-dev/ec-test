@@ -35,7 +35,6 @@ func (s *OrderSubscriber) handleEvent(ctx context.Context, event pubsub.Event) e
 	slog.Info("received order event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 	switch event.Type {
 	case "order.paid":
@@ -63,12 +62,6 @@ func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Even
 		return fmt.Errorf("decode order.paid data: %w", err)
 	}
 
-	// TenantID comes from the pubsub envelope, not the data payload.
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		return fmt.Errorf("parse tenant_id from envelope: %w", err)
-	}
-
 	sellerID, err := uuid.Parse(data.SellerID)
 	if err != nil {
 		return fmt.Errorf("parse seller_id: %w", err)
@@ -79,7 +72,6 @@ func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Even
 	}
 
 	if err := s.svc.CreateShipment(ctx, port.CreateShipmentInput{
-		TenantID:        tenantID,
 		SellerID:        sellerID,
 		OrderID:         orderID,
 		BuyerAuth0ID:    data.BuyerAuth0ID,
@@ -88,7 +80,7 @@ func (s *OrderSubscriber) handleOrderPaid(ctx context.Context, event pubsub.Even
 		return fmt.Errorf("create shipment for order %s: %w", data.OrderID, err)
 	}
 
-	slog.Info("shipment created for order", "order_id", data.OrderID, "tenant_id", tenantID)
+	slog.Info("shipment created for order", "order_id", data.OrderID)
 	return nil
 }
 
@@ -103,17 +95,12 @@ func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub
 		return fmt.Errorf("decode order.cancelled data: %w", err)
 	}
 
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		return fmt.Errorf("parse tenant_id from envelope: %w", err)
-	}
-
 	orderID, err := uuid.Parse(data.OrderID)
 	if err != nil {
 		return fmt.Errorf("parse order_id: %w", err)
 	}
 
-	if err := s.svc.CancelShipment(ctx, tenantID, orderID); err != nil {
+	if err := s.svc.CancelShipment(ctx, orderID); err != nil {
 		return fmt.Errorf("cancel shipment for order %s: %w", data.OrderID, err)
 	}
 

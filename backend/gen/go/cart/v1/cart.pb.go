@@ -25,10 +25,9 @@ const (
 
 type Cart struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	Items         []*CartItem            `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	Items         []*CartItem            `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -61,13 +60,6 @@ func (x *Cart) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Cart.ProtoReflect.Descriptor instead.
 func (*Cart) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Cart) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *Cart) GetBuyerAuth0Id() string {
@@ -187,8 +179,7 @@ func (x *CartItem) GetAddedAt() *timestamppb.Timestamp {
 
 type GetCartRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,13 +212,6 @@ func (x *GetCartRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetCartRequest.ProtoReflect.Descriptor instead.
 func (*GetCartRequest) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *GetCartRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetCartRequest) GetBuyerAuth0Id() string {
@@ -283,10 +267,9 @@ func (x *GetCartResponse) GetCart() *Cart {
 
 type AddItemRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,3,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -321,13 +304,6 @@ func (*AddItemRequest) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AddItemRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *AddItemRequest) GetBuyerAuth0Id() string {
 	if x != nil {
 		return x.BuyerAuth0Id
@@ -351,10 +327,9 @@ func (x *AddItemRequest) GetQuantity() int32 {
 
 type UpdateItemQuantityRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,3,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"` // New absolute quantity; 0 removes the item
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"` // New absolute quantity; 0 removes the item
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -389,13 +364,6 @@ func (*UpdateItemQuantityRequest) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *UpdateItemQuantityRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *UpdateItemQuantityRequest) GetBuyerAuth0Id() string {
 	if x != nil {
 		return x.BuyerAuth0Id
@@ -419,9 +387,8 @@ func (x *UpdateItemQuantityRequest) GetQuantity() int32 {
 
 type RemoveItemRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	SkuId         string                 `protobuf:"bytes,3,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	SkuId         string                 `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -456,13 +423,6 @@ func (*RemoveItemRequest) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *RemoveItemRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *RemoveItemRequest) GetBuyerAuth0Id() string {
 	if x != nil {
 		return x.BuyerAuth0Id
@@ -479,8 +439,7 @@ func (x *RemoveItemRequest) GetSkuId() string {
 
 type ClearCartRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -513,13 +472,6 @@ func (x *ClearCartRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ClearCartRequest.ProtoReflect.Descriptor instead.
 func (*ClearCartRequest) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ClearCartRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ClearCartRequest) GetBuyerAuth0Id() string {
@@ -576,10 +528,9 @@ func (x *CartResponse) GetCart() *Cart {
 
 type CheckoutRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	TenantId            string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id        string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	ShippingAddressJson string                 `protobuf:"bytes,3,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
-	Currency            string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	BuyerAuth0Id        string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	ShippingAddressJson string                 `protobuf:"bytes,2,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
+	Currency            string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -612,13 +563,6 @@ func (x *CheckoutRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CheckoutRequest.ProtoReflect.Descriptor instead.
 func (*CheckoutRequest) Descriptor() ([]byte, []int) {
 	return file_cart_v1_cart_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *CheckoutRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CheckoutRequest) GetBuyerAuth0Id() string {
@@ -717,13 +661,12 @@ var File_cart_v1_cart_proto protoreflect.FileDescriptor
 
 const file_cart_v1_cart_proto_rawDesc = "" +
 	"\n" +
-	"\x12cart/v1/cart.proto\x12\acart.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xad\x01\n" +
-	"\x04Cart\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12'\n" +
-	"\x05items\x18\x03 \x03(\v2\x11.cart.v1.CartItemR\x05items\x129\n" +
+	"\x12cart/v1/cart.proto\x12\acart.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x90\x01\n" +
+	"\x04Cart\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12'\n" +
+	"\x05items\x18\x02 \x03(\v2\x11.cart.v1.CartItemR\x05items\x129\n" +
 	"\n" +
-	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb3\x02\n" +
+	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb3\x02\n" +
 	"\bCartItem\x12\x15\n" +
 	"\x06sku_id\x18\x01 \x01(\tR\x05skuId\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x1a\n" +
@@ -731,36 +674,30 @@ const file_cart_v1_cart_proto_rawDesc = "" +
 	"\x13unit_price_snapshot\x18\x04 \x01(\v2\x10.common.v1.MoneyR\x11unitPriceSnapshot\x122\n" +
 	"\x15product_name_snapshot\x18\x05 \x01(\tR\x13productNameSnapshot\x12*\n" +
 	"\x11sku_code_snapshot\x18\x06 \x01(\tR\x0fskuCodeSnapshot\x125\n" +
-	"\badded_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"S\n" +
-	"\x0eGetCartRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\"4\n" +
+	"\badded_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\"6\n" +
+	"\x0eGetCartRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\"4\n" +
 	"\x0fGetCartResponse\x12!\n" +
-	"\x04cart\x18\x01 \x01(\v2\r.cart.v1.CartR\x04cart\"\x86\x01\n" +
-	"\x0eAddItemRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x15\n" +
-	"\x06sku_id\x18\x03 \x01(\tR\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x04 \x01(\x05R\bquantity\"\x91\x01\n" +
-	"\x19UpdateItemQuantityRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x15\n" +
-	"\x06sku_id\x18\x03 \x01(\tR\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x04 \x01(\x05R\bquantity\"m\n" +
-	"\x11RemoveItemRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x15\n" +
-	"\x06sku_id\x18\x03 \x01(\tR\x05skuId\"U\n" +
-	"\x10ClearCartRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\"1\n" +
+	"\x04cart\x18\x01 \x01(\v2\r.cart.v1.CartR\x04cart\"i\n" +
+	"\x0eAddItemRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12\x15\n" +
+	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1a\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\"t\n" +
+	"\x19UpdateItemQuantityRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12\x15\n" +
+	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1a\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\"P\n" +
+	"\x11RemoveItemRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12\x15\n" +
+	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\"8\n" +
+	"\x10ClearCartRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\"1\n" +
 	"\fCartResponse\x12!\n" +
-	"\x04cart\x18\x01 \x01(\v2\r.cart.v1.CartR\x04cart\"\xa4\x01\n" +
-	"\x0fCheckoutRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x122\n" +
-	"\x15shipping_address_json\x18\x03 \x01(\tR\x13shippingAddressJson\x12\x1a\n" +
-	"\bcurrency\x18\x04 \x01(\tR\bcurrency\"\xc2\x01\n" +
+	"\x04cart\x18\x01 \x01(\v2\r.cart.v1.CartR\x04cart\"\x87\x01\n" +
+	"\x0fCheckoutRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x122\n" +
+	"\x15shipping_address_json\x18\x02 \x01(\tR\x13shippingAddressJson\x12\x1a\n" +
+	"\bcurrency\x18\x03 \x01(\tR\bcurrency\"\xc2\x01\n" +
 	"\x10CheckoutResponse\x12\x1b\n" +
 	"\torder_ids\x18\x01 \x03(\tR\borderIds\x120\n" +
 	"\x14stripe_client_secret\x18\x02 \x01(\tR\x12stripeClientSecret\x127\n" +

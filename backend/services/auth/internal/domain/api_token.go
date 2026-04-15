@@ -57,9 +57,8 @@ func ScopesForSellerRole(role SellerUserRole) []APITokenScope {
 // SellerAPIToken is a persisted access token that grants scoped access to
 // the /api/v1/seller/* surface. TokenHash is never serialized.
 type SellerAPIToken struct {
-	ID          uuid.UUID       `json:"id"`
-	TenantID    uuid.UUID       `json:"tenant_id"`
-	SellerID    uuid.UUID       `json:"seller_id"`
+	ID       uuid.UUID `json:"id"`
+	SellerID uuid.UUID `json:"seller_id"`
 	Name        string          `json:"name"`
 	TokenPrefix string          `json:"token_prefix"`
 	TokenLookup string          `json:"token_lookup"`

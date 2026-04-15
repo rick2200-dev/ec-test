@@ -4,10 +4,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/search/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/search/internal/engine"
-	"github.com/google/uuid"
 )
 
 // SearchService provides business logic for product search.
@@ -22,11 +23,6 @@ func NewSearchService(eng engine.SearchEngine) *SearchService {
 
 // Search validates the request and delegates to the search engine.
 func (s *SearchService) Search(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error) {
-	// tenant_id is always required
-	if req.TenantID == uuid.Nil {
-		return nil, domain.ErrMissingTenantID
-	}
-
 	// Enforce defaults
 	if req.Limit <= 0 || req.Limit > 100 {
 		req.Limit = 20
@@ -42,7 +38,7 @@ func (s *SearchService) Search(ctx context.Context, req domain.SearchRequest) (*
 
 	result, err := s.engine.Search(ctx, req)
 	if err != nil {
-		slog.Error("search failed", "error", err, "query", req.Query, "tenant_id", req.TenantID)
+		slog.Error("search failed", "error", err, "query", req.Query)
 		return nil, apperrors.Internal("search failed", err)
 	}
 
@@ -58,10 +54,6 @@ func (s *SearchService) Search(ctx context.Context, req domain.SearchRequest) (*
 
 // Suggest returns search suggestions based on a prefix query.
 func (s *SearchService) Suggest(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error) {
-	if req.TenantID == uuid.Nil {
-		return nil, domain.ErrMissingTenantID
-	}
-
 	// Suggestions return a small number of results
 	req.Limit = 10
 	req.Offset = 0
@@ -69,7 +61,7 @@ func (s *SearchService) Suggest(ctx context.Context, req domain.SearchRequest) (
 
 	result, err := s.engine.Search(ctx, req)
 	if err != nil {
-		slog.Error("suggest failed", "error", err, "query", req.Query, "tenant_id", req.TenantID)
+		slog.Error("suggest failed", "error", err, "query", req.Query)
 		return nil, apperrors.Internal("suggest failed", err)
 	}
 
@@ -88,6 +80,6 @@ func (s *SearchService) IndexProduct(ctx context.Context, product domain.Product
 }
 
 // DeleteProduct delegates deletion to the search engine.
-func (s *SearchService) DeleteProduct(ctx context.Context, tenantID, productID uuid.UUID) error {
-	return s.engine.DeleteProduct(ctx, tenantID, productID)
+func (s *SearchService) DeleteProduct(ctx context.Context, productID uuid.UUID) error {
+	return s.engine.DeleteProduct(ctx, productID)
 }

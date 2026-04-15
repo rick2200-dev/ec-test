@@ -31,7 +31,6 @@ const (
 // Order represents a marketplace order.
 type Order struct {
 	ID                    uuid.UUID       `json:"id"`
-	TenantID              uuid.UUID       `json:"tenant_id"`
 	SellerID              uuid.UUID       `json:"seller_id"`
 	SellerName            string          `json:"seller_name"`
 	BuyerAuth0ID          string          `json:"buyer_auth0_id"`
@@ -53,7 +52,6 @@ type Order struct {
 // OrderLine represents a line item within an order.
 type OrderLine struct {
 	ID          uuid.UUID `json:"id"`
-	TenantID    uuid.UUID `json:"tenant_id"`
 	OrderID     uuid.UUID `json:"order_id"`
 	SKUID       uuid.UUID `json:"sku_id"`
 	ProductID   uuid.UUID `json:"product_id"`
@@ -74,7 +72,6 @@ type OrderWithLines struct {
 // CommissionRule defines how commission is calculated for a seller/category.
 type CommissionRule struct {
 	ID         uuid.UUID  `json:"id"`
-	TenantID   uuid.UUID  `json:"tenant_id"`
 	SellerID   *uuid.UUID `json:"seller_id,omitempty"`
 	CategoryID *uuid.UUID `json:"category_id,omitempty"`
 	RateBps    int        `json:"rate_bps"`
@@ -87,7 +84,6 @@ type CommissionRule struct {
 // Payout represents a payout to a seller.
 type Payout struct {
 	ID               uuid.UUID  `json:"id"`
-	TenantID         uuid.UUID  `json:"tenant_id"`
 	SellerID         uuid.UUID  `json:"seller_id"`
 	OrderID          uuid.UUID  `json:"order_id"`
 	Amount           int64      `json:"amount"`

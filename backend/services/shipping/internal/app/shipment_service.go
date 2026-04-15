@@ -39,7 +39,6 @@ func NewShipmentService(
 // The operation is idempotent — a duplicate order_id is silently ignored.
 func (s *ShipmentService) CreateShipment(ctx context.Context, in port.CreateShipmentInput) error {
 	shipment := &domain.Shipment{
-		TenantID:        in.TenantID,
 		SellerID:        in.SellerID,
 		OrderID:         in.OrderID,
 		BuyerAuth0ID:    in.BuyerAuth0ID,
@@ -56,7 +55,7 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 		return nil, domain.ErrTrackingNumberRequired
 	}
 
-	shipment, err := s.repo.GetByID(ctx, in.TenantID, in.ShipmentID)
+	shipment, err := s.repo.GetByID(ctx, in.ShipmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,6 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 	shippedEvt := domain.ShipmentShippedEvent{
 		ShipmentID:     shipment.ID.String(),
 		OrderID:        shipment.OrderID.String(),
-		TenantID:       shipment.TenantID.String(),
 		SellerID:       shipment.SellerID.String(),
 		BuyerAuth0ID:   shipment.BuyerAuth0ID,
 		Carrier:        shipment.Carrier,
@@ -94,12 +92,11 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 		ShippedAt:      *shipment.ShippedAt,
 	}
 
-	err = s.txRunner.RunTenantTx(ctx, in.TenantID, func(txCtx context.Context) error {
+	err = s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
 		if err := s.repo.UpdateStatus(txCtx, shipment, fromStatus); err != nil {
 			return err
 		}
 		auditEvt := &domain.ShipmentEvent{
-			TenantID:   in.TenantID,
 			ShipmentID: shipment.ID,
 			FromStatus: fromStatus,
 			ToStatus:   domain.StatusShipped,
@@ -118,7 +115,6 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 		return s.repo.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: domain.EventTypeShipmentShipped,
 			Topic:     "shipping-events",
-			TenantID:  in.TenantID,
 			Payload:   mustJSON(shippedEvt),
 		})
 	})
@@ -132,7 +128,7 @@ func (s *ShipmentService) RegisterShipment(ctx context.Context, in port.Register
 // MarkDelivered transitions the shipment from shipped to delivered.
 // Publishes shipment.delivered on success.
 func (s *ShipmentService) MarkDelivered(ctx context.Context, in port.MarkDeliveredInput) (*domain.Shipment, error) {
-	shipment, err := s.repo.GetByID(ctx, in.TenantID, in.ShipmentID)
+	shipment, err := s.repo.GetByID(ctx, in.ShipmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,18 +152,16 @@ func (s *ShipmentService) MarkDelivered(ctx context.Context, in port.MarkDeliver
 	deliveredEvt := domain.ShipmentDeliveredEvent{
 		ShipmentID:   shipment.ID.String(),
 		OrderID:      shipment.OrderID.String(),
-		TenantID:     shipment.TenantID.String(),
 		SellerID:     shipment.SellerID.String(),
 		BuyerAuth0ID: shipment.BuyerAuth0ID,
 		DeliveredAt:  *shipment.DeliveredAt,
 	}
 
-	err = s.txRunner.RunTenantTx(ctx, in.TenantID, func(txCtx context.Context) error {
+	err = s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
 		if err := s.repo.UpdateStatus(txCtx, shipment, fromStatus); err != nil {
 			return err
 		}
 		auditEvt := &domain.ShipmentEvent{
-			TenantID:   in.TenantID,
 			ShipmentID: shipment.ID,
 			FromStatus: fromStatus,
 			ToStatus:   domain.StatusDelivered,
@@ -180,7 +174,6 @@ func (s *ShipmentService) MarkDelivered(ctx context.Context, in port.MarkDeliver
 		return s.repo.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: domain.EventTypeShipmentDelivered,
 			Topic:     "shipping-events",
-			TenantID:  in.TenantID,
 			Payload:   mustJSON(deliveredEvt),
 		})
 	})
@@ -193,13 +186,13 @@ func (s *ShipmentService) MarkDelivered(ctx context.Context, in port.MarkDeliver
 
 // CancelShipment transitions the shipment to cancelled when an order is
 // cancelled. If the shipment is already shipped or delivered, this is a no-op.
-func (s *ShipmentService) CancelShipment(ctx context.Context, tenantID, orderID uuid.UUID) error {
-	return s.repo.CancelByOrderID(ctx, tenantID, orderID)
+func (s *ShipmentService) CancelShipment(ctx context.Context, orderID uuid.UUID) error {
+	return s.repo.CancelByOrderID(ctx, orderID)
 }
 
 // GetByID returns a shipment. Verifies seller ownership.
-func (s *ShipmentService) GetByID(ctx context.Context, tenantID, sellerID, id uuid.UUID) (*domain.Shipment, error) {
-	shipment, err := s.repo.GetByID(ctx, tenantID, id)
+func (s *ShipmentService) GetByID(ctx context.Context, sellerID, id uuid.UUID) (*domain.Shipment, error) {
+	shipment, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -210,8 +203,8 @@ func (s *ShipmentService) GetByID(ctx context.Context, tenantID, sellerID, id uu
 }
 
 // GetByOrderIDSeller returns a shipment by order ID. Verifies seller ownership.
-func (s *ShipmentService) GetByOrderIDSeller(ctx context.Context, tenantID, sellerID, orderID uuid.UUID) (*domain.Shipment, error) {
-	shipment, err := s.repo.GetByOrderID(ctx, tenantID, orderID)
+func (s *ShipmentService) GetByOrderIDSeller(ctx context.Context, sellerID, orderID uuid.UUID) (*domain.Shipment, error) {
+	shipment, err := s.repo.GetByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, err
 	}
@@ -222,8 +215,8 @@ func (s *ShipmentService) GetByOrderIDSeller(ctx context.Context, tenantID, sell
 }
 
 // GetByOrderIDBuyer returns a shipment by order ID. Verifies buyer identity.
-func (s *ShipmentService) GetByOrderIDBuyer(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string, orderID uuid.UUID) (*domain.Shipment, error) {
-	shipment, err := s.repo.GetByOrderID(ctx, tenantID, orderID)
+func (s *ShipmentService) GetByOrderIDBuyer(ctx context.Context, buyerAuth0ID string, orderID uuid.UUID) (*domain.Shipment, error) {
+	shipment, err := s.repo.GetByOrderID(ctx, orderID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +235,7 @@ func (s *ShipmentService) ListBySeller(ctx context.Context, in port.ListShipment
 		in.Limit = 100
 	}
 
-	items, total, err := s.repo.ListBySeller(ctx, in.TenantID, in.SellerID, in.Status, in.Limit, in.Offset)
+	items, total, err := s.repo.ListBySeller(ctx, in.SellerID, in.Status, in.Limit, in.Offset)
 	if err != nil {
 		return nil, err
 	}

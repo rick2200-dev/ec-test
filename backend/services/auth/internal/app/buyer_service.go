@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/Riku-KANO/ec-test/services/auth/internal/domain"
 )
 
@@ -14,8 +12,8 @@ import (
 // the use-case side so callers can swap the implementation in tests.
 type BuyerRepo interface {
 	// Upsert creates the buyer row on first login and updates email /
-	// display_name on subsequent logins. Keyed by (tenant_id, auth0_sub).
-	Upsert(ctx context.Context, tenantID uuid.UUID, b *domain.Buyer) error
+	// display_name on subsequent logins. Keyed by auth0_sub.
+	Upsert(ctx context.Context, b *domain.Buyer) error
 }
 
 // BuyerService is a thin use-case for buyer profile upsert. It is
@@ -31,11 +29,10 @@ func NewBuyerService(repo BuyerRepo) *BuyerService {
 }
 
 // UpsertBuyer stores (or refreshes) the profile record for the Auth0
-// subject in the given tenant. Validation is minimal — the BFF has
-// already authenticated the user against Auth0 before this is called.
+// subject. Validation is minimal — the BFF has already authenticated the
+// user against Auth0 before this is called.
 func (s *BuyerService) UpsertBuyer(
 	ctx context.Context,
-	tenantID uuid.UUID,
 	auth0Sub, email, displayName string,
 ) (*domain.Buyer, error) {
 	auth0Sub = strings.TrimSpace(auth0Sub)
@@ -50,12 +47,11 @@ func (s *BuyerService) UpsertBuyer(
 	}
 
 	b := &domain.Buyer{
-		TenantID:    tenantID,
 		Auth0Sub:    auth0Sub,
 		Email:       email,
 		DisplayName: displayName,
 	}
-	if err := s.repo.Upsert(ctx, tenantID, b); err != nil {
+	if err := s.repo.Upsert(ctx, b); err != nil {
 		return nil, err
 	}
 	return b, nil

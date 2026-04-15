@@ -84,17 +84,17 @@ func (r PlatformAdminRole) AtLeast(min PlatformAdminRole) bool { return r.Rank()
 // SellerRoleLoader resolves a user's role within a seller organization.
 // Implementations should be safe for concurrent use.
 type SellerRoleLoader interface {
-	LoadSellerRole(ctx context.Context, tenantID, sellerID uuid.UUID, sub string) (SellerRole, error)
-	// EvictSellerRole drops any cached value for (tenantID, sellerID, sub).
+	LoadSellerRole(ctx context.Context, sellerID uuid.UUID, sub string) (SellerRole, error)
+	// EvictSellerRole drops any cached value for (sellerID, sub).
 	// Mutation handlers should call this after modifying seller team
 	// membership so the change is visible immediately within this process.
-	EvictSellerRole(tenantID, sellerID uuid.UUID, sub string)
+	EvictSellerRole(sellerID uuid.UUID, sub string)
 }
 
-// PlatformAdminRoleLoader resolves a user's platform admin role for a tenant.
+// PlatformAdminRoleLoader resolves a user's platform admin role.
 type PlatformAdminRoleLoader interface {
-	LoadPlatformAdminRole(ctx context.Context, tenantID uuid.UUID, sub string) (PlatformAdminRole, error)
-	EvictPlatformAdminRole(tenantID uuid.UUID, sub string)
+	LoadPlatformAdminRole(ctx context.Context, sub string) (PlatformAdminRole, error)
+	EvictPlatformAdminRole(sub string)
 }
 
 // Per-request context keys. The middleware stores resolved roles in the
@@ -131,7 +131,7 @@ func RequireSellerRole(loader SellerRoleLoader, min SellerRole) func(http.Handle
 				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "seller context required"})
 				return
 			}
-			role, err := loader.LoadSellerRole(r.Context(), tc.TenantID, *tc.SellerID, tc.UserID)
+			role, err := loader.LoadSellerRole(r.Context(), *tc.SellerID, tc.UserID)
 			if err != nil {
 				httputil.JSON(w, http.StatusInternalServerError, map[string]string{"error": "role lookup failed"})
 				return
@@ -156,7 +156,7 @@ func RequirePlatformAdminRole(loader PlatformAdminRoleLoader, min PlatformAdminR
 				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "caller identity required"})
 				return
 			}
-			role, err := loader.LoadPlatformAdminRole(r.Context(), tc.TenantID, tc.UserID)
+			role, err := loader.LoadPlatformAdminRole(r.Context(), tc.UserID)
 			if err != nil {
 				httputil.JSON(w, http.StatusInternalServerError, map[string]string{"error": "role lookup failed"})
 				return
@@ -283,12 +283,12 @@ func (c *TTLCache) evictOldestLocked(n int) {
 }
 
 // SellerCacheKey returns the canonical cache key for a seller role lookup.
-func SellerCacheKey(tenantID, sellerID uuid.UUID, sub string) string {
-	return fmt.Sprintf("seller:%s:%s:%s", tenantID, sellerID, sub)
+func SellerCacheKey(sellerID uuid.UUID, sub string) string {
+	return fmt.Sprintf("seller:%s:%s", sellerID, sub)
 }
 
 // PlatformAdminCacheKey returns the canonical cache key for a platform
 // admin role lookup.
-func PlatformAdminCacheKey(tenantID uuid.UUID, sub string) string {
-	return fmt.Sprintf("padmin:%s:%s", tenantID, sub)
+func PlatformAdminCacheKey(sub string) string {
+	return fmt.Sprintf("padmin:%s", sub)
 }

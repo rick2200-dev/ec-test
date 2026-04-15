@@ -39,7 +39,7 @@ func (s *ProductSubscriber) Start(ctx context.Context) error {
 
 // handleEvent processes a single product event.
 func (s *ProductSubscriber) handleEvent(ctx context.Context, event pubsub.Event) error {
-	slog.Info("received product event", "type", event.Type, "tenant_id", event.TenantID, "event_id", event.ID)
+	slog.Info("received product event", "type", event.Type, "event_id", event.ID)
 
 	switch event.Type {
 	case "product.created", "product.updated":
@@ -76,12 +76,6 @@ func (s *ProductSubscriber) handleProductUpsert(ctx context.Context, event pubsu
 
 // handleProductDeleted removes a product from the search index.
 func (s *ProductSubscriber) handleProductDeleted(ctx context.Context, event pubsub.Event) error {
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		slog.Error("invalid tenant_id in event", "error", err, "tenant_id", event.TenantID)
-		return err
-	}
-
 	// Extract product ID from the event data
 	var data struct {
 		ID uuid.UUID `json:"id"`
@@ -96,7 +90,7 @@ func (s *ProductSubscriber) handleProductDeleted(ctx context.Context, event pubs
 		return err
 	}
 
-	if err := s.engine.DeleteProduct(ctx, tenantID, data.ID); err != nil {
+	if err := s.engine.DeleteProduct(ctx, data.ID); err != nil {
 		slog.Error("failed to delete product from index", "error", err, "product_id", data.ID)
 		return err
 	}

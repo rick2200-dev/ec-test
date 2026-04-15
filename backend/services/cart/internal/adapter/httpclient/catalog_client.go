@@ -38,14 +38,13 @@ func NewCatalogClient(baseURL, internalToken string) *CatalogClient {
 }
 
 // LookupSKU fetches a SKU by ID from the catalog service.
-func (c *CatalogClient) LookupSKU(ctx context.Context, tenantID, skuID uuid.UUID) (*port.SKULookup, error) {
+func (c *CatalogClient) LookupSKU(ctx context.Context, skuID uuid.UUID) (*port.SKULookup, error) {
 	reqURL := fmt.Sprintf("%s/internal/skus/%s", c.baseURL, skuID.String())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build catalog request: %w", err)
 	}
-	req.Header.Set("X-Tenant-ID", tenantID.String())
 	req.Header.Set("X-Internal-Token", c.internalToken)
 
 	resp, err := c.http.Do(req)

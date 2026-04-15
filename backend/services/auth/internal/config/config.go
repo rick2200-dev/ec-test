@@ -22,10 +22,8 @@ type Config struct {
 	APITokenPrefix string
 
 	// BootstrapSuperAdminSub is the Auth0 "sub" of the initial super_admin
-	// to seed on startup if none exists for BootstrapTenantID. Both must be
-	// set for the bootstrap to run.
+	// to seed on startup if none exists. Set to trigger bootstrap on start.
 	BootstrapSuperAdminSub string
-	BootstrapTenantID      string
 }
 
 // Load reads configuration from environment variables.
@@ -38,7 +36,6 @@ func Load() Config {
 		InternalToken:          getEnv("AUTH_INTERNAL_TOKEN", ""),
 		APITokenPrefix:         getEnv("API_TOKEN_PREFIX", "sk_live_"),
 		BootstrapSuperAdminSub: getEnv("AUTH_BOOTSTRAP_SUPERADMIN_SUB", ""),
-		BootstrapTenantID:      getEnv("AUTH_BOOTSTRAP_TENANT_ID", ""),
 	}
 }
 

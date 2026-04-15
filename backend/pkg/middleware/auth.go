@@ -26,7 +26,7 @@ type JWTConfig struct {
 	JWKSURL  string // JWKS endpoint
 }
 
-// JWTMiddleware validates Auth0 JWT tokens and extracts tenant context.
+// JWTMiddleware validates Auth0 JWT tokens and extracts request context.
 type JWTMiddleware struct {
 	config   JWTConfig
 	keyCache *jwk.Cache
@@ -47,7 +47,7 @@ func NewJWTMiddleware(ctx context.Context, cfg JWTConfig) *JWTMiddleware {
 	return &JWTMiddleware{config: cfg, keyCache: cache}
 }
 
-// VerifyJWT is the HTTP middleware that validates the JWT and injects tenant context.
+// VerifyJWT is the HTTP middleware that validates the JWT and injects request context.
 func (m *JWTMiddleware) VerifyJWT(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
@@ -73,7 +73,7 @@ func (m *JWTMiddleware) VerifyJWT(next http.Handler) http.Handler {
 			return
 		}
 
-		tc, err := claimsToTenantContext(claims)
+		tc, err := claimsToContext(claims)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnauthorized)
 			return
@@ -132,18 +132,8 @@ func (m *JWTMiddleware) verifyAndExtractClaims(ctx context.Context, rawToken str
 	return claims, nil
 }
 
-func claimsToTenantContext(claims map[string]any) (tenant.Context, error) {
+func claimsToContext(claims map[string]any) (tenant.Context, error) {
 	tc := tenant.Context{}
-
-	tenantIDStr, ok := claims[claimsNamespace+"/tenant_id"].(string)
-	if !ok {
-		return tc, fmt.Errorf("missing tenant_id claim")
-	}
-	tid, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		return tc, fmt.Errorf("invalid tenant_id: %w", err)
-	}
-	tc.TenantID = tid
 
 	sub, ok := claims["sub"].(string)
 	if !ok {

@@ -14,13 +14,13 @@ import (
 // CartStore is the driven port for cart persistence.
 // *repository.CartRepository satisfies this interface.
 type CartStore interface {
-	// Get retrieves the cart for the given buyer within the tenant.
+	// Get retrieves the cart for the given buyer.
 	// Returns a nil pointer and no error when the cart does not yet exist.
-	Get(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (*domain.Cart, error)
+	Get(ctx context.Context, buyerAuth0ID string) (*domain.Cart, error)
 	// Save persists (insert-or-update) the given cart.
 	Save(ctx context.Context, cart *domain.Cart) error
-	// Delete removes the cart for the given buyer within the tenant.
-	Delete(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) error
+	// Delete removes the cart for the given buyer.
+	Delete(ctx context.Context, buyerAuth0ID string) error
 }
 
 // SKULookup is the catalog SKU data the cart needs when adding an item.
@@ -40,13 +40,13 @@ type SKULookup struct {
 // SKULookupClient is the driven port for catalog SKU lookups.
 // *httpclient.CatalogClient satisfies this interface.
 type SKULookupClient interface {
-	// LookupSKU fetches SKU metadata from the catalog service for the given tenant and SKU ID.
-	LookupSKU(ctx context.Context, tenantID, skuID uuid.UUID) (*SKULookup, error)
+	// LookupSKU fetches SKU metadata from the catalog service for the given SKU ID.
+	LookupSKU(ctx context.Context, skuID uuid.UUID) (*SKULookup, error)
 }
 
 // CheckoutClient is the driven port for order creation.
 // *httpclient.OrderClient satisfies this interface.
 type CheckoutClient interface {
 	// CreateCheckout sends a checkout request to the order service and returns the resulting order summary.
-	CreateCheckout(ctx context.Context, tenantID uuid.UUID, in domain.CheckoutInput) (*domain.CheckoutResult, error)
+	CreateCheckout(ctx context.Context, in domain.CheckoutInput) (*domain.CheckoutResult, error)
 }

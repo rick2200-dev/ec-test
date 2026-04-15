@@ -37,16 +37,16 @@ func NewCatalogService(
 }
 
 // publishEvent publishes an event if the publisher is configured.
-func (s *CatalogService) publishEvent(ctx context.Context, tenantID uuid.UUID, eventType, topic string, data any) {
-	pubsub.PublishEvent(ctx, s.publisher, tenantID, eventType, topic, data)
+func (s *CatalogService) publishEvent(ctx context.Context, eventType, topic string, data any) {
+	pubsub.PublishEvent(ctx, s.publisher, eventType, topic, data)
 }
 
 // --- Category operations ---
 
 // CreateCategory creates a new category.
-func (s *CatalogService) CreateCategory(ctx context.Context, tenantID uuid.UUID, c *domain.Category) error {
-	// Check slug uniqueness within tenant.
-	existing, err := s.categories.GetBySlug(ctx, tenantID, c.Slug)
+func (s *CatalogService) CreateCategory(ctx context.Context, c *domain.Category) error {
+	// Check slug uniqueness.
+	existing, err := s.categories.GetBySlug(ctx, c.Slug)
 	if err != nil {
 		return apperrors.Internal("failed to check category slug", err)
 	}
@@ -54,17 +54,17 @@ func (s *CatalogService) CreateCategory(ctx context.Context, tenantID uuid.UUID,
 		return domain.ErrCategorySlugConflict
 	}
 
-	if err := s.categories.Create(ctx, tenantID, c); err != nil {
+	if err := s.categories.Create(ctx, c); err != nil {
 		return apperrors.Internal("failed to create category", err)
 	}
 
-	slog.Info("category created", "id", c.ID, "tenant_id", tenantID, "slug", c.Slug)
+	slog.Info("category created", "id", c.ID, "slug", c.Slug)
 	return nil
 }
 
-// ListCategories returns all categories for a tenant.
-func (s *CatalogService) ListCategories(ctx context.Context, tenantID uuid.UUID) ([]domain.Category, error) {
-	categories, err := s.categories.List(ctx, tenantID)
+// ListCategories returns all categories.
+func (s *CatalogService) ListCategories(ctx context.Context) ([]domain.Category, error) {
+	categories, err := s.categories.List(ctx)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list categories", err)
 	}
@@ -72,8 +72,8 @@ func (s *CatalogService) ListCategories(ctx context.Context, tenantID uuid.UUID)
 }
 
 // UpdateCategory updates an existing category.
-func (s *CatalogService) UpdateCategory(ctx context.Context, tenantID uuid.UUID, c *domain.Category) error {
-	existing, err := s.categories.GetByID(ctx, tenantID, c.ID)
+func (s *CatalogService) UpdateCategory(ctx context.Context, c *domain.Category) error {
+	existing, err := s.categories.GetByID(ctx, c.ID)
 	if err != nil {
 		return apperrors.Internal("failed to get category", err)
 	}
@@ -81,18 +81,18 @@ func (s *CatalogService) UpdateCategory(ctx context.Context, tenantID uuid.UUID,
 		return domain.ErrCategoryNotFound
 	}
 
-	if err := s.categories.Update(ctx, tenantID, c); err != nil {
+	if err := s.categories.Update(ctx, c); err != nil {
 		return apperrors.Internal("failed to update category", err)
 	}
 
-	slog.Info("category updated", "id", c.ID, "tenant_id", tenantID)
+	slog.Info("category updated", "id", c.ID)
 	return nil
 }
 
 // --- Product operations ---
 
 // CreateProduct creates a new product with optional SKUs.
-func (s *CatalogService) CreateProduct(ctx context.Context, tenantID uuid.UUID, p *domain.Product, skus []domain.SKU) error {
+func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, skus []domain.SKU) error {
 	// Validate seller context.
 	tc, err := tenant.FromContext(ctx)
 	if err == nil && tc.SellerID != nil {
@@ -104,7 +104,7 @@ func (s *CatalogService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 	}
 
 	// Check slug uniqueness.
-	existing, err := s.products.GetBySlug(ctx, tenantID, p.Slug)
+	existing, err := s.products.GetBySlug(ctx, p.Slug)
 	if err != nil {
 		return apperrors.Internal("failed to check product slug", err)
 	}
@@ -113,7 +113,7 @@ func (s *CatalogService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 	}
 
 	p.Status = domain.StatusDraft
-	if err := s.products.Create(ctx, tenantID, p); err != nil {
+	if err := s.products.Create(ctx, p); err != nil {
 		return apperrors.Internal("failed to create product", err)
 	}
 
@@ -122,14 +122,14 @@ func (s *CatalogService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 		skus[i].ProductID = p.ID
 		skus[i].SellerID = p.SellerID
 		skus[i].Status = domain.StatusDraft
-		if err := s.skus.Create(ctx, tenantID, &skus[i]); err != nil {
+		if err := s.skus.Create(ctx, &skus[i]); err != nil {
 			return apperrors.Internal("failed to create sku", err)
 		}
 	}
 
-	slog.Info("product created", "id", p.ID, "tenant_id", tenantID, "slug", p.Slug, "sku_count", len(skus))
+	slog.Info("product created", "id", p.ID, "slug", p.Slug, "sku_count", len(skus))
 
-	s.publishEvent(ctx, tenantID, "product.created", "product-events", map[string]any{
+	s.publishEvent(ctx, "product.created", "product-events", map[string]any{
 		"product_id": p.ID.String(),
 		"seller_id":  p.SellerID.String(),
 		"name":       p.Name,
@@ -141,8 +141,8 @@ func (s *CatalogService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 }
 
 // GetProduct retrieves a product with its SKUs by slug.
-func (s *CatalogService) GetProduct(ctx context.Context, tenantID uuid.UUID, slug string) (*domain.ProductWithSKUs, error) {
-	p, err := s.products.GetWithSKUsBySlug(ctx, tenantID, slug)
+func (s *CatalogService) GetProduct(ctx context.Context, slug string) (*domain.ProductWithSKUs, error) {
+	p, err := s.products.GetWithSKUsBySlug(ctx, slug)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get product", err)
 	}
@@ -153,8 +153,8 @@ func (s *CatalogService) GetProduct(ctx context.Context, tenantID uuid.UUID, slu
 }
 
 // GetProductByID retrieves a product by its ID.
-func (s *CatalogService) GetProductByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Product, error) {
-	p, err := s.products.GetByID(ctx, tenantID, id)
+func (s *CatalogService) GetProductByID(ctx context.Context, id uuid.UUID) (*domain.Product, error) {
+	p, err := s.products.GetByID(ctx, id)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get product", err)
 	}
@@ -185,8 +185,8 @@ func (s *CatalogService) ListProducts(ctx context.Context, filter domain.Product
 }
 
 // UpdateProduct updates a product's details.
-func (s *CatalogService) UpdateProduct(ctx context.Context, tenantID uuid.UUID, p *domain.Product) error {
-	existing, err := s.products.GetByID(ctx, tenantID, p.ID)
+func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) error {
+	existing, err := s.products.GetByID(ctx, p.ID)
 	if err != nil {
 		return apperrors.Internal("failed to get product", err)
 	}
@@ -200,13 +200,13 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, tenantID uuid.UUID, 
 		return domain.ErrNotProductOwner
 	}
 
-	if err := s.products.Update(ctx, tenantID, p); err != nil {
+	if err := s.products.Update(ctx, p); err != nil {
 		return apperrors.Internal("failed to update product", err)
 	}
 
-	slog.Info("product updated", "id", p.ID, "tenant_id", tenantID)
+	slog.Info("product updated", "id", p.ID)
 
-	s.publishEvent(ctx, tenantID, "product.updated", "product-events", map[string]any{
+	s.publishEvent(ctx, "product.updated", "product-events", map[string]any{
 		"product_id": p.ID.String(),
 		"seller_id":  p.SellerID.String(),
 		"name":       p.Name,
@@ -218,8 +218,8 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, tenantID uuid.UUID, 
 }
 
 // UpdateProductStatus changes a product's status.
-func (s *CatalogService) UpdateProductStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.ProductStatus) error {
-	existing, err := s.products.GetByID(ctx, tenantID, id)
+func (s *CatalogService) UpdateProductStatus(ctx context.Context, id uuid.UUID, status domain.ProductStatus) error {
+	existing, err := s.products.GetByID(ctx, id)
 	if err != nil {
 		return apperrors.Internal("failed to get product", err)
 	}
@@ -233,13 +233,13 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, tenantID, id u
 		return domain.ErrNotProductOwner
 	}
 
-	if err := s.products.UpdateStatus(ctx, tenantID, id, status); err != nil {
+	if err := s.products.UpdateStatus(ctx, id, status); err != nil {
 		return apperrors.Internal("failed to update product status", err)
 	}
 
-	slog.Info("product status updated", "id", id, "tenant_id", tenantID, "status", status)
+	slog.Info("product status updated", "id", id, "status", status)
 
-	s.publishEvent(ctx, tenantID, "product.updated", "product-events", map[string]any{
+	s.publishEvent(ctx, "product.updated", "product-events", map[string]any{
 		"product_id": id.String(),
 		"seller_id":  existing.SellerID.String(),
 		"name":       existing.Name,
@@ -251,16 +251,16 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, tenantID, id u
 }
 
 // ArchiveProduct sets a product's status to archived.
-func (s *CatalogService) ArchiveProduct(ctx context.Context, tenantID, id uuid.UUID) error {
-	return s.UpdateProductStatus(ctx, tenantID, id, domain.StatusArchived)
+func (s *CatalogService) ArchiveProduct(ctx context.Context, id uuid.UUID) error {
+	return s.UpdateProductStatus(ctx, id, domain.StatusArchived)
 }
 
 // --- SKU operations ---
 
 // CreateSKU creates a new SKU for a product.
-func (s *CatalogService) CreateSKU(ctx context.Context, tenantID uuid.UUID, sku *domain.SKU) error {
+func (s *CatalogService) CreateSKU(ctx context.Context, sku *domain.SKU) error {
 	// Verify product exists.
-	product, err := s.products.GetByID(ctx, tenantID, sku.ProductID)
+	product, err := s.products.GetByID(ctx, sku.ProductID)
 	if err != nil {
 		return apperrors.Internal("failed to verify product", err)
 	}
@@ -270,17 +270,17 @@ func (s *CatalogService) CreateSKU(ctx context.Context, tenantID uuid.UUID, sku 
 
 	sku.SellerID = product.SellerID
 	sku.Status = domain.StatusDraft
-	if err := s.skus.Create(ctx, tenantID, sku); err != nil {
+	if err := s.skus.Create(ctx, sku); err != nil {
 		return apperrors.Internal("failed to create sku", err)
 	}
 
-	slog.Info("sku created", "id", sku.ID, "product_id", sku.ProductID, "tenant_id", tenantID)
+	slog.Info("sku created", "id", sku.ID, "product_id", sku.ProductID)
 	return nil
 }
 
 // GetSKU retrieves a SKU by its ID.
-func (s *CatalogService) GetSKU(ctx context.Context, tenantID, id uuid.UUID) (*domain.SKU, error) {
-	sku, err := s.skus.GetByID(ctx, tenantID, id)
+func (s *CatalogService) GetSKU(ctx context.Context, id uuid.UUID) (*domain.SKU, error) {
+	sku, err := s.skus.GetByID(ctx, id)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get sku", err)
 	}
@@ -293,8 +293,8 @@ func (s *CatalogService) GetSKU(ctx context.Context, tenantID, id uuid.UUID) (*d
 // GetSKUWithProductName returns a SKU joined with its product name.
 // Intended for intra-cluster callers (e.g. cart service) that need the
 // full purchasable snapshot in one round-trip.
-func (s *CatalogService) GetSKUWithProductName(ctx context.Context, tenantID, id uuid.UUID) (*port.SKULookup, error) {
-	sku, err := s.skus.GetByID(ctx, tenantID, id)
+func (s *CatalogService) GetSKUWithProductName(ctx context.Context, id uuid.UUID) (*port.SKULookup, error) {
+	sku, err := s.skus.GetByID(ctx, id)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get sku", err)
 	}
@@ -302,7 +302,7 @@ func (s *CatalogService) GetSKUWithProductName(ctx context.Context, tenantID, id
 		return nil, domain.ErrSKUNotFound
 	}
 
-	product, err := s.products.GetByID(ctx, tenantID, sku.ProductID)
+	product, err := s.products.GetByID(ctx, sku.ProductID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to get product for sku", err)
 	}
@@ -323,8 +323,8 @@ func (s *CatalogService) GetSKUWithProductName(ctx context.Context, tenantID, id
 }
 
 // ListSKUs returns all SKUs for a product.
-func (s *CatalogService) ListSKUs(ctx context.Context, tenantID, productID uuid.UUID) ([]domain.SKU, error) {
-	skus, err := s.skus.List(ctx, tenantID, productID)
+func (s *CatalogService) ListSKUs(ctx context.Context, productID uuid.UUID) ([]domain.SKU, error) {
+	skus, err := s.skus.List(ctx, productID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list skus", err)
 	}
@@ -332,8 +332,8 @@ func (s *CatalogService) ListSKUs(ctx context.Context, tenantID, productID uuid.
 }
 
 // UpdateSKU updates a SKU's details.
-func (s *CatalogService) UpdateSKU(ctx context.Context, tenantID uuid.UUID, sku *domain.SKU) error {
-	existing, err := s.skus.GetByID(ctx, tenantID, sku.ID)
+func (s *CatalogService) UpdateSKU(ctx context.Context, sku *domain.SKU) error {
+	existing, err := s.skus.GetByID(ctx, sku.ID)
 	if err != nil {
 		return apperrors.Internal("failed to get sku", err)
 	}
@@ -341,17 +341,17 @@ func (s *CatalogService) UpdateSKU(ctx context.Context, tenantID uuid.UUID, sku 
 		return domain.ErrSKUNotFound
 	}
 
-	if err := s.skus.Update(ctx, tenantID, sku); err != nil {
+	if err := s.skus.Update(ctx, sku); err != nil {
 		return apperrors.Internal("failed to update sku", err)
 	}
 
-	slog.Info("sku updated", "id", sku.ID, "tenant_id", tenantID)
+	slog.Info("sku updated", "id", sku.ID)
 	return nil
 }
 
 // UpdateSKUStatus changes a SKU's status.
-func (s *CatalogService) UpdateSKUStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.ProductStatus) error {
-	existing, err := s.skus.GetByID(ctx, tenantID, id)
+func (s *CatalogService) UpdateSKUStatus(ctx context.Context, id uuid.UUID, status domain.ProductStatus) error {
+	existing, err := s.skus.GetByID(ctx, id)
 	if err != nil {
 		return apperrors.Internal("failed to get sku", err)
 	}
@@ -359,10 +359,10 @@ func (s *CatalogService) UpdateSKUStatus(ctx context.Context, tenantID, id uuid.
 		return domain.ErrSKUNotFound
 	}
 
-	if err := s.skus.UpdateStatus(ctx, tenantID, id, status); err != nil {
+	if err := s.skus.UpdateStatus(ctx, id, status); err != nil {
 		return apperrors.Internal("failed to update sku status", err)
 	}
 
-	slog.Info("sku status updated", "id", id, "tenant_id", tenantID, "status", status)
+	slog.Info("sku status updated", "id", id, "status", status)
 	return nil
 }

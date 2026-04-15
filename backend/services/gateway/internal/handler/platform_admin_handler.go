@@ -9,7 +9,6 @@ import (
 	"net/url"
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	gwauthz "github.com/Riku-KANO/ec-test/services/gateway/internal/authz"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/proxy"
 )
@@ -52,12 +51,6 @@ func (h *PlatformAdminHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 // Grant handles POST /admin/admins. Body: {auth0_user_id, role}.
 func (h *PlatformAdminHandler) Grant(w http.ResponseWriter, r *http.Request) {
-	tc, err := tenant.FromContext(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	bodyBytes, _ := io.ReadAll(r.Body)
 	body, status, err := h.auth.Post(r.Context(), "/platform-admins", bytes.NewReader(bodyBytes))
 	if err != nil {
@@ -70,7 +63,7 @@ func (h *PlatformAdminHandler) Grant(w http.ResponseWriter, r *http.Request) {
 			Auth0UserID string `json:"auth0_user_id"`
 		}
 		if json.Unmarshal(bodyBytes, &payload) == nil && payload.Auth0UserID != "" {
-			h.loader.EvictPlatformAdminRole(tc.TenantID, payload.Auth0UserID)
+			h.loader.EvictPlatformAdminRole(payload.Auth0UserID)
 		}
 	}
 	writeRaw(w, status, body)

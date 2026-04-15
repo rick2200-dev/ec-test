@@ -17,10 +17,9 @@ const (
 	MovementAdjusted MovementType = "adjusted"
 )
 
-// Inventory represents the stock level of a single SKU for a tenant.
+// Inventory represents the stock level of a single SKU.
 type Inventory struct {
 	ID                uuid.UUID `json:"id"`
-	TenantID          uuid.UUID `json:"tenant_id"`
 	SKUID             uuid.UUID `json:"sku_id"`
 	SellerID          uuid.UUID `json:"seller_id"`
 	QuantityAvailable int       `json:"quantity_available"`
@@ -40,7 +39,6 @@ type CancellationLine struct {
 // StockMovement records a change in stock for auditing.
 type StockMovement struct {
 	ID            uuid.UUID    `json:"id"`
-	TenantID      uuid.UUID    `json:"tenant_id"`
 	SKUID         uuid.UUID    `json:"sku_id"`
 	MovementType  MovementType `json:"movement_type"`
 	Quantity      int          `json:"quantity"`

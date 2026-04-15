@@ -8,7 +8,6 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/pagination"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/port"
 )
@@ -37,12 +36,6 @@ func (h *InventoryHandler) Routes() chi.Router {
 
 // List handles GET /inventory?seller_id=...
 func (h *InventoryHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	sellerIDStr := r.URL.Query().Get("seller_id")
 	if sellerIDStr == "" {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "seller_id query parameter is required"})
@@ -56,7 +49,7 @@ func (h *InventoryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	p := pagination.FromRequest(r)
 
-	items, total, err := h.svc.ListInventory(r.Context(), tenantID, sellerID, p.Limit, p.Offset)
+	items, total, err := h.svc.ListInventory(r.Context(), sellerID, p.Limit, p.Offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -73,19 +66,13 @@ func (h *InventoryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GetBySKUID handles GET /inventory/{skuID}.
 func (h *InventoryHandler) GetBySKUID(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	skuID, err := uuid.Parse(chi.URLParam(r, "skuID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sku id"})
 		return
 	}
 
-	inv, err := h.svc.GetInventory(r.Context(), tenantID, skuID)
+	inv, err := h.svc.GetInventory(r.Context(), skuID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -103,12 +90,6 @@ type updateStockRequest struct {
 
 // UpdateStock handles PUT /inventory/{skuID}.
 func (h *InventoryHandler) UpdateStock(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	skuID, err := uuid.Parse(chi.URLParam(r, "skuID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sku id"})
@@ -128,7 +109,7 @@ func (h *InventoryHandler) UpdateStock(w http.ResponseWriter, r *http.Request) {
 		LowStockThreshold: req.LowStockThreshold,
 	}
 
-	if err := h.svc.UpdateStock(r.Context(), tenantID, inv); err != nil {
+	if err := h.svc.UpdateStock(r.Context(), inv); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -143,12 +124,6 @@ type quantityRequest struct {
 
 // Reserve handles POST /inventory/{skuID}/reserve.
 func (h *InventoryHandler) Reserve(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	skuID, err := uuid.Parse(chi.URLParam(r, "skuID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sku id"})
@@ -161,7 +136,7 @@ func (h *InventoryHandler) Reserve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ReserveStock(r.Context(), tenantID, skuID, req.Quantity); err != nil {
+	if err := h.svc.ReserveStock(r.Context(), skuID, req.Quantity); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -171,12 +146,6 @@ func (h *InventoryHandler) Reserve(w http.ResponseWriter, r *http.Request) {
 
 // Release handles POST /inventory/{skuID}/release.
 func (h *InventoryHandler) Release(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	skuID, err := uuid.Parse(chi.URLParam(r, "skuID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sku id"})
@@ -189,7 +158,7 @@ func (h *InventoryHandler) Release(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ReleaseStock(r.Context(), tenantID, skuID, req.Quantity); err != nil {
+	if err := h.svc.ReleaseStock(r.Context(), skuID, req.Quantity); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -199,12 +168,6 @@ func (h *InventoryHandler) Release(w http.ResponseWriter, r *http.Request) {
 
 // ConfirmSold handles POST /inventory/{skuID}/confirm.
 func (h *InventoryHandler) ConfirmSold(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return
-	}
-
 	skuID, err := uuid.Parse(chi.URLParam(r, "skuID"))
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sku id"})
@@ -217,7 +180,7 @@ func (h *InventoryHandler) ConfirmSold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ConfirmSold(r.Context(), tenantID, skuID, req.Quantity); err != nil {
+	if err := h.svc.ConfirmSold(r.Context(), skuID, req.Quantity); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

@@ -16,7 +16,6 @@ type OutboxEvent struct {
 	ID        uuid.UUID
 	EventType string
 	Topic     string
-	TenantID  uuid.UUID
 	Payload   json.RawMessage
 }
 
@@ -27,15 +26,15 @@ type ShipmentRepository interface {
 	// returns nil — this makes the order.paid subscriber idempotent.
 	Create(ctx context.Context, s *domain.Shipment) error
 
-	// GetByID returns the shipment with the given ID scoped to the tenant.
-	GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Shipment, error)
+	// GetByID returns the shipment with the given ID.
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.Shipment, error)
 
-	// GetByOrderID returns the shipment for the given order scoped to the tenant.
-	GetByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) (*domain.Shipment, error)
+	// GetByOrderID returns the shipment for the given order.
+	GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domain.Shipment, error)
 
 	// ListBySeller returns shipments for a seller with optional status filter and
 	// pagination. An empty status string means "all statuses".
-	ListBySeller(ctx context.Context, tenantID, sellerID uuid.UUID, status string, limit, offset int) ([]*domain.Shipment, int, error)
+	ListBySeller(ctx context.Context, sellerID uuid.UUID, status string, limit, offset int) ([]*domain.Shipment, int, error)
 
 	// UpdateStatus atomically transitions the shipment to the new status.
 	// The update is guarded by WHERE status = expectedStatus so concurrent
@@ -49,7 +48,7 @@ type ShipmentRepository interface {
 	// CancelByOrderID transitions the shipment for the given order to cancelled,
 	// but only if it is still in pending or ready_to_ship. If the shipment is
 	// already shipped or delivered this is a no-op (not an error).
-	CancelByOrderID(ctx context.Context, tenantID, orderID uuid.UUID) error
+	CancelByOrderID(ctx context.Context, orderID uuid.UUID) error
 
 	// AppendOutboxEvent inserts an outbox event row inside the caller's
 	// transaction (via context). The outbox relay worker will pick it up and
@@ -60,5 +59,5 @@ type ShipmentRepository interface {
 
 // TxRunner is the driven port for running database transactions.
 type TxRunner interface {
-	RunTenantTx(ctx context.Context, tenantID uuid.UUID, fn func(ctx context.Context) error) error
+	RunTx(ctx context.Context, fn func(ctx context.Context) error) error
 }

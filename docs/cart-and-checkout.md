@@ -24,7 +24,7 @@
 - **チェックアウト時に `seller_id` でグループ化** して N 個の注文を作成する
 - **N 個の注文は同じ `stripe_payment_intent_id` を共有** し、1 回の決済で全セラーへの送金を処理する
 
-カート機能はテナント分離に依存しない (本マーケットプレイスは現状 1 テナント構成)。ただし将来の SaaS 展開に備え、Redis キーには `tenant_id` を含めている。
+本マーケットプレイスはシングルテナント構成のため、カートは buyer 単位で管理する。
 
 ### サービス構成
 
@@ -45,7 +45,7 @@
 ```
 
 - **Cart service** — Redis へのカート CRUD とチェックアウトオーケストレーション
-- **Redis** — `cart:{tenant_id}:{buyer_auth0_id}` キーでカートを永続化
+- **Redis** — `cart:{buyer_auth0_id}` キーでカートを永続化
 - **Catalog service** — SKU の価格・商品名・所属セラー ID の権威ソース
 - **Order service** — チェックアウト時に N 個の注文と PaymentIntent を作成
 
@@ -56,14 +56,13 @@
 ### Redis キー設計
 
 ```
-cart:{tenant_id}:{buyer_auth0_id}
+cart:{buyer_auth0_id}
 ```
 
-- **`tenant_id`** — UUID 文字列。将来の SaaS 展開を見越した空間分離のため必須
 - **`buyer_auth0_id`** — JWT の `sub` クレーム (例: `auth0|abc123`)
 - **TTL** — 30 日 (2,592,000 秒)、**更新のたびにリセット** する
 
-将来的にカート機能を匿名ユーザーに拡張する場合は、ログイン前のキーとして `cart:{tenant_id}:anon:{session_id}` を追加し、ログイン時にマージするフローを設計する (本 MVP では対象外)。
+将来的にカート機能を匿名ユーザーに拡張する場合は、ログイン前のキーとして `cart:anon:{session_id}` を追加し、ログイン時にマージするフローを設計する (本 MVP では対象外)。
 
 ### JSON ペイロード
 
@@ -71,7 +70,6 @@ cart:{tenant_id}:{buyer_auth0_id}
 
 ```json
 {
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
   "buyer_auth0_id": "auth0|abc123",
   "items": [
     {
@@ -101,7 +99,6 @@ cart:{tenant_id}:{buyer_auth0_id}
 
 | フィールド                      | 型          | 説明                                                                              |
 | ------------------------------- | ----------- | --------------------------------------------------------------------------------- |
-| `tenant_id`                     | UUID string | テナント ID                                                                       |
 | `buyer_auth0_id`                | string      | Auth0 の sub クレーム                                                             |
 | `items[].sku_id`                | UUID string | catalog service の SKU ID                                                         |
 | `items[].seller_id`             | UUID string | catalog から取得したセラー ID (チェックアウト時のグルーピングキー)                |
@@ -393,5 +390,5 @@ const handleAddToCart = async () => {
 ## 関連ドキュメント
 
 - [決済設計書](./payment.md) — Stripe 連携、コミッション、Payout、webhook の詳細
-- [アーキテクチャ設計書](./architecture.md) — 全体像、データモデル、RLS
+- [アーキテクチャ設計書](./architecture.md) — 全体像、データモデル
 - [コントリビューションガイド](./CONTRIBUTING.md) — 開発プロセス、新サービス追加手順

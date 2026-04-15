@@ -14,7 +14,6 @@ const (
 type ShipmentShippedEvent struct {
 	ShipmentID     string    `json:"shipment_id"`
 	OrderID        string    `json:"order_id"`
-	TenantID       string    `json:"tenant_id"`
 	SellerID       string    `json:"seller_id"`
 	BuyerAuth0ID   string    `json:"buyer_auth0_id"`
 	Carrier        string    `json:"carrier"`
@@ -28,7 +27,6 @@ type ShipmentShippedEvent struct {
 type ShipmentDeliveredEvent struct {
 	ShipmentID   string    `json:"shipment_id"`
 	OrderID      string    `json:"order_id"`
-	TenantID     string    `json:"tenant_id"`
 	SellerID     string    `json:"seller_id"`
 	BuyerAuth0ID string    `json:"buyer_auth0_id"`
 	DeliveredAt  time.Time `json:"delivered_at"`
@@ -39,6 +37,5 @@ type ShipmentDeliveredEvent struct {
 type ShipmentCancelledEvent struct {
 	ShipmentID string `json:"shipment_id"`
 	OrderID    string `json:"order_id"`
-	TenantID   string `json:"tenant_id"`
 	Reason     string `json:"reason"`
 }

@@ -43,7 +43,7 @@ func ParseToken(raw, prefix string) (lookup, secret string, err error) {
 // Flow for a token with the matching prefix:
 //  1. Parse the wire format. Malformed → 401.
 //  2. Resolve via the loader. Non-active status → 401. Transport error → 503.
-//  3. Inject tenant.Context (TenantID, UserID = issuer sub, SellerID, Roles
+//  3. Inject tenant.Context (UserID = issuer sub, SellerID, Roles
 //     = ["seller"]) plus the apitoken.Context so downstream scope and
 //     rate-limit middlewares can pick it up.
 //  4. Log the request with the token id so every call is attributable.
@@ -115,7 +115,6 @@ func OrJWT(jwt *pkgmw.JWTMiddleware, loader *Loader, prefix string) func(http.Ha
 			// token-triggered update shows the human who issued the token.
 			sellerID := info.SellerID
 			tc := tenant.Context{
-				TenantID: info.TenantID,
 				SellerID: &sellerID,
 				UserID:   info.IssuedByAuth0UserID,
 				Roles:    []string{"seller"},
@@ -129,7 +128,6 @@ func OrJWT(jwt *pkgmw.JWTMiddleware, loader *Loader, prefix string) func(http.Ha
 			}
 			ac := Context{
 				ID:             info.ID,
-				TenantID:       info.TenantID,
 				SellerID:       info.SellerID,
 				Scopes:         scopeSet,
 				RateLimitRPS:   info.RateLimitRPS,

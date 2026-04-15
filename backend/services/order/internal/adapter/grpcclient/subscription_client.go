@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -76,13 +75,12 @@ func (c *BuyerSubscriptionClient) Close() error {
 // HasFreeShipping returns true iff the given buyer has an active subscription
 // whose plan grants free shipping. A missing subscription (NotFound) returns
 // (false, nil); other errors are surfaced.
-func (c *BuyerSubscriptionClient) HasFreeShipping(ctx context.Context, tenantID uuid.UUID, buyerAuth0ID string) (bool, error) {
+func (c *BuyerSubscriptionClient) HasFreeShipping(ctx context.Context, buyerAuth0ID string) (bool, error) {
 	callCtx, cancel := context.WithTimeout(ctx, hasFreeShippingTimeout)
 	defer cancel()
 
 	start := time.Now()
 	resp, err := c.client.GetBuyerSubscription(callCtx, &subscriptionv1.GetBuyerSubscriptionRequest{
-		TenantId:     tenantID.String(),
 		BuyerAuth0Id: buyerAuth0ID,
 	})
 	if err != nil {
@@ -96,7 +94,6 @@ func (c *BuyerSubscriptionClient) HasFreeShipping(ctx context.Context, tenantID 
 		slog.Warn("buyer subscription lookup failed",
 			"error", err,
 			"duration_ms", time.Since(start).Milliseconds(),
-			"tenant_id", tenantID.String(),
 		)
 		return false, fmt.Errorf("get buyer subscription: %w", err)
 	}

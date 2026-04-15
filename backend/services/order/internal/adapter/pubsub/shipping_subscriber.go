@@ -47,7 +47,6 @@ func (s *ShippingSubscriber) handleEvent(ctx context.Context, event pubsub.Event
 	slog.Info("received shipping event",
 		"event_id", event.ID,
 		"event_type", event.Type,
-		"tenant_id", event.TenantID,
 	)
 
 	switch event.Type {
@@ -73,16 +72,12 @@ func (s *ShippingSubscriber) handleShipmentShipped(ctx context.Context, event pu
 		return fmt.Errorf("decode shipment.shipped data: %w", err)
 	}
 
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		return fmt.Errorf("parse tenant_id: %w", err)
-	}
 	orderID, err := uuid.Parse(data.OrderID)
 	if err != nil {
 		return fmt.Errorf("parse order_id: %w", err)
 	}
 
-	if err := s.orderStore.UpdateStatus(ctx, tenantID, orderID, domain.StatusShipped); err != nil {
+	if err := s.orderStore.UpdateStatus(ctx, orderID, domain.StatusShipped); err != nil {
 		return fmt.Errorf("update order status to shipped: %w", err)
 	}
 
@@ -101,16 +96,12 @@ func (s *ShippingSubscriber) handleShipmentDelivered(ctx context.Context, event 
 		return fmt.Errorf("decode shipment.delivered data: %w", err)
 	}
 
-	tenantID, err := uuid.Parse(event.TenantID)
-	if err != nil {
-		return fmt.Errorf("parse tenant_id: %w", err)
-	}
 	orderID, err := uuid.Parse(data.OrderID)
 	if err != nil {
 		return fmt.Errorf("parse order_id: %w", err)
 	}
 
-	if err := s.orderStore.UpdateStatus(ctx, tenantID, orderID, domain.StatusDelivered); err != nil {
+	if err := s.orderStore.UpdateStatus(ctx, orderID, domain.StatusDelivered); err != nil {
 		return fmt.Errorf("update order status to delivered: %w", err)
 	}
 

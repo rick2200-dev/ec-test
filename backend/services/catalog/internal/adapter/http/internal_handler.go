@@ -9,7 +9,6 @@ import (
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
-	"github.com/Riku-KANO/ec-test/pkg/tenant"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/port"
 )
 
@@ -54,25 +53,19 @@ type productLookupResponse struct {
 // and the list of SKU IDs so callers can perform purchase verification
 // against the order service without needing catalog domain knowledge.
 func (h *InternalHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
-
 	productID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.Error(w, apperrors.BadRequest("invalid product id"))
 		return
 	}
 
-	product, err := h.svc.GetProductByID(r.Context(), tenantID, productID)
+	product, err := h.svc.GetProductByID(r.Context(), productID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
 
-	skus, err := h.svc.ListSKUs(r.Context(), tenantID, productID)
+	skus, err := h.svc.ListSKUs(r.Context(), productID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -91,21 +84,15 @@ func (h *InternalHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetSKU handles GET /internal/skus/{id}. Requires X-Tenant-ID header.
+// GetSKU handles GET /internal/skus/{id}.
 func (h *InternalHandler) GetSKU(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
-		return
-	}
-
 	skuID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputil.Error(w, apperrors.BadRequest("invalid sku id"))
 		return
 	}
 
-	sku, err := h.svc.GetSKUWithProductName(r.Context(), tenantID, skuID)
+	sku, err := h.svc.GetSKUWithProductName(r.Context(), skuID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return

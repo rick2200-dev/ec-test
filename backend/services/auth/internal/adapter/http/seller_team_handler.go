@@ -53,31 +53,25 @@ type meResponse struct {
 	Role        string `json:"role"`
 }
 
-// parseContext extracts tenant ID, seller ID, and the actor's Auth0 user ID
-// from the request context and the sellerID URL parameter. Returns a written
-// response and false on failure.
-func (h *SellerTeamHandler) parseContext(w http.ResponseWriter, r *http.Request) (tenantID, sellerID uuid.UUID, ok bool) {
-	tid, err := tenant.TenantID(r.Context())
-	if err != nil {
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant context required"})
-		return uuid.Nil, uuid.Nil, false
-	}
+// parseSellerID extracts the sellerID URL parameter from the request.
+// Returns a written response and false on failure.
+func (h *SellerTeamHandler) parseSellerID(w http.ResponseWriter, r *http.Request) (sellerID uuid.UUID, ok bool) {
 	sidStr := chi.URLParam(r, "sellerID")
 	sid, err := uuid.Parse(sidStr)
 	if err != nil {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid seller id"})
-		return uuid.Nil, uuid.Nil, false
+		return uuid.Nil, false
 	}
-	return tid, sid, true
+	return sid, true
 }
 
 // List handles GET /sellers/{sellerID}/team.
 func (h *SellerTeamHandler) List(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
-	users, err := h.svc.ListSellerTeam(r.Context(), tenantID, sellerID)
+	users, err := h.svc.ListSellerTeam(r.Context(), sellerID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -87,7 +81,7 @@ func (h *SellerTeamHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Add handles POST /sellers/{sellerID}/team.
 func (h *SellerTeamHandler) Add(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -96,7 +90,7 @@ func (h *SellerTeamHandler) Add(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, err)
 		return
 	}
-	created, err := h.svc.AddSellerUser(r.Context(), tenantID, sellerID, req.Auth0UserID, req.Role)
+	created, err := h.svc.AddSellerUser(r.Context(), sellerID, req.Auth0UserID, req.Role)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -106,7 +100,7 @@ func (h *SellerTeamHandler) Add(w http.ResponseWriter, r *http.Request) {
 
 // UpdateRole handles PUT /sellers/{sellerID}/team/{id}/role.
 func (h *SellerTeamHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -121,7 +115,7 @@ func (h *SellerTeamHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, err)
 		return
 	}
-	if err := h.svc.UpdateSellerUserRole(r.Context(), tenantID, sellerID, id, req.Role); err != nil {
+	if err := h.svc.UpdateSellerUserRole(r.Context(), sellerID, id, req.Role); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -130,7 +124,7 @@ func (h *SellerTeamHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 // Remove handles DELETE /sellers/{sellerID}/team/{id}.
 func (h *SellerTeamHandler) Remove(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -140,7 +134,7 @@ func (h *SellerTeamHandler) Remove(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
 		return
 	}
-	if err := h.svc.RemoveSellerUser(r.Context(), tenantID, sellerID, id); err != nil {
+	if err := h.svc.RemoveSellerUser(r.Context(), sellerID, id); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -149,7 +143,7 @@ func (h *SellerTeamHandler) Remove(w http.ResponseWriter, r *http.Request) {
 
 // TransferOwnership handles POST /sellers/{sellerID}/team/transfer-ownership.
 func (h *SellerTeamHandler) TransferOwnership(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -158,7 +152,7 @@ func (h *SellerTeamHandler) TransferOwnership(w http.ResponseWriter, r *http.Req
 		httputil.Error(w, err)
 		return
 	}
-	if err := h.svc.TransferSellerOwnership(r.Context(), tenantID, sellerID, req.NewOwnerID); err != nil {
+	if err := h.svc.TransferSellerOwnership(r.Context(), sellerID, req.NewOwnerID); err != nil {
 		httputil.Error(w, err)
 		return
 	}
@@ -168,7 +162,7 @@ func (h *SellerTeamHandler) TransferOwnership(w http.ResponseWriter, r *http.Req
 // Me handles GET /sellers/{sellerID}/team/me. Returns the caller's role in
 // the seller organization so the UI can conditionally render controls.
 func (h *SellerTeamHandler) Me(w http.ResponseWriter, r *http.Request) {
-	tenantID, sellerID, ok := h.parseContext(w, r)
+	sellerID, ok := h.parseSellerID(w, r)
 	if !ok {
 		return
 	}
@@ -177,7 +171,7 @@ func (h *SellerTeamHandler) Me(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "caller identity required"})
 		return
 	}
-	role, err := h.svc.LookupSellerRole(r.Context(), tenantID, sellerID, tc.UserID)
+	role, err := h.svc.LookupSellerRole(r.Context(), sellerID, tc.UserID)
 	if err != nil {
 		httputil.Error(w, err)
 		return

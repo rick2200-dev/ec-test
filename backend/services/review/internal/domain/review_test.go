@@ -66,14 +66,12 @@ func TestReview_WithReply(t *testing.T) {
 
 	now := time.Now()
 	reviewID := uuid.New()
-	tenantID := uuid.New()
 
 	t.Run("without reply", func(t *testing.T) {
 		productID := uuid.New()
 		sellerID := uuid.New()
 		r := domain.Review{
 			ID:           reviewID,
-			TenantID:     tenantID,
 			BuyerAuth0ID: "auth0|buyer1",
 			ProductID:    productID,
 			SellerID:     sellerID,
@@ -91,9 +89,6 @@ func TestReview_WithReply(t *testing.T) {
 		}
 		if r.ID != reviewID {
 			t.Fatalf("expected ID %s, got %s", reviewID, r.ID)
-		}
-		if r.TenantID != tenantID {
-			t.Fatalf("expected TenantID %s, got %s", tenantID, r.TenantID)
 		}
 		if r.BuyerAuth0ID != "auth0|buyer1" {
 			t.Fatalf("expected BuyerAuth0ID %q, got %q", "auth0|buyer1", r.BuyerAuth0ID)
@@ -128,7 +123,6 @@ func TestReview_WithReply(t *testing.T) {
 		replyID := uuid.New()
 		reply := &domain.ReviewReply{
 			ID:            replyID,
-			TenantID:      tenantID,
 			ReviewID:      reviewID,
 			SellerAuth0ID: "auth0|seller1",
 			Body:          "Thank you for your feedback!",
@@ -150,9 +144,6 @@ func TestReview_WithReply(t *testing.T) {
 		}
 		if r.Reply.ReviewID != reviewID {
 			t.Fatalf("expected Reply.ReviewID %s, got %s", reviewID, r.Reply.ReviewID)
-		}
-		if r.Reply.TenantID != tenantID {
-			t.Fatalf("expected Reply.TenantID %s, got %s", tenantID, r.Reply.TenantID)
 		}
 		if r.Reply.SellerAuth0ID != "auth0|seller1" {
 			t.Fatalf("expected SellerAuth0ID %q, got %q", "auth0|seller1", r.Reply.SellerAuth0ID)
@@ -177,9 +168,6 @@ func TestProductRating_ZeroValue(t *testing.T) {
 
 	var pr domain.ProductRating
 
-	if pr.TenantID != uuid.Nil {
-		t.Fatalf("expected zero TenantID, got %s", pr.TenantID)
-	}
 	if pr.ProductID != uuid.Nil {
 		t.Fatalf("expected zero ProductID, got %s", pr.ProductID)
 	}

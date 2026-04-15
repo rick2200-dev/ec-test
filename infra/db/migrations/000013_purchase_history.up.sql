@@ -7,13 +7,11 @@
 ALTER TABLE order_svc.orders
     ADD COLUMN seller_name VARCHAR(255) NOT NULL DEFAULT '';
 
--- Backfill existing rows from auth_svc.sellers (cross-schema; migrations run
--- as superuser so RLS is bypassed during the UPDATE).
+-- Backfill existing rows from auth_svc.sellers.
 UPDATE order_svc.orders o
    SET seller_name = COALESCE(s.name, '')
   FROM auth_svc.sellers s
- WHERE o.seller_id = s.id
-   AND o.tenant_id = s.tenant_id;
+ WHERE o.seller_id = s.id;
 
 -- order_lines: product_id snapshot (for detail-page enrichment via catalog gRPC).
 ALTER TABLE order_svc.order_lines
@@ -23,8 +21,7 @@ ALTER TABLE order_svc.order_lines
 UPDATE order_svc.order_lines ol
    SET product_id = sk.product_id
   FROM catalog_svc.skus sk
- WHERE ol.sku_id = sk.id
-   AND ol.tenant_id = sk.tenant_id;
+ WHERE ol.sku_id = sk.id;
 
 -- For any historical rows whose sku_id no longer exists in catalog_svc.skus
 -- (no FK constraint binds those tables), stamp the nil UUID as a sentinel so
@@ -42,7 +39,7 @@ ALTER TABLE order_svc.order_lines
     ALTER COLUMN product_id SET NOT NULL;
 
 CREATE INDEX idx_order_lines_product
-    ON order_svc.order_lines(tenant_id, product_id);
+    ON order_svc.order_lines(product_id);
 
 -- catalog: product image URL (single primary image for now; a dedicated
 -- product_images table can be added later if multiple images are needed).

@@ -17,7 +17,7 @@ import (
 type mockSearchEngine struct {
 	searchFn        func(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error)
 	indexProductFn  func(ctx context.Context, product domain.ProductEvent) error
-	deleteProductFn func(ctx context.Context, tenantID, productID uuid.UUID) error
+	deleteProductFn func(ctx context.Context, productID uuid.UUID) error
 }
 
 func (m *mockSearchEngine) Search(ctx context.Context, req domain.SearchRequest) (*domain.SearchResult, error) {
@@ -34,9 +34,9 @@ func (m *mockSearchEngine) IndexProduct(ctx context.Context, product domain.Prod
 	return nil
 }
 
-func (m *mockSearchEngine) DeleteProduct(ctx context.Context, tenantID, productID uuid.UUID) error {
+func (m *mockSearchEngine) DeleteProduct(ctx context.Context, productID uuid.UUID) error {
 	if m.deleteProductFn != nil {
-		return m.deleteProductFn(ctx, tenantID, productID)
+		return m.deleteProductFn(ctx, productID)
 	}
 	return nil
 }
@@ -54,24 +54,14 @@ func TestSearch_Success(t *testing.T) {
 	svc := newSearchSvc(&mockSearchEngine{})
 
 	result, err := svc.Search(context.Background(), domain.SearchRequest{
-		TenantID: uuid.New(),
-		Query:    "shirt",
-		Limit:    10,
+		Query: "shirt",
+		Limit: 10,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if result == nil {
 		t.Fatal("expected non-nil result")
-	}
-}
-
-func TestSearch_MissingTenantID(t *testing.T) {
-	svc := newSearchSvc(&mockSearchEngine{})
-
-	_, err := svc.Search(context.Background(), domain.SearchRequest{Query: "shirt"})
-	if !errors.Is(err, domain.ErrMissingTenantID) {
-		t.Errorf("want ErrMissingTenantID, got %v", err)
 	}
 }
 
@@ -86,13 +76,13 @@ func TestSearch_LimitClampedToDefault(t *testing.T) {
 	svc := newSearchSvc(eng)
 
 	// Limit 0 → default 20
-	_, _ = svc.Search(context.Background(), domain.SearchRequest{TenantID: uuid.New(), Limit: 0})
+	_, _ = svc.Search(context.Background(), domain.SearchRequest{Limit: 0})
 	if capturedLimit != 20 {
 		t.Errorf("limit = %d, want 20 (default)", capturedLimit)
 	}
 
 	// Limit > 100 → default 20
-	_, _ = svc.Search(context.Background(), domain.SearchRequest{TenantID: uuid.New(), Limit: 200})
+	_, _ = svc.Search(context.Background(), domain.SearchRequest{Limit: 200})
 	if capturedLimit != 20 {
 		t.Errorf("limit = %d, want 20 (over-max clamped)", capturedLimit)
 	}
@@ -108,7 +98,7 @@ func TestSearch_NegativeOffsetClampedToZero(t *testing.T) {
 	}
 	svc := newSearchSvc(eng)
 
-	_, _ = svc.Search(context.Background(), domain.SearchRequest{TenantID: uuid.New(), Limit: 10, Offset: -5})
+	_, _ = svc.Search(context.Background(), domain.SearchRequest{Limit: 10, Offset: -5})
 	if capturedOffset != 0 {
 		t.Errorf("offset = %d, want 0", capturedOffset)
 	}
@@ -124,7 +114,7 @@ func TestSearch_StatusDefaultsToActive(t *testing.T) {
 	}
 	svc := newSearchSvc(eng)
 
-	_, _ = svc.Search(context.Background(), domain.SearchRequest{TenantID: uuid.New(), Limit: 10})
+	_, _ = svc.Search(context.Background(), domain.SearchRequest{Limit: 10})
 	if capturedStatus != "active" {
 		t.Errorf("status = %q, want %q", capturedStatus, "active")
 	}
@@ -141,9 +131,8 @@ func TestSearch_StatusNotOverriddenWhenSet(t *testing.T) {
 	svc := newSearchSvc(eng)
 
 	_, _ = svc.Search(context.Background(), domain.SearchRequest{
-		TenantID: uuid.New(),
-		Limit:    10,
-		Status:   "draft",
+		Limit:  10,
+		Status: "draft",
 	})
 	if capturedStatus != "draft" {
 		t.Errorf("status = %q, want %q", capturedStatus, "draft")
@@ -158,7 +147,7 @@ func TestSearch_NilResultsReplacedWithEmpty(t *testing.T) {
 	}
 	svc := newSearchSvc(eng)
 
-	result, err := svc.Search(context.Background(), domain.SearchRequest{TenantID: uuid.New()})
+	result, err := svc.Search(context.Background(), domain.SearchRequest{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -178,7 +167,7 @@ func TestSearch_EngineError(t *testing.T) {
 	}
 	svc := newSearchSvc(eng)
 
-	_, err := svc.Search(context.Background(), domain.SearchRequest{TenantID: uuid.New()})
+	_, err := svc.Search(context.Background(), domain.SearchRequest{})
 
 	var appErr *apperrors.AppError
 	if !errors.As(err, &appErr) {
@@ -191,15 +180,6 @@ func TestSearch_EngineError(t *testing.T) {
 
 // ---- Suggest ----
 
-func TestSuggest_MissingTenantID(t *testing.T) {
-	svc := newSearchSvc(&mockSearchEngine{})
-
-	_, err := svc.Suggest(context.Background(), domain.SearchRequest{Query: "sh"})
-	if !errors.Is(err, domain.ErrMissingTenantID) {
-		t.Errorf("want ErrMissingTenantID, got %v", err)
-	}
-}
-
 func TestSuggest_ForcesLimitAndOffset(t *testing.T) {
 	var capturedReq domain.SearchRequest
 	eng := &mockSearchEngine{
@@ -211,10 +191,9 @@ func TestSuggest_ForcesLimitAndOffset(t *testing.T) {
 	svc := newSearchSvc(eng)
 
 	_, _ = svc.Suggest(context.Background(), domain.SearchRequest{
-		TenantID: uuid.New(),
-		Query:    "sh",
-		Limit:    50,
-		Offset:   100,
+		Query:  "sh",
+		Limit:  50,
+		Offset: 100,
 	})
 	if capturedReq.Limit != 10 {
 		t.Errorf("limit = %d, want 10", capturedReq.Limit)
@@ -238,7 +217,7 @@ func TestSuggest_FacetsAlwaysEmpty(t *testing.T) {
 	}
 	svc := newSearchSvc(eng)
 
-	result, err := svc.Suggest(context.Background(), domain.SearchRequest{TenantID: uuid.New(), Query: "sh"})
+	result, err := svc.Suggest(context.Background(), domain.SearchRequest{Query: "sh"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -273,14 +252,14 @@ func TestIndexProduct_DelegatesToEngine(t *testing.T) {
 func TestDeleteProduct_DelegatesToEngine(t *testing.T) {
 	called := false
 	eng := &mockSearchEngine{
-		deleteProductFn: func(_ context.Context, _, _ uuid.UUID) error {
+		deleteProductFn: func(_ context.Context, _ uuid.UUID) error {
 			called = true
 			return nil
 		},
 	}
 	svc := newSearchSvc(eng)
 
-	if err := svc.DeleteProduct(context.Background(), uuid.New(), uuid.New()); err != nil {
+	if err := svc.DeleteProduct(context.Background(), uuid.New()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !called {

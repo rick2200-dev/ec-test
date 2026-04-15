@@ -27,7 +27,6 @@ const (
 
 // RecommendRequest holds parameters for generating recommendations.
 type RecommendRequest struct {
-	TenantID  uuid.UUID
 	UserID    string
 	ProductID *uuid.UUID // required for Similar and FrequentlyBoughtTogether
 	Type      RecommendationType
@@ -42,7 +41,6 @@ type RecommendResponse struct {
 // RecommendedProduct is a single product recommendation with scoring metadata.
 type RecommendedProduct struct {
 	ID            uuid.UUID `json:"id"`
-	TenantID      uuid.UUID `json:"tenant_id"`
 	SellerID      uuid.UUID `json:"seller_id"`
 	Name          string    `json:"name"`
 	Slug          string    `json:"slug"`
@@ -55,7 +53,6 @@ type RecommendedProduct struct {
 // UserEvent represents a user behavior event for recommendation tracking.
 type UserEvent struct {
 	ID        uuid.UUID     `json:"id"`
-	TenantID  uuid.UUID     `json:"tenant_id"`
 	UserID    string        `json:"user_id"`
 	EventType UserEventType `json:"event_type"`
 	ProductID uuid.UUID     `json:"product_id"`

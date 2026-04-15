@@ -20,8 +20,8 @@ import (
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	grpcserver "github.com/Riku-KANO/ec-test/services/shipping/internal/adapter/grpc"
 	handler "github.com/Riku-KANO/ec-test/services/shipping/internal/adapter/http"
-	subscriber "github.com/Riku-KANO/ec-test/services/shipping/internal/adapter/pubsub"
 	repository "github.com/Riku-KANO/ec-test/services/shipping/internal/adapter/postgres"
+	subscriber "github.com/Riku-KANO/ec-test/services/shipping/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/shipping/internal/app"
 	"github.com/Riku-KANO/ec-test/services/shipping/internal/config"
 )
@@ -135,8 +135,8 @@ func main() {
 	r.Get("/readyz", healthHandler.Readiness)
 
 	// All non-health routes require the gateway's shared secret so that
-	// callers cannot forge X-Tenant-ID / X-Seller-ID headers by bypassing
-	// the gateway. Fail-closed (503) when SHIPPING_INTERNAL_TOKEN is unset.
+	// callers cannot forge X-Seller-ID headers by bypassing the gateway.
+	// Fail-closed (503) when SHIPPING_INTERNAL_TOKEN is unset.
 	r.Group(func(protected chi.Router) {
 		protected.Use(pkgmiddleware.RequireInternalToken(cfg.InternalToken))
 

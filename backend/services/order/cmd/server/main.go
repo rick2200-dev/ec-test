@@ -23,7 +23,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/postgres"
 	stripeClient "github.com/Riku-KANO/ec-test/services/order/internal/adapter/stripe"
-	"github.com/Riku-KANO/ec-test/services/order/internal/adapter/pubsub"
+	subscriber "github.com/Riku-KANO/ec-test/services/order/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/order/internal/app"
 	"github.com/Riku-KANO/ec-test/services/order/internal/cancellation"
 	"github.com/Riku-KANO/ec-test/services/order/internal/config"
@@ -40,6 +40,13 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Pub/Sub emulator host (must be set before subscriber is created).
+	if cfg.PubSubEmulatorHost != "" {
+		if err := os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost); err != nil {
+			slog.Warn("failed to set PUBSUB_EMULATOR_HOST", "error", err)
+		}
+	}
 
 	pool, err := database.NewPool(ctx, database.Config{
 		URL:      cfg.DatabaseURL,
@@ -77,13 +84,6 @@ func main() {
 			}
 		}
 	}()
-
-	// Pub/Sub emulator host (must be set before subscriber is created).
-	if cfg.PubSubEmulatorHost != "" {
-		if err := os.Setenv("PUBSUB_EMULATOR_HOST", cfg.PubSubEmulatorHost); err != nil {
-			slog.Warn("failed to set PUBSUB_EMULATOR_HOST", "error", err)
-		}
-	}
 
 	// Repositories
 	orderRepo := repository.NewOrderRepository(pool)

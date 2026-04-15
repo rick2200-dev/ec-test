@@ -27,17 +27,16 @@ const (
 type Review struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	ProductId     string                 `protobuf:"bytes,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,5,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	ProductName   string                 `protobuf:"bytes,6,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
-	Rating        int32                  `protobuf:"varint,7,opt,name=rating,proto3" json:"rating,omitempty"`
-	Title         string                 `protobuf:"bytes,8,opt,name=title,proto3" json:"title,omitempty"`
-	Body          string                 `protobuf:"bytes,9,opt,name=body,proto3" json:"body,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Reply         *ReviewReply           `protobuf:"bytes,12,opt,name=reply,proto3" json:"reply,omitempty"` // May be null if no reply exists
+	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	ProductId     string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	ProductName   string                 `protobuf:"bytes,5,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
+	Rating        int32                  `protobuf:"varint,6,opt,name=rating,proto3" json:"rating,omitempty"`
+	Title         string                 `protobuf:"bytes,7,opt,name=title,proto3" json:"title,omitempty"`
+	Body          string                 `protobuf:"bytes,8,opt,name=body,proto3" json:"body,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Reply         *ReviewReply           `protobuf:"bytes,11,opt,name=reply,proto3" json:"reply,omitempty"` // May be null if no reply exists
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,13 +74,6 @@ func (*Review) Descriptor() ([]byte, []int) {
 func (x *Review) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *Review) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -160,12 +152,11 @@ func (x *Review) GetReply() *ReviewReply {
 type ReviewReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,3,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	SellerAuth0Id string                 `protobuf:"bytes,4,opt,name=seller_auth0_id,json=sellerAuth0Id,proto3" json:"seller_auth0_id,omitempty"`
-	Body          string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	SellerAuth0Id string                 `protobuf:"bytes,3,opt,name=seller_auth0_id,json=sellerAuth0Id,proto3" json:"seller_auth0_id,omitempty"`
+	Body          string                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -203,13 +194,6 @@ func (*ReviewReply) Descriptor() ([]byte, []int) {
 func (x *ReviewReply) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *ReviewReply) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
 	}
 	return ""
 }
@@ -252,11 +236,10 @@ func (x *ReviewReply) GetUpdatedAt() *timestamppb.Timestamp {
 // ProductRating is the aggregate rating for a product.
 type ProductRating struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	AverageRating float64                `protobuf:"fixed64,3,opt,name=average_rating,json=averageRating,proto3" json:"average_rating,omitempty"`
-	ReviewCount   int32                  `protobuf:"varint,4,opt,name=review_count,json=reviewCount,proto3" json:"review_count,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ProductId     string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	AverageRating float64                `protobuf:"fixed64,2,opt,name=average_rating,json=averageRating,proto3" json:"average_rating,omitempty"`
+	ReviewCount   int32                  `protobuf:"varint,3,opt,name=review_count,json=reviewCount,proto3" json:"review_count,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -291,13 +274,6 @@ func (*ProductRating) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ProductRating) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
-}
-
 func (x *ProductRating) GetProductId() string {
 	if x != nil {
 		return x.ProductId
@@ -328,12 +304,11 @@ func (x *ProductRating) GetUpdatedAt() *timestamppb.Timestamp {
 
 type CreateReviewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	ProductId     string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Rating        int32                  `protobuf:"varint,4,opt,name=rating,proto3" json:"rating,omitempty"`
-	Title         string                 `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
-	Body          string                 `protobuf:"bytes,6,opt,name=body,proto3" json:"body,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,1,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Rating        int32                  `protobuf:"varint,3,opt,name=rating,proto3" json:"rating,omitempty"`
+	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Body          string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -366,13 +341,6 @@ func (x *CreateReviewRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateReviewRequest.ProtoReflect.Descriptor instead.
 func (*CreateReviewRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *CreateReviewRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateReviewRequest) GetBuyerAuth0Id() string {
@@ -456,8 +424,7 @@ func (x *CreateReviewResponse) GetReview() *Review {
 
 type GetReviewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -490,13 +457,6 @@ func (x *GetReviewRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetReviewRequest.ProtoReflect.Descriptor instead.
 func (*GetReviewRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *GetReviewRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetReviewRequest) GetReviewId() string {
@@ -552,12 +512,11 @@ func (x *GetReviewResponse) GetReview() *Review {
 
 type UpdateReviewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	Rating        *int32                 `protobuf:"varint,4,opt,name=rating,proto3,oneof" json:"rating,omitempty"`
-	Title         *string                `protobuf:"bytes,5,opt,name=title,proto3,oneof" json:"title,omitempty"`
-	Body          *string                `protobuf:"bytes,6,opt,name=body,proto3,oneof" json:"body,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	Rating        *int32                 `protobuf:"varint,3,opt,name=rating,proto3,oneof" json:"rating,omitempty"`
+	Title         *string                `protobuf:"bytes,4,opt,name=title,proto3,oneof" json:"title,omitempty"`
+	Body          *string                `protobuf:"bytes,5,opt,name=body,proto3,oneof" json:"body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -590,13 +549,6 @@ func (x *UpdateReviewRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateReviewRequest.ProtoReflect.Descriptor instead.
 func (*UpdateReviewRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *UpdateReviewRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateReviewRequest) GetReviewId() string {
@@ -680,9 +632,8 @@ func (x *UpdateReviewResponse) GetReview() *Review {
 
 type DeleteReviewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	BuyerAuth0Id  string                 `protobuf:"bytes,2,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -715,13 +666,6 @@ func (x *DeleteReviewRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeleteReviewRequest.ProtoReflect.Descriptor instead.
 func (*DeleteReviewRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *DeleteReviewRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *DeleteReviewRequest) GetReviewId() string {
@@ -776,9 +720,8 @@ func (*DeleteReviewResponse) Descriptor() ([]byte, []int) {
 
 type ListProductReviewsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	ProductId     string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -811,13 +754,6 @@ func (x *ListProductReviewsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListProductReviewsRequest.ProtoReflect.Descriptor instead.
 func (*ListProductReviewsRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *ListProductReviewsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListProductReviewsRequest) GetProductId() string {
@@ -888,8 +824,7 @@ func (x *ListProductReviewsResponse) GetPagination() *v1.PaginationResponse {
 
 type GetProductRatingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	ProductId     string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -922,13 +857,6 @@ func (x *GetProductRatingRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetProductRatingRequest.ProtoReflect.Descriptor instead.
 func (*GetProductRatingRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *GetProductRatingRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetProductRatingRequest) GetProductId() string {
@@ -984,9 +912,8 @@ func (x *GetProductRatingResponse) GetRating() *ProductRating {
 
 type ListSellerReviewsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Pagination    *v1.PaginationRequest  `protobuf:"bytes,3,opt,name=pagination,proto3" json:"pagination,omitempty"`
+	SellerId      string                 `protobuf:"bytes,1,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Pagination    *v1.PaginationRequest  `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1019,13 +946,6 @@ func (x *ListSellerReviewsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListSellerReviewsRequest.ProtoReflect.Descriptor instead.
 func (*ListSellerReviewsRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *ListSellerReviewsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *ListSellerReviewsRequest) GetSellerId() string {
@@ -1096,11 +1016,10 @@ func (x *ListSellerReviewsResponse) GetPagination() *v1.PaginationResponse {
 
 type CreateReplyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	SellerAuth0Id string                 `protobuf:"bytes,3,opt,name=seller_auth0_id,json=sellerAuth0Id,proto3" json:"seller_auth0_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Body          string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	SellerAuth0Id string                 `protobuf:"bytes,2,opt,name=seller_auth0_id,json=sellerAuth0Id,proto3" json:"seller_auth0_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Body          string                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1133,13 +1052,6 @@ func (x *CreateReplyRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateReplyRequest.ProtoReflect.Descriptor instead.
 func (*CreateReplyRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *CreateReplyRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *CreateReplyRequest) GetReviewId() string {
@@ -1216,11 +1128,10 @@ func (x *CreateReplyResponse) GetReply() *ReviewReply {
 
 type UpdateReplyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	SellerAuth0Id string                 `protobuf:"bytes,3,opt,name=seller_auth0_id,json=sellerAuth0Id,proto3" json:"seller_auth0_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,4,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Body          string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	SellerAuth0Id string                 `protobuf:"bytes,2,opt,name=seller_auth0_id,json=sellerAuth0Id,proto3" json:"seller_auth0_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Body          string                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1253,13 +1164,6 @@ func (x *UpdateReplyRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UpdateReplyRequest.ProtoReflect.Descriptor instead.
 func (*UpdateReplyRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{19}
-}
-
-func (x *UpdateReplyRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *UpdateReplyRequest) GetReviewId() string {
@@ -1336,9 +1240,8 @@ func (x *UpdateReplyResponse) GetReply() *ReviewReply {
 
 type DeleteReplyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ReviewId      string                 `protobuf:"bytes,2,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,3,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1371,13 +1274,6 @@ func (x *DeleteReplyRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeleteReplyRequest.ProtoReflect.Descriptor instead.
 func (*DeleteReplyRequest) Descriptor() ([]byte, []int) {
 	return file_review_v1_review_proto_rawDescGZIP(), []int{21}
-}
-
-func (x *DeleteReplyRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *DeleteReplyRequest) GetReviewId() string {
@@ -1434,123 +1330,110 @@ var File_review_v1_review_proto protoreflect.FileDescriptor
 
 const file_review_v1_review_proto_rawDesc = "" +
 	"\n" +
-	"\x16review/v1/review.proto\x12\treview.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\xa0\x03\n" +
+	"\x16review/v1/review.proto\x12\treview.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16common/v1/common.proto\"\x83\x03\n" +
 	"\x06Review\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\x12\x1d\n" +
-	"\n" +
-	"product_id\x18\x04 \x01(\tR\tproductId\x12\x1b\n" +
-	"\tseller_id\x18\x05 \x01(\tR\bsellerId\x12!\n" +
-	"\fproduct_name\x18\x06 \x01(\tR\vproductName\x12\x16\n" +
-	"\x06rating\x18\a \x01(\x05R\x06rating\x12\x14\n" +
-	"\x05title\x18\b \x01(\tR\x05title\x12\x12\n" +
-	"\x04body\x18\t \x01(\tR\x04body\x129\n" +
-	"\n" +
-	"created_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12,\n" +
-	"\x05reply\x18\f \x01(\v2\x16.review.v1.ReviewReplyR\x05reply\"\x89\x02\n" +
-	"\vReviewReply\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x03 \x01(\tR\breviewId\x12&\n" +
-	"\x0fseller_auth0_id\x18\x04 \x01(\tR\rsellerAuth0Id\x12\x12\n" +
-	"\x04body\x18\x05 \x01(\tR\x04body\x129\n" +
-	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xd0\x01\n" +
-	"\rProductRating\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
-	"\n" +
-	"product_id\x18\x02 \x01(\tR\tproductId\x12%\n" +
-	"\x0eaverage_rating\x18\x03 \x01(\x01R\raverageRating\x12!\n" +
-	"\freview_count\x18\x04 \x01(\x05R\vreviewCount\x129\n" +
-	"\n" +
-	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb9\x01\n" +
-	"\x13CreateReviewRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12$\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12$\n" +
 	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x03 \x01(\tR\tproductId\x12\x16\n" +
-	"\x06rating\x18\x04 \x01(\x05R\x06rating\x12\x14\n" +
-	"\x05title\x18\x05 \x01(\tR\x05title\x12\x12\n" +
-	"\x04body\x18\x06 \x01(\tR\x04body\"A\n" +
+	"product_id\x18\x03 \x01(\tR\tproductId\x12\x1b\n" +
+	"\tseller_id\x18\x04 \x01(\tR\bsellerId\x12!\n" +
+	"\fproduct_name\x18\x05 \x01(\tR\vproductName\x12\x16\n" +
+	"\x06rating\x18\x06 \x01(\x05R\x06rating\x12\x14\n" +
+	"\x05title\x18\a \x01(\tR\x05title\x12\x12\n" +
+	"\x04body\x18\b \x01(\tR\x04body\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12,\n" +
+	"\x05reply\x18\v \x01(\v2\x16.review.v1.ReviewReplyR\x05reply\"\xec\x01\n" +
+	"\vReviewReply\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\treview_id\x18\x02 \x01(\tR\breviewId\x12&\n" +
+	"\x0fseller_auth0_id\x18\x03 \x01(\tR\rsellerAuth0Id\x12\x12\n" +
+	"\x04body\x18\x04 \x01(\tR\x04body\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb3\x01\n" +
+	"\rProductRating\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\tR\tproductId\x12%\n" +
+	"\x0eaverage_rating\x18\x02 \x01(\x01R\raverageRating\x12!\n" +
+	"\freview_count\x18\x03 \x01(\x05R\vreviewCount\x129\n" +
+	"\n" +
+	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x9c\x01\n" +
+	"\x13CreateReviewRequest\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x01 \x01(\tR\fbuyerAuth0Id\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\x12\x16\n" +
+	"\x06rating\x18\x03 \x01(\x05R\x06rating\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x12\n" +
+	"\x04body\x18\x05 \x01(\tR\x04body\"A\n" +
 	"\x14CreateReviewResponse\x12)\n" +
-	"\x06review\x18\x01 \x01(\v2\x11.review.v1.ReviewR\x06review\"L\n" +
+	"\x06review\x18\x01 \x01(\v2\x11.review.v1.ReviewR\x06review\"/\n" +
 	"\x10GetReviewRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x02 \x01(\tR\breviewId\">\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\">\n" +
 	"\x11GetReviewResponse\x12)\n" +
-	"\x06review\x18\x01 \x01(\v2\x11.review.v1.ReviewR\x06review\"\xe4\x01\n" +
+	"\x06review\x18\x01 \x01(\v2\x11.review.v1.ReviewR\x06review\"\xc7\x01\n" +
 	"\x13UpdateReviewRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x02 \x01(\tR\breviewId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\x12\x1b\n" +
-	"\x06rating\x18\x04 \x01(\x05H\x00R\x06rating\x88\x01\x01\x12\x19\n" +
-	"\x05title\x18\x05 \x01(\tH\x01R\x05title\x88\x01\x01\x12\x17\n" +
-	"\x04body\x18\x06 \x01(\tH\x02R\x04body\x88\x01\x01B\t\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\x12\x1b\n" +
+	"\x06rating\x18\x03 \x01(\x05H\x00R\x06rating\x88\x01\x01\x12\x19\n" +
+	"\x05title\x18\x04 \x01(\tH\x01R\x05title\x88\x01\x01\x12\x17\n" +
+	"\x04body\x18\x05 \x01(\tH\x02R\x04body\x88\x01\x01B\t\n" +
 	"\a_ratingB\b\n" +
 	"\x06_titleB\a\n" +
 	"\x05_body\"A\n" +
 	"\x14UpdateReviewResponse\x12)\n" +
-	"\x06review\x18\x01 \x01(\v2\x11.review.v1.ReviewR\x06review\"u\n" +
+	"\x06review\x18\x01 \x01(\v2\x11.review.v1.ReviewR\x06review\"X\n" +
 	"\x13DeleteReviewRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x02 \x01(\tR\breviewId\x12$\n" +
-	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\"\x16\n" +
-	"\x14DeleteReviewResponse\"\x95\x01\n" +
-	"\x19ListProductReviewsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\x12$\n" +
+	"\x0ebuyer_auth0_id\x18\x02 \x01(\tR\fbuyerAuth0Id\"\x16\n" +
+	"\x14DeleteReviewResponse\"x\n" +
+	"\x19ListProductReviewsRequest\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\tR\tproductId\x12<\n" +
+	"product_id\x18\x01 \x01(\tR\tproductId\x12<\n" +
 	"\n" +
-	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\"\x88\x01\n" +
 	"\x1aListProductReviewsResponse\x12+\n" +
 	"\areviews\x18\x01 \x03(\v2\x11.review.v1.ReviewR\areviews\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"U\n" +
-	"\x17GetProductRatingRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
+	"pagination\"8\n" +
+	"\x17GetProductRatingRequest\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\tR\tproductId\"L\n" +
+	"product_id\x18\x01 \x01(\tR\tproductId\"L\n" +
 	"\x18GetProductRatingResponse\x120\n" +
-	"\x06rating\x18\x01 \x01(\v2\x18.review.v1.ProductRatingR\x06rating\"\x92\x01\n" +
+	"\x06rating\x18\x01 \x01(\v2\x18.review.v1.ProductRatingR\x06rating\"u\n" +
 	"\x18ListSellerReviewsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12<\n" +
+	"\tseller_id\x18\x01 \x01(\tR\bsellerId\x12<\n" +
 	"\n" +
-	"pagination\x18\x03 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
+	"pagination\x18\x02 \x01(\v2\x1c.common.v1.PaginationRequestR\n" +
 	"pagination\"\x87\x01\n" +
 	"\x19ListSellerReviewsResponse\x12+\n" +
 	"\areviews\x18\x01 \x03(\v2\x11.review.v1.ReviewR\areviews\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.common.v1.PaginationResponseR\n" +
-	"pagination\"\xa7\x01\n" +
+	"pagination\"\x8a\x01\n" +
 	"\x12CreateReplyRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x02 \x01(\tR\breviewId\x12&\n" +
-	"\x0fseller_auth0_id\x18\x03 \x01(\tR\rsellerAuth0Id\x12\x1b\n" +
-	"\tseller_id\x18\x04 \x01(\tR\bsellerId\x12\x12\n" +
-	"\x04body\x18\x05 \x01(\tR\x04body\"C\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\x12&\n" +
+	"\x0fseller_auth0_id\x18\x02 \x01(\tR\rsellerAuth0Id\x12\x1b\n" +
+	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x12\n" +
+	"\x04body\x18\x04 \x01(\tR\x04body\"C\n" +
 	"\x13CreateReplyResponse\x12,\n" +
-	"\x05reply\x18\x01 \x01(\v2\x16.review.v1.ReviewReplyR\x05reply\"\xa7\x01\n" +
+	"\x05reply\x18\x01 \x01(\v2\x16.review.v1.ReviewReplyR\x05reply\"\x8a\x01\n" +
 	"\x12UpdateReplyRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x02 \x01(\tR\breviewId\x12&\n" +
-	"\x0fseller_auth0_id\x18\x03 \x01(\tR\rsellerAuth0Id\x12\x1b\n" +
-	"\tseller_id\x18\x04 \x01(\tR\bsellerId\x12\x12\n" +
-	"\x04body\x18\x05 \x01(\tR\x04body\"C\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\x12&\n" +
+	"\x0fseller_auth0_id\x18\x02 \x01(\tR\rsellerAuth0Id\x12\x1b\n" +
+	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12\x12\n" +
+	"\x04body\x18\x04 \x01(\tR\x04body\"C\n" +
 	"\x13UpdateReplyResponse\x12,\n" +
-	"\x05reply\x18\x01 \x01(\v2\x16.review.v1.ReviewReplyR\x05reply\"k\n" +
+	"\x05reply\x18\x01 \x01(\v2\x16.review.v1.ReviewReplyR\x05reply\"N\n" +
 	"\x12DeleteReplyRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1b\n" +
-	"\treview_id\x18\x02 \x01(\tR\breviewId\x12\x1b\n" +
-	"\tseller_id\x18\x03 \x01(\tR\bsellerId\"\x15\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\x12\x1b\n" +
+	"\tseller_id\x18\x02 \x01(\tR\bsellerId\"\x15\n" +
 	"\x13DeleteReplyResponse2\xd4\x06\n" +
 	"\rReviewService\x12O\n" +
 	"\fCreateReview\x12\x1e.review.v1.CreateReviewRequest\x1a\x1f.review.v1.CreateReviewResponse\x12F\n" +

@@ -10,11 +10,10 @@ import (
 // ListProducts calls the catalog gRPC service to list products.
 func (c *GRPCClients) ListProducts(
 	ctx context.Context,
-	tenantID, sellerID, status, categoryID string,
+	sellerID, status, categoryID string,
 	limit, offset int32,
 ) (*catalogv1.ListProductsResponse, error) {
 	req := &catalogv1.ListProductsRequest{
-		TenantId:   tenantID,
 		SellerId:   sellerID,
 		Status:     status,
 		CategoryId: categoryID,
@@ -27,9 +26,8 @@ func (c *GRPCClients) ListProducts(
 }
 
 // GetProduct calls the catalog gRPC service to get a product by slug.
-func (c *GRPCClients) GetProduct(ctx context.Context, tenantID, slug string) (*catalogv1.GetProductResponse, error) {
+func (c *GRPCClients) GetProduct(ctx context.Context, slug string) (*catalogv1.GetProductResponse, error) {
 	req := &catalogv1.GetProductRequest{
-		TenantId: tenantID,
 		Identifier: &catalogv1.GetProductRequest_Slug{
 			Slug: slug,
 		},

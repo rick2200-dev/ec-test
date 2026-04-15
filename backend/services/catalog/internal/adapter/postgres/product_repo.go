@@ -30,37 +30,36 @@ func NewProductRepository(pool *pgxpool.Pool) *ProductRepository {
 	return &ProductRepository{pool: pool}
 }
 
-// Create inserts a new product within a tenant-scoped transaction.
-func (r *ProductRepository) Create(ctx context.Context, tenantID uuid.UUID, p *domain.Product) error {
+// Create inserts a new product.
+func (r *ProductRepository) Create(ctx context.Context, p *domain.Product) error {
 	p.ID = uuid.New()
-	p.TenantID = tenantID
 
 	attrs := json.RawMessage("{}")
 	if p.Attributes != nil {
 		attrs = p.Attributes
 	}
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
-			`INSERT INTO catalog_svc.products (id, tenant_id, seller_id, category_id, name, slug, description, status, attributes)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			`INSERT INTO catalog_svc.products (id, seller_id, category_id, name, slug, description, status, attributes)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			 RETURNING created_at, updated_at`,
-			p.ID, p.TenantID, p.SellerID, p.CategoryID, p.Name, p.Slug, p.Description, p.Status, attrs,
+			p.ID, p.SellerID, p.CategoryID, p.Name, p.Slug, p.Description, p.Status, attrs,
 		).Scan(&p.CreatedAt, &p.UpdatedAt)
 	})
 }
 
 // GetByID retrieves a product by its ID.
-func (r *ProductRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Product, error) {
+func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Product, error) {
 	var p domain.Product
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
-			 FROM catalog_svc.products WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID,
-		).Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
+			`SELECT id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
+			 FROM catalog_svc.products WHERE id = $1`,
+			id,
+		).Scan(&p.ID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -79,17 +78,17 @@ func (r *ProductRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID)
 	return &p, nil
 }
 
-// GetBySlug retrieves a product by its slug within a tenant.
-func (r *ProductRepository) GetBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*domain.Product, error) {
+// GetBySlug retrieves a product by its slug.
+func (r *ProductRepository) GetBySlug(ctx context.Context, slug string) (*domain.Product, error) {
 	var p domain.Product
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
-			 FROM catalog_svc.products WHERE slug = $1 AND tenant_id = $2`,
-			slug, tenantID,
-		).Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
+			`SELECT id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
+			 FROM catalog_svc.products WHERE slug = $1`,
+			slug,
+		).Scan(&p.ID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -113,11 +112,11 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 	var products []domain.Product
 	var total int
 
-	err := database.TenantTx(ctx, r.pool, filter.TenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		// Build WHERE clause dynamically.
-		conditions := []string{"tenant_id = $1"}
-		args := []any{filter.TenantID}
-		argIdx := 2
+		var conditions []string
+		var args []any
+		argIdx := 1
 
 		if filter.SellerID != nil {
 			conditions = append(conditions, fmt.Sprintf("seller_id = $%d", argIdx))
@@ -135,7 +134,10 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 			argIdx++
 		}
 
-		where := strings.Join(conditions, " AND ")
+		where := "TRUE"
+		if len(conditions) > 0 {
+			where = strings.Join(conditions, " AND ")
+		}
 
 		// Count total.
 		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_svc.products WHERE %s", where)
@@ -145,7 +147,7 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 
 		// Fetch page.
 		query := fmt.Sprintf(
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
+			`SELECT id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
 			 FROM catalog_svc.products WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 			where, argIdx, argIdx+1,
 		)
@@ -159,7 +161,7 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 
 		for rows.Next() {
 			var p domain.Product
-			if err := rows.Scan(&p.ID, &p.TenantID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			if err := rows.Scan(&p.ID, &p.SellerID, &p.CategoryID, &p.Name, &p.Slug, &p.Description, &p.Status, &p.Attributes, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
 				return fmt.Errorf("scan product: %w", err)
 			}
 			products = append(products, p)
@@ -173,18 +175,18 @@ func (r *ProductRepository) List(ctx context.Context, filter ProductFilter, limi
 }
 
 // Update modifies an existing product.
-func (r *ProductRepository) Update(ctx context.Context, tenantID uuid.UUID, p *domain.Product) error {
+func (r *ProductRepository) Update(ctx context.Context, p *domain.Product) error {
 	attrs := json.RawMessage("{}")
 	if p.Attributes != nil {
 		attrs = p.Attributes
 	}
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE catalog_svc.products
-			 SET name = $3, slug = $4, description = $5, category_id = $6, attributes = $7, updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2`,
-			p.ID, tenantID, p.Name, p.Slug, p.Description, p.CategoryID, attrs,
+			 SET name = $2, slug = $3, description = $4, category_id = $5, attributes = $6, updated_at = NOW()
+			 WHERE id = $1`,
+			p.ID, p.Name, p.Slug, p.Description, p.CategoryID, attrs,
 		)
 		if err != nil {
 			return fmt.Errorf("update product: %w", err)
@@ -197,12 +199,12 @@ func (r *ProductRepository) Update(ctx context.Context, tenantID uuid.UUID, p *d
 }
 
 // UpdateStatus changes the status of a product.
-func (r *ProductRepository) UpdateStatus(ctx context.Context, tenantID, id uuid.UUID, status domain.ProductStatus) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *ProductRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ProductStatus) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`UPDATE catalog_svc.products SET status = $3, updated_at = NOW()
-			 WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID, status,
+			`UPDATE catalog_svc.products SET status = $2, updated_at = NOW()
+			 WHERE id = $1`,
+			id, status,
 		)
 		if err != nil {
 			return fmt.Errorf("update product status: %w", err)
@@ -215,17 +217,17 @@ func (r *ProductRepository) UpdateStatus(ctx context.Context, tenantID, id uuid.
 }
 
 // GetWithSKUs retrieves a product along with all its SKUs.
-func (r *ProductRepository) GetWithSKUs(ctx context.Context, tenantID uuid.UUID, productID uuid.UUID) (*domain.ProductWithSKUs, error) {
+func (r *ProductRepository) GetWithSKUs(ctx context.Context, productID uuid.UUID) (*domain.ProductWithSKUs, error) {
 	var result domain.ProductWithSKUs
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		// Fetch product.
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
-			 FROM catalog_svc.products WHERE id = $1 AND tenant_id = $2`,
-			productID, tenantID,
-		).Scan(&result.ID, &result.TenantID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.ImageURL, &result.CreatedAt, &result.UpdatedAt)
+			`SELECT id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
+			 FROM catalog_svc.products WHERE id = $1`,
+			productID,
+		).Scan(&result.ID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.ImageURL, &result.CreatedAt, &result.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -236,10 +238,10 @@ func (r *ProductRepository) GetWithSKUs(ctx context.Context, tenantID uuid.UUID,
 
 		// Fetch SKUs.
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, product_id, seller_id, sku_code, price_amount, price_currency, attributes, status, created_at, updated_at
-			 FROM catalog_svc.skus WHERE product_id = $1 AND tenant_id = $2
+			`SELECT id, product_id, seller_id, sku_code, price_amount, price_currency, attributes, status, created_at, updated_at
+			 FROM catalog_svc.skus WHERE product_id = $1
 			 ORDER BY created_at ASC`,
-			productID, tenantID,
+			productID,
 		)
 		if err != nil {
 			return err
@@ -248,7 +250,7 @@ func (r *ProductRepository) GetWithSKUs(ctx context.Context, tenantID uuid.UUID,
 
 		for rows.Next() {
 			var s domain.SKU
-			if err := rows.Scan(&s.ID, &s.TenantID, &s.ProductID, &s.SellerID, &s.SKUCode, &s.PriceAmount, &s.PriceCurrency, &s.Attributes, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			if err := rows.Scan(&s.ID, &s.ProductID, &s.SellerID, &s.SKUCode, &s.PriceAmount, &s.PriceCurrency, &s.Attributes, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
 				return err
 			}
 			result.SKUs = append(result.SKUs, s)
@@ -265,16 +267,16 @@ func (r *ProductRepository) GetWithSKUs(ctx context.Context, tenantID uuid.UUID,
 }
 
 // GetWithSKUsBySlug retrieves a product along with all its SKUs by slug.
-func (r *ProductRepository) GetWithSKUsBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*domain.ProductWithSKUs, error) {
+func (r *ProductRepository) GetWithSKUsBySlug(ctx context.Context, slug string) (*domain.ProductWithSKUs, error) {
 	var result domain.ProductWithSKUs
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
-			 FROM catalog_svc.products WHERE slug = $1 AND tenant_id = $2`,
-			slug, tenantID,
-		).Scan(&result.ID, &result.TenantID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.ImageURL, &result.CreatedAt, &result.UpdatedAt)
+			`SELECT id, seller_id, category_id, name, slug, description, status, attributes, image_url, created_at, updated_at
+			 FROM catalog_svc.products WHERE slug = $1`,
+			slug,
+		).Scan(&result.ID, &result.SellerID, &result.CategoryID, &result.Name, &result.Slug, &result.Description, &result.Status, &result.Attributes, &result.ImageURL, &result.CreatedAt, &result.UpdatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -284,10 +286,10 @@ func (r *ProductRepository) GetWithSKUsBySlug(ctx context.Context, tenantID uuid
 		found = true
 
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, product_id, seller_id, sku_code, price_amount, price_currency, attributes, status, created_at, updated_at
-			 FROM catalog_svc.skus WHERE product_id = $1 AND tenant_id = $2
+			`SELECT id, product_id, seller_id, sku_code, price_amount, price_currency, attributes, status, created_at, updated_at
+			 FROM catalog_svc.skus WHERE product_id = $1
 			 ORDER BY created_at ASC`,
-			result.ID, tenantID,
+			result.ID,
 		)
 		if err != nil {
 			return err
@@ -296,7 +298,7 @@ func (r *ProductRepository) GetWithSKUsBySlug(ctx context.Context, tenantID uuid
 
 		for rows.Next() {
 			var s domain.SKU
-			if err := rows.Scan(&s.ID, &s.TenantID, &s.ProductID, &s.SellerID, &s.SKUCode, &s.PriceAmount, &s.PriceCurrency, &s.Attributes, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			if err := rows.Scan(&s.ID, &s.ProductID, &s.SellerID, &s.SKUCode, &s.PriceAmount, &s.PriceCurrency, &s.Attributes, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
 				return err
 			}
 			result.SKUs = append(result.SKUs, s)

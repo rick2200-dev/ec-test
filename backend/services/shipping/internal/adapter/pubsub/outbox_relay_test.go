@@ -15,8 +15,8 @@ import (
 // ── fakes ────────────────────────────────────────────────────────────────────
 
 type fakeStore struct {
-	batch          []outboxRow
-	claimErr       error
+	batch            []outboxRow
+	claimErr         error
 	markPublishedErr error
 	recordFailureErr error
 
@@ -76,7 +76,6 @@ func makeRow(topic string) outboxRow {
 		id:        uuid.New(),
 		eventType: "shipment.shipped",
 		topic:     topic,
-		tenantID:  uuid.New(),
 		payload:   json.RawMessage(`{"order_id":"test"}`),
 		createdAt: time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
 	}

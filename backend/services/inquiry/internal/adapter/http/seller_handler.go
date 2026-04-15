@@ -38,7 +38,7 @@ func (h *SellerHandler) Routes() chi.Router {
 func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -48,7 +48,7 @@ func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 	status := r.URL.Query().Get("status")
 
-	items, total, err := h.svc.ListForSeller(r.Context(), tc.TenantID, *tc.SellerID, status, limit, offset)
+	items, total, err := h.svc.ListForSeller(r.Context(), *tc.SellerID, status, limit, offset)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -60,7 +60,7 @@ func (h *SellerHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -72,7 +72,7 @@ func (h *SellerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, apperrors.BadRequest("invalid inquiry id"))
 		return
 	}
-	result, err := h.svc.GetInquiry(r.Context(), tc.TenantID, id, tc.UserID, tc.SellerID)
+	result, err := h.svc.GetInquiry(r.Context(), id, tc.UserID, tc.SellerID)
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return
@@ -84,7 +84,7 @@ func (h *SellerHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -101,7 +101,7 @@ func (h *SellerHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, mapError(err))
 		return
 	}
-	msg, err := h.svc.PostMessage(r.Context(), tc.TenantID, tc.UserID, tc.SellerID, domain.PostMessageInput{
+	msg, err := h.svc.PostMessage(r.Context(), tc.UserID, tc.SellerID, domain.PostMessageInput{
 		InquiryID:  id,
 		SenderType: domain.SenderTypeSeller,
 		Body:       req.Body,
@@ -117,7 +117,7 @@ func (h *SellerHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -129,7 +129,7 @@ func (h *SellerHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, apperrors.BadRequest("invalid inquiry id"))
 		return
 	}
-	if err := h.svc.MarkRead(r.Context(), tc.TenantID, id, domain.SenderTypeSeller, tc.UserID, tc.SellerID); err != nil {
+	if err := h.svc.MarkRead(r.Context(), id, domain.SenderTypeSeller, tc.UserID, tc.SellerID); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}
@@ -140,7 +140,7 @@ func (h *SellerHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 func (h *SellerHandler) Close(w http.ResponseWriter, r *http.Request) {
 	tc, err := tenant.FromContext(r.Context())
 	if err != nil {
-		httputil.Error(w, apperrors.BadRequest("tenant context required"))
+		httputil.Error(w, apperrors.BadRequest("auth context required"))
 		return
 	}
 	if tc.SellerID == nil {
@@ -152,7 +152,7 @@ func (h *SellerHandler) Close(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, apperrors.BadRequest("invalid inquiry id"))
 		return
 	}
-	if err := h.svc.CloseInquiry(r.Context(), tc.TenantID, id, tc.SellerID); err != nil {
+	if err := h.svc.CloseInquiry(r.Context(), id, tc.SellerID); err != nil {
 		httputil.Error(w, mapError(err))
 		return
 	}

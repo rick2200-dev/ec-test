@@ -27,20 +27,18 @@ type fakeReleaser struct {
 }
 
 type fakeReleaserCall struct {
-	tenantID uuid.UUID
-	orderID  uuid.UUID
-	lines    []domain.CancellationLine
+	orderID uuid.UUID
+	lines   []domain.CancellationLine
 }
 
 func (f *fakeReleaser) ReleaseStockForOrderCancellation(
 	ctx context.Context,
-	tenantID, orderID uuid.UUID,
+	orderID uuid.UUID,
 	lines []domain.CancellationLine,
 ) error {
 	f.calls = append(f.calls, fakeReleaserCall{
-		tenantID: tenantID,
-		orderID:  orderID,
-		lines:    append([]domain.CancellationLine(nil), lines...),
+		orderID: orderID,
+		lines:   append([]domain.CancellationLine(nil), lines...),
 	})
 	if f.err != nil {
 		err := f.err
@@ -55,15 +53,13 @@ func (f *fakeReleaser) ReleaseStockForOrderCancellation(
 // buildOrderCancelledEvent constructs a pubsub.Event payload that
 // mirrors what the order service's publishOrderCancelled helper
 // emits on the "order-events" topic.
-func buildOrderCancelledEvent(tenantID, orderID, skuID uuid.UUID, quantity int) pubsub.Event {
+func buildOrderCancelledEvent(orderID, skuID uuid.UUID, quantity int) pubsub.Event {
 	return pubsub.Event{
 		ID:        uuid.New().String(),
 		Type:      eventTypeOrderCancelled,
-		TenantID:  tenantID.String(),
 		Timestamp: time.Now().UTC(),
 		Data: map[string]any{
 			"order_id":       orderID.String(),
-			"tenant_id":      tenantID.String(),
 			"seller_id":      uuid.New().String(),
 			"buyer_auth0_id": "auth0|buyer-test",
 			"request_id":     uuid.New().String(),
@@ -85,10 +81,9 @@ func TestOrderSubscriber_IgnoresUnrelatedEvents(t *testing.T) {
 	sub := NewOrderSubscriber(nil, releaser)
 
 	err := sub.handleEvent(context.Background(), pubsub.Event{
-		ID:       uuid.New().String(),
-		Type:     "order.paid", // not order.cancelled
-		TenantID: uuid.New().String(),
-		Data:     map[string]any{},
+		ID:   uuid.New().String(),
+		Type: "order.paid", // not order.cancelled
+		Data: map[string]any{},
 	})
 	if err != nil {
 		t.Fatalf("handleEvent(order.paid) returned error: %v", err)
@@ -102,11 +97,10 @@ func TestOrderSubscriber_InvokesReleaseForOrderCancelled(t *testing.T) {
 	releaser := &fakeReleaser{}
 	sub := NewOrderSubscriber(nil, releaser)
 
-	tenantID := uuid.New()
 	orderID := uuid.New()
 	skuID := uuid.New()
 
-	err := sub.handleEvent(context.Background(), buildOrderCancelledEvent(tenantID, orderID, skuID, 3))
+	err := sub.handleEvent(context.Background(), buildOrderCancelledEvent(orderID, skuID, 3))
 	if err != nil {
 		t.Fatalf("handleEvent returned error: %v", err)
 	}
@@ -114,9 +108,6 @@ func TestOrderSubscriber_InvokesReleaseForOrderCancelled(t *testing.T) {
 		t.Fatalf("expected 1 releaser call, got %d", len(releaser.calls))
 	}
 	got := releaser.calls[0]
-	if got.tenantID != tenantID {
-		t.Errorf("tenant id = %s, want %s", got.tenantID, tenantID)
-	}
 	if got.orderID != orderID {
 		t.Errorf("order id = %s, want %s", got.orderID, orderID)
 	}
@@ -138,10 +129,9 @@ func TestOrderSubscriber_IdempotentRedelivery(t *testing.T) {
 	releaser := &fakeReleaser{}
 	sub := NewOrderSubscriber(nil, releaser)
 
-	tenantID := uuid.New()
 	orderID := uuid.New()
 	skuID := uuid.New()
-	event := buildOrderCancelledEvent(tenantID, orderID, skuID, 2)
+	event := buildOrderCancelledEvent(orderID, skuID, 2)
 
 	// First delivery.
 	if err := sub.handleEvent(context.Background(), event); err != nil {
@@ -161,39 +151,12 @@ func TestOrderSubscriber_IdempotentRedelivery(t *testing.T) {
 		t.Errorf("redelivery orderID mismatch: %s vs %s",
 			releaser.calls[0].orderID, releaser.calls[1].orderID)
 	}
-	if releaser.calls[0].tenantID != releaser.calls[1].tenantID {
-		t.Errorf("redelivery tenantID mismatch: %s vs %s",
-			releaser.calls[0].tenantID, releaser.calls[1].tenantID)
-	}
-}
-
-func TestOrderSubscriber_InvalidTenantIDErrors(t *testing.T) {
-	releaser := &fakeReleaser{}
-	sub := NewOrderSubscriber(nil, releaser)
-
-	event := pubsub.Event{
-		ID:   uuid.New().String(),
-		Type: eventTypeOrderCancelled,
-		Data: map[string]any{
-			"order_id":   uuid.New().String(),
-			"tenant_id":  "not-a-uuid",
-			"line_items": []map[string]any{},
-		},
-	}
-	err := sub.handleEvent(context.Background(), event)
-	if err == nil {
-		t.Fatal("expected error on invalid tenant_id, got nil")
-	}
-	if len(releaser.calls) != 0 {
-		t.Errorf("releaser should not be called on parse error, got %d calls", len(releaser.calls))
-	}
 }
 
 func TestOrderSubscriber_SkipsLinesWithBadSKUID(t *testing.T) {
 	releaser := &fakeReleaser{}
 	sub := NewOrderSubscriber(nil, releaser)
 
-	tenantID := uuid.New()
 	orderID := uuid.New()
 	goodSKU := uuid.New()
 
@@ -201,8 +164,7 @@ func TestOrderSubscriber_SkipsLinesWithBadSKUID(t *testing.T) {
 		ID:   uuid.New().String(),
 		Type: eventTypeOrderCancelled,
 		Data: map[string]any{
-			"order_id":  orderID.String(),
-			"tenant_id": tenantID.String(),
+			"order_id": orderID.String(),
 			"line_items": []map[string]any{
 				// Bad sku_id — gets skipped, but delivery still acks.
 				{"sku_id": "not-a-uuid", "quantity": 1},
@@ -233,7 +195,7 @@ func TestOrderSubscriber_PropagatesReleaseError(t *testing.T) {
 	releaser := &fakeReleaser{err: errors.New("db offline")}
 	sub := NewOrderSubscriber(nil, releaser)
 
-	event := buildOrderCancelledEvent(uuid.New(), uuid.New(), uuid.New(), 1)
+	event := buildOrderCancelledEvent(uuid.New(), uuid.New(), 1)
 	err := sub.handleEvent(context.Background(), event)
 	if err == nil {
 		t.Fatal("expected error propagation, got nil")

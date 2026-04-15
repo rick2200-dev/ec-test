@@ -14,17 +14,15 @@ import (
 type Event struct {
 	ID        string    `json:"event_id"`
 	Type      string    `json:"event_type"`
-	TenantID  string    `json:"tenant_id"`
 	Timestamp time.Time `json:"timestamp"`
 	Data      any       `json:"data"`
 }
 
 // NewEvent creates a new event with a generated ID and current timestamp.
-func NewEvent(eventType string, tenantID uuid.UUID, data any) Event {
+func NewEvent(eventType string, data any) Event {
 	return Event{
 		ID:        uuid.New().String(),
 		Type:      eventType,
-		TenantID:  tenantID.String(),
 		Timestamp: time.Now().UTC(),
 		Data:      data,
 	}
@@ -66,11 +64,11 @@ func Decode(data []byte) (Event, error) {
 // PublishEvent publishes an event, logging a warning on failure.
 // It is a no-op if publisher is nil, making it safe for services
 // that run without a Pub/Sub backend (e.g., in tests).
-func PublishEvent(ctx context.Context, publisher Publisher, tenantID uuid.UUID, eventType, topic string, data any) {
+func PublishEvent(ctx context.Context, publisher Publisher, eventType, topic string, data any) {
 	if publisher == nil {
 		return
 	}
-	event := NewEvent(eventType, tenantID, data)
+	event := NewEvent(eventType, data)
 	if err := publisher.Publish(ctx, topic, event); err != nil {
 		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
 	}

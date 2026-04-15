@@ -22,32 +22,31 @@ func NewCategoryRepository(pool *pgxpool.Pool) *CategoryRepository {
 	return &CategoryRepository{pool: pool}
 }
 
-// Create inserts a new category within a tenant-scoped transaction.
-func (r *CategoryRepository) Create(ctx context.Context, tenantID uuid.UUID, c *domain.Category) error {
+// Create inserts a new category.
+func (r *CategoryRepository) Create(ctx context.Context, c *domain.Category) error {
 	c.ID = uuid.New()
-	c.TenantID = tenantID
 
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
-			`INSERT INTO catalog_svc.categories (id, tenant_id, parent_id, name, slug, sort_order)
-			 VALUES ($1, $2, $3, $4, $5, $6)
+			`INSERT INTO catalog_svc.categories (id, parent_id, name, slug, sort_order)
+			 VALUES ($1, $2, $3, $4, $5)
 			 RETURNING created_at`,
-			c.ID, c.TenantID, c.ParentID, c.Name, c.Slug, c.SortOrder,
+			c.ID, c.ParentID, c.Name, c.Slug, c.SortOrder,
 		).Scan(&c.CreatedAt)
 	})
 }
 
-// GetByID retrieves a category by its ID within a tenant.
-func (r *CategoryRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID) (*domain.Category, error) {
+// GetByID retrieves a category by its ID.
+func (r *CategoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Category, error) {
 	var c domain.Category
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, parent_id, name, slug, sort_order, created_at
-			 FROM catalog_svc.categories WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID,
-		).Scan(&c.ID, &c.TenantID, &c.ParentID, &c.Name, &c.Slug, &c.SortOrder, &c.CreatedAt)
+			`SELECT id, parent_id, name, slug, sort_order, created_at
+			 FROM catalog_svc.categories WHERE id = $1`,
+			id,
+		).Scan(&c.ID, &c.ParentID, &c.Name, &c.Slug, &c.SortOrder, &c.CreatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -66,17 +65,17 @@ func (r *CategoryRepository) GetByID(ctx context.Context, tenantID, id uuid.UUID
 	return &c, nil
 }
 
-// GetBySlug retrieves a category by its slug within a tenant.
-func (r *CategoryRepository) GetBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*domain.Category, error) {
+// GetBySlug retrieves a category by its slug.
+func (r *CategoryRepository) GetBySlug(ctx context.Context, slug string) (*domain.Category, error) {
 	var c domain.Category
 	var found bool
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, tenant_id, parent_id, name, slug, sort_order, created_at
-			 FROM catalog_svc.categories WHERE slug = $1 AND tenant_id = $2`,
-			slug, tenantID,
-		).Scan(&c.ID, &c.TenantID, &c.ParentID, &c.Name, &c.Slug, &c.SortOrder, &c.CreatedAt)
+			`SELECT id, parent_id, name, slug, sort_order, created_at
+			 FROM catalog_svc.categories WHERE slug = $1`,
+			slug,
+		).Scan(&c.ID, &c.ParentID, &c.Name, &c.Slug, &c.SortOrder, &c.CreatedAt)
 		if err == pgx.ErrNoRows {
 			return nil
 		}
@@ -95,16 +94,15 @@ func (r *CategoryRepository) GetBySlug(ctx context.Context, tenantID uuid.UUID, 
 	return &c, nil
 }
 
-// List returns all categories for a tenant.
-func (r *CategoryRepository) List(ctx context.Context, tenantID uuid.UUID) ([]domain.Category, error) {
+// List returns all categories.
+func (r *CategoryRepository) List(ctx context.Context) ([]domain.Category, error) {
 	var categories []domain.Category
 
-	err := database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx,
-			`SELECT id, tenant_id, parent_id, name, slug, sort_order, created_at
-			 FROM catalog_svc.categories WHERE tenant_id = $1
+			`SELECT id, parent_id, name, slug, sort_order, created_at
+			 FROM catalog_svc.categories
 			 ORDER BY sort_order ASC, name ASC`,
-			tenantID,
 		)
 		if err != nil {
 			return err
@@ -113,7 +111,7 @@ func (r *CategoryRepository) List(ctx context.Context, tenantID uuid.UUID) ([]do
 
 		for rows.Next() {
 			var c domain.Category
-			if err := rows.Scan(&c.ID, &c.TenantID, &c.ParentID, &c.Name, &c.Slug, &c.SortOrder, &c.CreatedAt); err != nil {
+			if err := rows.Scan(&c.ID, &c.ParentID, &c.Name, &c.Slug, &c.SortOrder, &c.CreatedAt); err != nil {
 				return err
 			}
 			categories = append(categories, c)
@@ -127,12 +125,12 @@ func (r *CategoryRepository) List(ctx context.Context, tenantID uuid.UUID) ([]do
 }
 
 // Update modifies an existing category.
-func (r *CategoryRepository) Update(ctx context.Context, tenantID uuid.UUID, c *domain.Category) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *CategoryRepository) Update(ctx context.Context, c *domain.Category) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`UPDATE catalog_svc.categories SET parent_id = $3, name = $4, slug = $5, sort_order = $6
-			 WHERE id = $1 AND tenant_id = $2`,
-			c.ID, tenantID, c.ParentID, c.Name, c.Slug, c.SortOrder,
+			`UPDATE catalog_svc.categories SET parent_id = $2, name = $3, slug = $4, sort_order = $5
+			 WHERE id = $1`,
+			c.ID, c.ParentID, c.Name, c.Slug, c.SortOrder,
 		)
 		if err != nil {
 			return fmt.Errorf("update category: %w", err)
@@ -145,11 +143,11 @@ func (r *CategoryRepository) Update(ctx context.Context, tenantID uuid.UUID, c *
 }
 
 // Delete removes a category.
-func (r *CategoryRepository) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
-	return database.TenantTx(ctx, r.pool, tenantID, func(tx pgx.Tx) error {
+func (r *CategoryRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
-			`DELETE FROM catalog_svc.categories WHERE id = $1 AND tenant_id = $2`,
-			id, tenantID,
+			`DELETE FROM catalog_svc.categories WHERE id = $1`,
+			id,
 		)
 		if err != nil {
 			return fmt.Errorf("delete category: %w", err)
