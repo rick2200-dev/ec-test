@@ -59,6 +59,24 @@ func categoryIDsOf(p *domain.Product) []string {
 	return []string{p.CategoryID.String()}
 }
 
+// categoryNameOf resolves the product's single category to its display
+// name. Empty string when the product has no category assigned or the
+// lookup fails; search's projection tolerates an empty category_name.
+func (s *CatalogService) categoryNameOf(ctx context.Context, p *domain.Product) string {
+	if p == nil || p.CategoryID == nil {
+		return ""
+	}
+	cat, err := s.categories.GetByID(ctx, *p.CategoryID)
+	if err != nil || cat == nil {
+		if err != nil {
+			slog.Warn("category name lookup failed; publishing event without name",
+				"product_id", p.ID, "category_id", *p.CategoryID, "error", err)
+		}
+		return ""
+	}
+	return cat.Name
+}
+
 // cheapestPriceOf returns the min-price SKU for the product as (amount,
 // currency). Empty currency means no SKU exists yet. Errors are swallowed
 // with a warning so event publishing never fails because of a pricing
@@ -174,6 +192,7 @@ func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, s
 			}
 		}
 		priceAmount, priceCurrency := s.cheapestPriceOf(txCtx, p.ID)
+		categoryName := s.categoryNameOf(txCtx, p)
 		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: "product.created",
 			Topic:     productEventsTopic,
@@ -187,6 +206,7 @@ func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, s
 				CategoryIds:           categoryIDsOf(p),
 				CheapestPriceAmount:   priceAmount,
 				CheapestPriceCurrency: priceCurrency,
+				CategoryName:          categoryName,
 			}),
 		})
 	}); err != nil {
@@ -284,6 +304,7 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) e
 				CategoryIds:           categoryIDsOf(p),
 				CheapestPriceAmount:   priceAmount,
 				CheapestPriceCurrency: priceCurrency,
+				CategoryName:          s.categoryNameOf(txCtx, p),
 			}),
 		})
 	}); err != nil {
@@ -340,6 +361,7 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, id uuid.UUID, 
 				CategoryIds:           categoryIDsOf(existing),
 				CheapestPriceAmount:   priceAmount,
 				CheapestPriceCurrency: priceCurrency,
+				CategoryName:          s.categoryNameOf(txCtx, existing),
 			}),
 		})
 	}); err != nil {
@@ -383,6 +405,7 @@ func (s *CatalogService) appendProductUpdatedOutbox(ctx context.Context, product
 			CategoryIds:           categoryIDsOf(product),
 			CheapestPriceAmount:   priceAmount,
 			CheapestPriceCurrency: priceCurrency,
+			CategoryName:          s.categoryNameOf(ctx, product),
 		}),
 	})
 }

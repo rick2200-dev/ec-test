@@ -41,8 +41,13 @@ type ProductCreated struct {
 	// projections stay accurate without reading catalog_svc.skus.
 	CheapestPriceAmount   int64  `protobuf:"varint,8,opt,name=cheapest_price_amount,json=cheapestPriceAmount,proto3" json:"cheapest_price_amount,omitempty"`
 	CheapestPriceCurrency string `protobuf:"bytes,9,opt,name=cheapest_price_currency,json=cheapestPriceCurrency,proto3" json:"cheapest_price_currency,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// category_name is the display name of the (single) category the
+	// product belongs to, snapshotted at publish time. Empty when no
+	// category is assigned. Saves subscribers a JOIN against
+	// catalog_svc.categories.
+	CategoryName  string `protobuf:"bytes,10,opt,name=category_name,json=categoryName,proto3" json:"category_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProductCreated) Reset() {
@@ -138,6 +143,13 @@ func (x *ProductCreated) GetCheapestPriceCurrency() string {
 	return ""
 }
 
+func (x *ProductCreated) GetCategoryName() string {
+	if x != nil {
+		return x.CategoryName
+	}
+	return ""
+}
+
 // ProductUpdated is published when a product's core fields change.
 // Subscribers: search (reindex), recommend (projection refresh).
 type ProductUpdated struct {
@@ -153,6 +165,7 @@ type ProductUpdated struct {
 	CategoryIds           []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
 	CheapestPriceAmount   int64    `protobuf:"varint,8,opt,name=cheapest_price_amount,json=cheapestPriceAmount,proto3" json:"cheapest_price_amount,omitempty"`
 	CheapestPriceCurrency string   `protobuf:"bytes,9,opt,name=cheapest_price_currency,json=cheapestPriceCurrency,proto3" json:"cheapest_price_currency,omitempty"`
+	CategoryName          string   `protobuf:"bytes,10,opt,name=category_name,json=categoryName,proto3" json:"category_name,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -250,6 +263,13 @@ func (x *ProductUpdated) GetCheapestPriceCurrency() string {
 	return ""
 }
 
+func (x *ProductUpdated) GetCategoryName() string {
+	if x != nil {
+		return x.CategoryName
+	}
+	return ""
+}
+
 // ProductDeleted is published when a product is removed. Only the id is
 // required for consumers to evict their local read models.
 type ProductDeleted struct {
@@ -301,7 +321,7 @@ var File_catalog_v1_events_proto protoreflect.FileDescriptor
 const file_catalog_v1_events_proto_rawDesc = "" +
 	"\n" +
 	"\x17catalog/v1/events.proto\x12\n" +
-	"catalog.v1\"\xae\x02\n" +
+	"catalog.v1\"\xd3\x02\n" +
 	"\x0eProductCreated\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
@@ -311,7 +331,9 @@ const file_catalog_v1_events_proto_rawDesc = "" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
 	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\x122\n" +
 	"\x15cheapest_price_amount\x18\b \x01(\x03R\x13cheapestPriceAmount\x126\n" +
-	"\x17cheapest_price_currency\x18\t \x01(\tR\x15cheapestPriceCurrency\"\xae\x02\n" +
+	"\x17cheapest_price_currency\x18\t \x01(\tR\x15cheapestPriceCurrency\x12#\n" +
+	"\rcategory_name\x18\n" +
+	" \x01(\tR\fcategoryName\"\xd3\x02\n" +
 	"\x0eProductUpdated\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
@@ -321,7 +343,9 @@ const file_catalog_v1_events_proto_rawDesc = "" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
 	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\x122\n" +
 	"\x15cheapest_price_amount\x18\b \x01(\x03R\x13cheapestPriceAmount\x126\n" +
-	"\x17cheapest_price_currency\x18\t \x01(\tR\x15cheapestPriceCurrency\" \n" +
+	"\x17cheapest_price_currency\x18\t \x01(\tR\x15cheapestPriceCurrency\x12#\n" +
+	"\rcategory_name\x18\n" +
+	" \x01(\tR\fcategoryName\" \n" +
 	"\x0eProductDeleted\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02idBOZMgithub.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1;catalogv1b\x06proto3"
 

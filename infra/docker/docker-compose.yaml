@@ -189,12 +189,17 @@ services:
       LOG_FORMAT: text
       DATABASE_URL: postgres://search_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/4
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      AUTH_SERVICE_URL: http://auth:8081
+      AUTH_INTERNAL_TOKEN: local-dev-auth-internal-token
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8085/healthz"]
       interval: 10s

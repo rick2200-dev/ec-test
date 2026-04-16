@@ -23,6 +23,11 @@ message ProductCreated {
   // projections stay accurate without reading catalog_svc.skus.
   int64 cheapest_price_amount = 8;
   string cheapest_price_currency = 9;
+  // category_name is the display name of the (single) category the
+  // product belongs to, snapshotted at publish time. Empty when no
+  // category is assigned. Saves subscribers a JOIN against
+  // catalog_svc.categories.
+  string category_name = 10;
 }
 
 // ProductUpdated is published when a product's core fields change.
@@ -39,6 +44,7 @@ message ProductUpdated {
   repeated string category_ids = 7;
   int64 cheapest_price_amount = 8;
   string cheapest_price_currency = 9;
+  string category_name = 10;
 }
 
 // ProductDeleted is published when a product is removed. Only the id is

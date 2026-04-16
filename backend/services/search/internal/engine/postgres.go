@@ -59,10 +59,10 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 		conditions = append(conditions, fmt.Sprintf("p.status = %s", nextArg(req.Status)))
 	}
 	if req.MinPrice != nil {
-		conditions = append(conditions, fmt.Sprintf("s.price_amount >= %s", nextArg(*req.MinPrice)))
+		conditions = append(conditions, fmt.Sprintf("p.price_amount >= %s", nextArg(*req.MinPrice)))
 	}
 	if req.MaxPrice != nil {
-		conditions = append(conditions, fmt.Sprintf("s.price_amount <= %s", nextArg(*req.MaxPrice)))
+		conditions = append(conditions, fmt.Sprintf("p.price_amount <= %s", nextArg(*req.MaxPrice)))
 	}
 
 	var whereClause string
@@ -90,11 +90,11 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 	limitArg := nextArg(req.Limit)
 	offsetArg := nextArg(req.Offset)
 
-	// Count query
+	// Count query — Phase 2.2 completion: every field search needs lives
+	// in search_svc now, so no catalog_svc / auth_svc JOINs.
 	countQuery := fmt.Sprintf(`
-		SELECT COUNT(DISTINCT p.id)
-		FROM catalog_svc.products p
-		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
+		SELECT COUNT(*)
+		FROM search_svc.products p
 		%s
 	`, whereClause)
 
@@ -105,17 +105,13 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 
 	// Main search query
 	searchQuery := fmt.Sprintf(`
-		SELECT DISTINCT ON (p.id)
-			p.id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
+		SELECT p.id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
 			p.status,
-			COALESCE(s.price_amount, 0), COALESCE(s.price_currency, 'JPY'),
-			COALESCE(sel.name, ''), COALESCE(c.name, ''),
+			COALESCE(p.price_amount, 0), COALESCE(p.price_currency, 'JPY'),
+			p.seller_name, p.category_name,
 			%s AS rank,
 			COALESCE(spb.plan_tier, 0)
-		FROM catalog_svc.products p
-		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
-		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id
-		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
+		FROM search_svc.products p
 		LEFT JOIN search_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
 		%s
 		%s
@@ -200,17 +196,13 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 	whereClause := "WHERE " + strings.Join(conditions, " AND ")
 
 	query := fmt.Sprintf(`
-		SELECT DISTINCT ON (p.id)
-			p.id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
+		SELECT p.id, p.seller_id, p.name, p.slug, COALESCE(p.description, ''),
 			p.status,
-			COALESCE(s.price_amount, 0), COALESCE(s.price_currency, 'JPY'),
-			COALESCE(sel.name, ''), COALESCE(c.name, ''),
+			COALESCE(p.price_amount, 0), COALESCE(p.price_currency, 'JPY'),
+			p.seller_name, p.category_name,
 			COALESCE(spb.search_boost, 1.0) AS rank,
 			COALESCE(spb.plan_tier, 0)
-		FROM catalog_svc.products p
-		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
-		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id
-		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
+		FROM search_svc.products p
 		LEFT JOIN search_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
 		%s
 		ORDER BY RANDOM()
@@ -249,13 +241,13 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 func (e *PostgresEngine) buildFacets(ctx context.Context) ([]domain.Facet, error) {
 	var facets []domain.Facet
 
-	// Category facet
+	// Category facet — category_name is denormalized onto search_svc.products
+	// at projection time, so no catalog_svc.categories JOIN is needed.
 	catRows, err := e.pool.Query(ctx, `
-		SELECT c.name, COUNT(p.id)
-		FROM catalog_svc.products p
-		JOIN catalog_svc.categories c ON c.id = p.category_id
-		WHERE p.status = 'active'
-		GROUP BY c.name
+		SELECT p.category_name, COUNT(p.id)
+		FROM search_svc.products p
+		WHERE p.status = 'active' AND p.category_name <> ''
+		GROUP BY p.category_name
 		ORDER BY COUNT(p.id) DESC
 		LIMIT 20
 	`)
@@ -276,20 +268,20 @@ func (e *PostgresEngine) buildFacets(ctx context.Context) ([]domain.Facet, error
 		facets = append(facets, domain.Facet{Field: "category", Values: catValues})
 	}
 
-	// Price range facet
+	// Price range facet — price_amount is denormalized onto
+	// search_svc.products (representative cheapest SKU price).
 	priceRows, err := e.pool.Query(ctx, `
 		SELECT
 			CASE
-				WHEN s.price_amount < 1000 THEN 'under_1000'
-				WHEN s.price_amount < 5000 THEN '1000_5000'
-				WHEN s.price_amount < 10000 THEN '5000_10000'
-				WHEN s.price_amount < 50000 THEN '10000_50000'
+				WHEN p.price_amount < 1000 THEN 'under_1000'
+				WHEN p.price_amount < 5000 THEN '1000_5000'
+				WHEN p.price_amount < 10000 THEN '5000_10000'
+				WHEN p.price_amount < 50000 THEN '10000_50000'
 				ELSE '50000_plus'
 			END AS price_range,
-			COUNT(DISTINCT p.id)
-		FROM catalog_svc.products p
-		JOIN catalog_svc.skus s ON s.product_id = p.id
-		WHERE p.status = 'active'
+			COUNT(p.id)
+		FROM search_svc.products p
+		WHERE p.status = 'active' AND p.price_amount IS NOT NULL
 		GROUP BY price_range
 		ORDER BY price_range
 	`)
