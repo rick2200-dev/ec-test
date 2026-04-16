@@ -120,7 +120,7 @@ func (e *PostgresEngine) personalizedForYou(ctx context.Context, req domain.Reco
 	query := `
 		WITH user_viewed_categories AS (
 			SELECT pc.category_id, COUNT(*) AS view_weight
-			FROM catalog_svc.user_events ue
+			FROM recommend_svc.user_events ue
 			JOIN catalog_svc.product_categories pc ON pc.product_id = ue.product_id
 			WHERE ue.user_id = $1
 			  AND ue.event_type = 'product_viewed'
@@ -128,7 +128,7 @@ func (e *PostgresEngine) personalizedForYou(ctx context.Context, req domain.Reco
 		),
 		user_purchased AS (
 			SELECT DISTINCT ue.product_id
-			FROM catalog_svc.user_events ue
+			FROM recommend_svc.user_events ue
 			WHERE ue.user_id = $1
 			  AND ue.event_type = 'purchased'
 		)
@@ -178,14 +178,14 @@ func (e *PostgresEngine) frequentlyBoughtTogether(ctx context.Context, req domai
 	query := `
 		WITH co_buyers AS (
 			SELECT DISTINCT ue.user_id
-			FROM catalog_svc.user_events ue
+			FROM recommend_svc.user_events ue
 			WHERE ue.product_id = $1
 			  AND ue.event_type = 'purchased'
 		)
 		SELECT p.id, p.seller_id, p.name, p.slug,
 		       p.price_amount, p.price_currency,
 		       COUNT(DISTINCT ue2.user_id)::float8 AS score
-		FROM catalog_svc.user_events ue2
+		FROM recommend_svc.user_events ue2
 		JOIN co_buyers cb ON cb.user_id = ue2.user_id
 		JOIN catalog_svc.products p ON p.id = ue2.product_id
 		WHERE ue2.event_type = 'purchased'
@@ -221,7 +221,7 @@ func (e *PostgresEngine) frequentlyBoughtTogether(ctx context.Context, req domai
 // RecordEvent inserts a user behavior event into the user_events table.
 func (e *PostgresEngine) RecordEvent(ctx context.Context, event domain.UserEvent) error {
 	query := `
-		INSERT INTO catalog_svc.user_events (user_id, event_type, product_id)
+		INSERT INTO recommend_svc.user_events (user_id, event_type, product_id)
 		VALUES ($1, $2, $3)
 	`
 

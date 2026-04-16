@@ -19,6 +19,7 @@ SERVICES=(
   review
   shipping
   notification
+  recommend
   grants
 )
 
