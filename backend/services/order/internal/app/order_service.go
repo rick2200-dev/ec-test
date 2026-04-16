@@ -497,7 +497,14 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			"transfer_id", transferID,
 		)
 
-		// 6. Publish order.paid and payout.completed.
+		// 6. Publish order.paid and payout.completed. Line items are
+		// attached so recommend can record one purchased event per product
+		// rather than falling back to the useless order-keyed signal.
+		lineItems, linesErr := s.loadPaidLineItems(ctx, order.ID)
+		if linesErr != nil {
+			slog.Warn("failed to load line items for order.paid event; publishing without them",
+				"order_id", order.ID, "error", linesErr)
+		}
 		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", &orderv1.OrderPaid{
 			OrderId:               order.ID.String(),
 			SellerId:              order.SellerID.String(),
@@ -505,6 +512,7 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			TotalAmount:           order.TotalAmount,
 			StripePaymentIntentId: stripePaymentIntentID,
 			ShippingAddressJson:   string(order.ShippingAddress),
+			LineItems:             lineItems,
 		})
 		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", &orderv1.PayoutCompleted{
 			PayoutId:         payout.ID.String(),
