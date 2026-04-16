@@ -148,11 +148,12 @@ func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, s
 			EventType: "product.created",
 			Topic:     productEventsTopic,
 			Payload: mustProtoJSON(&catalogv1.ProductCreated{
-				Id:       p.ID.String(),
-				SellerId: p.SellerID.String(),
-				Name:     p.Name,
-				Slug:     p.Slug,
-				Status:   string(p.Status),
+				Id:          p.ID.String(),
+				SellerId:    p.SellerID.String(),
+				Name:        p.Name,
+				Slug:        p.Slug,
+				Description: p.Description,
+				Status:      string(p.Status),
 			}),
 		})
 	}); err != nil {
@@ -223,6 +224,15 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) e
 		return domain.ErrNotProductOwner
 	}
 
+	// HTTP handlers only populate the fields the caller can change (name,
+	// slug, description, attributes, category_id) and leave seller_id +
+	// status unset. Backfill from the existing row so the event payload
+	// reflects the full current state rather than zero values.
+	p.SellerID = existing.SellerID
+	if p.Status == "" {
+		p.Status = existing.Status
+	}
+
 	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
 		if err := s.products.Update(txCtx, p); err != nil {
 			return apperrors.Internal("failed to update product", err)
@@ -231,11 +241,12 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) e
 			EventType: "product.updated",
 			Topic:     productEventsTopic,
 			Payload: mustProtoJSON(&catalogv1.ProductUpdated{
-				Id:       p.ID.String(),
-				SellerId: p.SellerID.String(),
-				Name:     p.Name,
-				Slug:     p.Slug,
-				Status:   string(p.Status),
+				Id:          p.ID.String(),
+				SellerId:    p.SellerID.String(),
+				Name:        p.Name,
+				Slug:        p.Slug,
+				Description: p.Description,
+				Status:      string(p.Status),
 			}),
 		})
 	}); err != nil {
@@ -282,11 +293,12 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, id uuid.UUID, 
 			EventType: "product.updated",
 			Topic:     productEventsTopic,
 			Payload: mustProtoJSON(&catalogv1.ProductUpdated{
-				Id:       id.String(),
-				SellerId: existing.SellerID.String(),
-				Name:     existing.Name,
-				Slug:     existing.Slug,
-				Status:   string(status),
+				Id:          id.String(),
+				SellerId:    existing.SellerID.String(),
+				Name:        existing.Name,
+				Slug:        existing.Slug,
+				Description: existing.Description,
+				Status:      string(status),
 			}),
 		})
 	}); err != nil {

@@ -38,12 +38,15 @@ func (e *PostgresEngine) Recommend(ctx context.Context, req domain.RecommendRequ
 // popular returns products ordered by purchase_count + view_count*0.1 from the
 // materialized view.
 func (e *PostgresEngine) popular(ctx context.Context, req domain.RecommendRequest) (*domain.RecommendResponse, error) {
+	// popular_products materialized view lives in recommend_svc and already
+	// carries name/slug/price snapshotted at refresh time (see
+	// infra/db/migrations/recommend/002_move_popular_products.up.sql), so
+	// no catalog_svc.products join is needed at query time.
 	query := `
-		SELECT pp.product_id, pp.seller_id, p.name, p.slug,
-		       COALESCE(p.price_amount, 0), COALESCE(p.price_currency, 'JPY'),
+		SELECT pp.product_id, pp.seller_id, pp.name, pp.slug,
+		       COALESCE(pp.price_amount, 0), COALESCE(pp.price_currency, 'JPY'),
 		       (pp.purchase_count + pp.view_count * 0.1) AS score
-		FROM catalog_svc.popular_products pp
-		JOIN catalog_svc.products p ON p.id = pp.product_id
+		FROM recommend_svc.popular_products pp
 		ORDER BY score DESC
 		LIMIT $1
 	`
@@ -77,14 +80,25 @@ func (e *PostgresEngine) similar(ctx context.Context, req domain.RecommendReques
 		return nil, fmt.Errorf("product_id is required for similar recommendations")
 	}
 
+	// Price comes from the cheapest SKU on the product (catalog_svc.products
+	// has no price; skus does). popular_products lives in recommend_svc so
+	// the popularity join crosses schemas just once.
 	query := `
 		SELECT DISTINCT p.id, p.seller_id, p.name, p.slug,
-		       p.price_amount, p.price_currency,
+		       COALESCE(pr.price_amount, 0)       AS price_amount,
+		       COALESCE(pr.price_currency, 'JPY') AS price_currency,
 		       COALESCE(pp.purchase_count + pp.view_count * 0.1, 0) AS score
 		FROM catalog_svc.products p
 		JOIN catalog_svc.product_categories pc ON pc.product_id = p.id
 		JOIN catalog_svc.product_categories pc2 ON pc2.category_id = pc.category_id
-		LEFT JOIN catalog_svc.popular_products pp ON pp.product_id = p.id
+		LEFT JOIN LATERAL (
+			SELECT price_amount, price_currency
+			FROM catalog_svc.skus
+			WHERE product_id = p.id
+			ORDER BY price_amount ASC
+			LIMIT 1
+		) pr ON TRUE
+		LEFT JOIN recommend_svc.popular_products pp ON pp.product_id = p.id
 		WHERE pc2.product_id = $1
 		  AND p.id != $1
 		  AND p.status = 'active'
@@ -133,15 +147,23 @@ func (e *PostgresEngine) personalizedForYou(ctx context.Context, req domain.Reco
 			  AND ue.event_type = 'purchased'
 		)
 		SELECT p.id, p.seller_id, p.name, p.slug,
-		       p.price_amount, p.price_currency,
+		       COALESCE(pr.price_amount, 0)       AS price_amount,
+		       COALESCE(pr.price_currency, 'JPY') AS price_currency,
 		       SUM(uvc.view_weight) AS score
 		FROM catalog_svc.products p
 		JOIN catalog_svc.product_categories pc ON pc.product_id = p.id
 		JOIN user_viewed_categories uvc ON uvc.category_id = pc.category_id
 		LEFT JOIN user_purchased up ON up.product_id = p.id
+		LEFT JOIN LATERAL (
+			SELECT price_amount, price_currency
+			FROM catalog_svc.skus
+			WHERE product_id = p.id
+			ORDER BY price_amount ASC
+			LIMIT 1
+		) pr ON TRUE
 		WHERE p.status = 'active'
 		  AND up.product_id IS NULL
-		GROUP BY p.id, p.seller_id, p.name, p.slug, p.price_amount, p.price_currency
+		GROUP BY p.id, p.seller_id, p.name, p.slug, pr.price_amount, pr.price_currency
 		ORDER BY score DESC
 		LIMIT $2
 	`
@@ -183,15 +205,23 @@ func (e *PostgresEngine) frequentlyBoughtTogether(ctx context.Context, req domai
 			  AND ue.event_type = 'purchased'
 		)
 		SELECT p.id, p.seller_id, p.name, p.slug,
-		       p.price_amount, p.price_currency,
+		       COALESCE(pr.price_amount, 0)       AS price_amount,
+		       COALESCE(pr.price_currency, 'JPY') AS price_currency,
 		       COUNT(DISTINCT ue2.user_id)::float8 AS score
 		FROM recommend_svc.user_events ue2
 		JOIN co_buyers cb ON cb.user_id = ue2.user_id
 		JOIN catalog_svc.products p ON p.id = ue2.product_id
+		LEFT JOIN LATERAL (
+			SELECT price_amount, price_currency
+			FROM catalog_svc.skus
+			WHERE product_id = p.id
+			ORDER BY price_amount ASC
+			LIMIT 1
+		) pr ON TRUE
 		WHERE ue2.event_type = 'purchased'
 		  AND ue2.product_id != $1
 		  AND p.status = 'active'
-		GROUP BY p.id, p.seller_id, p.name, p.slug, p.price_amount, p.price_currency
+		GROUP BY p.id, p.seller_id, p.name, p.slug, pr.price_amount, pr.price_currency
 		ORDER BY score DESC
 		LIMIT $2
 	`
