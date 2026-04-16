@@ -14,7 +14,9 @@ import (
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/search/internal/adapter/http"
+	searchpubsub "github.com/Riku-KANO/ec-test/services/search/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/search/internal/app"
 	"github.com/Riku-KANO/ec-test/services/search/internal/config"
 	"github.com/Riku-KANO/ec-test/services/search/internal/engine"
@@ -91,22 +93,38 @@ func main() {
 		}
 	}()
 
-	// Pub/Sub subscriber for product events (optional)
-	// TODO: Start subscriber when GCPSubscriber is implemented in the shared pkg.
-	// if cfg.PubSubProjectID != "" {
-	//     sub, err := pubsub.NewGCPSubscriber(ctx, cfg.PubSubProjectID)
-	//     if err != nil {
-	//         slog.Warn("failed to create pubsub subscriber", "error", err)
-	//     } else {
-	//         defer sub.Close()
-	//         productSub := subscriber.NewProductSubscriber(searchEngine, sub)
-	//         go func() {
-	//             if err := productSub.Start(context.Background()); err != nil {
-	//                 slog.Error("product subscriber error", "error", err)
-	//             }
-	//         }()
-	//     }
-	// }
+	// Pub/Sub subscriber for product + subscription events (optional).
+	// Background context, not the startup-timeout initCtx, so the
+	// subscription stays up for the process lifetime.
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
+	if cfg.PubSubProjectID != "" {
+		sub, subErr := pubsub.NewGCPSubscriber(bgCtx, cfg.PubSubProjectID)
+		if subErr != nil {
+			slog.Error("failed to create pubsub subscriber", "error", subErr)
+		} else {
+			defer func() { _ = sub.Close() }()
+
+			productSub := searchpubsub.NewProductSubscriber(searchEngine, sub)
+			go func() {
+				if err := productSub.Start(bgCtx); err != nil {
+					slog.Error("product subscriber error", "error", err)
+				}
+			}()
+
+			// seller_plan_boost projection subscriber — replaces the
+			// former catalog_svc.seller_plan_boost materialized view.
+			planSub := searchpubsub.NewSubscriptionSubscriber(pool, sub)
+			go func() {
+				if err := planSub.Start(bgCtx); err != nil {
+					slog.Error("subscription subscriber error", "error", err)
+				}
+			}()
+			slog.Info("started pubsub subscribers")
+		}
+	} else {
+		slog.Info("PUBSUB_PROJECT_ID not set, skipping subscribers")
+	}
 
 	// Graceful shutdown.
 	quit := make(chan os.Signal, 1)

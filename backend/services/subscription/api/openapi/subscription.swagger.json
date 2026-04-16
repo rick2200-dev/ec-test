@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "subscription/v1/subscription.proto",
+    "title": "subscription/v1/events.proto",
     "version": "version not set"
   },
   "tags": [
@@ -137,7 +137,7 @@
     },
     "/v1/buyers/{buyer_auth0_id}/subscription": {
       "get": {
-        "summary": "--- Buyer subscriptions ---\nGetBuyerSubscription is on the order service hot path — order calls it\nduring order creation to decide whether to waive the shipping fee.",
+        "summary": "--- Buyer subscriptions ---\r\nGetBuyerSubscription is on the order service hot path — order calls it\r\nduring order creation to decide whether to waive the shipping fee.",
         "operationId": "SubscriptionService_GetBuyerSubscription",
         "responses": {
           "200": {
@@ -525,7 +525,7 @@
           "type": "boolean"
         }
       },
-      "description": "BuyerPlanFeatures intentionally mirrors only the flags we ship today.\nGrow this as new flags get added."
+      "description": "BuyerPlanFeatures intentionally mirrors only the flags we ship today.\r\nGrow this as new flags get added."
     },
     "v1BuyerSubscription": {
       "type": "object",
@@ -736,7 +736,7 @@
           "format": "int32"
         }
       },
-      "description": "PlanFeatures describes the seller-plan capabilities granted to a seller.\nKept as concrete fields (not a map) so clients get type-checked access to\nthe search-boost value that the search service relies on."
+      "description": "PlanFeatures describes the seller-plan capabilities granted to a seller.\r\nKept as concrete fields (not a map) so clients get type-checked access to\r\nthe search-boost value that the search service relies on."
     },
     "v1SellerPlan": {
       "type": "object",

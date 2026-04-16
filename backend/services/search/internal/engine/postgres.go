@@ -116,7 +116,7 @@ func (e *PostgresEngine) Search(ctx context.Context, req domain.SearchRequest) (
 		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
 		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id
 		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
-		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
+		LEFT JOIN search_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
 		%s
 		%s
 		LIMIT %s OFFSET %s
@@ -211,7 +211,7 @@ func (e *PostgresEngine) fetchPromotedProducts(ctx context.Context, req domain.S
 		LEFT JOIN catalog_svc.skus s ON s.product_id = p.id
 		LEFT JOIN auth_svc.sellers sel ON sel.id = p.seller_id
 		LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
-		LEFT JOIN catalog_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
+		LEFT JOIN search_svc.seller_plan_boost spb ON spb.seller_id = p.seller_id
 		%s
 		ORDER BY RANDOM()
 		LIMIT 3

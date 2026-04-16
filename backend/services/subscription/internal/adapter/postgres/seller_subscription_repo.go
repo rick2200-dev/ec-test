@@ -205,21 +205,3 @@ func (r *SellerSubscriptionRepository) UpsertSellerSubscription(ctx context.Cont
 	})
 }
 
-// RefreshPlanBoostView refreshes the cross-schema materialized view used by
-// the search engine. The view definition joins subscription_svc and auth_svc
-// tables; we only own the REFRESH trigger point here.
-//
-// The refresh is delegated to the `catalog_svc.refresh_seller_plan_boost()`
-// SECURITY DEFINER function (see migration 000020). A direct
-// `REFRESH MATERIALIZED VIEW` from the application role would hit FORCE
-// ROW LEVEL SECURITY on the underlying subscription_svc tables — no
-// tenant context is set for a background refresh, so the view would be
-// rebuilt against an empty row set. The helper function runs as a
-// BYPASSRLS-owning role so the refresh sees every tenant's rows.
-func (r *SellerSubscriptionRepository) RefreshPlanBoostView(ctx context.Context) error {
-	_, err := r.pool.Exec(ctx, `SELECT catalog_svc.refresh_seller_plan_boost()`)
-	if err != nil {
-		return fmt.Errorf("refresh seller_plan_boost view: %w", err)
-	}
-	return nil
-}

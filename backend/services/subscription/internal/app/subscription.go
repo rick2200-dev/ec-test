@@ -8,9 +8,14 @@ import (
 	"github.com/google/uuid"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/subscription/internal/port"
+
+	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 )
+
+const planEventsTopic = "subscription-events"
 
 // Service implements SubscriptionUseCase. It deliberately does not verify
 // that the seller or buyer referenced in a subscribe call exists — that
@@ -19,13 +24,15 @@ import (
 // buffer of server-side authorization the gateway already applies before
 // forwarding the request.
 type Service struct {
-	seller port.SellerSubscriptionStore
-	buyer  port.BuyerSubscriptionStore
+	seller    port.SellerSubscriptionStore
+	buyer     port.BuyerSubscriptionStore
+	publisher pubsub.Publisher
 }
 
-// NewService constructs a Service.
-func NewService(seller port.SellerSubscriptionStore, buyer port.BuyerSubscriptionStore) *Service {
-	return &Service{seller: seller, buyer: buyer}
+// NewService constructs a Service. publisher may be nil — events are dropped
+// silently in that case (useful for tests and for local dev without Pub/Sub).
+func NewService(seller port.SellerSubscriptionStore, buyer port.BuyerSubscriptionStore, publisher pubsub.Publisher) *Service {
+	return &Service{seller: seller, buyer: buyer, publisher: publisher}
 }
 
 // --- Seller Plan Methods ---
@@ -74,6 +81,14 @@ func (s *Service) UpdatePlan(ctx context.Context, plan *domain.SubscriptionPlan)
 	if err := s.seller.UpdatePlan(ctx, plan); err != nil {
 		return apperrors.Internal("failed to update plan", err)
 	}
+	// Plan changes affect every seller already subscribed to it; subscribers
+	// resolve the affected cohort on their side.
+	pubsub.PublishProtoEvent(ctx, s.publisher, "subscription_plan.updated", planEventsTopic, &subscriptionv1.SubscriptionPlanUpdated{
+		PlanId:          plan.ID.String(),
+		PlanTier:        int32(plan.Tier),
+		SearchBoost:     plan.Features.SearchBoost,
+		PromotedResults: int32(plan.Features.PromotedResults),
+	})
 	slog.Info("subscription plan updated", "id", plan.ID)
 	return nil
 }
@@ -107,12 +122,18 @@ func (s *Service) SubscribeSeller(ctx context.Context, sellerID, planID uuid.UUI
 	if err := s.seller.UpsertSellerSubscription(ctx, sub); err != nil {
 		return nil, apperrors.Internal("failed to subscribe seller", err)
 	}
-	// Refresh the materialized view so search ranking picks up the new tier.
-	// Best-effort: a failed refresh is logged but not fatal — the view is
-	// also refreshed on a schedule by search.
-	if err := s.seller.RefreshPlanBoostView(ctx); err != nil {
-		slog.Warn("failed to refresh plan boost view", "error", err)
-	}
+	// Phase 2.2 completion: publish the seller's new plan so search (and
+	// any future consumer) can maintain its own seller_plan_boost
+	// projection. The former call into catalog_svc.refresh_seller_plan_boost
+	// went away with this event-driven replacement.
+	pubsub.PublishProtoEvent(ctx, s.publisher, "seller.subscribed", planEventsTopic, &subscriptionv1.SellerSubscribed{
+		SellerId:        sellerID.String(),
+		PlanId:          planID.String(),
+		PlanSlug:        plan.Slug,
+		PlanTier:        int32(plan.Tier),
+		SearchBoost:     plan.Features.SearchBoost,
+		PromotedResults: int32(plan.Features.PromotedResults),
+	})
 	slog.Info("seller subscribed", "seller_id", sellerID, "plan_id", planID)
 	return sub, nil
 }

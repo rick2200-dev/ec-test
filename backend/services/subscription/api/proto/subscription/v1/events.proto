@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package subscription.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1;subscriptionv1";
+
+// SellerSubscribed is published when a seller takes out a subscription on
+// a plan (or switches plans). Consumers: search (seller_plan_boost
+// projection — drives search ranking boost).
+message SellerSubscribed {
+  string seller_id = 1;
+  string plan_id = 2;
+  string plan_slug = 3;
+  int32 plan_tier = 4;
+  // search_boost multiplier derived from the plan's search_boost feature;
+  // defaults to 1.0 when the plan does not set one.
+  double search_boost = 5;
+  // promoted_results is the number of "always on top" results the plan
+  // grants per query; 0 when the plan has no promotion.
+  int32 promoted_results = 6;
+}
+
+// SellerSubscriptionCancelled is published when a seller drops off their
+// paid plan (explicit cancel or lapsed payment). Consumers treat it as
+// "reset back to free-tier boost".
+message SellerSubscriptionCancelled {
+  string seller_id = 1;
+}
+
+// SubscriptionPlanUpdated is published when the admin changes the feature
+// set on an existing plan (e.g. bumps a tier's search_boost). Consumers
+// need to re-apply the new features to every seller currently on the
+// plan — the event carries the affected plan_id so subscribers can look
+// up the cohort.
+message SubscriptionPlanUpdated {
+  string plan_id = 1;
+  int32 plan_tier = 2;
+  double search_boost = 3;
+  int32 promoted_results = 4;
+}

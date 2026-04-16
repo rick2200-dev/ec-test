@@ -20,6 +20,7 @@ SERVICES=(
   shipping
   notification
   recommend
+  search
   grants
 )
 

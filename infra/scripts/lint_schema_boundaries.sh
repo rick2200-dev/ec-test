@@ -23,16 +23,11 @@ declare -A OWNED=(
 # Transitional allowlist. Value is a regex of allowed cross-schema matches.
 # Remove each entry when its phase eliminates the violation.
 declare -A ALLOW=(
-  # Phase 2.1 (catalog outbox): seller_plan_boost matview reads auth +
-  # subscription. Swap for local projection when outbox lands.
-  [catalog]='(auth_svc\.sellers|auth_svc\.seller_subscriptions|subscription_svc\.subscription_plans)'
-  # Phase 2.2 (search/recommend local read model): both services project
-  # catalog data and search joins auth sellers for ranking. Replace with a
-  # dedicated indexing pipeline.
-  [search]='(catalog_svc\.(products|skus|categories|seller_plan_boost)|auth_svc\.sellers)'
-  # Phase 2.1: subscription refreshes the catalog-owned matview when plans
-  # change. Goes away when catalog owns its own projection.
-  [subscription]='catalog_svc\.refresh_seller_plan_boost'
+  # Phase 2.2 (search products projection, still pending): search reads
+  # catalog products/skus/categories + auth sellers directly at query
+  # time. A follow-up commit creates search_svc.products with the
+  # denormalized fields and drops this entry.
+  [search]='(catalog_svc\.(products|skus|categories)|auth_svc\.sellers)'
 )
 
 # Any reference to a *_svc schema.

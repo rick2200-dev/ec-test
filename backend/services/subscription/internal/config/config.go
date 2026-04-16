@@ -14,15 +14,20 @@ type Config struct {
 	// HTTP middleware to fail closed with 503 and the gRPC interceptor
 	// to reject with Unauthenticated.
 	InternalToken string
+
+	// PubSubProjectID is the GCP project for publishing plan events.
+	// Empty disables publishing (safe for tests / local dev).
+	PubSubProjectID string
 }
 
 // Load reads configuration from environment variables.
 func Load() Config {
 	return Config{
-		DatabaseURL:   getEnv("DATABASE_URL", "postgres://ecmarket:ecmarket@localhost:5432/ecmarket?sslmode=disable"),
-		HTTPPort:      getEnv("HTTP_PORT", "8089"),
-		GRPCPort:      getEnv("GRPC_PORT", "50058"),
-		InternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
+		DatabaseURL:     getEnv("DATABASE_URL", "postgres://ecmarket:ecmarket@localhost:5432/ecmarket?sslmode=disable"),
+		HTTPPort:        getEnv("HTTP_PORT", "8089"),
+		GRPCPort:        getEnv("GRPC_PORT", "50058"),
+		InternalToken:   getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
+		PubSubProjectID: getEnv("PUBSUB_PROJECT_ID", ""),
 	}
 }
 

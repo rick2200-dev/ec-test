@@ -37,10 +37,6 @@ type SellerSubscriptionStore interface {
 	UpdatePlan(ctx context.Context, plan *domain.SubscriptionPlan) error
 	GetSellerSubscription(ctx context.Context, sellerID uuid.UUID) (*domain.SellerSubscriptionWithPlan, error)
 	UpsertSellerSubscription(ctx context.Context, sub *domain.SellerSubscription) error
-	// RefreshPlanBoostView refreshes the catalog_svc.seller_plan_boost
-	// materialized view. The view lives in catalog_svc for locality with
-	// the search engine but its source tables are now in subscription_svc.
-	RefreshPlanBoostView(ctx context.Context) error
 }
 
 // BuyerSubscriptionStore abstracts the buyer plan / subscription persistence.

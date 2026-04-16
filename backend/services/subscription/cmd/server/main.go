@@ -17,6 +17,7 @@ import (
 	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
+	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	grpcserver "github.com/Riku-KANO/ec-test/services/subscription/internal/adapter/grpc"
 	handler "github.com/Riku-KANO/ec-test/services/subscription/internal/adapter/http"
 	repository "github.com/Riku-KANO/ec-test/services/subscription/internal/adapter/postgres"
@@ -48,7 +49,26 @@ func main() {
 	sellerRepo := repository.NewSellerSubscriptionRepository(pool)
 	buyerRepo := repository.NewBuyerSubscriptionRepository(pool)
 
-	svc := app.NewService(sellerRepo, buyerRepo)
+	// Pub/Sub publisher. Optional: when PUBSUB_PROJECT_ID is empty (tests,
+	// local dev without the emulator) the service still boots, but the
+	// seller.subscribed / subscription_plan.updated events are no-ops, so
+	// search's seller_plan_boost projection won't get refreshed.
+	var publisher pubsub.Publisher
+	if cfg.PubSubProjectID != "" {
+		pub, pubErr := pubsub.NewGCPPublisher(ctx, cfg.PubSubProjectID)
+		if pubErr != nil {
+			slog.Warn("failed to create pubsub publisher; plan events disabled", "error", pubErr)
+		} else {
+			publisher = pub
+			defer func() {
+				if err := pub.Close(); err != nil {
+					slog.Warn("failed to close pubsub publisher", "error", err)
+				}
+			}()
+		}
+	}
+
+	svc := app.NewService(sellerRepo, buyerRepo, publisher)
 
 	subscriptionHandler := handler.NewSubscriptionHandler(svc)
 	buyerSubHandler := handler.NewBuyerSubscriptionHandler(svc)
