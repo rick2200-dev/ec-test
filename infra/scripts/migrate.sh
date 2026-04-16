@@ -33,6 +33,9 @@ db_url_for_service() {
     notification)
       echo "${NOTIFICATION_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5433/notification_dev?sslmode=disable}"
       ;;
+    subscription)
+      echo "${SUBSCRIPTION_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5434/subscription_dev?sslmode=disable}"
+      ;;
     *)
       echo "$DATABASE_URL"
       ;;

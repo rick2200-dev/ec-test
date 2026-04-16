@@ -39,12 +39,23 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA order_svc TO order_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON TABLES TO order_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON SEQUENCES TO order_role;
 
--- subscription
-GRANT USAGE ON SCHEMA subscription_svc TO subscription_role;
-GRANT ALL ON ALL TABLES IN SCHEMA subscription_svc TO subscription_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA subscription_svc TO subscription_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc GRANT ALL ON TABLES TO subscription_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc GRANT ALL ON SEQUENCES TO subscription_role;
+-- subscription lives on its own Postgres instance (Phase 3), so on a
+-- fresh shared-cluster DB the subscription_svc schema is not created
+-- here. The grants that used to live in this block moved to the
+-- subscription migration dir (subscription/003_grant_subscription_role)
+-- so they run on the split DB instead. Kept as a guarded DO block for
+-- existing shared-cluster DBs that still have the schema lingering from
+-- the pre-split layout.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'subscription_svc') THEN
+        GRANT USAGE ON SCHEMA subscription_svc TO subscription_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA subscription_svc TO subscription_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA subscription_svc TO subscription_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc GRANT ALL ON TABLES TO subscription_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc GRANT ALL ON SEQUENCES TO subscription_role;
+    END IF;
+END$$;
 
 -- inquiry
 GRANT USAGE ON SCHEMA inquiry_svc TO inquiry_role;
@@ -111,6 +122,26 @@ GRANT SELECT ON catalog_svc.products, catalog_svc.skus TO order_role;
 -- subscription_svc.subscription_plans. Phase 2.1 moves this to a local
 -- projection fed by events.
 GRANT USAGE ON SCHEMA auth_svc TO catalog_role;
-GRANT SELECT ON auth_svc.sellers, auth_svc.seller_subscriptions TO catalog_role;
-GRANT USAGE ON SCHEMA subscription_svc TO catalog_role;
-GRANT SELECT ON subscription_svc.subscription_plans TO catalog_role;
+GRANT SELECT ON auth_svc.sellers TO catalog_role;
+-- The auth_svc.seller_subscriptions table only exists on legacy shared
+-- cluster DBs (before Phase 2 moved seller_subscriptions to
+-- subscription_svc, and before Phase 3 split subscription out entirely).
+-- Guard so fresh DBs don't fail here.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_tables
+        WHERE schemaname = 'auth_svc' AND tablename = 'seller_subscriptions'
+    ) THEN
+        GRANT SELECT ON auth_svc.seller_subscriptions TO catalog_role;
+    END IF;
+END$$;
+-- subscription_svc may live on a split DB (Phase 3). Guard so fresh
+-- shared-cluster DBs without the schema don't fail this migration.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'subscription_svc') THEN
+        GRANT USAGE ON SCHEMA subscription_svc TO catalog_role;
+        GRANT SELECT ON subscription_svc.subscription_plans TO catalog_role;
+    END IF;
+END$$;

@@ -50,6 +50,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 3: subscription follows notification out of the shared cluster.
+  # Port 5434 so it coexists with the shared (5432) and notification (5433)
+  # instances in local dev.
+  postgres-subscription:
+    image: postgres:16-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: subscription_dev
+    volumes:
+      - pgdata-subscription:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d subscription_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   pgdata-notification:
+  pgdata-subscription:

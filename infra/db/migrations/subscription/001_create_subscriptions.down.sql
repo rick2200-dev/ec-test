@@ -1,2 +1,3 @@
-DROP TABLE IF EXISTS auth_svc.seller_subscriptions;
-DROP TABLE IF EXISTS auth_svc.subscription_plans;
+-- Historical no-op (see .up.sql). The original auth_svc tables were
+-- dropped by 002; there's nothing to reverse here on fresh DBs.
+SELECT 1;
