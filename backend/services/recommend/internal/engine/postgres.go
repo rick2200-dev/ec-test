@@ -89,8 +89,8 @@ func (e *PostgresEngine) similar(ctx context.Context, req domain.RecommendReques
 		       COALESCE(pr.price_currency, 'JPY') AS price_currency,
 		       COALESCE(pp.purchase_count + pp.view_count * 0.1, 0) AS score
 		FROM catalog_svc.products p
-		JOIN catalog_svc.product_categories pc ON pc.product_id = p.id
-		JOIN catalog_svc.product_categories pc2 ON pc2.category_id = pc.category_id
+		JOIN recommend_svc.product_categories pc ON pc.product_id = p.id
+		JOIN recommend_svc.product_categories pc2 ON pc2.category_id = pc.category_id
 		LEFT JOIN LATERAL (
 			SELECT price_amount, price_currency
 			FROM catalog_svc.skus
@@ -135,7 +135,7 @@ func (e *PostgresEngine) personalizedForYou(ctx context.Context, req domain.Reco
 		WITH user_viewed_categories AS (
 			SELECT pc.category_id, COUNT(*) AS view_weight
 			FROM recommend_svc.user_events ue
-			JOIN catalog_svc.product_categories pc ON pc.product_id = ue.product_id
+			JOIN recommend_svc.product_categories pc ON pc.product_id = ue.product_id
 			WHERE ue.user_id = $1
 			  AND ue.event_type = 'product_viewed'
 			GROUP BY pc.category_id
@@ -151,7 +151,7 @@ func (e *PostgresEngine) personalizedForYou(ctx context.Context, req domain.Reco
 		       COALESCE(pr.price_currency, 'JPY') AS price_currency,
 		       SUM(uvc.view_weight) AS score
 		FROM catalog_svc.products p
-		JOIN catalog_svc.product_categories pc ON pc.product_id = p.id
+		JOIN recommend_svc.product_categories pc ON pc.product_id = p.id
 		JOIN user_viewed_categories uvc ON uvc.category_id = pc.category_id
 		LEFT JOIN user_purchased up ON up.product_id = p.id
 		LEFT JOIN LATERAL (

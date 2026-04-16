@@ -47,6 +47,18 @@ func NewCatalogService(
 	}
 }
 
+// categoryIDsOf returns the domain product's single category wrapped as
+// a slice, matching the repeated field shape on the wire. Today catalog
+// stores one category per product in products.category_id; the proto
+// surface is plural so consumers don't need a schema change when catalog
+// later moves to a join table.
+func categoryIDsOf(p *domain.Product) []string {
+	if p == nil || p.CategoryID == nil {
+		return nil
+	}
+	return []string{p.CategoryID.String()}
+}
+
 // mustProtoJSON serializes a proto message using snake_case field names so
 // consumers see the same wire format as JSON-struct publishers. Panics are
 // impossible in practice since every proto payload here is structurally
@@ -154,6 +166,7 @@ func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, s
 				Slug:        p.Slug,
 				Description: p.Description,
 				Status:      string(p.Status),
+				CategoryIds: categoryIDsOf(p),
 			}),
 		})
 	}); err != nil {
@@ -247,6 +260,7 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) e
 				Slug:        p.Slug,
 				Description: p.Description,
 				Status:      string(p.Status),
+				CategoryIds: categoryIDsOf(p),
 			}),
 		})
 	}); err != nil {
@@ -299,6 +313,7 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, id uuid.UUID, 
 				Slug:        existing.Slug,
 				Description: existing.Description,
 				Status:      string(status),
+				CategoryIds: categoryIDsOf(existing),
 			}),
 		})
 	}); err != nil {

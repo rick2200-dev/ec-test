@@ -24,13 +24,17 @@ const (
 // ProductCreated is published when a seller adds a new product.
 // Subscribers: search (index), recommend (projection).
 type ProductCreated struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SellerId    string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Slug        string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
+	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Status      string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	// category_ids is the full set of categories the product belongs to at
+	// creation time. Downstream consumers (recommend) use it to maintain a
+	// local product_categories projection without reading catalog_svc.
+	CategoryIds   []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -107,16 +111,26 @@ func (x *ProductCreated) GetStatus() string {
 	return ""
 }
 
+func (x *ProductCreated) GetCategoryIds() []string {
+	if x != nil {
+		return x.CategoryIds
+	}
+	return nil
+}
+
 // ProductUpdated is published when a product's core fields change.
 // Subscribers: search (reindex), recommend (projection refresh).
 type ProductUpdated struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Slug          string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SellerId    string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Slug        string                 `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
+	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Status      string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	// category_ids — see ProductCreated.category_ids. Consumers treat this
+	// as a full replacement of the product's category assignments.
+	CategoryIds   []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -193,6 +207,13 @@ func (x *ProductUpdated) GetStatus() string {
 	return ""
 }
 
+func (x *ProductUpdated) GetCategoryIds() []string {
+	if x != nil {
+		return x.CategoryIds
+	}
+	return nil
+}
+
 // ProductDeleted is published when a product is removed. Only the id is
 // required for consumers to evict their local read models.
 type ProductDeleted struct {
@@ -244,21 +265,23 @@ var File_catalog_v1_events_proto protoreflect.FileDescriptor
 const file_catalog_v1_events_proto_rawDesc = "" +
 	"\n" +
 	"\x17catalog/v1/events.proto\x12\n" +
-	"catalog.v1\"\x9f\x01\n" +
+	"catalog.v1\"\xc2\x01\n" +
 	"\x0eProductCreated\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\"\x9f\x01\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
+	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\"\xc2\x01\n" +
 	"\x0eProductUpdated\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\" \n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
+	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\" \n" +
 	"\x0eProductDeleted\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02idBOZMgithub.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1;catalogv1b\x06proto3"
 

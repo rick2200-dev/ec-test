@@ -110,6 +110,16 @@ func main() {
 			slog.Error("failed to start event subscribers", "error", err)
 			os.Exit(1)
 		}
+
+		// ProductSubscriber drains catalog product-events into
+		// recommend_svc.product_categories so the recommendation queries
+		// can JOIN the projection instead of reading catalog_svc.
+		productSub := subscriber.NewProductSubscriber(pool, sub)
+		go func() {
+			if err := productSub.Start(bgCtx); err != nil {
+				slog.Error("product subscriber error", "error", err)
+			}
+		}()
 		slog.Info("started event subscribers")
 	} else {
 		slog.Info("PUBSUB_PROJECT_ID not set, skipping event subscribers")

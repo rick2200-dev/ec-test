@@ -13,6 +13,10 @@ message ProductCreated {
   string slug = 4;
   string description = 5;
   string status = 6;
+  // category_ids is the full set of categories the product belongs to at
+  // creation time. Downstream consumers (recommend) use it to maintain a
+  // local product_categories projection without reading catalog_svc.
+  repeated string category_ids = 7;
 }
 
 // ProductUpdated is published when a product's core fields change.
@@ -24,6 +28,9 @@ message ProductUpdated {
   string slug = 4;
   string description = 5;
   string status = 6;
+  // category_ids — see ProductCreated.category_ids. Consumers treat this
+  // as a full replacement of the product's category assignments.
+  repeated string category_ids = 7;
 }
 
 // ProductDeleted is published when a product is removed. Only the id is

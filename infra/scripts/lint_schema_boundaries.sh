@@ -30,7 +30,7 @@ declare -A ALLOW=(
   # catalog data and search joins auth sellers for ranking. Replace with a
   # dedicated indexing pipeline.
   [search]='(catalog_svc\.(products|skus|categories|seller_plan_boost)|auth_svc\.sellers)'
-  [recommend]='catalog_svc\.(products|skus|popular_products|product_categories)'
+  [recommend]='catalog_svc\.(products|skus)'
   # Phase 2.1: subscription refreshes the catalog-owned matview when plans
   # change. Goes away when catalog owns its own projection.
   [subscription]='catalog_svc\.refresh_seller_plan_boost'
