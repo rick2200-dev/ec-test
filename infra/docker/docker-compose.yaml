@@ -91,6 +91,7 @@ services:
       LOG_FORMAT: text
       DATABASE_URL: postgres://catalog_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/1
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match cart.CATALOG_INTERNAL_TOKEN.
       CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
@@ -214,6 +215,8 @@ services:
       DATABASE_URL: postgres://recommend_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/5
       CATALOG_SERVICE_URL: http://catalog:8082
+      PUBSUB_PROJECT_ID: local-project
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
       postgres:
         condition: service_healthy

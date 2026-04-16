@@ -106,7 +106,10 @@ func main() {
 		}()
 
 		eventSub := subscriber.NewEventSubscriber(recommendSvc, sub)
-		if err := eventSub.Start(initCtx); err != nil {
+		// Start goroutines with bgCtx (not initCtx, which has the startup
+		// timeout attached) so subscriptions stay up for the lifetime of
+		// the process rather than being cancelled 10s after boot.
+		if err := eventSub.Start(bgCtx); err != nil {
 			slog.Error("failed to start event subscribers", "error", err)
 			os.Exit(1)
 		}

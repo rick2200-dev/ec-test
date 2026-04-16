@@ -15,3 +15,15 @@ CREATE TABLE IF NOT EXISTS recommend_svc.product_categories (
 
 CREATE INDEX IF NOT EXISTS idx_recommend_product_categories_category
     ON recommend_svc.product_categories (category_id);
+
+-- Backfill: copy the current (product_id, category_id) mapping out of
+-- catalog_svc.products so existing products are searchable through
+-- similar / personalized immediately after deploy, without waiting for
+-- each product to emit its next product.updated event. Catalog stores
+-- the mapping inline on products.category_id; future many-to-many work
+-- would widen this SELECT.
+INSERT INTO recommend_svc.product_categories (product_id, category_id)
+SELECT id, category_id
+FROM catalog_svc.products
+WHERE category_id IS NOT NULL
+ON CONFLICT (product_id, category_id) DO NOTHING;
