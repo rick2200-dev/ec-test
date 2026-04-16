@@ -31,5 +31,25 @@ services:
     ports:
       - "8085:8085"
 
+  # Phase 3 pilot: notification's DB is broken out of the shared cluster.
+  # Host port differs from the shared instance so both run side by side
+  # for local development.
+  postgres-notification:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: notification_dev
+    volumes:
+      - pgdata-notification:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d notification_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
+  pgdata-notification:

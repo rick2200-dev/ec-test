@@ -24,11 +24,28 @@ SERVICES=(
   grants
 )
 
-db_url_with_table() {
+# Per-service DB URL override. Services that have been physically split
+# out of the shared cluster point at their own DB instance via a
+# dedicated env var. Everything else falls back to DATABASE_URL.
+db_url_for_service() {
   local svc="$1"
+  case "$svc" in
+    notification)
+      echo "${NOTIFICATION_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5433/notification_dev?sslmode=disable}"
+      ;;
+    *)
+      echo "$DATABASE_URL"
+      ;;
+  esac
+}
+
+# append the schema_migrations table name to the URL's query string so
+# every service keeps its own migration history.
+append_migrations_table() {
+  local url="$1" svc="$2"
   local sep="?"
-  case "$DATABASE_URL" in *\?*) sep="&";; esac
-  echo "${DATABASE_URL}${sep}x-migrations-table=schema_migrations_${svc}"
+  case "$url" in *\?*) sep="&";; esac
+  echo "${url}${sep}x-migrations-table=schema_migrations_${svc}"
 }
 
 migrate_up_all() {
@@ -36,7 +53,7 @@ migrate_up_all() {
     local dir="${MIGRATIONS_ROOT}/${svc}"
     [ -d "$dir" ] || { echo "skip ${svc}: no migrations"; continue; }
     echo "==> migrate up ${svc}"
-    migrate -path "$dir" -database "$(db_url_with_table "$svc")" up
+    migrate -path "$dir" -database "$(append_migrations_table "$(db_url_for_service "$svc")" "$svc")" up
   done
 }
 
@@ -47,7 +64,7 @@ migrate_down_all() {
     local dir="${MIGRATIONS_ROOT}/${svc}"
     [ -d "$dir" ] || continue
     echo "==> migrate down 1 ${svc}"
-    migrate -path "$dir" -database "$(db_url_with_table "$svc")" down 1 || true
+    migrate -path "$dir" -database "$(append_migrations_table "$(db_url_for_service "$svc")" "$svc")" down 1 || true
   done
 }
 
@@ -55,7 +72,7 @@ migrate_service_up() {
   local svc="$1"
   local dir="${MIGRATIONS_ROOT}/${svc}"
   [ -d "$dir" ] || { echo "no migration dir for ${svc}"; exit 1; }
-  migrate -path "$dir" -database "$(db_url_with_table "$svc")" up
+  migrate -path "$dir" -database "$(append_migrations_table "$(db_url_for_service "$svc")" "$svc")" up
 }
 
 case "${1:-up}" in

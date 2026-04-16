@@ -251,14 +251,20 @@ services:
       HTTP_PORT: "8087"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://notification_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3 pilot: notification runs against its own Postgres
+      # instance (postgres-notification) so a shared-cluster outage does
+      # not take its dedup inbox offline.
+      DATABASE_URL: postgres://notification_role:localdev@postgres-notification:5432/notification_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/6
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
-      postgres:
+      postgres-notification:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8087/healthz"]
       interval: 10s
@@ -446,6 +452,13 @@ services:
     extends:
       file: docker-compose.deps.yaml
       service: pubsub-emulator
+    networks:
+      - backend
+
+  postgres-notification:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-notification
     networks:
       - backend
 
