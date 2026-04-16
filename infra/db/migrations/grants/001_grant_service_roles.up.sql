@@ -71,12 +71,23 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA review_svc TO review_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON TABLES TO review_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON SEQUENCES TO review_role;
 
--- shipping
-GRANT USAGE ON SCHEMA shipping_svc TO shipping_role;
-GRANT ALL ON ALL TABLES IN SCHEMA shipping_svc TO shipping_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA shipping_svc TO shipping_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON TABLES TO shipping_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON SEQUENCES TO shipping_role;
+-- shipping lives on its own Postgres instance (Phase 3), so on a fresh
+-- shared-cluster DB the shipping_svc schema is not created here. The
+-- grants that used to live in this block moved to the shipping
+-- migration dir (shipping/005_grant_shipping_role) so they run on the
+-- split DB instead. Kept as a guarded DO block for existing
+-- shared-cluster DBs that still have the schema lingering from the
+-- pre-split layout.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'shipping_svc') THEN
+        GRANT USAGE ON SCHEMA shipping_svc TO shipping_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA shipping_svc TO shipping_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA shipping_svc TO shipping_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON TABLES TO shipping_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON SEQUENCES TO shipping_role;
+    END IF;
+END$$;
 
 -- notification lives on its own Postgres instance (Phase 3), so on a
 -- fresh shared-cluster DB the notification_svc schema is not created

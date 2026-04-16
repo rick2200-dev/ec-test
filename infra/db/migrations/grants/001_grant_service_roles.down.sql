@@ -51,11 +51,17 @@ REVOKE USAGE ON SCHEMA review_svc FROM review_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc REVOKE ALL ON TABLES FROM review_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc REVOKE ALL ON SEQUENCES FROM review_role;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA shipping_svc FROM shipping_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA shipping_svc FROM shipping_role;
-REVOKE USAGE ON SCHEMA shipping_svc FROM shipping_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc REVOKE ALL ON TABLES FROM shipping_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc REVOKE ALL ON SEQUENCES FROM shipping_role;
+-- shipping_svc lives on a split DB (Phase 3). Match the up-side guard.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'shipping_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA shipping_svc FROM shipping_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA shipping_svc FROM shipping_role;
+        REVOKE USAGE ON SCHEMA shipping_svc FROM shipping_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc REVOKE ALL ON TABLES FROM shipping_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc REVOKE ALL ON SEQUENCES FROM shipping_role;
+    END IF;
+END$$;
 
 -- notification_svc lives on a split DB (Phase 3 pilot) on fresh
 -- clusters. Match the up-side guard.

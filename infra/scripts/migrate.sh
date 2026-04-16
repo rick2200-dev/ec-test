@@ -36,6 +36,9 @@ db_url_for_service() {
     subscription)
       echo "${SUBSCRIPTION_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5434/subscription_dev?sslmode=disable}"
       ;;
+    shipping)
+      echo "${SHIPPING_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5435/shipping_dev?sslmode=disable}"
+      ;;
     *)
       echo "$DATABASE_URL"
       ;;

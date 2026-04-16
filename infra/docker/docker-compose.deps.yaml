@@ -69,7 +69,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 3: shipping split. Port 5435 to coexist with the shared (5432),
+  # notification (5433), and subscription (5434) instances.
+  postgres-shipping:
+    image: postgres:16-alpine
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: shipping_dev
+    volumes:
+      - pgdata-shipping:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d shipping_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   pgdata-notification:
   pgdata-subscription:
+  pgdata-shipping:
