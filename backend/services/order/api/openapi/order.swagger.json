@@ -80,7 +80,7 @@
         "parameters": [
           {
             "name": "status",
-            "description": "Optional status filter. Defaults to \"pending\" server-side when\nempty (seller dashboards land on pending-first).",
+            "description": "Optional status filter. Defaults to \"pending\" server-side when\r\nempty (seller dashboards land on pending-first).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -101,7 +101,7 @@
           },
           {
             "name": "seller_id",
-            "description": "Seller scope. MUST be set — the server joins order_svc.orders on this\nto prevent one seller from reading another seller's cancellation\nreasons or buyer identifiers. See docs/order-cancellation.md.",
+            "description": "Seller scope. MUST be set — the server joins order_svc.orders on this\r\nto prevent one seller from reading another seller's cancellation\r\nreasons or buyer identifiers. See docs/order-cancellation.md.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -240,7 +240,7 @@
         "parameters": [
           {
             "name": "body",
-            "description": "CreateCheckoutRequest carries a flat list of items across one or more\nsellers. The service groups by seller_id, creates one Order per group in\na single transaction, and returns all order IDs sharing one PaymentIntent.",
+            "description": "CreateCheckoutRequest carries a flat list of items across one or more\r\nsellers. The service groups by seller_id, creates one Order per group in\r\na single transaction, and returns all order IDs sharing one PaymentIntent.",
             "in": "body",
             "required": true,
             "schema": {
@@ -480,7 +480,7 @@
       "properties": {
         "reason": {
           "type": "string",
-          "description": "buyer_auth0_id is resolved server-side from the authenticated\nidentity. Clients that set this field are ignored."
+          "description": "buyer_auth0_id is resolved server-side from the authenticated\r\nidentity. Clients that set this field are ignored."
         }
       }
     },
@@ -573,7 +573,7 @@
           "format": "date-time"
         }
       },
-      "description": "CancellationRequest mirrors order_svc.order_cancellation_requests.\nThe server (order service) is the authority for requested_by_auth0_id\nand processed_by_seller_id; clients must not trust these fields from\nrequest bodies and should rely on the authenticated caller's identity."
+      "description": "CancellationRequest mirrors order_svc.order_cancellation_requests.\r\nThe server (order service) is the authority for requested_by_auth0_id\r\nand processed_by_seller_id; clients must not trust these fields from\r\nrequest bodies and should rely on the authenticated caller's identity."
     },
     "v1CheckoutLineInput": {
       "type": "object",
@@ -598,7 +598,7 @@
           "type": "string"
         }
       },
-      "description": "CheckoutLineInput includes seller_id and price snapshots from cart state.\nThe order service re-validates prices against the catalog before insert."
+      "description": "CheckoutLineInput includes seller_id and price snapshots from cart state.\r\nThe order service re-validates prices against the catalog before insert."
     },
     "v1CreateCheckoutRequest": {
       "type": "object",
@@ -620,7 +620,7 @@
           }
         }
       },
-      "description": "CreateCheckoutRequest carries a flat list of items across one or more\nsellers. The service groups by seller_id, creates one Order per group in\na single transaction, and returns all order IDs sharing one PaymentIntent."
+      "description": "CreateCheckoutRequest carries a flat list of items across one or more\r\nsellers. The service groups by seller_id, creates one Order per group in\r\na single transaction, and returns all order IDs sharing one PaymentIntent."
     },
     "v1CreateCheckoutResponse": {
       "type": "object",
@@ -788,7 +788,7 @@
         },
         "seller_name": {
           "type": "string",
-          "description": "Seller company name captured at order creation time. Preserved even if\nthe seller is later deleted so buyer order history remains readable."
+          "description": "Seller company name captured at order creation time. Preserved even if\r\nthe seller is later deleted so buyer order history remains readable."
         }
       }
     },
@@ -822,7 +822,7 @@
         },
         "product_id": {
           "type": "string",
-          "description": "Product id snapshot (resolved from sku_id at checkout). Used by the\ngateway to enrich order detail responses with current catalog data."
+          "description": "Product id snapshot (resolved from sku_id at checkout). Used by the\r\ngateway to enrich order detail responses with current catalog data."
         }
       }
     },

@@ -18,6 +18,15 @@ message OrderCreated {
   string stripe_payment_intent_id = 6;
 }
 
+// PaidLineItem is a per-line snapshot attached to OrderPaid so downstream
+// consumers (recommend) can record purchased events keyed on product_id
+// without calling back to the order service.
+message PaidLineItem {
+  string product_id = 1;
+  string sku_id = 2;
+  int32 quantity = 3;
+}
+
 // OrderPaid is published when a Stripe payment_intent.succeeded webhook is
 // processed and the order is marked paid. shipping_address_json is the
 // shipping address JSON snapshot at order creation time — the shipping
@@ -29,6 +38,7 @@ message OrderPaid {
   int64 total_amount = 4;
   string stripe_payment_intent_id = 5;
   string shipping_address_json = 6;
+  repeated PaidLineItem line_items = 7;
 }
 
 // OrderShipped is published when a seller marks an order as shipped.

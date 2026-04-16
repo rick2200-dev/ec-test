@@ -528,6 +528,29 @@ func getSellerStripeAccountID(sellerID uuid.UUID) string {
 	return "acct_stub_" + sellerID.String()
 }
 
+// loadPaidLineItems fetches the order lines for the given order and returns
+// the slim per-line snapshot attached to order.paid events so downstream
+// consumers (recommend, analytics) can attribute purchases to products
+// without calling back to the order service.
+func (s *OrderService) loadPaidLineItems(ctx context.Context, orderID uuid.UUID) ([]*orderv1.PaidLineItem, error) {
+	owl, err := s.orderRepo.GetByID(ctx, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("load order lines: %w", err)
+	}
+	if owl == nil {
+		return nil, fmt.Errorf("order not found: %s", orderID)
+	}
+	out := make([]*orderv1.PaidLineItem, 0, len(owl.Lines))
+	for _, l := range owl.Lines {
+		out = append(out, &orderv1.PaidLineItem{
+			ProductId: l.ProductID.String(),
+			SkuId:     l.SKUID.String(),
+			Quantity:  int32(l.Quantity),
+		})
+	}
+	return out, nil
+}
+
 // CheckPurchase verifies whether the given buyer has a paid-or-later order
 // containing the given SKU from the given seller. Used by the inquiry service
 // before allowing a buyer to open a new thread. Failure to find a matching

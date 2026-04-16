@@ -63,6 +63,31 @@ func main() {
 	viewRefresher := repository.NewPostgresViewRefresher(pool)
 	recommendSvc := app.NewRecommendService(eng, viewRefresher)
 
+	// Background refresh of recommend_svc.popular_products so the
+	// popularity ranking stays roughly in sync with new user_events.
+	// 5 minutes is a placeholder cadence; low enough that new purchases
+	// surface the same session and high enough that REFRESH MATERIALIZED
+	// VIEW CONCURRENTLY stays cheap.
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		// Run once at startup so the matview isn't empty after a fresh
+		// deploy (its seed state is empty until the first refresh).
+		if err := recommendSvc.RefreshPopularProducts(bgCtx); err != nil {
+			slog.Warn("initial popular_products refresh failed", "error", err)
+		}
+		for {
+			select {
+			case <-bgCtx.Done():
+				return
+			case <-ticker.C:
+				if err := recommendSvc.RefreshPopularProducts(bgCtx); err != nil {
+					slog.Warn("popular_products refresh failed", "error", err)
+				}
+			}
+		}
+	}()
+
 	// Handlers
 	recommendHandler := handler.NewRecommendHandler(recommendSvc)
 	healthHandler := handler.NewHealthHandler(pool)

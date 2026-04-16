@@ -86,13 +86,13 @@ func (s *EventSubscriber) handleUserEvent(ctx context.Context, event pubsub.Even
 	return nil
 }
 
-// handleOrderEvent processes order.paid events as a "purchased" signal for the
-// buyer. The canonical payload is orderv1.OrderPaid which carries order_id +
-// buyer_auth0_id + seller_id + total_amount but no line items — per-line
-// product affinity would require the order service to include lines on
-// order.paid or a callback to order. For now we record a single purchased
-// event keyed on (buyer_auth0_id, order_id) so the recommender still knows a
-// purchase happened.
+// handleOrderEvent processes order.paid events and records one purchased
+// user event per line item. OrderPaid carries line_items (product_id,
+// sku_id, quantity) specifically so the recommender can attribute
+// purchases to products without calling back to the order service.
+// Events with no line_items (older producers during a rolling deploy) are
+// ack'd with a warning; synthesizing an order-keyed event here would
+// poison the popularity matview which joins on product_id.
 func (s *EventSubscriber) handleOrderEvent(ctx context.Context, event pubsub.Event) error {
 	if event.Type != "order.paid" {
 		return nil
@@ -103,22 +103,36 @@ func (s *EventSubscriber) handleOrderEvent(ctx context.Context, event pubsub.Eve
 		return fmt.Errorf("decode order.paid data: %w", err)
 	}
 
-	orderID, err := uuid.Parse(data.OrderId)
-	if err != nil {
-		return fmt.Errorf("parse order_id %q: %w", data.OrderId, err)
+	if len(data.LineItems) == 0 {
+		slog.Warn("order.paid arrived with no line_items; skipping purchase event recording",
+			"order_id", data.OrderId, "buyer_auth0_id", data.BuyerAuth0Id)
+		return nil
 	}
 
-	ue := domain.UserEvent{
-		UserID:    data.BuyerAuth0Id,
-		EventType: domain.Purchased,
-		ProductID: orderID, // Order-scoped signal until line-level data is in the contract.
-	}
-	if err := s.svc.RecordUserEvent(ctx, ue); err != nil {
-		slog.Error("failed to record purchase event", "order_id", data.OrderId, "error", err)
-		return err
+	recorded := 0
+	for _, li := range data.LineItems {
+		productID, err := uuid.Parse(li.ProductId)
+		if err != nil {
+			slog.Error("skipping order.paid line with invalid product_id",
+				"order_id", data.OrderId, "product_id", li.ProductId, "error", err)
+			continue
+		}
+		ue := domain.UserEvent{
+			UserID:    data.BuyerAuth0Id,
+			EventType: domain.Purchased,
+			ProductID: productID,
+		}
+		if err := s.svc.RecordUserEvent(ctx, ue); err != nil {
+			slog.Error("failed to record purchase event",
+				"order_id", data.OrderId, "product_id", productID, "error", err)
+			return err
+		}
+		recorded++
 	}
 
-	slog.Info("processed order.paid event", "order_id", data.OrderId, "buyer_auth0_id", data.BuyerAuth0Id)
+	slog.Info("processed order.paid event",
+		"order_id", data.OrderId, "buyer_auth0_id", data.BuyerAuth0Id,
+		"lines", len(data.LineItems), "recorded", recorded)
 	return nil
 }
 
