@@ -26,11 +26,18 @@ REVOKE USAGE ON SCHEMA order_svc FROM order_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc REVOKE ALL ON TABLES FROM order_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc REVOKE ALL ON SEQUENCES FROM order_role;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA subscription_svc FROM subscription_role, catalog_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA subscription_svc FROM subscription_role;
-REVOKE USAGE ON SCHEMA subscription_svc FROM subscription_role, catalog_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc REVOKE ALL ON TABLES FROM subscription_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc REVOKE ALL ON SEQUENCES FROM subscription_role;
+-- subscription_svc may live on a split DB (Phase 3), in which case the
+-- shared cluster never had the schema. Match the up-side guard.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'subscription_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA subscription_svc FROM subscription_role, catalog_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA subscription_svc FROM subscription_role;
+        REVOKE USAGE ON SCHEMA subscription_svc FROM subscription_role, catalog_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc REVOKE ALL ON TABLES FROM subscription_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA subscription_svc REVOKE ALL ON SEQUENCES FROM subscription_role;
+    END IF;
+END$$;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA inquiry_svc FROM inquiry_role;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA inquiry_svc FROM inquiry_role;
@@ -50,8 +57,15 @@ REVOKE USAGE ON SCHEMA shipping_svc FROM shipping_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc REVOKE ALL ON TABLES FROM shipping_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc REVOKE ALL ON SEQUENCES FROM shipping_role;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA notification_svc FROM notification_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA notification_svc FROM notification_role;
-REVOKE USAGE ON SCHEMA notification_svc FROM notification_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc REVOKE ALL ON TABLES FROM notification_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc REVOKE ALL ON SEQUENCES FROM notification_role;
+-- notification_svc lives on a split DB (Phase 3 pilot) on fresh
+-- clusters. Match the up-side guard.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'notification_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA notification_svc FROM notification_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA notification_svc FROM notification_role;
+        REVOKE USAGE ON SCHEMA notification_svc FROM notification_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc REVOKE ALL ON TABLES FROM notification_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc REVOKE ALL ON SEQUENCES FROM notification_role;
+    END IF;
+END$$;

@@ -96,3 +96,18 @@ VALUES ('Premium', 'premium', 2, 29800, 'JPY',
         '{"max_products": -1, "search_boost": 2.5, "featured_slots": 5, "promoted_results": 3}'::jsonb,
         'active')
 ON CONFLICT (slug) DO NOTHING;
+
+-- ---------- Seed default buyer plans (idempotent) ----------
+-- ListBuyerPlans returns rows WHERE status = 'active'; CreateBuyerSubscription
+-- needs a plan_id. Without these seeds a fresh DB has no usable buyer plan.
+INSERT INTO subscription_svc.buyer_plans (name, slug, price_amount, price_currency, features, status)
+VALUES ('Free', 'free', 0, 'JPY',
+        '{"free_shipping": false}'::jsonb,
+        'active')
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO subscription_svc.buyer_plans (name, slug, price_amount, price_currency, features, status)
+VALUES ('Prime', 'prime', 980, 'JPY',
+        '{"free_shipping": true}'::jsonb,
+        'active')
+ON CONFLICT (slug) DO NOTHING;
