@@ -1,0 +1,42 @@
+# CODEOWNERS — every `services/*/api/` directory is owned by the team that
+# owns the service. Changes there are the public contract the service
+# exposes to the rest of the platform, so they require owner review.
+#
+# Currently a single maintainer; swap in real team handles (e.g.
+# @org/order-team) as teams form. The allowlist file at
+# infra/scripts/lint_schema_boundaries.sh is also listed here so the
+# service team stays in control of the DB boundary.
+
+# ─── Shared / cross-cutting ───────────────────────────────────
+/backend/buf.yaml               @Riku-KANO
+/backend/shared/api/            @Riku-KANO
+/backend/pkg/pubsub/            @Riku-KANO
+/infra/db/migrations/bootstrap/ @Riku-KANO
+/infra/db/migrations/grants/    @Riku-KANO
+/infra/scripts/lint_schema_boundaries.sh @Riku-KANO
+/infra/scripts/migrate.sh       @Riku-KANO
+
+# ─── Service contracts (proto + generated stubs + OpenAPI) ────
+/backend/services/auth/api/         @Riku-KANO
+/backend/services/cart/api/         @Riku-KANO
+/backend/services/catalog/api/      @Riku-KANO
+/backend/services/inquiry/api/      @Riku-KANO
+/backend/services/inventory/api/    @Riku-KANO
+/backend/services/notification/api/ @Riku-KANO
+/backend/services/order/api/        @Riku-KANO
+/backend/services/recommend/api/    @Riku-KANO
+/backend/services/review/api/       @Riku-KANO
+/backend/services/search/api/       @Riku-KANO
+/backend/services/shipping/api/     @Riku-KANO
+/backend/services/subscription/api/ @Riku-KANO
+
+# ─── Service migrations (per-team schema ownership) ───────────
+/infra/db/migrations/auth/         @Riku-KANO
+/infra/db/migrations/catalog/      @Riku-KANO
+/infra/db/migrations/inquiry/      @Riku-KANO
+/infra/db/migrations/inventory/    @Riku-KANO
+/infra/db/migrations/notification/ @Riku-KANO
+/infra/db/migrations/order/        @Riku-KANO
+/infra/db/migrations/review/       @Riku-KANO
+/infra/db/migrations/shipping/     @Riku-KANO
+/infra/db/migrations/subscription/ @Riku-KANO

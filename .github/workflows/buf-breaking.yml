@@ -1,0 +1,44 @@
+name: Buf Breaking
+
+on:
+  pull_request:
+    paths:
+      - 'backend/buf.yaml'
+      - 'backend/buf.lock'
+      - 'backend/**/*.proto'
+      - 'backend/services/*/api/buf.gen.yaml'
+      - 'backend/shared/api/buf.gen.yaml'
+      - '.github/workflows/buf-breaking.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+      - name: buf lint
+        working-directory: backend
+        run: buf lint
+
+  breaking:
+    # Fails the PR if any service's public proto contract introduces a
+    # breaking change relative to main. Paired with the CODEOWNERS rule on
+    # services/*/api/ so the owning team approves every intentional break.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+      - name: buf breaking --against main
+        working-directory: backend
+        run: |
+          buf breaking \
+            --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=backend"

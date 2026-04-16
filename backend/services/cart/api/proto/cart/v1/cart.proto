@@ -12,10 +12,10 @@ import "common/v1/common.proto";
 // resets on every mutation.
 service CartService {
   rpc GetCart(GetCartRequest) returns (GetCartResponse);
-  rpc AddItem(AddItemRequest) returns (CartResponse);
-  rpc UpdateItemQuantity(UpdateItemQuantityRequest) returns (CartResponse);
-  rpc RemoveItem(RemoveItemRequest) returns (CartResponse);
-  rpc ClearCart(ClearCartRequest) returns (CartResponse);
+  rpc AddItem(AddItemRequest) returns (AddItemResponse);
+  rpc UpdateItemQuantity(UpdateItemQuantityRequest) returns (UpdateItemQuantityResponse);
+  rpc RemoveItem(RemoveItemRequest) returns (RemoveItemResponse);
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
   rpc Checkout(CheckoutRequest) returns (CheckoutResponse);
 }
 
@@ -78,8 +78,19 @@ message ClearCartRequest {
   string buyer_auth0_id = 1;
 }
 
-// CartResponse returns the full cart state after a mutation.
-message CartResponse {
+// Mutation RPCs all return the full cart state. The per-RPC wrappers exist
+// so buf lint's RPC_RESPONSE_STANDARD_NAME rule is satisfied; every payload
+// is the same shape.
+message AddItemResponse {
+  Cart cart = 1;
+}
+message UpdateItemQuantityResponse {
+  Cart cart = 1;
+}
+message RemoveItemResponse {
+  Cart cart = 1;
+}
+message ClearCartResponse {
   Cart cart = 1;
 }
 
