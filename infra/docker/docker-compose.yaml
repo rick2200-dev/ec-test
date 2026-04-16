@@ -100,6 +100,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/healthz"]
       interval: 10s
@@ -222,6 +224,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8086/healthz"]
       interval: 10s
@@ -438,6 +442,24 @@ services:
       service: pubsub-emulator
     networks:
       - backend
+
+  # One-shot init container that seeds the emulator with every topic +
+  # subscription the services expect. Publishers / subscribers fail with
+  # NotFound unless the resource exists, and the emulator image itself
+  # ships no provisioning hooks.
+  pubsub-init:
+    image: curlimages/curl:8.8.0
+    depends_on:
+      - pubsub-emulator
+    environment:
+      PUBSUB_PROJECT_ID: local-project
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+    volumes:
+      - ../scripts:/scripts:ro
+    entrypoint: ["/bin/sh", "/scripts/pubsub_emulator_init.sh"]
+    networks:
+      - backend
+    restart: "no"
 
 networks:
   backend:
