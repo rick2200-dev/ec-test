@@ -16,6 +16,7 @@ import (
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/services/search/internal/adapter/http"
+	"github.com/Riku-KANO/ec-test/services/search/internal/adapter/httpclient"
 	searchpubsub "github.com/Riku-KANO/ec-test/services/search/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/search/internal/app"
 	"github.com/Riku-KANO/ec-test/services/search/internal/config"
@@ -105,7 +106,8 @@ func main() {
 		} else {
 			defer func() { _ = sub.Close() }()
 
-			productSub := searchpubsub.NewProductSubscriber(searchEngine, sub)
+			sellerClient := httpclient.NewSellerClient(cfg.AuthServiceURL, cfg.AuthInternalToken)
+			productSub := searchpubsub.NewProductSubscriber(pool, sub, sellerClient)
 			go func() {
 				if err := productSub.Start(bgCtx); err != nil {
 					slog.Error("product subscriber error", "error", err)

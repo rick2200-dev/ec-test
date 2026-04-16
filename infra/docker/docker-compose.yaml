@@ -192,7 +192,8 @@ services:
       PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       AUTH_SERVICE_URL: http://auth:8081
-      AUTH_INTERNAL_TOKEN: local-dev-auth-internal-token
+      # Must match AUTH_INTERNAL_TOKEN on the auth service.
+      AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
       postgres:
         condition: service_healthy

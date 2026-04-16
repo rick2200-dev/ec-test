@@ -18,6 +18,8 @@ declare -A OWNED=(
   [review]='review_svc'
   [shipping]='shipping_svc'
   [notification]='notification_svc'
+  [recommend]='recommend_svc'
+  [search]='search_svc'
 )
 
 # Transitional allowlist. Value is a regex of allowed cross-schema matches.
@@ -27,7 +29,7 @@ declare -A OWNED=(
 declare -A ALLOW=()
 
 # Any reference to a *_svc schema.
-SCHEMAS_RE='(auth|catalog|inventory|order|subscription|inquiry|review|shipping|notification)_svc\.'
+SCHEMAS_RE='(auth|catalog|inventory|order|subscription|inquiry|review|shipping|notification|recommend|search)_svc\.'
 
 exit_code=0
 for svc_dir in backend/services/*/; do

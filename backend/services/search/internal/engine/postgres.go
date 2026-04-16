@@ -324,17 +324,21 @@ func buildOrderClause(sortBy, sortOrder string, hasQuery bool) string {
 		direction = "DESC"
 	}
 
+	// Phase 2.2 projection: columns live on search_svc.products (alias p).
+	// There is no separate skus alias — price_amount is denormalized.
+	// updated_at replaces created_at as the freshness signal; the
+	// projection stamps it at every upsert.
 	switch strings.ToLower(sortBy) {
 	case "price":
-		return fmt.Sprintf("ORDER BY s.price_amount %s, p.name ASC", direction)
+		return fmt.Sprintf("ORDER BY p.price_amount %s NULLS LAST, p.name ASC", direction)
 	case "name":
 		return fmt.Sprintf("ORDER BY p.name %s", direction)
-	case "created_at":
-		return fmt.Sprintf("ORDER BY p.created_at %s", direction)
+	case "created_at", "updated_at":
+		return fmt.Sprintf("ORDER BY p.updated_at %s", direction)
 	default:
 		if hasQuery {
 			return "ORDER BY rank DESC, p.name ASC"
 		}
-		return "ORDER BY COALESCE(spb.plan_tier, 0) DESC, p.created_at DESC"
+		return "ORDER BY COALESCE(spb.plan_tier, 0) DESC, p.updated_at DESC"
 	}
 }

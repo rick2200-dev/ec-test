@@ -2,86 +2,89 @@ package subscriber
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/reflect/protoreflect"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
-	"github.com/Riku-KANO/ec-test/services/search/internal/domain"
-	"github.com/Riku-KANO/ec-test/services/search/internal/engine"
 )
+
+// SellerNameResolver is the narrow driven port the ProductSubscriber uses
+// to snapshot seller_name onto the search_svc.products projection.
+// *httpclient.SellerClient satisfies this interface.
+type SellerNameResolver interface {
+	BatchGetSellerNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
+}
 
 // SubscriptionID is the Pub/Sub subscription for product events.
 const SubscriptionID = "product-events-search"
 
-// ProductSubscriber subscribes to catalog product events and updates the
-// search index. The payload contract is defined in
-// services/catalog/api/proto/catalog/v1/events.proto.
+// ProductSubscriber maintains search_svc.products by reacting to catalog
+// product lifecycle events. Replaces the former cross-schema JOINs the
+// search engine used to run against catalog_svc + auth_svc tables.
+//
+// seller_name is resolved via a HTTP call to auth's /internal/sellers/
+// batch-get endpoint because auth doesn't emit seller events yet. Once
+// it does, swap for a search_svc.sellers table + seller event subscriber
+// and drop the per-event HTTP lookup.
 type ProductSubscriber struct {
-	engine     engine.SearchEngine
+	pool       *pgxpool.Pool
 	subscriber pubsub.Subscriber
+	sellers    SellerNameResolver
 }
 
-func NewProductSubscriber(eng engine.SearchEngine, sub pubsub.Subscriber) *ProductSubscriber {
-	return &ProductSubscriber{engine: eng, subscriber: sub}
+// NewProductSubscriber wires a subscriber to the pool + sellers resolver.
+func NewProductSubscriber(pool *pgxpool.Pool, sub pubsub.Subscriber, sellers SellerNameResolver) *ProductSubscriber {
+	return &ProductSubscriber{pool: pool, subscriber: sub, sellers: sellers}
 }
 
+// Start begins consuming product-events-search. Blocks until ctx cancels.
 func (s *ProductSubscriber) Start(ctx context.Context) error {
 	slog.Info("starting product event subscriber", "subscription", SubscriptionID)
-	return s.subscriber.Subscribe(ctx, SubscriptionID, s.handleEvent)
+	return s.subscriber.Subscribe(ctx, SubscriptionID, s.handle)
 }
 
-func (s *ProductSubscriber) handleEvent(ctx context.Context, event pubsub.Event) error {
-	slog.Info("received product event", "type", event.Type, "event_id", event.ID)
-
+func (s *ProductSubscriber) handle(ctx context.Context, event pubsub.Event) error {
 	switch event.Type {
 	case "product.created":
 		var p catalogv1.ProductCreated
-		if err := decodeProtoEventData(event.Data, &p); err != nil {
-			return err
+		if err := decodeProtoEvent(event.Data, &p); err != nil {
+			return fmt.Errorf("decode product.created: %w", err)
 		}
-		return s.indexFromCreated(ctx, &p, event.Type)
+		return s.upsert(ctx,
+			p.Id, p.SellerId, p.Name, p.Slug, p.Description, p.Status,
+			firstOrEmpty(p.CategoryIds), p.CategoryName,
+			p.CheapestPriceAmount, p.CheapestPriceCurrency)
 	case "product.updated":
 		var p catalogv1.ProductUpdated
-		if err := decodeProtoEventData(event.Data, &p); err != nil {
-			return err
+		if err := decodeProtoEvent(event.Data, &p); err != nil {
+			return fmt.Errorf("decode product.updated: %w", err)
 		}
-		return s.indexFromUpdated(ctx, &p, event.Type)
+		return s.upsert(ctx,
+			p.Id, p.SellerId, p.Name, p.Slug, p.Description, p.Status,
+			firstOrEmpty(p.CategoryIds), p.CategoryName,
+			p.CheapestPriceAmount, p.CheapestPriceCurrency)
 	case "product.deleted":
 		var p catalogv1.ProductDeleted
-		if err := decodeProtoEventData(event.Data, &p); err != nil {
-			return err
+		if err := decodeProtoEvent(event.Data, &p); err != nil {
+			return fmt.Errorf("decode product.deleted: %w", err)
 		}
-		id, err := uuid.Parse(p.Id)
-		if err != nil {
-			return fmt.Errorf("parse product id %q: %w", p.Id, err)
-		}
-		if err := s.engine.DeleteProduct(ctx, id); err != nil {
-			return fmt.Errorf("delete product %s: %w", id, err)
-		}
-		slog.Info("product removed from index", "product_id", id)
-		return nil
+		return s.delete(ctx, p.Id)
 	default:
 		slog.Warn("ignoring unknown event type", "type", event.Type)
 		return nil
 	}
 }
 
-func (s *ProductSubscriber) indexFromCreated(ctx context.Context, p *catalogv1.ProductCreated, eventType string) error {
-	return s.indexProduct(ctx, p.Id, p.SellerId, p.Name, p.Slug, p.Description, p.Status, eventType)
-}
-
-func (s *ProductSubscriber) indexFromUpdated(ctx context.Context, p *catalogv1.ProductUpdated, eventType string) error {
-	return s.indexProduct(ctx, p.Id, p.SellerId, p.Name, p.Slug, p.Description, p.Status, eventType)
-}
-
-func (s *ProductSubscriber) indexProduct(ctx context.Context, idStr, sellerIDStr, name, slug, description, status, eventType string) error {
-	id, err := uuid.Parse(idStr)
+func (s *ProductSubscriber) upsert(
+	ctx context.Context,
+	idStr, sellerIDStr, name, slug, description, status, categoryIDStr, categoryName string,
+	priceAmount int64, priceCurrency string,
+) error {
+	productID, err := uuid.Parse(idStr)
 	if err != nil {
 		return fmt.Errorf("parse product id %q: %w", idStr, err)
 	}
@@ -89,29 +92,79 @@ func (s *ProductSubscriber) indexProduct(ctx context.Context, idStr, sellerIDStr
 	if err != nil {
 		return fmt.Errorf("parse seller_id %q: %w", sellerIDStr, err)
 	}
-	product := domain.ProductEvent{
-		ID:          id,
-		SellerID:    sellerID,
-		Name:        name,
-		Slug:        slug,
-		Description: description,
-		Status:      status,
+
+	var categoryID *uuid.UUID
+	if categoryIDStr != "" {
+		cid, err := uuid.Parse(categoryIDStr)
+		if err != nil {
+			slog.Warn("skipping invalid category_id on product event",
+				"product_id", productID, "category_id", categoryIDStr, "error", err)
+		} else {
+			categoryID = &cid
+		}
 	}
-	if err := s.engine.IndexProduct(ctx, product); err != nil {
-		return fmt.Errorf("index product %s: %w", id, err)
+
+	// Resolve seller_name via auth. A transient failure should not block
+	// the upsert — degrade to empty name and let a future event correct
+	// the row. Search queries COALESCE the column anyway.
+	sellerName := ""
+	if s.sellers != nil {
+		if names, err := s.sellers.BatchGetSellerNames(ctx, []uuid.UUID{sellerID}); err != nil {
+			slog.Warn("seller name lookup failed; indexing product without it",
+				"product_id", productID, "seller_id", sellerID, "error", err)
+		} else {
+			sellerName = names[sellerID]
+		}
 	}
-	slog.Info("product indexed", "product_id", id, "event_type", eventType)
+
+	var amountArg any = priceAmount
+	var currencyArg any = priceCurrency
+	if priceCurrency == "" {
+		amountArg = nil
+		currencyArg = nil
+	}
+
+	_, err = s.pool.Exec(ctx,
+		`INSERT INTO search_svc.products
+		   (id, seller_id, seller_name, category_id, category_name, name, slug, description, status, price_amount, price_currency, search_vector, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+		         setweight(to_tsvector('simple', COALESCE($6, '')), 'A') ||
+		         setweight(to_tsvector('simple', COALESCE($8, '')), 'B'),
+		         NOW())
+		 ON CONFLICT (id) DO UPDATE SET
+		   seller_id       = EXCLUDED.seller_id,
+		   seller_name     = EXCLUDED.seller_name,
+		   category_id     = EXCLUDED.category_id,
+		   category_name   = EXCLUDED.category_name,
+		   name            = EXCLUDED.name,
+		   slug            = EXCLUDED.slug,
+		   description     = EXCLUDED.description,
+		   status          = EXCLUDED.status,
+		   price_amount    = EXCLUDED.price_amount,
+		   price_currency  = EXCLUDED.price_currency,
+		   search_vector   = EXCLUDED.search_vector,
+		   updated_at      = NOW()`,
+		productID, sellerID, sellerName, categoryID, categoryName, name, slug, description, status, amountArg, currencyArg,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert search_svc.products: %w", err)
+	}
+	slog.Debug("product indexed", "product_id", productID, "seller_id", sellerID)
 	return nil
 }
 
-func decodeProtoEventData(eventData any, target protoreflect.ProtoMessage) error {
-	raw, err := json.Marshal(eventData)
+func (s *ProductSubscriber) delete(ctx context.Context, idStr string) error {
+	productID, err := uuid.Parse(idStr)
 	if err != nil {
-		return fmt.Errorf("marshal event data: %w", err)
+		return fmt.Errorf("parse product id %q: %w", idStr, err)
 	}
-	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
-	if err := opts.Unmarshal(raw, target); err != nil {
-		return fmt.Errorf("unmarshal proto event data: %w", err)
+	_, err = s.pool.Exec(ctx, `DELETE FROM search_svc.products WHERE id = $1`, productID)
+	return err
+}
+
+func firstOrEmpty(xs []string) string {
+	if len(xs) == 0 {
+		return ""
 	}
-	return nil
+	return xs[0]
 }
