@@ -67,12 +67,23 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA shipping_svc TO shipping_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON TABLES TO shipping_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA shipping_svc GRANT ALL ON SEQUENCES TO shipping_role;
 
--- notification
-GRANT USAGE ON SCHEMA notification_svc TO notification_role;
-GRANT ALL ON ALL TABLES IN SCHEMA notification_svc TO notification_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA notification_svc TO notification_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc GRANT ALL ON TABLES TO notification_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc GRANT ALL ON SEQUENCES TO notification_role;
+-- notification lives on its own Postgres instance (Phase 3), so on a
+-- fresh shared-cluster DB the notification_svc schema is not created
+-- here. The grants that used to live in this block moved to the
+-- notification migration dir (notification/002_grant_notification_role)
+-- so they run on the split DB instead. Kept as a guarded DO block for
+-- existing shared-cluster DBs that still have the schema lingering from
+-- the pre-split layout.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'notification_svc') THEN
+        GRANT USAGE ON SCHEMA notification_svc TO notification_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA notification_svc TO notification_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA notification_svc TO notification_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc GRANT ALL ON TABLES TO notification_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA notification_svc GRANT ALL ON SEQUENCES TO notification_role;
+    END IF;
+END$$;
 
 -- ─── Read-only catalog consumers ──────────────────────────────
 -- search and recommend do not own a schema today; they project catalog data.
