@@ -35,3 +35,16 @@ func TxCtx(ctx context.Context, pool *pgxpool.Pool, fn func(ctx context.Context)
 		return fn(WithTx(ctx, tx))
 	})
 }
+
+// TxOrPool runs fn either in the caller's outer transaction (when one is
+// carried on the context) or in a short auto-commit transaction opened on
+// the pool. Repositories use this to stay agnostic of whether the service
+// layer has wrapped multiple repo calls in a single Tx — critical for the
+// outbox pattern where one business write and one outbox insert must
+// commit atomically.
+func TxOrPool(ctx context.Context, pool *pgxpool.Pool, fn func(pgx.Tx) error) error {
+	if tx, ok := TxFromContext(ctx); ok {
+		return fn(tx)
+	}
+	return Tx(ctx, pool, fn)
+}

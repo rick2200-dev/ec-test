@@ -21,6 +21,7 @@ import (
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/grpc"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/postgres"
+	catalogpubsub "github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/app"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/config"
 )
@@ -69,9 +70,22 @@ func main() {
 	categoryRepo := repository.NewCategoryRepository(pool)
 	productRepo := repository.NewProductRepository(pool)
 	skuRepo := repository.NewSKURepository(pool)
+	outboxRepo := repository.NewOutboxRepository(pool)
+	txRunner := &database.PoolTxRunner{Pool: pool}
 
 	// Service
-	catalogSvc := app.NewCatalogService(categoryRepo, productRepo, skuRepo, publisher)
+	catalogSvc := app.NewCatalogService(categoryRepo, productRepo, skuRepo, outboxRepo, txRunner)
+
+	// Outbox relay: drains catalog_svc.outbox_events to Pub/Sub. Started in
+	// a background goroutine so product mutations can continue writing to
+	// the outbox table without coupling to a network round-trip.
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
+	if publisher != nil {
+		relay := catalogpubsub.NewOutboxRelay(pool, publisher)
+		go relay.Start(bgCtx)
+		slog.Info("catalog outbox relay started")
+	}
 
 	// Handlers
 	productHandler := handler.NewProductHandler(catalogSvc)

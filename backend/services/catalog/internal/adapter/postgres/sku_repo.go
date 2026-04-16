@@ -33,7 +33,7 @@ func (r *SKURepository) Create(ctx context.Context, s *domain.SKU) error {
 		attrs = s.Attributes
 	}
 
-	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+	return database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO catalog_svc.skus (id, product_id, seller_id, sku_code, price_amount, price_currency, attributes, status)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

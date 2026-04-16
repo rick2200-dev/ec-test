@@ -30,7 +30,8 @@ func NewProductRepository(pool *pgxpool.Pool) *ProductRepository {
 	return &ProductRepository{pool: pool}
 }
 
-// Create inserts a new product.
+// Create inserts a new product. Joins the caller's Tx (via context) so
+// the outbox row written by the service layer commits atomically.
 func (r *ProductRepository) Create(ctx context.Context, p *domain.Product) error {
 	p.ID = uuid.New()
 
@@ -39,7 +40,7 @@ func (r *ProductRepository) Create(ctx context.Context, p *domain.Product) error
 		attrs = p.Attributes
 	}
 
-	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+	return database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			`INSERT INTO catalog_svc.products (id, seller_id, category_id, name, slug, description, status, attributes)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -181,7 +182,7 @@ func (r *ProductRepository) Update(ctx context.Context, p *domain.Product) error
 		attrs = p.Attributes
 	}
 
-	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+	return database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE catalog_svc.products
 			 SET name = $2, slug = $3, description = $4, category_id = $5, attributes = $6, updated_at = NOW()
@@ -200,7 +201,7 @@ func (r *ProductRepository) Update(ctx context.Context, p *domain.Product) error
 
 // UpdateStatus changes the status of a product.
 func (r *ProductRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ProductStatus) error {
-	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+	return database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,
 			`UPDATE catalog_svc.products SET status = $2, updated_at = NOW()
 			 WHERE id = $1`,

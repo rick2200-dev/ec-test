@@ -4,11 +4,40 @@ package port
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
 )
+
+// OutboxEvent is a catalog domain event destined for the "product-events"
+// topic. It is written to catalog_svc.outbox_events inside the same Tx as
+// the product mutation so publication is guaranteed even if the process
+// crashes before a direct Pub/Sub call would have returned.
+type OutboxEvent struct {
+	ID        uuid.UUID
+	EventType string
+	Topic     string
+	Payload   json.RawMessage
+}
+
+// OutboxStore persists outbox rows + lets the relay worker claim them.
+// The persistence side (AppendOutboxEvent) is called from the catalog app
+// service under a Tx; claim/markPublished live in the relay worker and
+// stay package-private to internal/adapter/pubsub.
+type OutboxStore interface {
+	// AppendOutboxEvent inserts a new row. If the caller has a Tx in
+	// context the insert joins it; otherwise a short auto-commit Tx is
+	// opened on the pool.
+	AppendOutboxEvent(ctx context.Context, e OutboxEvent) error
+}
+
+// TxRunner is the driven port for running database transactions. Reuses
+// pkg/database.PoolTxRunner in production.
+type TxRunner interface {
+	RunTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
 
 // CategoryStore is the driven port for category persistence.
 // *repository.CategoryRepository satisfies this interface.

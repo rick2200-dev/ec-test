@@ -2,43 +2,62 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
-	"github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
+	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/port"
 )
+
+const productEventsTopic = "product-events"
 
 // CatalogService implements business logic for catalog operations.
 type CatalogService struct {
 	categories port.CategoryStore
 	products   port.ProductStore
 	skus       port.SKUStore
-	publisher  pubsub.Publisher
+	outbox     port.OutboxStore
+	txRunner   port.TxRunner
 }
 
-// NewCatalogService creates a new CatalogService.
+// NewCatalogService creates a new CatalogService. The outbox store + tx
+// runner replace the former direct Pub/Sub publisher: product lifecycle
+// events are now appended to catalog_svc.outbox_events inside the same Tx
+// as the product write, and drained to Pub/Sub by a separate relay worker.
 func NewCatalogService(
 	categories port.CategoryStore,
 	products port.ProductStore,
 	skus port.SKUStore,
-	publisher pubsub.Publisher,
+	outbox port.OutboxStore,
+	txRunner port.TxRunner,
 ) *CatalogService {
 	return &CatalogService{
 		categories: categories,
 		products:   products,
 		skus:       skus,
-		publisher:  publisher,
+		outbox:     outbox,
+		txRunner:   txRunner,
 	}
 }
 
-// publishEvent publishes an event if the publisher is configured.
-func (s *CatalogService) publishEvent(ctx context.Context, eventType, topic string, data any) {
-	pubsub.PublishEvent(ctx, s.publisher, eventType, topic, data)
+// mustProtoJSON serializes a proto message using snake_case field names so
+// consumers see the same wire format as JSON-struct publishers. Panics are
+// impossible in practice since every proto payload here is structurally
+// valid; marshal errors are swallowed and logged.
+func mustProtoJSON(m proto.Message) json.RawMessage {
+	b, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(m)
+	if err != nil {
+		slog.Warn("failed to marshal proto event payload", "error", err)
+		return json.RawMessage("{}")
+	}
+	return b
 }
 
 // --- Category operations ---
@@ -113,30 +132,34 @@ func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, s
 	}
 
 	p.Status = domain.StatusDraft
-	if err := s.products.Create(ctx, p); err != nil {
-		return apperrors.Internal("failed to create product", err)
-	}
-
-	// Create associated SKUs.
-	for i := range skus {
-		skus[i].ProductID = p.ID
-		skus[i].SellerID = p.SellerID
-		skus[i].Status = domain.StatusDraft
-		if err := s.skus.Create(ctx, &skus[i]); err != nil {
-			return apperrors.Internal("failed to create sku", err)
+	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
+		if err := s.products.Create(txCtx, p); err != nil {
+			return apperrors.Internal("failed to create product", err)
 		}
+		for i := range skus {
+			skus[i].ProductID = p.ID
+			skus[i].SellerID = p.SellerID
+			skus[i].Status = domain.StatusDraft
+			if err := s.skus.Create(txCtx, &skus[i]); err != nil {
+				return apperrors.Internal("failed to create sku", err)
+			}
+		}
+		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
+			EventType: "product.created",
+			Topic:     productEventsTopic,
+			Payload: mustProtoJSON(&catalogv1.ProductCreated{
+				Id:       p.ID.String(),
+				SellerId: p.SellerID.String(),
+				Name:     p.Name,
+				Slug:     p.Slug,
+				Status:   string(p.Status),
+			}),
+		})
+	}); err != nil {
+		return err
 	}
 
 	slog.Info("product created", "id", p.ID, "slug", p.Slug, "sku_count", len(skus))
-
-	s.publishEvent(ctx, "product.created", "product-events", map[string]any{
-		"product_id": p.ID.String(),
-		"seller_id":  p.SellerID.String(),
-		"name":       p.Name,
-		"status":     string(p.Status),
-		"slug":       p.Slug,
-	})
-
 	return nil
 }
 
@@ -200,20 +223,26 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) e
 		return domain.ErrNotProductOwner
 	}
 
-	if err := s.products.Update(ctx, p); err != nil {
-		return apperrors.Internal("failed to update product", err)
+	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
+		if err := s.products.Update(txCtx, p); err != nil {
+			return apperrors.Internal("failed to update product", err)
+		}
+		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
+			EventType: "product.updated",
+			Topic:     productEventsTopic,
+			Payload: mustProtoJSON(&catalogv1.ProductUpdated{
+				Id:       p.ID.String(),
+				SellerId: p.SellerID.String(),
+				Name:     p.Name,
+				Slug:     p.Slug,
+				Status:   string(p.Status),
+			}),
+		})
+	}); err != nil {
+		return err
 	}
 
 	slog.Info("product updated", "id", p.ID)
-
-	s.publishEvent(ctx, "product.updated", "product-events", map[string]any{
-		"product_id": p.ID.String(),
-		"seller_id":  p.SellerID.String(),
-		"name":       p.Name,
-		"status":     string(p.Status),
-		"slug":       p.Slug,
-	})
-
 	return nil
 }
 
@@ -233,20 +262,38 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, id uuid.UUID, 
 		return domain.ErrNotProductOwner
 	}
 
-	if err := s.products.UpdateStatus(ctx, id, status); err != nil {
-		return apperrors.Internal("failed to update product status", err)
+	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
+		if err := s.products.UpdateStatus(txCtx, id, status); err != nil {
+			return apperrors.Internal("failed to update product status", err)
+		}
+		// Archive transitions are the delete signal for downstream consumers
+		// (search, recommend); distinct event type so they can evict their
+		// projections without re-parsing the status field.
+		if status == domain.StatusArchived {
+			return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
+				EventType: "product.deleted",
+				Topic:     productEventsTopic,
+				Payload: mustProtoJSON(&catalogv1.ProductDeleted{
+					Id: id.String(),
+				}),
+			})
+		}
+		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
+			EventType: "product.updated",
+			Topic:     productEventsTopic,
+			Payload: mustProtoJSON(&catalogv1.ProductUpdated{
+				Id:       id.String(),
+				SellerId: existing.SellerID.String(),
+				Name:     existing.Name,
+				Slug:     existing.Slug,
+				Status:   string(status),
+			}),
+		})
+	}); err != nil {
+		return err
 	}
 
 	slog.Info("product status updated", "id", id, "status", status)
-
-	s.publishEvent(ctx, "product.updated", "product-events", map[string]any{
-		"product_id": id.String(),
-		"seller_id":  existing.SellerID.String(),
-		"name":       existing.Name,
-		"status":     string(status),
-		"slug":       existing.Slug,
-	})
-
 	return nil
 }
 
