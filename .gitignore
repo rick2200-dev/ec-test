@@ -19,6 +19,7 @@ bin/
 *.test
 *.out
 coverage.txt
+.gocache/
 
 # Environment
 .env
