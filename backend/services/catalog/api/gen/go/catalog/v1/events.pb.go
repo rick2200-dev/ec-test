@@ -34,9 +34,15 @@ type ProductCreated struct {
 	// category_ids is the full set of categories the product belongs to at
 	// creation time. Downstream consumers (recommend) use it to maintain a
 	// local product_categories projection without reading catalog_svc.
-	CategoryIds   []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CategoryIds []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
+	// cheapest_price_amount / cheapest_price_currency snapshot the min-price
+	// SKU on the product at publish time. Zero + empty string means the
+	// product has no SKUs yet. Republished on any SKU mutation so consumer
+	// projections stay accurate without reading catalog_svc.skus.
+	CheapestPriceAmount   int64  `protobuf:"varint,8,opt,name=cheapest_price_amount,json=cheapestPriceAmount,proto3" json:"cheapest_price_amount,omitempty"`
+	CheapestPriceCurrency string `protobuf:"bytes,9,opt,name=cheapest_price_currency,json=cheapestPriceCurrency,proto3" json:"cheapest_price_currency,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ProductCreated) Reset() {
@@ -118,6 +124,20 @@ func (x *ProductCreated) GetCategoryIds() []string {
 	return nil
 }
 
+func (x *ProductCreated) GetCheapestPriceAmount() int64 {
+	if x != nil {
+		return x.CheapestPriceAmount
+	}
+	return 0
+}
+
+func (x *ProductCreated) GetCheapestPriceCurrency() string {
+	if x != nil {
+		return x.CheapestPriceCurrency
+	}
+	return ""
+}
+
 // ProductUpdated is published when a product's core fields change.
 // Subscribers: search (reindex), recommend (projection refresh).
 type ProductUpdated struct {
@@ -130,9 +150,11 @@ type ProductUpdated struct {
 	Status      string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	// category_ids — see ProductCreated.category_ids. Consumers treat this
 	// as a full replacement of the product's category assignments.
-	CategoryIds   []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CategoryIds           []string `protobuf:"bytes,7,rep,name=category_ids,json=categoryIds,proto3" json:"category_ids,omitempty"`
+	CheapestPriceAmount   int64    `protobuf:"varint,8,opt,name=cheapest_price_amount,json=cheapestPriceAmount,proto3" json:"cheapest_price_amount,omitempty"`
+	CheapestPriceCurrency string   `protobuf:"bytes,9,opt,name=cheapest_price_currency,json=cheapestPriceCurrency,proto3" json:"cheapest_price_currency,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ProductUpdated) Reset() {
@@ -214,6 +236,20 @@ func (x *ProductUpdated) GetCategoryIds() []string {
 	return nil
 }
 
+func (x *ProductUpdated) GetCheapestPriceAmount() int64 {
+	if x != nil {
+		return x.CheapestPriceAmount
+	}
+	return 0
+}
+
+func (x *ProductUpdated) GetCheapestPriceCurrency() string {
+	if x != nil {
+		return x.CheapestPriceCurrency
+	}
+	return ""
+}
+
 // ProductDeleted is published when a product is removed. Only the id is
 // required for consumers to evict their local read models.
 type ProductDeleted struct {
@@ -265,7 +301,7 @@ var File_catalog_v1_events_proto protoreflect.FileDescriptor
 const file_catalog_v1_events_proto_rawDesc = "" +
 	"\n" +
 	"\x17catalog/v1/events.proto\x12\n" +
-	"catalog.v1\"\xc2\x01\n" +
+	"catalog.v1\"\xae\x02\n" +
 	"\x0eProductCreated\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
@@ -273,7 +309,9 @@ const file_catalog_v1_events_proto_rawDesc = "" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
-	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\"\xc2\x01\n" +
+	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\x122\n" +
+	"\x15cheapest_price_amount\x18\b \x01(\x03R\x13cheapestPriceAmount\x126\n" +
+	"\x17cheapest_price_currency\x18\t \x01(\tR\x15cheapestPriceCurrency\"\xae\x02\n" +
 	"\x0eProductUpdated\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12\x12\n" +
@@ -281,7 +319,9 @@ const file_catalog_v1_events_proto_rawDesc = "" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12!\n" +
-	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\" \n" +
+	"\fcategory_ids\x18\a \x03(\tR\vcategoryIds\x122\n" +
+	"\x15cheapest_price_amount\x18\b \x01(\x03R\x13cheapestPriceAmount\x126\n" +
+	"\x17cheapest_price_currency\x18\t \x01(\tR\x15cheapestPriceCurrency\" \n" +
 	"\x0eProductDeleted\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02idBOZMgithub.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1;catalogv1b\x06proto3"
 

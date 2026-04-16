@@ -93,6 +93,11 @@ type SKUStore interface {
 	// so service-to-service callers can snapshot product_id without reading
 	// catalog_svc directly.
 	BatchGetMappings(ctx context.Context, ids []uuid.UUID) ([]SKUMapping, error)
+	// CheapestPrice returns (price_amount, price_currency, true) for the
+	// lowest-price SKU of the given product, or (0, "", false) if the
+	// product has no SKUs. Used by the outbox publisher to snapshot the
+	// representative price onto product.created / product.updated events.
+	CheapestPrice(ctx context.Context, productID uuid.UUID) (int64, string, bool, error)
 }
 
 // SKUMapping is the minimal (sku_id, product_id, seller_id) triple exposed

@@ -145,6 +145,37 @@ func (r *SKURepository) UpdateStatus(ctx context.Context, id uuid.UUID, status d
 	})
 }
 
+// CheapestPrice returns the minimum SKU price for the product. Joins the
+// caller's Tx via TxOrPool so publishers running inside the outbox Tx see
+// the SKUs they just inserted.
+func (r *SKURepository) CheapestPrice(ctx context.Context, productID uuid.UUID) (int64, string, bool, error) {
+	var amount int64
+	var currency string
+	var found bool
+	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx,
+			`SELECT price_amount, price_currency
+			 FROM catalog_svc.skus
+			 WHERE product_id = $1
+			 ORDER BY price_amount ASC
+			 LIMIT 1`,
+			productID,
+		).Scan(&amount, &currency)
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return 0, "", false, fmt.Errorf("cheapest sku price: %w", err)
+	}
+	return amount, currency, found, nil
+}
+
 // BatchGetMappings returns (id, product_id, seller_id) for each known SKU in
 // ids. Unknown ids are silently omitted.
 func (r *SKURepository) BatchGetMappings(ctx context.Context, ids []uuid.UUID) ([]port.SKUMapping, error) {

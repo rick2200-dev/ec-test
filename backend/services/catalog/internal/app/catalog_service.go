@@ -59,6 +59,23 @@ func categoryIDsOf(p *domain.Product) []string {
 	return []string{p.CategoryID.String()}
 }
 
+// cheapestPriceOf returns the min-price SKU for the product as (amount,
+// currency). Empty currency means no SKU exists yet. Errors are swallowed
+// with a warning so event publishing never fails because of a pricing
+// lookup — consumers re-sync on the next event.
+func (s *CatalogService) cheapestPriceOf(ctx context.Context, productID uuid.UUID) (int64, string) {
+	amount, currency, ok, err := s.skus.CheapestPrice(ctx, productID)
+	if err != nil {
+		slog.Warn("cheapest price lookup failed; publishing event without price",
+			"product_id", productID, "error", err)
+		return 0, ""
+	}
+	if !ok {
+		return 0, ""
+	}
+	return amount, currency
+}
+
 // mustProtoJSON serializes a proto message using snake_case field names so
 // consumers see the same wire format as JSON-struct publishers. Panics are
 // impossible in practice since every proto payload here is structurally
@@ -156,17 +173,20 @@ func (s *CatalogService) CreateProduct(ctx context.Context, p *domain.Product, s
 				return apperrors.Internal("failed to create sku", err)
 			}
 		}
+		priceAmount, priceCurrency := s.cheapestPriceOf(txCtx, p.ID)
 		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: "product.created",
 			Topic:     productEventsTopic,
 			Payload: mustProtoJSON(&catalogv1.ProductCreated{
-				Id:          p.ID.String(),
-				SellerId:    p.SellerID.String(),
-				Name:        p.Name,
-				Slug:        p.Slug,
-				Description: p.Description,
-				Status:      string(p.Status),
-				CategoryIds: categoryIDsOf(p),
+				Id:                    p.ID.String(),
+				SellerId:              p.SellerID.String(),
+				Name:                  p.Name,
+				Slug:                  p.Slug,
+				Description:           p.Description,
+				Status:                string(p.Status),
+				CategoryIds:           categoryIDsOf(p),
+				CheapestPriceAmount:   priceAmount,
+				CheapestPriceCurrency: priceCurrency,
 			}),
 		})
 	}); err != nil {
@@ -250,17 +270,20 @@ func (s *CatalogService) UpdateProduct(ctx context.Context, p *domain.Product) e
 		if err := s.products.Update(txCtx, p); err != nil {
 			return apperrors.Internal("failed to update product", err)
 		}
+		priceAmount, priceCurrency := s.cheapestPriceOf(txCtx, p.ID)
 		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: "product.updated",
 			Topic:     productEventsTopic,
 			Payload: mustProtoJSON(&catalogv1.ProductUpdated{
-				Id:          p.ID.String(),
-				SellerId:    p.SellerID.String(),
-				Name:        p.Name,
-				Slug:        p.Slug,
-				Description: p.Description,
-				Status:      string(p.Status),
-				CategoryIds: categoryIDsOf(p),
+				Id:                    p.ID.String(),
+				SellerId:              p.SellerID.String(),
+				Name:                  p.Name,
+				Slug:                  p.Slug,
+				Description:           p.Description,
+				Status:                string(p.Status),
+				CategoryIds:           categoryIDsOf(p),
+				CheapestPriceAmount:   priceAmount,
+				CheapestPriceCurrency: priceCurrency,
 			}),
 		})
 	}); err != nil {
@@ -303,17 +326,20 @@ func (s *CatalogService) UpdateProductStatus(ctx context.Context, id uuid.UUID, 
 				}),
 			})
 		}
+		priceAmount, priceCurrency := s.cheapestPriceOf(txCtx, id)
 		return s.outbox.AppendOutboxEvent(txCtx, port.OutboxEvent{
 			EventType: "product.updated",
 			Topic:     productEventsTopic,
 			Payload: mustProtoJSON(&catalogv1.ProductUpdated{
-				Id:          id.String(),
-				SellerId:    existing.SellerID.String(),
-				Name:        existing.Name,
-				Slug:        existing.Slug,
-				Description: existing.Description,
-				Status:      string(status),
-				CategoryIds: categoryIDsOf(existing),
+				Id:                    id.String(),
+				SellerId:              existing.SellerID.String(),
+				Name:                  existing.Name,
+				Slug:                  existing.Slug,
+				Description:           existing.Description,
+				Status:                string(status),
+				CategoryIds:           categoryIDsOf(existing),
+				CheapestPriceAmount:   priceAmount,
+				CheapestPriceCurrency: priceCurrency,
 			}),
 		})
 	}); err != nil {
@@ -331,6 +357,36 @@ func (s *CatalogService) ArchiveProduct(ctx context.Context, id uuid.UUID) error
 
 // --- SKU operations ---
 
+// appendProductUpdatedOutbox enqueues a product.updated event for the given
+// product id inside the caller's Tx. Called after SKU mutations so
+// downstream projections (recommend, search) see the latest cheapest_price
+// without reading catalog_svc.skus themselves.
+func (s *CatalogService) appendProductUpdatedOutbox(ctx context.Context, productID uuid.UUID) error {
+	product, err := s.products.GetByID(ctx, productID)
+	if err != nil {
+		return apperrors.Internal("failed to get product for sku event", err)
+	}
+	if product == nil {
+		return nil
+	}
+	priceAmount, priceCurrency := s.cheapestPriceOf(ctx, productID)
+	return s.outbox.AppendOutboxEvent(ctx, port.OutboxEvent{
+		EventType: "product.updated",
+		Topic:     productEventsTopic,
+		Payload: mustProtoJSON(&catalogv1.ProductUpdated{
+			Id:                    product.ID.String(),
+			SellerId:              product.SellerID.String(),
+			Name:                  product.Name,
+			Slug:                  product.Slug,
+			Description:           product.Description,
+			Status:                string(product.Status),
+			CategoryIds:           categoryIDsOf(product),
+			CheapestPriceAmount:   priceAmount,
+			CheapestPriceCurrency: priceCurrency,
+		}),
+	})
+}
+
 // CreateSKU creates a new SKU for a product.
 func (s *CatalogService) CreateSKU(ctx context.Context, sku *domain.SKU) error {
 	// Verify product exists.
@@ -344,8 +400,15 @@ func (s *CatalogService) CreateSKU(ctx context.Context, sku *domain.SKU) error {
 
 	sku.SellerID = product.SellerID
 	sku.Status = domain.StatusDraft
-	if err := s.skus.Create(ctx, sku); err != nil {
-		return apperrors.Internal("failed to create sku", err)
+	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
+		if err := s.skus.Create(txCtx, sku); err != nil {
+			return apperrors.Internal("failed to create sku", err)
+		}
+		// Adding a SKU may change the product's cheapest_price; emit
+		// product.updated so downstream projections refresh.
+		return s.appendProductUpdatedOutbox(txCtx, sku.ProductID)
+	}); err != nil {
+		return err
 	}
 
 	slog.Info("sku created", "id", sku.ID, "product_id", sku.ProductID)
@@ -427,8 +490,13 @@ func (s *CatalogService) UpdateSKU(ctx context.Context, sku *domain.SKU) error {
 		return domain.ErrSKUNotFound
 	}
 
-	if err := s.skus.Update(ctx, sku); err != nil {
-		return apperrors.Internal("failed to update sku", err)
+	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
+		if err := s.skus.Update(txCtx, sku); err != nil {
+			return apperrors.Internal("failed to update sku", err)
+		}
+		return s.appendProductUpdatedOutbox(txCtx, existing.ProductID)
+	}); err != nil {
+		return err
 	}
 
 	slog.Info("sku updated", "id", sku.ID)
@@ -445,8 +513,13 @@ func (s *CatalogService) UpdateSKUStatus(ctx context.Context, id uuid.UUID, stat
 		return domain.ErrSKUNotFound
 	}
 
-	if err := s.skus.UpdateStatus(ctx, id, status); err != nil {
-		return apperrors.Internal("failed to update sku status", err)
+	if err := s.txRunner.RunTx(ctx, func(txCtx context.Context) error {
+		if err := s.skus.UpdateStatus(txCtx, id, status); err != nil {
+			return apperrors.Internal("failed to update sku status", err)
+		}
+		return s.appendProductUpdatedOutbox(txCtx, existing.ProductID)
+	}); err != nil {
+		return err
 	}
 
 	slog.Info("sku status updated", "id", id, "status", status)

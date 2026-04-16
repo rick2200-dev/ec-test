@@ -17,6 +17,12 @@ message ProductCreated {
   // creation time. Downstream consumers (recommend) use it to maintain a
   // local product_categories projection without reading catalog_svc.
   repeated string category_ids = 7;
+  // cheapest_price_amount / cheapest_price_currency snapshot the min-price
+  // SKU on the product at publish time. Zero + empty string means the
+  // product has no SKUs yet. Republished on any SKU mutation so consumer
+  // projections stay accurate without reading catalog_svc.skus.
+  int64 cheapest_price_amount = 8;
+  string cheapest_price_currency = 9;
 }
 
 // ProductUpdated is published when a product's core fields change.
@@ -31,6 +37,8 @@ message ProductUpdated {
   // category_ids — see ProductCreated.category_ids. Consumers treat this
   // as a full replacement of the product's category assignments.
   repeated string category_ids = 7;
+  int64 cheapest_price_amount = 8;
+  string cheapest_price_currency = 9;
 }
 
 // ProductDeleted is published when a product is removed. Only the id is
