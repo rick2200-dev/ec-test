@@ -13,12 +13,18 @@ BEGIN
     END IF;
 END$$;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA catalog_svc FROM catalog_role, search_role, recommend_role, order_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA catalog_svc FROM catalog_role;
-REVOKE USAGE ON SCHEMA catalog_svc FROM catalog_role, search_role, recommend_role, order_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE ALL ON TABLES FROM catalog_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE ALL ON SEQUENCES FROM catalog_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE SELECT ON TABLES FROM search_role, recommend_role;
+-- catalog_svc lives on a split DB (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA catalog_svc FROM catalog_role, search_role, recommend_role, order_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA catalog_svc FROM catalog_role;
+        REVOKE USAGE ON SCHEMA catalog_svc FROM catalog_role, search_role, recommend_role, order_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE ALL ON TABLES FROM catalog_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE ALL ON SEQUENCES FROM catalog_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE SELECT ON TABLES FROM search_role, recommend_role;
+    END IF;
+END$$;
 
 -- inventory_svc lives on a split DB (Phase 3). Match the up-side guard.
 DO $$

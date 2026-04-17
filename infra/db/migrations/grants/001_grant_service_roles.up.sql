@@ -23,12 +23,17 @@ BEGIN
     END IF;
 END$$;
 
--- catalog
-GRANT USAGE ON SCHEMA catalog_svc TO catalog_role;
-GRANT ALL ON ALL TABLES IN SCHEMA catalog_svc TO catalog_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA catalog_svc TO catalog_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON TABLES TO catalog_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON SEQUENCES TO catalog_role;
+-- catalog lives on its own Postgres instance (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        GRANT USAGE ON SCHEMA catalog_svc TO catalog_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA catalog_svc TO catalog_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA catalog_svc TO catalog_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON TABLES TO catalog_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON SEQUENCES TO catalog_role;
+    END IF;
+END$$;
 
 -- inventory lives on its own Postgres instance (Phase 3). Guard for
 -- fresh shared-cluster DBs that no longer have the schema.
@@ -162,8 +167,13 @@ BEGIN
         GRANT SELECT ON auth_svc.sellers TO order_role;
     END IF;
 END$$;
-GRANT USAGE ON SCHEMA catalog_svc TO order_role;
-GRANT SELECT ON catalog_svc.products, catalog_svc.skus TO order_role;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        GRANT USAGE ON SCHEMA catalog_svc TO order_role;
+        GRANT SELECT ON catalog_svc.products, catalog_svc.skus TO order_role;
+    END IF;
+END$$;
 
 -- catalog matview seller_plan_boost joins auth_svc.sellers +
 -- subscription_svc.subscription_plans. Phase 2.1 moves this to a local

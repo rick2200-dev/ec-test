@@ -90,14 +90,15 @@ services:
       HTTP_PORT: "8082"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://catalog_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: catalog runs against its own Postgres instance.
+      DATABASE_URL: postgres://catalog_role:localdev@postgres-catalog:5432/catalog_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/1
       PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match cart.CATALOG_INTERNAL_TOKEN.
       CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
     depends_on:
-      postgres:
+      postgres-catalog:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -488,6 +489,13 @@ services:
     networks:
       - backend
 
+  postgres-catalog:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-catalog
+    networks:
+      - backend
+
   postgres-search:
     extends:
       file: docker-compose.deps.yaml
@@ -561,5 +569,6 @@ volumes:
   pgdata-inquiry:
   pgdata-review:
   pgdata-inventory:
+  pgdata-catalog:
   pgdata-search:
   pgdata-recommend:

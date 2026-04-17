@@ -57,6 +57,9 @@ db_url_for_service() {
     recommend)
       echo "${RECOMMEND_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5441/recommend_dev?sslmode=disable}"
       ;;
+    catalog)
+      echo "${CATALOG_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5442/catalog_dev?sslmode=disable}"
+      ;;
     *)
       echo "$DATABASE_URL"
       ;;

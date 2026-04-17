@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS catalog_svc;
+
 CREATE TABLE catalog_svc.categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     parent_id UUID REFERENCES catalog_svc.categories(id),
