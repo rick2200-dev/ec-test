@@ -11,7 +11,7 @@ ALTER TABLE order_svc.orders
 -- DB (Phase 3 split), auth_svc doesn't exist — skip.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+    IF to_regclass('auth_svc.sellers') IS NOT NULL THEN
         UPDATE order_svc.orders o
            SET seller_name = COALESCE(s.name, '')
           FROM auth_svc.sellers s
@@ -27,7 +27,7 @@ ALTER TABLE order_svc.order_lines
 -- order-only DB, catalog_svc doesn't exist — skip.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+    IF to_regclass('catalog_svc.skus') IS NOT NULL THEN
         UPDATE order_svc.order_lines ol
            SET product_id = sk.product_id
           FROM catalog_svc.skus sk
@@ -51,7 +51,7 @@ CREATE INDEX idx_order_lines_product
 -- column is added by catalog's own migration. Guard so it doesn't fail.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+    IF to_regclass('catalog_svc.products') IS NOT NULL THEN
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns
             WHERE table_schema = 'catalog_svc' AND table_name = 'products'

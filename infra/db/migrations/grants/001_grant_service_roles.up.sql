@@ -164,17 +164,19 @@ END$$;
 -- order reads auth_svc.sellers (seller_name snapshot at checkout) and
 -- catalog_svc.products/skus during order creation. Phase 1.2 replaces these
 -- with auth.BatchGetSellers and catalog.BatchGetSKUs gRPC calls.
--- auth_svc may live on a split DB (Phase 3); guard both blocks.
+-- Phase 3 splits both auth and catalog to their own DBs. Bootstrap still
+-- creates empty auth_svc/catalog_svc schemas on the shared cluster, so
+-- schema-level guards are insufficient — check for the actual tables.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+    IF to_regclass('auth_svc.sellers') IS NOT NULL THEN
         GRANT USAGE ON SCHEMA auth_svc TO order_role;
         GRANT SELECT ON auth_svc.sellers TO order_role;
     END IF;
 END$$;
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+    IF to_regclass('catalog_svc.products') IS NOT NULL THEN
         GRANT USAGE ON SCHEMA catalog_svc TO order_role;
         GRANT SELECT ON catalog_svc.products, catalog_svc.skus TO order_role;
     END IF;
@@ -185,13 +187,10 @@ END$$;
 -- projection fed by events.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+    IF to_regclass('auth_svc.sellers') IS NOT NULL THEN
         GRANT USAGE ON SCHEMA auth_svc TO catalog_role;
         GRANT SELECT ON auth_svc.sellers TO catalog_role;
-        IF EXISTS (
-            SELECT 1 FROM pg_tables
-            WHERE schemaname = 'auth_svc' AND tablename = 'seller_subscriptions'
-        ) THEN
+        IF to_regclass('auth_svc.seller_subscriptions') IS NOT NULL THEN
             GRANT SELECT ON auth_svc.seller_subscriptions TO catalog_role;
         END IF;
     END IF;
@@ -200,7 +199,7 @@ END$$;
 -- shared-cluster DBs without the schema don't fail this migration.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'subscription_svc') THEN
+    IF to_regclass('subscription_svc.subscription_plans') IS NOT NULL THEN
         GRANT USAGE ON SCHEMA subscription_svc TO catalog_role;
         GRANT SELECT ON subscription_svc.subscription_plans TO catalog_role;
     END IF;
