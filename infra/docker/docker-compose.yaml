@@ -147,6 +147,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
       inventory:
         condition: service_healthy
       subscription:
@@ -173,12 +175,15 @@ services:
       # Phase 3: inventory runs against its own Postgres instance.
       DATABASE_URL: postgres://inventory_role:localdev@postgres-inventory:5432/inventory_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/3
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
       postgres-inventory:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8084/healthz"]
       interval: 10s
@@ -300,6 +305,7 @@ services:
       REDIS_URL: redis://redis:6379/7
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Shared secrets for /internal calls; must match the respective
       # *_INTERNAL_TOKEN on the catalog and order services.
@@ -308,6 +314,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
       catalog:
         condition: service_healthy
       order:
@@ -335,12 +343,15 @@ services:
       DATABASE_URL: postgres://inquiry_role:localdev@postgres-inquiry:5432/inquiry_dev?sslmode=disable
       ORDER_SERVICE_URL: http://order:8083
       AUTH_SERVICE_URL: http://auth:8081
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match order.ORDER_INTERNAL_TOKEN.
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
       postgres-inquiry:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
       order:
         condition: service_healthy
     healthcheck:
@@ -380,6 +391,8 @@ services:
     depends_on:
       postgres-subscription:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8089/healthz"]
       interval: 10s
@@ -415,6 +428,8 @@ services:
     depends_on:
       postgres-shipping:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8092/healthz"]
       interval: 10s
@@ -436,6 +451,7 @@ services:
       LOG_FORMAT: text
       # Phase 3: review runs against its own Postgres instance.
       DATABASE_URL: postgres://review_role:localdev@postgres-review:5432/review_dev?sslmode=disable
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
@@ -444,6 +460,8 @@ services:
     depends_on:
       postgres-review:
         condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
       catalog:
         condition: service_healthy
       order:
