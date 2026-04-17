@@ -130,9 +130,15 @@ services:
       INVENTORY_SERVICE_URL: http://inventory:8084
       CATALOG_SERVICE_URL: http://catalog:8082
       NOTIFICATION_SERVICE_URL: http://notification:8087
+      AUTH_SERVICE_URL: http://auth:8081
+      # Must match AUTH_INTERNAL_TOKEN on the auth service.
+      AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
       SUBSCRIPTION_SERVICE_GRPC_ADDR: subscription:50058
       # Must match SUBSCRIPTION_INTERNAL_TOKEN on the subscription service.
       SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
+      CATALOG_SERVICE_GRPC_ADDR: catalog:50052
+      # Must match CATALOG_INTERNAL_TOKEN on the catalog service.
+      CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
       # Must match cart/inquiry ORDER_INTERNAL_TOKEN.
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:

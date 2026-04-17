@@ -131,7 +131,9 @@ func main() {
 		slog.Error("failed to listen for gRPC", "error", err)
 		os.Exit(1)
 	}
-	grpcSrv := grpc.NewServer()
+	grpcSrv := grpc.NewServer(
+		grpc.UnaryInterceptor(pkgmiddleware.UnaryInternalTokenInterceptor(cfg.InternalToken)),
+	)
 	catalogv1.RegisterCatalogServiceServer(grpcSrv, grpcserver.NewCatalogServer(catalogSvc))
 
 	// Start gRPC server in a goroutine.

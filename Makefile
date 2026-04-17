@@ -52,44 +52,46 @@ seed:
 	psql "$(DATABASE_URL)" -f infra/db/seeds/dev_tenants.sql
 
 # ─── Go Services (with air hot-reload) ────────────────────────
+# Each DB-backed service needs DATABASE_URL pointing at its split
+# Postgres instance (Phase 3). Gateway and cart have no DB.
 dev-gateway:
 	cd backend/services/gateway && air
 
 dev-auth:
-	cd backend/services/auth && air
+	DATABASE_URL=postgres://auth_role:localdev@localhost:5437/auth_dev?sslmode=disable cd backend/services/auth && air
 
 dev-catalog:
-	cd backend/services/catalog && air
+	DATABASE_URL=postgres://catalog_role:localdev@localhost:5442/catalog_dev?sslmode=disable cd backend/services/catalog && air
 
 dev-inventory:
-	cd backend/services/inventory && air
+	DATABASE_URL=postgres://inventory_role:localdev@localhost:5436/inventory_dev?sslmode=disable cd backend/services/inventory && air
 
 dev-order:
-	cd backend/services/order && air
+	DATABASE_URL=postgres://order_role:localdev@localhost:5443/order_dev?sslmode=disable cd backend/services/order && air
 
 dev-search:
-	cd backend/services/search && air
+	DATABASE_URL=postgres://search_role:localdev@localhost:5440/search_dev?sslmode=disable cd backend/services/search && air
 
 dev-recommend:
-	cd backend/services/recommend && air
+	DATABASE_URL=postgres://recommend_role:localdev@localhost:5441/recommend_dev?sslmode=disable cd backend/services/recommend && air
 
 dev-notification:
-	cd backend/services/notification && air
+	DATABASE_URL=postgres://notification_role:localdev@localhost:5433/notification_dev?sslmode=disable cd backend/services/notification && air
 
 dev-cart:
 	cd backend/services/cart && air
 
 dev-inquiry:
-	cd backend/services/inquiry && air
+	DATABASE_URL=postgres://inquiry_role:localdev@localhost:5438/inquiry_dev?sslmode=disable cd backend/services/inquiry && air
 
 dev-review:
-	cd backend/services/review && air
+	DATABASE_URL=postgres://review_role:localdev@localhost:5439/review_dev?sslmode=disable cd backend/services/review && air
 
 dev-subscription:
-	cd backend/services/subscription && air
+	DATABASE_URL=postgres://subscription_role:localdev@localhost:5434/subscription_dev?sslmode=disable cd backend/services/subscription && air
 
 dev-shipping:
-	cd backend/services/shipping && air
+	DATABASE_URL=postgres://shipping_role:localdev@localhost:5435/shipping_dev?sslmode=disable cd backend/services/shipping && air
 
 # ─── Frontend ──────────────────────────────────────────────────
 dev-buyer:
