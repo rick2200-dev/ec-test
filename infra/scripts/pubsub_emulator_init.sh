@@ -19,6 +19,7 @@ payout-events
 product-events
 review-events
 shipping-events
+subscription-events
 user-events
 "
 
@@ -33,9 +34,10 @@ order-events     order-events-shipping
 product-events   product-events-recommend
 product-events   product-events-search
 review-events    review-events-notification
-shipping-events  shipping-events-notification
-shipping-events  shipping-events-order
-user-events      user-events-recommend
+shipping-events       shipping-events-notification
+shipping-events       shipping-events-order
+subscription-events   subscription-events-search
+user-events           user-events-recommend
 "
 
 echo "waiting for Pub/Sub emulator at ${HOST}"

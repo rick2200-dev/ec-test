@@ -126,6 +126,7 @@ services:
       # Phase 3: order runs against its own Postgres instance.
       DATABASE_URL: postgres://order_role:localdev@postgres-order:5432/order_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/2
+      PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       INVENTORY_SERVICE_URL: http://inventory:8084
       CATALOG_SERVICE_URL: http://catalog:8082
@@ -372,6 +373,8 @@ services:
       # (postgres-subscription) so a shared-cluster outage does not
       # take seller/buyer plan data offline.
       DATABASE_URL: postgres://subscription_role:localdev@postgres-subscription:5432/subscription_dev?sslmode=disable
+      PUBSUB_PROJECT_ID: local-project
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match SUBSCRIPTION_INTERNAL_TOKEN on gateway + order.
       SUBSCRIPTION_INTERNAL_TOKEN: local-dev-subscription-internal-token
     depends_on:
