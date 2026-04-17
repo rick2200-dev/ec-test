@@ -63,6 +63,20 @@ func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub
 		return fmt.Errorf("decode order.cancelled data: %w", err)
 	}
 
+	// Validate the payload so contract violations are nacked, even
+	// though we don't act on the data yet.
+	if _, err := uuid.Parse(data.OrderId); err != nil {
+		return fmt.Errorf("invalid order_id %q in order.cancelled: %w", data.OrderId, err)
+	}
+	for _, li := range data.LineItems {
+		if li.SkuId != "" {
+			if _, err := uuid.Parse(li.SkuId); err != nil {
+				slog.Warn("order.cancelled line has invalid sku_id",
+					"order_id", data.OrderId, "sku_id", li.SkuId, "error", err)
+			}
+		}
+	}
+
 	// The checkout flow does not yet call ReserveStock, so
 	// quantity_reserved is never decremented at purchase time.
 	// Releasing stock here without a prior reserve would inflate

@@ -2,7 +2,6 @@ package subscriber
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -12,18 +11,13 @@ import (
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/domain"
 )
 
-// fakeReleaser captures every ReleaseStockForOrderCancellation call so
-// the idempotency test can verify "the second delivery of the same
-// order.cancelled event becomes a no-op at the repository layer, not
-// at the subscriber layer". We test the subscriber side: it must
-// faithfully forward both calls to the service. The repository-level
-// idempotency (via the stock_movements reference_id guard) is exercised
-// in inventory_service_integration_test where a real Postgres is
-// available.
+// fakeReleaser captures every ReleaseStockForOrderCancellation call.
+// With the current no-op handler it should never be called; the tests
+// verify that invariant. When the full reserve→confirm→release cycle
+// is wired up, these tests will need to be updated to assert calls.
 type fakeReleaser struct {
-	calls   []fakeReleaserCall
-	err     error
-	errOnce bool // return err only on the first call if set
+	calls []fakeReleaserCall
+	err   error
 }
 
 type fakeReleaserCall struct {
@@ -41,11 +35,7 @@ func (f *fakeReleaser) ReleaseStockForOrderCancellation(
 		lines:   append([]domain.CancellationLine(nil), lines...),
 	})
 	if f.err != nil {
-		err := f.err
-		if f.errOnce {
-			f.err = nil
-		}
-		return err
+		return f.err
 	}
 	return nil
 }
@@ -93,7 +83,9 @@ func TestOrderSubscriber_IgnoresUnrelatedEvents(t *testing.T) {
 	}
 }
 
-func TestOrderSubscriber_InvokesReleaseForOrderCancelled(t *testing.T) {
+func TestOrderSubscriber_NoOpRelease(t *testing.T) {
+	// While checkout does not call ReserveStock, handleOrderCancelled
+	// must decode+validate the payload but NOT call the releaser.
 	releaser := &fakeReleaser{}
 	sub := NewOrderSubscriber(nil, releaser)
 
@@ -104,100 +96,60 @@ func TestOrderSubscriber_InvokesReleaseForOrderCancelled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handleEvent returned error: %v", err)
 	}
-	if len(releaser.calls) != 1 {
-		t.Fatalf("expected 1 releaser call, got %d", len(releaser.calls))
-	}
-	got := releaser.calls[0]
-	if got.orderID != orderID {
-		t.Errorf("order id = %s, want %s", got.orderID, orderID)
-	}
-	if len(got.lines) != 1 {
-		t.Fatalf("lines = %d, want 1", len(got.lines))
-	}
-	if got.lines[0].SKUID != skuID || got.lines[0].Quantity != 3 {
-		t.Errorf("line = %+v, want sku=%s qty=3", got.lines[0], skuID)
+	if len(releaser.calls) != 0 {
+		t.Fatalf("releaser was called %d times; expected 0 (no-op until reserve cycle is wired)", len(releaser.calls))
 	}
 }
 
-// TestOrderSubscriber_IdempotentRedelivery verifies that a Pub/Sub
-// at-least-once redelivery of the SAME order.cancelled event does not
-// crash the subscriber: it calls ReleaseStockForOrderCancellation a
-// second time with identical arguments, and the service/repository
-// layer is expected to short-circuit via the stock_movements reference
-// guard. From the subscriber's point of view both acks must succeed.
-func TestOrderSubscriber_IdempotentRedelivery(t *testing.T) {
+func TestOrderSubscriber_RejectsInvalidOrderID(t *testing.T) {
 	releaser := &fakeReleaser{}
 	sub := NewOrderSubscriber(nil, releaser)
-
-	orderID := uuid.New()
-	skuID := uuid.New()
-	event := buildOrderCancelledEvent(orderID, skuID, 2)
-
-	// First delivery.
-	if err := sub.handleEvent(context.Background(), event); err != nil {
-		t.Fatalf("first handleEvent returned error: %v", err)
-	}
-	// Second delivery of the very same event.
-	if err := sub.handleEvent(context.Background(), event); err != nil {
-		t.Fatalf("second handleEvent returned error: %v", err)
-	}
-
-	if len(releaser.calls) != 2 {
-		t.Fatalf("expected 2 releaser calls, got %d", len(releaser.calls))
-	}
-	// Both calls must carry identical arguments — the reference id
-	// (orderID) is what the repository uses to dedupe.
-	if releaser.calls[0].orderID != releaser.calls[1].orderID {
-		t.Errorf("redelivery orderID mismatch: %s vs %s",
-			releaser.calls[0].orderID, releaser.calls[1].orderID)
-	}
-}
-
-func TestOrderSubscriber_SkipsLinesWithBadSKUID(t *testing.T) {
-	releaser := &fakeReleaser{}
-	sub := NewOrderSubscriber(nil, releaser)
-
-	orderID := uuid.New()
-	goodSKU := uuid.New()
 
 	event := pubsub.Event{
 		ID:   uuid.New().String(),
 		Type: eventTypeOrderCancelled,
 		Data: map[string]any{
-			"order_id": orderID.String(),
-			"line_items": []map[string]any{
-				// Bad sku_id — gets skipped, but delivery still acks.
-				{"sku_id": "not-a-uuid", "quantity": 1},
-				// Zero qty — also skipped by the validator.
-				{"sku_id": uuid.New().String(), "quantity": 0},
-				// Valid line.
-				{"sku_id": goodSKU.String(), "quantity": 5},
-			},
+			"order_id":   "not-a-uuid",
+			"line_items": []map[string]any{},
 		},
 	}
 
-	if err := sub.handleEvent(context.Background(), event); err != nil {
-		t.Fatalf("handleEvent returned error: %v", err)
-	}
-	if len(releaser.calls) != 1 {
-		t.Fatalf("releaser calls = %d, want 1", len(releaser.calls))
-	}
-	lines := releaser.calls[0].lines
-	if len(lines) != 1 {
-		t.Fatalf("lines = %d, want 1 (the valid one)", len(lines))
-	}
-	if lines[0].SKUID != goodSKU || lines[0].Quantity != 5 {
-		t.Errorf("kept line = %+v, want sku=%s qty=5", lines[0], goodSKU)
+	err := sub.handleEvent(context.Background(), event)
+	if err == nil {
+		t.Fatal("expected error for invalid order_id, got nil")
 	}
 }
 
-func TestOrderSubscriber_PropagatesReleaseError(t *testing.T) {
-	releaser := &fakeReleaser{err: errors.New("db offline")}
+func TestOrderSubscriber_RejectsMalformedPayload(t *testing.T) {
+	releaser := &fakeReleaser{}
 	sub := NewOrderSubscriber(nil, releaser)
 
-	event := buildOrderCancelledEvent(uuid.New(), uuid.New(), 1)
+	event := pubsub.Event{
+		ID:   uuid.New().String(),
+		Type: eventTypeOrderCancelled,
+		Data: "not a map", // invalid data type
+	}
+
 	err := sub.handleEvent(context.Background(), event)
 	if err == nil {
-		t.Fatal("expected error propagation, got nil")
+		t.Fatal("expected error for malformed payload, got nil")
+	}
+}
+
+func TestOrderSubscriber_IdempotentRedelivery(t *testing.T) {
+	// Even with no-op release, redeliveries must succeed (ack).
+	releaser := &fakeReleaser{}
+	sub := NewOrderSubscriber(nil, releaser)
+
+	event := buildOrderCancelledEvent(uuid.New(), uuid.New(), 2)
+
+	if err := sub.handleEvent(context.Background(), event); err != nil {
+		t.Fatalf("first delivery: %v", err)
+	}
+	if err := sub.handleEvent(context.Background(), event); err != nil {
+		t.Fatalf("second delivery: %v", err)
+	}
+	if len(releaser.calls) != 0 {
+		t.Errorf("releaser called %d times on redelivery; expected 0", len(releaser.calls))
 	}
 }
