@@ -394,43 +394,6 @@ func (r *OrderRepository) SetPaid(ctx context.Context, orderID uuid.UUID, paidAt
 	})
 }
 
-// GetByStripePaymentIntentID finds an order by its Stripe payment intent ID.
-func (r *OrderRepository) GetByStripePaymentIntentID(ctx context.Context, paymentIntentID string) (*domain.Order, error) {
-	var o domain.Order
-	var found bool
-
-	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
-		err := tx.QueryRow(ctx,
-			`SELECT id, seller_id, seller_name, buyer_auth0_id, status,
-			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
-			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
-			        created_at, updated_at
-			 FROM order_svc.orders WHERE stripe_payment_intent_id = $1`,
-			paymentIntentID,
-		).Scan(
-			&o.ID, &o.SellerID, &o.SellerName, &o.BuyerAuth0ID, &o.Status,
-			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
-			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
-			&o.CreatedAt, &o.UpdatedAt,
-		)
-		if err == pgx.ErrNoRows {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		found = true
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get order by payment intent: %w", err)
-	}
-	if !found {
-		return nil, nil
-	}
-	return &o, nil
-}
-
 // FindByStripePaymentIntentID finds an order by payment intent ID.
 func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, paymentIntentID string) (*domain.Order, error) {
 	var o domain.Order

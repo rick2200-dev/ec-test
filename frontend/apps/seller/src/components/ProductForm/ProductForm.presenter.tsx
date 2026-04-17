@@ -2,18 +2,25 @@
 
 import type { Category } from "../../lib/types";
 
+const PRODUCT_STATUSES = ["draft", "active"] as const;
+type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
+function isProductStatus(value: string): value is ProductStatus {
+  return (PRODUCT_STATUSES as readonly string[]).includes(value);
+}
+
 export interface ProductFormPresenterProps {
   name: string;
   slug: string;
   description: string;
   categoryId: string;
-  status: "draft" | "active";
+  status: ProductStatus;
   categories: Category[];
   onNameChange: (value: string) => void;
   onSlugChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
-  onStatusChange: (value: "draft" | "active") => void;
+  onStatusChange: (value: ProductStatus) => void;
 }
 
 export function ProductFormPresenter({
@@ -118,7 +125,14 @@ export function ProductFormPresenter({
           <select
             id="product-status"
             value={status}
-            onChange={(e) => onStatusChange(e.target.value as "draft" | "active")}
+            onChange={(e) => {
+              // Runtime validate before narrowing; `as ProductStatus` would
+              // silently pass anything the DOM produces (e.g. if an option
+              // is added to the markup but not to PRODUCT_STATUSES).
+              if (isProductStatus(e.target.value)) {
+                onStatusChange(e.target.value);
+              }
+            }}
             className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
           >
             <option value="draft">下書き</option>
