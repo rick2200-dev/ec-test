@@ -14,11 +14,17 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE ALL ON TABLES FROM catalog
 ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE ALL ON SEQUENCES FROM catalog_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc REVOKE SELECT ON TABLES FROM search_role, recommend_role;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA inventory_svc FROM inventory_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA inventory_svc FROM inventory_role;
-REVOKE USAGE ON SCHEMA inventory_svc FROM inventory_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc REVOKE ALL ON TABLES FROM inventory_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc REVOKE ALL ON SEQUENCES FROM inventory_role;
+-- inventory_svc lives on a split DB (Phase 3). Match the up-side guard.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'inventory_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA inventory_svc FROM inventory_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA inventory_svc FROM inventory_role;
+        REVOKE USAGE ON SCHEMA inventory_svc FROM inventory_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc REVOKE ALL ON TABLES FROM inventory_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc REVOKE ALL ON SEQUENCES FROM inventory_role;
+    END IF;
+END$$;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA order_svc FROM order_role;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA order_svc FROM order_role;

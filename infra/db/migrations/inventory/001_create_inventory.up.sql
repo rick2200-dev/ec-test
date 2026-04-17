@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS inventory_svc;
+
 CREATE TABLE inventory_svc.inventory (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sku_id UUID NOT NULL,

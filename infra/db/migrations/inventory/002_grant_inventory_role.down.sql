@@ -1,0 +1,5 @@
+ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc REVOKE ALL ON SEQUENCES FROM inventory_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc REVOKE ALL ON TABLES FROM inventory_role;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA inventory_svc FROM inventory_role;
+REVOKE ALL ON ALL TABLES IN SCHEMA inventory_svc FROM inventory_role;
+REVOKE USAGE ON SCHEMA inventory_svc FROM inventory_role;

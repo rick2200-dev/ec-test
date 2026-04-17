@@ -160,11 +160,12 @@ services:
       HTTP_PORT: "8084"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://inventory_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: inventory runs against its own Postgres instance.
+      DATABASE_URL: postgres://inventory_role:localdev@postgres-inventory:5432/inventory_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/3
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
-      postgres:
+      postgres-inventory:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -482,6 +483,13 @@ services:
     networks:
       - backend
 
+  postgres-inventory:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-inventory
+    networks:
+      - backend
+
   # One-shot init container that seeds the emulator with every topic +
   # subscription the services expect. Publishers / subscribers fail with
   # NotFound unless the resource exists, and the emulator image itself
@@ -509,3 +517,4 @@ volumes:
   pgdata-notification:
   pgdata-subscription:
   pgdata-shipping:
+  pgdata-inventory:

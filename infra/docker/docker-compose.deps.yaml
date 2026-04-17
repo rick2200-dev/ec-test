@@ -87,8 +87,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 3: inventory split. Port 5436.
+  postgres-inventory:
+    image: postgres:16-alpine
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: inventory_dev
+    volumes:
+      - pgdata-inventory:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d inventory_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   pgdata-notification:
   pgdata-subscription:
   pgdata-shipping:
+  pgdata-inventory:

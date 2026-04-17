@@ -25,12 +25,18 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA catalog_svc TO catalog_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON TABLES TO catalog_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT ALL ON SEQUENCES TO catalog_role;
 
--- inventory
-GRANT USAGE ON SCHEMA inventory_svc TO inventory_role;
-GRANT ALL ON ALL TABLES IN SCHEMA inventory_svc TO inventory_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA inventory_svc TO inventory_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc GRANT ALL ON TABLES TO inventory_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc GRANT ALL ON SEQUENCES TO inventory_role;
+-- inventory lives on its own Postgres instance (Phase 3). Guard for
+-- fresh shared-cluster DBs that no longer have the schema.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'inventory_svc') THEN
+        GRANT USAGE ON SCHEMA inventory_svc TO inventory_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA inventory_svc TO inventory_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA inventory_svc TO inventory_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc GRANT ALL ON TABLES TO inventory_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inventory_svc GRANT ALL ON SEQUENCES TO inventory_role;
+    END IF;
+END$$;
 
 -- order (note: "order" is a reserved word so the role uses an underscore suffix)
 GRANT USAGE ON SCHEMA order_svc TO order_role;
