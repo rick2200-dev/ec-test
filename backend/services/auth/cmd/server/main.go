@@ -25,11 +25,7 @@ import (
 func main() {
 	slog.SetDefault(slog.New(tracing.NewSlogHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))))
 
-	tShutdown, err := tracing.Init(context.Background(), tracing.LoadConfig("auth"))
-	if err != nil {
-		slog.Error("failed to init tracing", "error", err)
-		os.Exit(1)
-	}
+	tShutdown, _ := tracing.Init(context.Background(), tracing.LoadConfig("auth"))
 	defer func() { _ = tShutdown(context.Background()) }()
 
 	cfg := config.Load()

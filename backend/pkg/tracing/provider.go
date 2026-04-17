@@ -5,12 +5,19 @@
 // docker-compose). The returned shutdown flushes pending spans on graceful
 // termination. When OTEL_SDK_DISABLED=true, Init is a no-op so unit tests and
 // CI do not require a running collector.
+//
+// Fail-open policy: Init is an observability concern and must never prevent
+// the business service from booting. Any setup failure (bad endpoint, exporter
+// dial error, resource build error) is logged at warn level and the global
+// tracer stays at the SDK default no-op. The returned shutdown is always
+// safe to call. This is deliberate — a misconfigured collector should not
+// take down production traffic.
 package tracing
 
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -53,22 +60,29 @@ func LoadConfig(defaultServiceName string) Config {
 }
 
 // Init installs the global TracerProvider and TextMapPropagator. The returned
-// shutdown must be invoked on process exit.
+// shutdown is always non-nil and safe to call. Init degrades to a no-op
+// provider (and logs warn) on any setup failure; it never returns an error.
+// This keeps service boot independent of the observability backend.
 func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) {
+	// Always install the W3C propagator so trace-context headers flow even
+	// when export is disabled/degraded — downstream services can still see
+	// the upstream traceparent and stitch spans when *they* export.
+	otel.SetTextMapPropagator(compositePropagator())
+	noopShutdown := func(context.Context) error { return nil }
+
 	if cfg.Disabled {
-		// Leave the global noop provider in place; still install W3C
-		// propagation so extraction/injection helpers behave consistently.
-		otel.SetTextMapPropagator(compositePropagator())
-		return func(context.Context) error { return nil }, nil
+		return noopShutdown, nil
 	}
 
 	if cfg.ServiceName == "" {
-		return nil, errors.New("tracing: ServiceName is required")
+		slog.Warn("tracing disabled: OTEL_SERVICE_NAME is empty")
+		return noopShutdown, nil
 	}
 
 	endpoint, err := parseOTLPEndpoint(cfg.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("parse OTLP endpoint: %w", err)
+		slog.Warn("tracing disabled: invalid OTLP endpoint", "endpoint", cfg.Endpoint, "error", err)
+		return noopShutdown, nil
 	}
 
 	opts := []otlptracehttp.Option{otlptracehttp.WithEndpointURL(endpoint)}
@@ -77,7 +91,8 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 	}
 	exporter, err := otlptracehttp.New(ctx, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("create otlp trace exporter: %w", err)
+		slog.Warn("tracing disabled: otlp exporter setup failed", "endpoint", endpoint, "error", err)
+		return noopShutdown, nil
 	}
 
 	res, err := resource.Merge(resource.Default(), resource.NewWithAttributes(
@@ -87,7 +102,8 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 		semconv.DeploymentEnvironment(cfg.Environment),
 	))
 	if err != nil {
-		return nil, fmt.Errorf("build otel resource: %w", err)
+		slog.Warn("tracing disabled: resource build failed", "error", err)
+		return noopShutdown, nil
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -97,7 +113,7 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 	)
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(compositePropagator())
+	slog.Info("tracing initialized", "service", cfg.ServiceName, "endpoint", endpoint)
 
 	return func(ctx context.Context) error {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -137,7 +153,7 @@ func buildSampler(name, arg string) sdktrace.Sampler {
 func parseOTLPEndpoint(raw string) (string, error) {
 	raw = strings.TrimRight(raw, "/")
 	if raw == "" {
-		return "", errors.New("empty endpoint")
+		return "", errors.New("empty OTLP endpoint")
 	}
 	if strings.HasSuffix(raw, "/v1/traces") {
 		return raw, nil

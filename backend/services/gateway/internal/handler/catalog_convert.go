@@ -138,8 +138,15 @@ func writeGRPCError(w http.ResponseWriter, op string, err error) {
 		httputil.JSON(w, http.StatusBadRequest, map[string]string{"error": st.Message()})
 	case codes.PermissionDenied:
 		httputil.JSON(w, http.StatusForbidden, map[string]string{"error": st.Message()})
-	case codes.Unauthenticated:
-		httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": st.Message()})
+	case codes.Unauthenticated, codes.FailedPrecondition:
+		// Unauthenticated here means the downstream gRPC server rejected
+		// the gateway's internal-token — i.e. an intra-cluster auth
+		// misconfiguration, not a buyer authentication problem. Buyer
+		// JWT verification happens upstream in the gateway itself, so
+		// surfacing 401 would tell the client "log in again" for what
+		// is really an operator-side failure. FailedPrecondition is
+		// raised by the same interceptor when the secret is unset.
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "upstream service unavailable"})
 	case codes.AlreadyExists:
 		httputil.JSON(w, http.StatusConflict, map[string]string{"error": st.Message()})
 	case codes.DeadlineExceeded, codes.Unavailable:
