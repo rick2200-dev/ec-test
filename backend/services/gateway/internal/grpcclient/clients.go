@@ -1,6 +1,7 @@
 package grpcclient
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -12,6 +13,19 @@ import (
 	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 )
+
+// internalTokenCreds attaches a shared secret as x-internal-token gRPC
+// metadata on every RPC call so the downstream service can authenticate
+// the caller.
+type internalTokenCreds struct {
+	token string
+}
+
+func (c internalTokenCreds) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
+	return map[string]string{"x-internal-token": c.token}, nil
+}
+
+func (c internalTokenCreds) RequireTransportSecurity() bool { return false }
 
 // GRPCClients holds gRPC client connections and typed clients for downstream services.
 type GRPCClients struct {
@@ -26,22 +40,25 @@ type GRPCClients struct {
 
 // NewGRPCClients creates gRPC connections to each downstream service.
 func NewGRPCClients(cfg config.Config) (*GRPCClients, error) {
-	opts := []grpc.DialOption{
+	baseOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
-	catalogConn, err := grpc.NewClient(cfg.CatalogGRPCAddr, opts...)
+	catalogOpts := append(append([]grpc.DialOption{}, baseOpts...),
+		grpc.WithPerRPCCredentials(internalTokenCreds{token: cfg.CatalogInternalToken}),
+	)
+	catalogConn, err := grpc.NewClient(cfg.CatalogGRPCAddr, catalogOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to catalog gRPC: %w", err)
 	}
 
-	inventoryConn, err := grpc.NewClient(cfg.InventoryGRPCAddr, opts...)
+	inventoryConn, err := grpc.NewClient(cfg.InventoryGRPCAddr, baseOpts...)
 	if err != nil {
 		_ = catalogConn.Close()
 		return nil, fmt.Errorf("failed to connect to inventory gRPC: %w", err)
 	}
 
-	orderConn, err := grpc.NewClient(cfg.OrderGRPCAddr, opts...)
+	orderConn, err := grpc.NewClient(cfg.OrderGRPCAddr, baseOpts...)
 	if err != nil {
 		_ = catalogConn.Close()
 		_ = inventoryConn.Close()

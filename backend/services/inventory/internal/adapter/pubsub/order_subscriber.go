@@ -71,8 +71,8 @@ func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub
 	for _, li := range data.LineItems {
 		if li.SkuId != "" {
 			if _, err := uuid.Parse(li.SkuId); err != nil {
-				slog.Warn("order.cancelled line has invalid sku_id",
-					"order_id", data.OrderId, "sku_id", li.SkuId, "error", err)
+				return fmt.Errorf("invalid sku_id %q in order.cancelled %s: %w",
+					li.SkuId, data.OrderId, err)
 			}
 		}
 	}

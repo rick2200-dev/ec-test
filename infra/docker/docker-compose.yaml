@@ -27,6 +27,8 @@ services:
       SHIPPING_INTERNAL_TOKEN: local-dev-shipping-internal-token
       # Must match AUTH_INTERNAL_TOKEN on the auth service.
       AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
+      # Must match CATALOG_INTERNAL_TOKEN on the catalog service.
+      CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
       # gRPC dial targets — must match the GRPC_PORT each service listens on.
       CATALOG_GRPC_ADDR: catalog:50052
       ORDER_GRPC_ADDR: order:50053

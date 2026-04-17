@@ -136,6 +136,27 @@ func TestOrderSubscriber_RejectsMalformedPayload(t *testing.T) {
 	}
 }
 
+func TestOrderSubscriber_RejectsInvalidSKUID(t *testing.T) {
+	releaser := &fakeReleaser{}
+	sub := NewOrderSubscriber(nil, releaser)
+
+	event := pubsub.Event{
+		ID:   uuid.New().String(),
+		Type: eventTypeOrderCancelled,
+		Data: map[string]any{
+			"order_id": uuid.New().String(),
+			"line_items": []map[string]any{
+				{"sku_id": "not-a-uuid", "quantity": 1},
+			},
+		},
+	}
+
+	err := sub.handleEvent(context.Background(), event)
+	if err == nil {
+		t.Fatal("expected error for invalid sku_id, got nil")
+	}
+}
+
 func TestOrderSubscriber_IdempotentRedelivery(t *testing.T) {
 	// Even with no-op release, redeliveries must succeed (ack).
 	releaser := &fakeReleaser{}

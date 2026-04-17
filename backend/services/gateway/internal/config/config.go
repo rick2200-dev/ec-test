@@ -43,6 +43,10 @@ type Config struct {
 	// SHIPPING_INTERNAL_TOKEN on the shipping service.
 	ShippingInternalToken string
 
+	// Shared secret for the catalog gRPC service. Must match
+	// CATALOG_INTERNAL_TOKEN on the catalog service.
+	CatalogInternalToken string
+
 	// gRPC service addresses (host:port)
 	CatalogGRPCAddr   string
 	InventoryGRPCAddr string
@@ -89,6 +93,7 @@ func Load() Config {
 		AuthInternalToken:         getEnv("AUTH_INTERNAL_TOKEN", ""),
 		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
 		ShippingInternalToken:     getEnv("SHIPPING_INTERNAL_TOKEN", ""),
+		CatalogInternalToken:      getEnv("CATALOG_INTERNAL_TOKEN", ""),
 
 		// Note: catalog's GRPC_PORT default is 50052 (see
 		// backend/services/catalog/internal/config/config.go). Keep this in
