@@ -229,11 +229,7 @@ make lint-go
 
 ## 環境変数
 
-ローカル開発時のデフォルト DB 接続先:
-
-```
-DATABASE_URL=postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=disable
-```
+各サービスは独立した PostgreSQL インスタンスに接続します (Phase 3 物理分離済み)。Docker Compose 環境では自動設定されます。ローカルで `air` 等を直接使う場合は `infra/docker/.env.example` を参照してください。
 
 各サービスの環境変数は `backend/services/<service>/internal/config/` を参照してください。
 

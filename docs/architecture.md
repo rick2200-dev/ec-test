@@ -63,8 +63,9 @@
 │  ┌───────────┐  ┌──────────┐  ┌───────────────────┐  │
 │  │PostgreSQL │  │  Redis   │  │  Cloud Pub/Sub    │  │
 │  │  16       │  │   7      │  │  (非同期メッセージ) │  │
-│  │           │  │(カート +  │  │                   │  │
-│  │           │  │ キャッシュ)│  │                   │  │
+│  │(サービス  │  │(カート +  │  │                   │  │
+│  │ ごとに    │  │ キャッシュ)│  │                   │  │
+│  │ 独立DB)   │  │          │  │                   │  │
 │  └───────────┘  └──────────┘  └───────────────────┘  │
 │                                                       │
 │  ┌──────────────────┐  ┌────────────────────┐         │
@@ -93,9 +94,9 @@
 | **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                                                            | `catalog_svc`   |
 | **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                                                               | `inventory_svc` |
 | **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金          | `order_svc`     |
-| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                                                         | なし (外部)     |
-| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                                                       | なし (外部)     |
-| **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                                                         | なし            |
+| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                                                         | `search_svc`    |
+| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                                                       | `recommend_svc` |
+| **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                                                         | `notification_svc` |
 | **cart**         | 8088   | カート管理 (Redis 永続化)、マルチセラーチェックアウトのオーケストレーション                              | なし (Redis)    |
 | **inquiry**      | 8090   | 買い手→売り手お問い合わせスレッド (購入済み SKU 単位)、order サービスへの購入検証内部呼び出し            | `inquiry_svc`   |
 | **review**       | 8091   | 商品レビュー・評価 (購入検証付き)、セラー返信、商品別集計評価 (非正規化)、catalog/order への内部呼び出し | `review_svc`    |
@@ -335,19 +336,23 @@ erDiagram
     }
 ```
 
-### DB スキーマ構成
+### DB 構成
 
-PostgreSQL のスキーマ機能を利用し、サービスごとにスキーマを分離:
+Phase 3 により、全サービスが独立した PostgreSQL インスタンスを持ちます。各サービスは自身のスキーマのみにアクセスし、他サービスとのデータ連携は gRPC / Pub/Sub イベントで行います。
 
-| スキーマ        | 担当サービス | テーブル                                               |
-| --------------- | ------------ | ------------------------------------------------------ |
-| `auth_svc`      | auth         | `sellers`, `seller_users`, `buyers`                    |
-| `subscription_svc` | subscription | `subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions` |
-| `catalog_svc`   | catalog      | `categories`, `products`, `skus`, `product_categories` |
-| `inventory_svc` | inventory    | `inventory`, `stock_movements`                         |
-| `order_svc`     | order        | `orders`, `order_lines`, `commission_rules`, `payouts` |
-| `inquiry_svc`   | inquiry      | `inquiries`, `inquiry_messages`                        |
-| `review_svc`    | review       | `reviews`, `review_replies`, `product_ratings`         |
+| スキーマ            | 担当サービス  | DB (ローカル)                  | テーブル                                               |
+| ------------------- | ------------- | ------------------------------ | ------------------------------------------------------ |
+| `auth_svc`          | auth          | `auth_dev` (:5437)             | `sellers`, `seller_users`, `buyers`                    |
+| `subscription_svc`  | subscription  | `subscription_dev` (:5434)     | `subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions` |
+| `catalog_svc`       | catalog       | `catalog_dev` (:5442)          | `categories`, `products`, `skus`, `product_categories`, `outbox_events` |
+| `inventory_svc`     | inventory     | `inventory_dev` (:5436)        | `inventory`, `stock_movements`                         |
+| `order_svc`         | order         | `order_dev` (:5443)            | `orders`, `order_lines`, `commission_rules`, `payouts`, `order_cancellation_requests` |
+| `inquiry_svc`       | inquiry       | `inquiry_dev` (:5438)          | `inquiries`, `inquiry_messages`                        |
+| `review_svc`        | review        | `review_dev` (:5439)           | `reviews`, `review_replies`, `product_ratings`         |
+| `shipping_svc`      | shipping      | `shipping_dev` (:5435)         | `shipments`, `shipment_events`, `outbox_events`, `cancelled_order_tombstones` |
+| `notification_svc`  | notification  | `notification_dev` (:5433)     | `processed_events`                                     |
+| `search_svc`        | search        | `search_dev` (:5440)           | `seller_plan_boost`, `products`                        |
+| `recommend_svc`     | recommend     | `recommend_dev` (:5441)        | `user_events`, `products`, `product_categories`, `popular_products` (matview) |
 
 ### マルチセラー注文のグルーピング
 
@@ -373,12 +378,12 @@ Amazon 型のカート UX では 1 つのチェックアウトで複数セラー
 | `image_url`    | クエリ時エンリッチ | `catalog_svc.products.image_url` を gRPC で取得       |
 | 商品の生存判定 | クエリ時エンリッチ | catalog `GetProduct` が NotFound / `status=archived`  |
 
-**スナップショット時の解決**: `POST /internal/checkouts` の DB Tx #1 (`orders` + `order_lines` を INSERT するトランザクション) の先頭で、`order_svc` repository が cross-schema クエリを 2 本実行します:
+**スナップショット時の解決**: `POST /internal/checkouts` で order サービスは gRPC / 内部 HTTP で必要なデータを取得します:
 
-- `SELECT id, name FROM auth_svc.sellers WHERE id = ANY($1)` → `orders.seller_name`
-- `SELECT id, product_id FROM catalog_svc.skus WHERE id = ANY($1)` → `order_lines.product_id`
+- `auth.BatchGetSellers` (内部 HTTP) → `orders.seller_name`
+- `catalog.BatchGetSKUs` (gRPC) → `order_lines.product_id`
 
-`auth_svc.sellers` / `catalog_svc.skus` はクロススキーマクエリで参照します。
+Phase 3 でサービスごとに DB を物理分離済みのため、cross-schema クエリは存在しません。
 
 **クエリ時エンリッチ**: `GET /api/v1/buyer/orders/{id}` は gateway が:
 
@@ -669,8 +674,19 @@ infra/deploy/
 ```
 開発者マシン
 ├── Docker Compose (make deps-up)
-│   ├── PostgreSQL 16  (:5432)
-│   │   └── DB: ecmarket_dev / User: ecmarket / Pass: localdev
+│   ├── PostgreSQL 16 (サービスごとに独立インスタンス)
+│   │   ├── notification_dev (:5433)
+│   │   ├── subscription_dev (:5434)
+│   │   ├── shipping_dev     (:5435)
+│   │   ├── inventory_dev    (:5436)
+│   │   ├── auth_dev          (:5437)
+│   │   ├── inquiry_dev       (:5438)
+│   │   ├── review_dev        (:5439)
+│   │   ├── search_dev        (:5440)
+│   │   ├── recommend_dev     (:5441)
+│   │   ├── catalog_dev       (:5442)
+│   │   └── order_dev          (:5443)
+│   │   (User: ecmarket / Pass: localdev)
 │   ├── Redis 7        (:6379)
 │   └── Pub/Sub Emulator (:8085)
 │
@@ -708,8 +724,15 @@ make dev-catalog      # 開発対象
 
 **DB を直接確認する場合:**
 
+各サービスの DB はポートで分かれています:
+
 ```bash
-psql postgres://ecmarket:localdev@localhost:5432/ecmarket_dev
+# catalog DB
+psql postgres://ecmarket:localdev@localhost:5442/catalog_dev
+# auth DB
+psql postgres://ecmarket:localdev@localhost:5437/auth_dev
+# order DB
+psql postgres://ecmarket:localdev@localhost:5443/order_dev
 ```
 
 **Pub/Sub Emulator を使用する場合:**

@@ -339,7 +339,7 @@ type Config struct {
 func Load() Config {
     return Config{
         HTTPPort:    getEnv("HTTP_PORT", "808X"),  // 適切なポート番号
-        DatabaseURL: getEnv("DATABASE_URL", "postgres://ecmarket:localdev@localhost:5432/ecmarket_dev?sslmode=disable"),
+        DatabaseURL: getEnv("DATABASE_URL", "postgres://<service>_role:localdev@localhost:<port>/<service>_dev?sslmode=disable"),
     }
 }
 
@@ -378,19 +378,20 @@ dev-<service-name>:
 
 ### 1. マイグレーションファイル作成
 
-```bash
-make migrate-create
-# プロンプトに名前を入力: create_<table_name>
-```
+各サービスのマイグレーションは `infra/db/migrations/<service>/` に配置します。連番はサービスごとに独立です。
 
-これで `infra/db/migrations/` に `NNNNNN_create_<table_name>.up.sql` と `.down.sql` が作成されます。
+```bash
+# 例: catalog に新テーブル追加
+touch infra/db/migrations/catalog/010_create_<table_name>.up.sql
+touch infra/db/migrations/catalog/010_create_<table_name>.down.sql
+```
 
 ### 2. UP マイグレーション記述
 
 ```sql
--- infra/db/migrations/NNNNNN_create_<table_name>.up.sql
+-- infra/db/migrations/<service>/NNN_create_<table_name>.up.sql
 
-CREATE TABLE <schema>_svc.<table_name> (
+CREATE TABLE <service>_svc.<table_name> (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- カラム定義...
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -402,20 +403,27 @@ CREATE TABLE <schema>_svc.<table_name> (
 
 - **サービス固有の PostgreSQL スキーマを使用** (`auth_svc`, `catalog_svc` 等)
 - **金額は BIGINT (最小通貨単位)** で保存 (例: 1000 = 1000円)
+- **他サービスのスキーマを参照しない** — 各サービスは独立 DB で動作する (Phase 3)
+- マイグレーションは `infra/scripts/migrate.sh` が各サービスの DB に個別にルーティングする
 
 ### 3. DOWN マイグレーション記述
 
 ```sql
--- infra/db/migrations/NNNNNN_create_<table_name>.down.sql
-DROP TABLE IF EXISTS <schema>_svc.<table_name>;
+-- infra/db/migrations/<service>/NNN_create_<table_name>.down.sql
+DROP TABLE IF EXISTS <service>_svc.<table_name>;
 ```
 
 ### 4. マイグレーション実行・検証
 
 ```bash
-make migrate          # UP を実行
-make migrate-down     # DOWN でロールバックできることを確認
-make migrate          # 再度 UP して問題ないことを確認
+# 全サービス一括
+bash infra/scripts/migrate.sh up
+
+# 特定サービスのみ
+bash infra/scripts/migrate.sh up-service catalog
+
+# DOWN でロールバックできることを確認
+bash infra/scripts/migrate.sh down
 ```
 
 ---
