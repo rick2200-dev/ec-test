@@ -16,9 +16,18 @@ CREATE TABLE IF NOT EXISTS search_svc.seller_plan_boost (
 );
 
 -- Backfill from the current (soon-to-be-dropped) catalog_svc view so
--- search queries see the same data during the transition. Next deploy
--- after a full promotion can drop the catalog view.
-INSERT INTO search_svc.seller_plan_boost (seller_id, plan_tier, plan_slug, search_boost, promoted_results)
-SELECT seller_id, plan_tier, plan_slug, search_boost, promoted_results
-FROM catalog_svc.seller_plan_boost
-ON CONFLICT (seller_id) DO NOTHING;
+-- search queries see the same data during the transition. On a fresh
+-- search-only DB (Phase 3 split), catalog_svc doesn't exist — skip;
+-- subscription events will populate the table at runtime.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_matviews
+        WHERE schemaname = 'catalog_svc' AND matviewname = 'seller_plan_boost'
+    ) THEN
+        INSERT INTO search_svc.seller_plan_boost (seller_id, plan_tier, plan_slug, search_boost, promoted_results)
+        SELECT seller_id, plan_tier, plan_slug, search_boost, promoted_results
+        FROM catalog_svc.seller_plan_boost
+        ON CONFLICT (seller_id) DO NOTHING;
+    END IF;
+END$$;

@@ -1,0 +1,5 @@
+ALTER DEFAULT PRIVILEGES IN SCHEMA recommend_svc REVOKE ALL ON SEQUENCES FROM recommend_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA recommend_svc REVOKE ALL ON TABLES FROM recommend_role;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA recommend_svc FROM recommend_role;
+REVOKE ALL ON ALL TABLES IN SCHEMA recommend_svc FROM recommend_role;
+REVOKE USAGE ON SCHEMA recommend_svc FROM recommend_role;

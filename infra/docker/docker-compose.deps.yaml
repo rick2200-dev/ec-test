@@ -155,6 +155,40 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 3: search split. Port 5440.
+  postgres-search:
+    image: postgres:16-alpine
+    ports:
+      - "5440:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: search_dev
+    volumes:
+      - pgdata-search:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d search_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Phase 3: recommend split. Port 5441.
+  postgres-recommend:
+    image: postgres:16-alpine
+    ports:
+      - "5441:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: recommend_dev
+    volumes:
+      - pgdata-recommend:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d recommend_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   pgdata-notification:
@@ -164,3 +198,5 @@ volumes:
   pgdata-inquiry:
   pgdata-review:
   pgdata-inventory:
+  pgdata-search:
+  pgdata-recommend:

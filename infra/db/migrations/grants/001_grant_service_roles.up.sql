@@ -129,16 +129,25 @@ BEGIN
 END$$;
 
 -- ─── Read-only catalog consumers ──────────────────────────────
--- search and recommend do not own a schema today; they project catalog data.
--- Strict SELECT-only grant makes the data-flow direction unambiguous.
+-- Historical: search and recommend used to read catalog_svc directly.
+-- Phase 2.2 gave each service its own projection populated by events,
+-- and Phase 3 split them to their own DBs. Guard in case catalog_svc
+-- still exists on a legacy shared cluster that hasn't been cleaned up.
 
-GRANT USAGE ON SCHEMA catalog_svc TO search_role, recommend_role;
-GRANT SELECT ON ALL TABLES IN SCHEMA catalog_svc TO search_role, recommend_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT SELECT ON TABLES TO search_role, recommend_role;
-
--- recommend also writes to its own user_events table (currently co-located in
--- catalog_svc). Phase 2.2 moves this to a dedicated recommend_svc schema.
-GRANT INSERT, UPDATE, DELETE ON catalog_svc.user_events TO recommend_role;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        GRANT USAGE ON SCHEMA catalog_svc TO search_role, recommend_role;
+        GRANT SELECT ON ALL TABLES IN SCHEMA catalog_svc TO search_role, recommend_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA catalog_svc GRANT SELECT ON TABLES TO search_role, recommend_role;
+        IF EXISTS (
+            SELECT 1 FROM pg_tables
+            WHERE schemaname = 'catalog_svc' AND tablename = 'user_events'
+        ) THEN
+            GRANT INSERT, UPDATE, DELETE ON catalog_svc.user_events TO recommend_role;
+        END IF;
+    END IF;
+END$$;
 
 -- ─── Transitional cross-schema reads (to be removed in Phase 1.2/2.1) ──
 

@@ -22,19 +22,22 @@ CREATE TABLE IF NOT EXISTS recommend_svc.products (
 CREATE INDEX IF NOT EXISTS idx_recommend_products_status   ON recommend_svc.products (status) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS idx_recommend_products_seller   ON recommend_svc.products (seller_id);
 
--- Backfill from catalog so existing products are visible to recommend
--- queries immediately after migration, without waiting for each product
--- to emit its next product.updated. Joins catalog_svc.skus for the
--- representative price; products with no SKUs get NULL price.
-INSERT INTO recommend_svc.products (id, seller_id, name, slug, description, status, cheapest_price_amount, cheapest_price_currency)
-SELECT p.id, p.seller_id, p.name, p.slug, p.description, p.status,
-       pr.price_amount, pr.price_currency
-FROM catalog_svc.products p
-LEFT JOIN LATERAL (
-    SELECT price_amount, price_currency
-    FROM catalog_svc.skus
-    WHERE product_id = p.id
-    ORDER BY price_amount ASC
-    LIMIT 1
-) pr ON TRUE
-ON CONFLICT (id) DO NOTHING;
+-- Backfill from catalog. On a fresh recommend-only DB (Phase 3 split),
+-- catalog_svc doesn't exist — skip; product events will populate this.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        INSERT INTO recommend_svc.products (id, seller_id, name, slug, description, status, cheapest_price_amount, cheapest_price_currency)
+        SELECT p.id, p.seller_id, p.name, p.slug, p.description, p.status,
+               pr.price_amount, pr.price_currency
+        FROM catalog_svc.products p
+        LEFT JOIN LATERAL (
+            SELECT price_amount, price_currency
+            FROM catalog_svc.skus
+            WHERE product_id = p.id
+            ORDER BY price_amount ASC
+            LIMIT 1
+        ) pr ON TRUE
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END$$;

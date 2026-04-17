@@ -30,23 +30,28 @@ CREATE INDEX IF NOT EXISTS idx_search_products_vector
     ON search_svc.products USING GIN (search_vector);
 
 -- Backfill from catalog so existing products are searchable immediately.
--- Seller name is left blank here; ProductSubscriber fills it on the next
--- product event (or a one-shot admin backfill can call auth's batch-get).
-INSERT INTO search_svc.products
-       (id, seller_id, seller_name, category_id, category_name, name, slug, description, status, price_amount, price_currency, search_vector)
-SELECT p.id, p.seller_id, '' AS seller_name,
-       p.category_id, COALESCE(c.name, '') AS category_name,
-       p.name, p.slug, p.description, p.status,
-       pr.price_amount, pr.price_currency,
-       setweight(to_tsvector('simple', COALESCE(p.name, '')), 'A') ||
-       setweight(to_tsvector('simple', COALESCE(p.description, '')), 'B')
-FROM catalog_svc.products p
-LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
-LEFT JOIN LATERAL (
-    SELECT price_amount, price_currency
-    FROM catalog_svc.skus
-    WHERE product_id = p.id
-    ORDER BY price_amount ASC
-    LIMIT 1
-) pr ON TRUE
-ON CONFLICT (id) DO NOTHING;
+-- On a fresh search-only DB (Phase 3 split), catalog_svc doesn't exist —
+-- skip; product events will populate the table at runtime.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        INSERT INTO search_svc.products
+               (id, seller_id, seller_name, category_id, category_name, name, slug, description, status, price_amount, price_currency, search_vector)
+        SELECT p.id, p.seller_id, '' AS seller_name,
+               p.category_id, COALESCE(c.name, '') AS category_name,
+               p.name, p.slug, p.description, p.status,
+               pr.price_amount, pr.price_currency,
+               setweight(to_tsvector('simple', COALESCE(p.name, '')), 'A') ||
+               setweight(to_tsvector('simple', COALESCE(p.description, '')), 'B')
+        FROM catalog_svc.products p
+        LEFT JOIN catalog_svc.categories c ON c.id = p.category_id
+        LEFT JOIN LATERAL (
+            SELECT price_amount, price_currency
+            FROM catalog_svc.skus
+            WHERE product_id = p.id
+            ORDER BY price_amount ASC
+            LIMIT 1
+        ) pr ON TRUE
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END$$;

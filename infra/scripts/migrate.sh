@@ -51,6 +51,12 @@ db_url_for_service() {
     review)
       echo "${REVIEW_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5439/review_dev?sslmode=disable}"
       ;;
+    search)
+      echo "${SEARCH_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5440/search_dev?sslmode=disable}"
+      ;;
+    recommend)
+      echo "${RECOMMEND_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5441/recommend_dev?sslmode=disable}"
+      ;;
     *)
       echo "$DATABASE_URL"
       ;;

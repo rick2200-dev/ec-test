@@ -189,7 +189,8 @@ services:
       HTTP_PORT: "8085"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://search_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: search runs against its own Postgres instance.
+      DATABASE_URL: postgres://search_role:localdev@postgres-search:5432/search_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/4
       PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
@@ -197,7 +198,7 @@ services:
       # Must match AUTH_INTERNAL_TOKEN on the auth service.
       AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
-      postgres:
+      postgres-search:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -222,13 +223,14 @@ services:
       HTTP_PORT: "8086"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://recommend_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: recommend runs against its own Postgres instance.
+      DATABASE_URL: postgres://recommend_role:localdev@postgres-recommend:5432/recommend_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/5
       CATALOG_SERVICE_URL: http://catalog:8082
       PUBSUB_PROJECT_ID: local-project
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
     depends_on:
-      postgres:
+      postgres-recommend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -486,6 +488,20 @@ services:
     networks:
       - backend
 
+  postgres-search:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-search
+    networks:
+      - backend
+
+  postgres-recommend:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-recommend
+    networks:
+      - backend
+
   postgres-auth:
     extends:
       file: docker-compose.deps.yaml
@@ -545,3 +561,5 @@ volumes:
   pgdata-inquiry:
   pgdata-review:
   pgdata-inventory:
+  pgdata-search:
+  pgdata-recommend:
