@@ -48,12 +48,17 @@ BEGIN
     END IF;
 END$$;
 
--- order (note: "order" is a reserved word so the role uses an underscore suffix)
-GRANT USAGE ON SCHEMA order_svc TO order_role;
-GRANT ALL ON ALL TABLES IN SCHEMA order_svc TO order_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA order_svc TO order_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON TABLES TO order_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON SEQUENCES TO order_role;
+-- order lives on its own Postgres instance (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'order_svc') THEN
+        GRANT USAGE ON SCHEMA order_svc TO order_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA order_svc TO order_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA order_svc TO order_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON TABLES TO order_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc GRANT ALL ON SEQUENCES TO order_role;
+    END IF;
+END$$;
 
 -- subscription lives on its own Postgres instance (Phase 3), so on a
 -- fresh shared-cluster DB the subscription_svc schema is not created

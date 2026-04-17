@@ -1,6 +1,3 @@
--- Remove shipping_fee column from orders.
+-- Historical no-op (see .up.sql). Only the shipping_fee column belongs
+-- to order; the buyer plan/subscription tables are owned by subscription.
 ALTER TABLE order_svc.orders DROP COLUMN IF EXISTS shipping_fee;
-
--- Drop buyer subscription tables.
-DROP TABLE IF EXISTS auth_svc.buyer_subscriptions;
-DROP TABLE IF EXISTS auth_svc.buyer_plans;

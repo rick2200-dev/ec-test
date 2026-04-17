@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS order_svc;
+
 CREATE TABLE order_svc.orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     seller_id UUID NOT NULL,

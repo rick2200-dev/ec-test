@@ -38,11 +38,17 @@ BEGIN
     END IF;
 END$$;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA order_svc FROM order_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA order_svc FROM order_role;
-REVOKE USAGE ON SCHEMA order_svc FROM order_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc REVOKE ALL ON TABLES FROM order_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc REVOKE ALL ON SEQUENCES FROM order_role;
+-- order_svc lives on a split DB (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'order_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA order_svc FROM order_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA order_svc FROM order_role;
+        REVOKE USAGE ON SCHEMA order_svc FROM order_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc REVOKE ALL ON TABLES FROM order_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA order_svc REVOKE ALL ON SEQUENCES FROM order_role;
+    END IF;
+END$$;
 
 -- subscription_svc may live on a split DB (Phase 3), in which case the
 -- shared cluster never had the schema. Match the up-side guard.

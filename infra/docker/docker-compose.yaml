@@ -123,7 +123,8 @@ services:
       HTTP_PORT: "8083"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://order_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: order runs against its own Postgres instance.
+      DATABASE_URL: postgres://order_role:localdev@postgres-order:5432/order_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/2
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       INVENTORY_SERVICE_URL: http://inventory:8084
@@ -135,7 +136,7 @@ services:
       # Must match cart/inquiry ORDER_INTERNAL_TOKEN.
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
-      postgres:
+      postgres-order:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -489,6 +490,13 @@ services:
     networks:
       - backend
 
+  postgres-order:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-order
+    networks:
+      - backend
+
   postgres-catalog:
     extends:
       file: docker-compose.deps.yaml
@@ -569,6 +577,7 @@ volumes:
   pgdata-inquiry:
   pgdata-review:
   pgdata-inventory:
+  pgdata-order:
   pgdata-catalog:
   pgdata-search:
   pgdata-recommend:

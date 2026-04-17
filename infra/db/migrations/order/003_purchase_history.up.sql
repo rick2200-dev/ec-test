@@ -7,41 +7,57 @@
 ALTER TABLE order_svc.orders
     ADD COLUMN seller_name VARCHAR(255) NOT NULL DEFAULT '';
 
--- Backfill existing rows from auth_svc.sellers.
-UPDATE order_svc.orders o
-   SET seller_name = COALESCE(s.name, '')
-  FROM auth_svc.sellers s
- WHERE o.seller_id = s.id;
+-- Backfill existing rows from auth_svc.sellers. On a fresh order-only
+-- DB (Phase 3 split), auth_svc doesn't exist — skip.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+        UPDATE order_svc.orders o
+           SET seller_name = COALESCE(s.name, '')
+          FROM auth_svc.sellers s
+         WHERE o.seller_id = s.id;
+    END IF;
+END$$;
 
 -- order_lines: product_id snapshot (for detail-page enrichment via catalog gRPC).
 ALTER TABLE order_svc.order_lines
     ADD COLUMN product_id UUID;
 
--- Backfill from catalog_svc.skus using the existing sku_id.
-UPDATE order_svc.order_lines ol
-   SET product_id = sk.product_id
-  FROM catalog_svc.skus sk
- WHERE ol.sku_id = sk.id;
+-- Backfill from catalog_svc.skus using the existing sku_id. On a fresh
+-- order-only DB, catalog_svc doesn't exist — skip.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        UPDATE order_svc.order_lines ol
+           SET product_id = sk.product_id
+          FROM catalog_svc.skus sk
+         WHERE ol.sku_id = sk.id;
+    END IF;
+END$$;
 
--- For any historical rows whose sku_id no longer exists in catalog_svc.skus
--- (no FK constraint binds those tables), stamp the nil UUID as a sentinel so
--- the NOT NULL constraint below can be enforced safely. The gateway's order
--- detail enrichment treats the nil UUID as "product deleted" and returns
--- is_deleted=true for those lines, preserving buyer-visible history with
--- only the snapshotted product_name and sku_code.
+-- For any historical rows whose sku_id no longer exists (no FK constraint
+-- binds those tables), stamp the nil UUID as a sentinel.
 UPDATE order_svc.order_lines
    SET product_id = '00000000-0000-0000-0000-000000000000'
  WHERE product_id IS NULL;
 
--- Enforce NOT NULL now that every row has either a real product_id or the
--- sentinel nil UUID.
 ALTER TABLE order_svc.order_lines
     ALTER COLUMN product_id SET NOT NULL;
 
 CREATE INDEX idx_order_lines_product
     ON order_svc.order_lines(product_id);
 
--- catalog: product image URL (single primary image for now; a dedicated
--- product_images table can be added later if multiple images are needed).
-ALTER TABLE catalog_svc.products
-    ADD COLUMN image_url VARCHAR(1024);
+-- catalog: product image URL. On a split DB without catalog_svc, this
+-- column is added by catalog's own migration. Guard so it doesn't fail.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'catalog_svc') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'catalog_svc' AND table_name = 'products'
+              AND column_name = 'image_url'
+        ) THEN
+            ALTER TABLE catalog_svc.products ADD COLUMN image_url VARCHAR(1024);
+        END IF;
+    END IF;
+END$$;

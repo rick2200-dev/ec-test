@@ -60,6 +60,9 @@ db_url_for_service() {
     catalog)
       echo "${CATALOG_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5442/catalog_dev?sslmode=disable}"
       ;;
+    order)
+      echo "${ORDER_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5443/order_dev?sslmode=disable}"
+      ;;
     *)
       echo "$DATABASE_URL"
       ;;

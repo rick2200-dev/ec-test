@@ -155,6 +155,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 3: order split. Port 5443.
+  postgres-order:
+    image: postgres:16-alpine
+    ports:
+      - "5443:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: order_dev
+    volumes:
+      - pgdata-order:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d order_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # Phase 3: catalog split. Port 5442.
   postgres-catalog:
     image: postgres:16-alpine
@@ -217,4 +234,5 @@ volumes:
   pgdata-inventory:
   pgdata-search:
   pgdata-recommend:
+  pgdata-order:
   pgdata-catalog:
