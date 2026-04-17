@@ -14,7 +14,11 @@ func Logger(next http.Handler) http.Handler {
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(sw, r)
 
-		slog.Info("request",
+		// Use InfoContext so tracing.NewSlogHandler can read the active
+		// span from r.Context() and tag the record with trace_id /
+		// span_id — otherwise access logs cannot be cross-referenced
+		// back to the Jaeger trace the request produced.
+		slog.InfoContext(r.Context(), "request",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", sw.status,
