@@ -25,6 +25,12 @@ services:
       SHIPPING_SERVICE_URL: http://shipping:8092
       # Must match SHIPPING_INTERNAL_TOKEN on the shipping service.
       SHIPPING_INTERNAL_TOKEN: local-dev-shipping-internal-token
+      # Must match AUTH_INTERNAL_TOKEN on the auth service.
+      AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
+      # gRPC dial targets — must match the GRPC_PORT each service listens on.
+      CATALOG_GRPC_ADDR: catalog:50052
+      ORDER_GRPC_ADDR: order:50053
+      INVENTORY_GRPC_ADDR: inventory:50054
       # DB 8 is the API-token rate limiter's namespace; cart owns DB 7.
       REDIS_URL: redis://redis:6379/8
       # Must match auth service API_TOKEN_PREFIX.
@@ -45,6 +51,10 @@ services:
       subscription:
         condition: service_healthy
       shipping:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+      order:
         condition: service_healthy
     networks:
       - backend
