@@ -87,6 +87,57 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 3: auth split. Port 5437.
+  postgres-auth:
+    image: postgres:16-alpine
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: auth_dev
+    volumes:
+      - pgdata-auth:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d auth_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Phase 3: inquiry split. Port 5438.
+  postgres-inquiry:
+    image: postgres:16-alpine
+    ports:
+      - "5438:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: inquiry_dev
+    volumes:
+      - pgdata-inquiry:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d inquiry_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Phase 3: review split. Port 5439.
+  postgres-review:
+    image: postgres:16-alpine
+    ports:
+      - "5439:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: review_dev
+    volumes:
+      - pgdata-review:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d review_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # Phase 3: inventory split. Port 5436.
   postgres-inventory:
     image: postgres:16-alpine
@@ -109,4 +160,7 @@ volumes:
   pgdata-notification:
   pgdata-subscription:
   pgdata-shipping:
+  pgdata-auth:
+  pgdata-inquiry:
+  pgdata-review:
   pgdata-inventory:

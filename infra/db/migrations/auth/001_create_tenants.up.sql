@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS auth_svc;
+
 CREATE TABLE auth_svc.sellers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auth0_org_id VARCHAR(255),

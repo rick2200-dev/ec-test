@@ -11,12 +11,17 @@
 
 -- ─── Owned-schema grants ──────────────────────────────────────
 
--- auth
-GRANT USAGE ON SCHEMA auth_svc TO auth_role;
-GRANT ALL ON ALL TABLES IN SCHEMA auth_svc TO auth_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA auth_svc TO auth_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc GRANT ALL ON TABLES TO auth_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc GRANT ALL ON SEQUENCES TO auth_role;
+-- auth lives on its own Postgres instance (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+        GRANT USAGE ON SCHEMA auth_svc TO auth_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA auth_svc TO auth_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA auth_svc TO auth_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc GRANT ALL ON TABLES TO auth_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc GRANT ALL ON SEQUENCES TO auth_role;
+    END IF;
+END$$;
 
 -- catalog
 GRANT USAGE ON SCHEMA catalog_svc TO catalog_role;
@@ -63,19 +68,29 @@ BEGIN
     END IF;
 END$$;
 
--- inquiry
-GRANT USAGE ON SCHEMA inquiry_svc TO inquiry_role;
-GRANT ALL ON ALL TABLES IN SCHEMA inquiry_svc TO inquiry_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA inquiry_svc TO inquiry_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc GRANT ALL ON TABLES TO inquiry_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc GRANT ALL ON SEQUENCES TO inquiry_role;
+-- inquiry lives on its own Postgres instance (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'inquiry_svc') THEN
+        GRANT USAGE ON SCHEMA inquiry_svc TO inquiry_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA inquiry_svc TO inquiry_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA inquiry_svc TO inquiry_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc GRANT ALL ON TABLES TO inquiry_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc GRANT ALL ON SEQUENCES TO inquiry_role;
+    END IF;
+END$$;
 
--- review
-GRANT USAGE ON SCHEMA review_svc TO review_role;
-GRANT ALL ON ALL TABLES IN SCHEMA review_svc TO review_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA review_svc TO review_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON TABLES TO review_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON SEQUENCES TO review_role;
+-- review lives on its own Postgres instance (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'review_svc') THEN
+        GRANT USAGE ON SCHEMA review_svc TO review_role;
+        GRANT ALL ON ALL TABLES IN SCHEMA review_svc TO review_role;
+        GRANT ALL ON ALL SEQUENCES IN SCHEMA review_svc TO review_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON TABLES TO review_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc GRANT ALL ON SEQUENCES TO review_role;
+    END IF;
+END$$;
 
 -- shipping lives on its own Postgres instance (Phase 3), so on a fresh
 -- shared-cluster DB the shipping_svc schema is not created here. The
@@ -130,27 +145,31 @@ GRANT INSERT, UPDATE, DELETE ON catalog_svc.user_events TO recommend_role;
 -- order reads auth_svc.sellers (seller_name snapshot at checkout) and
 -- catalog_svc.products/skus during order creation. Phase 1.2 replaces these
 -- with auth.BatchGetSellers and catalog.BatchGetSKUs gRPC calls.
-GRANT USAGE ON SCHEMA auth_svc TO order_role;
-GRANT SELECT ON auth_svc.sellers TO order_role;
+-- auth_svc may live on a split DB (Phase 3); guard both blocks.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+        GRANT USAGE ON SCHEMA auth_svc TO order_role;
+        GRANT SELECT ON auth_svc.sellers TO order_role;
+    END IF;
+END$$;
 GRANT USAGE ON SCHEMA catalog_svc TO order_role;
 GRANT SELECT ON catalog_svc.products, catalog_svc.skus TO order_role;
 
 -- catalog matview seller_plan_boost joins auth_svc.sellers +
 -- subscription_svc.subscription_plans. Phase 2.1 moves this to a local
 -- projection fed by events.
-GRANT USAGE ON SCHEMA auth_svc TO catalog_role;
-GRANT SELECT ON auth_svc.sellers TO catalog_role;
--- The auth_svc.seller_subscriptions table only exists on legacy shared
--- cluster DBs (before Phase 2 moved seller_subscriptions to
--- subscription_svc, and before Phase 3 split subscription out entirely).
--- Guard so fresh DBs don't fail here.
 DO $$
 BEGIN
-    IF EXISTS (
-        SELECT 1 FROM pg_tables
-        WHERE schemaname = 'auth_svc' AND tablename = 'seller_subscriptions'
-    ) THEN
-        GRANT SELECT ON auth_svc.seller_subscriptions TO catalog_role;
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+        GRANT USAGE ON SCHEMA auth_svc TO catalog_role;
+        GRANT SELECT ON auth_svc.sellers TO catalog_role;
+        IF EXISTS (
+            SELECT 1 FROM pg_tables
+            WHERE schemaname = 'auth_svc' AND tablename = 'seller_subscriptions'
+        ) THEN
+            GRANT SELECT ON auth_svc.seller_subscriptions TO catalog_role;
+        END IF;
     END IF;
 END$$;
 -- subscription_svc may live on a split DB (Phase 3). Guard so fresh

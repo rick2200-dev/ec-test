@@ -1,11 +1,17 @@
 -- Revoke all grants by simply dropping the privileges. ALTER DEFAULT
 -- PRIVILEGES needs symmetric REVOKE to clean up.
 
-REVOKE ALL ON ALL TABLES IN SCHEMA auth_svc FROM auth_role, order_role, catalog_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA auth_svc FROM auth_role;
-REVOKE USAGE ON SCHEMA auth_svc FROM auth_role, order_role, catalog_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc REVOKE ALL ON TABLES FROM auth_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc REVOKE ALL ON SEQUENCES FROM auth_role;
+-- auth_svc lives on a split DB (Phase 3). Match the up-side guard.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA auth_svc FROM auth_role, order_role, catalog_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA auth_svc FROM auth_role;
+        REVOKE USAGE ON SCHEMA auth_svc FROM auth_role, order_role, catalog_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc REVOKE ALL ON TABLES FROM auth_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA auth_svc REVOKE ALL ON SEQUENCES FROM auth_role;
+    END IF;
+END$$;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA catalog_svc FROM catalog_role, search_role, recommend_role, order_role;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA catalog_svc FROM catalog_role;
@@ -45,17 +51,29 @@ BEGIN
     END IF;
 END$$;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA inquiry_svc FROM inquiry_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA inquiry_svc FROM inquiry_role;
-REVOKE USAGE ON SCHEMA inquiry_svc FROM inquiry_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc REVOKE ALL ON TABLES FROM inquiry_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc REVOKE ALL ON SEQUENCES FROM inquiry_role;
+-- inquiry_svc lives on a split DB (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'inquiry_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA inquiry_svc FROM inquiry_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA inquiry_svc FROM inquiry_role;
+        REVOKE USAGE ON SCHEMA inquiry_svc FROM inquiry_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc REVOKE ALL ON TABLES FROM inquiry_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA inquiry_svc REVOKE ALL ON SEQUENCES FROM inquiry_role;
+    END IF;
+END$$;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA review_svc FROM review_role;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA review_svc FROM review_role;
-REVOKE USAGE ON SCHEMA review_svc FROM review_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc REVOKE ALL ON TABLES FROM review_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc REVOKE ALL ON SEQUENCES FROM review_role;
+-- review_svc lives on a split DB (Phase 3).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'review_svc') THEN
+        REVOKE ALL ON ALL TABLES IN SCHEMA review_svc FROM review_role;
+        REVOKE ALL ON ALL SEQUENCES IN SCHEMA review_svc FROM review_role;
+        REVOKE USAGE ON SCHEMA review_svc FROM review_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc REVOKE ALL ON TABLES FROM review_role;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA review_svc REVOKE ALL ON SEQUENCES FROM review_role;
+    END IF;
+END$$;
 
 -- shipping_svc lives on a split DB (Phase 3). Match the up-side guard.
 DO $$

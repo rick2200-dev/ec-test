@@ -42,6 +42,15 @@ db_url_for_service() {
     inventory)
       echo "${INVENTORY_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5436/inventory_dev?sslmode=disable}"
       ;;
+    auth)
+      echo "${AUTH_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5437/auth_dev?sslmode=disable}"
+      ;;
+    inquiry)
+      echo "${INQUIRY_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5438/inquiry_dev?sslmode=disable}"
+      ;;
+    review)
+      echo "${REVIEW_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5439/review_dev?sslmode=disable}"
+      ;;
     *)
       echo "$DATABASE_URL"
       ;;

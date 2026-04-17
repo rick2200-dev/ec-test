@@ -59,14 +59,15 @@ services:
       HTTP_PORT: "8081"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://auth_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: auth runs against its own Postgres instance.
+      DATABASE_URL: postgres://auth_role:localdev@postgres-auth:5432/auth_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: local-dev-secret-do-not-use-in-production
       # Shared secret gating /internal/authz and /internal/buyers.
       # The Next.js BFF calls the upsert endpoint using this token.
       AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
-      postgres:
+      postgres-auth:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -319,14 +320,15 @@ services:
       HTTP_PORT: "8090"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://inquiry_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: inquiry runs against its own Postgres instance.
+      DATABASE_URL: postgres://inquiry_role:localdev@postgres-inquiry:5432/inquiry_dev?sslmode=disable
       ORDER_SERVICE_URL: http://order:8083
       AUTH_SERVICE_URL: http://auth:8081
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       # Must match order.ORDER_INTERNAL_TOKEN.
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
-      postgres:
+      postgres-inquiry:
         condition: service_healthy
       order:
         condition: service_healthy
@@ -419,14 +421,15 @@ services:
       HTTP_PORT: "8091"
       LOG_LEVEL: debug
       LOG_FORMAT: text
-      DATABASE_URL: postgres://review_role:localdev@postgres:5432/ecmarket_dev?sslmode=disable
+      # Phase 3: review runs against its own Postgres instance.
+      DATABASE_URL: postgres://review_role:localdev@postgres-review:5432/review_dev?sslmode=disable
       PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
       CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
     depends_on:
-      postgres:
+      postgres-review:
         condition: service_healthy
       catalog:
         condition: service_healthy
@@ -483,6 +486,27 @@ services:
     networks:
       - backend
 
+  postgres-auth:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-auth
+    networks:
+      - backend
+
+  postgres-inquiry:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-inquiry
+    networks:
+      - backend
+
+  postgres-review:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-review
+    networks:
+      - backend
+
   postgres-inventory:
     extends:
       file: docker-compose.deps.yaml
@@ -517,4 +541,7 @@ volumes:
   pgdata-notification:
   pgdata-subscription:
   pgdata-shipping:
+  pgdata-auth:
+  pgdata-inquiry:
+  pgdata-review:
   pgdata-inventory:
