@@ -40,6 +40,10 @@ type GRPCClients struct {
 
 // NewGRPCClients creates gRPC connections to each downstream service.
 func NewGRPCClients(cfg config.Config) (*GRPCClients, error) {
+	if cfg.CatalogInternalToken == "" {
+		return nil, fmt.Errorf("CATALOG_INTERNAL_TOKEN is required; catalog gRPC rejects unauthenticated calls")
+	}
+
 	baseOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
