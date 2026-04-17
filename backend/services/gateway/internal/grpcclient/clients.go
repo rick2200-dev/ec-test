@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
 	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	orderv1 "github.com/Riku-KANO/ec-test/services/order/api/gen/go/order/v1"
@@ -44,9 +45,9 @@ func NewGRPCClients(cfg config.Config) (*GRPCClients, error) {
 		return nil, fmt.Errorf("CATALOG_INTERNAL_TOKEN is required; catalog gRPC rejects unauthenticated calls")
 	}
 
-	baseOpts := []grpc.DialOption{
+	baseOpts := tracing.DialOptions(
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
+	)
 
 	catalogOpts := append(append([]grpc.DialOption{}, baseOpts...),
 		grpc.WithPerRPCCredentials(internalTokenCreds{token: cfg.CatalogInternalToken}),

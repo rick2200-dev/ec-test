@@ -5,6 +5,12 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/pubsub/v2"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 )
 
 // GCPPublisher implements the Publisher interface using Google Cloud Pub/Sub.
@@ -23,12 +29,33 @@ func NewGCPPublisher(ctx context.Context, projectID string) (*GCPPublisher, erro
 	return &GCPPublisher{client: client}, nil
 }
 
-// Publish encodes the event to JSON and publishes it to the named topic.
+// Publish encodes the event to JSON and publishes it to the named topic. A
+// PRODUCER span wraps the call and the active trace context is injected into
+// the outgoing message Attributes so downstream subscribers can continue the
+// trace.
 func (p *GCPPublisher) Publish(ctx context.Context, topic string, event Event) error {
+	tracer := otel.Tracer("github.com/Riku-KANO/ec-test/pkg/pubsub")
+	ctx, span := tracer.Start(ctx, "pubsub.publish "+topic,
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "gcp_pubsub"),
+			attribute.String("messaging.destination.name", topic),
+			attribute.String("messaging.operation", "publish"),
+			attribute.String("messaging.message.id", event.ID),
+			attribute.String("messaging.message.type", event.Type),
+		),
+	)
+	defer span.End()
+
 	data, err := Encode(event)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "encode failed")
 		return fmt.Errorf("encode event: %w", err)
 	}
+
+	attrs := map[string]string{"event_type": event.Type}
+	tracing.InjectAttrs(ctx, attrs)
 
 	// In v2 the Topic API was replaced by Publisher. We create a Publisher
 	// per call and Stop() it once the synchronous Get below returns so the
@@ -37,13 +64,13 @@ func (p *GCPPublisher) Publish(ctx context.Context, topic string, event Event) e
 	defer publisher.Stop()
 
 	result := publisher.Publish(ctx, &pubsub.Message{
-		Data: data,
-		Attributes: map[string]string{
-			"event_type": event.Type,
-		},
+		Data:       data,
+		Attributes: attrs,
 	})
 
 	if _, err := result.Get(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "publish failed")
 		return fmt.Errorf("publish event to %s: %w", topic, err)
 	}
 	return nil

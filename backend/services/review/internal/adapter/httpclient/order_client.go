@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/review/internal/port"
@@ -30,7 +31,10 @@ func NewOrderClient(baseURL, internalToken string) *OrderClient {
 	return &OrderClient{
 		baseURL:       strings.TrimRight(baseURL, "/"),
 		internalToken: internalToken,
-		http:          &http.Client{Timeout: 5 * time.Second},
+		http: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 

@@ -1,4 +1,18 @@
 services:
+  # All-in-one Jaeger receives OTLP (HTTP on 4318, gRPC on 4317) from every
+  # service, stores traces in memory, and exposes a UI on 16686. No persistence
+  # is configured because local dev discards traces on compose down.
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - backend
+
   gateway:
     build:
       context: ../..
@@ -9,6 +23,9 @@ services:
       HTTP_PORT: "8080"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: gateway
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       AUTH_SERVICE_URL: http://auth:8081
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
@@ -71,6 +88,9 @@ services:
       HTTP_PORT: "8081"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: auth
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: auth runs against its own Postgres instance.
       DATABASE_URL: postgres://auth_role:localdev@postgres-auth:5432/auth_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/0
@@ -102,6 +122,9 @@ services:
       HTTP_PORT: "8082"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: catalog
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: catalog runs against its own Postgres instance.
       DATABASE_URL: postgres://catalog_role:localdev@postgres-catalog:5432/catalog_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/1
@@ -135,6 +158,9 @@ services:
       HTTP_PORT: "8083"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: order
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: order runs against its own Postgres instance.
       DATABASE_URL: postgres://order_role:localdev@postgres-order:5432/order_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/2
@@ -184,6 +210,9 @@ services:
       HTTP_PORT: "8084"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: inventory
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: inventory runs against its own Postgres instance.
       DATABASE_URL: postgres://inventory_role:localdev@postgres-inventory:5432/inventory_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/3
@@ -215,6 +244,9 @@ services:
       HTTP_PORT: "8085"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: search
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: search runs against its own Postgres instance.
       DATABASE_URL: postgres://search_role:localdev@postgres-search:5432/search_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/4
@@ -249,6 +281,9 @@ services:
       HTTP_PORT: "8086"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: recommend
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: recommend runs against its own Postgres instance.
       DATABASE_URL: postgres://recommend_role:localdev@postgres-recommend:5432/recommend_dev?sslmode=disable
       REDIS_URL: redis://redis:6379/5
@@ -281,6 +316,9 @@ services:
       HTTP_PORT: "8087"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: notification
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3 pilot: notification runs against its own Postgres
       # instance (postgres-notification) so a shared-cluster outage does
       # not take its dedup inbox offline.
@@ -314,6 +352,9 @@ services:
       HTTP_PORT: "8088"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: cart
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       REDIS_URL: redis://redis:6379/7
       CATALOG_SERVICE_URL: http://catalog:8082
       ORDER_SERVICE_URL: http://order:8083
@@ -351,6 +392,9 @@ services:
       HTTP_PORT: "8090"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: inquiry
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: inquiry runs against its own Postgres instance.
       DATABASE_URL: postgres://inquiry_role:localdev@postgres-inquiry:5432/inquiry_dev?sslmode=disable
       ORDER_SERVICE_URL: http://order:8083
@@ -392,6 +436,9 @@ services:
       GRPC_PORT: "50058"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: subscription
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: subscription runs against its own Postgres instance
       # (postgres-subscription) so a shared-cluster outage does not
       # take seller/buyer plan data offline.
@@ -429,6 +476,9 @@ services:
       GRPC_PORT: "50059"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: shipping
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: shipping runs against its own Postgres instance
       # (postgres-shipping) so a shared-cluster outage does not take the
       # outbox relay or shipment writes offline.
@@ -461,6 +511,9 @@ services:
       HTTP_PORT: "8091"
       LOG_LEVEL: debug
       LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: review
+      OTEL_TRACES_SAMPLER: parentbased_always_on
       # Phase 3: review runs against its own Postgres instance.
       DATABASE_URL: postgres://review_role:localdev@postgres-review:5432/review_dev?sslmode=disable
       PUBSUB_PROJECT_ID: local-project

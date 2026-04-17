@@ -9,7 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	pkgredis "github.com/Riku-KANO/ec-test/pkg/redis"
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/config"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/grpcclient"
 	"github.com/Riku-KANO/ec-test/services/gateway/internal/handler"
@@ -17,7 +20,14 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	slog.SetDefault(slog.New(tracing.NewSlogHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))))
+
+	tShutdown, err := tracing.Init(context.Background(), tracing.LoadConfig("gateway"))
+	if err != nil {
+		slog.Error("failed to init tracing", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = tShutdown(context.Background()) }()
 
 	cfg := config.Load()
 
@@ -57,7 +67,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.HTTPPort,
-		Handler:      router,
+		Handler:      otelhttp.NewHandler(router, "http.server"),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

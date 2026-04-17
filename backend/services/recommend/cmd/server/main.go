@@ -11,10 +11,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/adapter/pubsub"
 	"github.com/Riku-KANO/ec-test/services/recommend/internal/app"
@@ -24,7 +26,14 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	slog.SetDefault(slog.New(tracing.NewSlogHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))))
+
+	tShutdown, err := tracing.Init(context.Background(), tracing.LoadConfig("recommend"))
+	if err != nil {
+		slog.Error("failed to init tracing", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = tShutdown(context.Background()) }()
 
 	cfg := config.Load()
 
@@ -155,7 +164,7 @@ func main() {
 	addr := ":" + cfg.HTTPPort
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      r,
+		Handler:      otelhttp.NewHandler(r, "http.server"),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

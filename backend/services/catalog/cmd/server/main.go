@@ -12,12 +12,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"google.golang.org/grpc"
 
 	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/grpc"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/catalog/internal/adapter/postgres"
@@ -27,7 +30,14 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	slog.SetDefault(slog.New(tracing.NewSlogHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))))
+
+	tShutdown, err := tracing.Init(context.Background(), tracing.LoadConfig("catalog"))
+	if err != nil {
+		slog.Error("failed to init tracing", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = tShutdown(context.Background()) }()
 
 	cfg := config.Load()
 
@@ -35,6 +45,7 @@ func main() {
 	defer cancel()
 
 	pool, err := database.NewPool(ctx, database.Config{
+
 		URL:      cfg.DatabaseURL,
 		MaxConns: 20,
 		MinConns: 5,
@@ -118,7 +129,7 @@ func main() {
 	addr := ":" + cfg.HTTPPort
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      r,
+		Handler:      otelhttp.NewHandler(r, "http.server"),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -132,6 +143,7 @@ func main() {
 		os.Exit(1)
 	}
 	grpcSrv := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.UnaryInterceptor(pkgmiddleware.UnaryInternalTokenInterceptor(cfg.InternalToken)),
 	)
 	catalogv1.RegisterCatalogServiceServer(grpcSrv, grpcserver.NewCatalogServer(catalogSvc))

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // SellerClient resolves seller ids to their display names via auth's
@@ -28,7 +29,10 @@ func NewSellerClient(baseURL, internalToken string) *SellerClient {
 	return &SellerClient{
 		baseURL:       baseURL,
 		internalToken: internalToken,
-		http:          &http.Client{Timeout: 5 * time.Second},
+		http: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 

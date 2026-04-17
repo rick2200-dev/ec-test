@@ -9,6 +9,12 @@ import (
 
 	//nolint:staticcheck // SA1019: pubsub v2 migration is tracked separately; using v1 consistently across services
 	gcppubsub "cloud.google.com/go/pubsub"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 )
 
 // GCPSubscriber implements the Subscriber interface using Google Cloud Pub/Sub.
@@ -42,21 +48,45 @@ func NewGCPSubscriber(ctx context.Context, projectID string) (*GCPSubscriber, er
 // redelivers. Successful handling Acks. Structured slog entries carry the
 // subscription name and event metadata so operators can trace what each
 // service actually processed.
+//
+// A CONSUMER span wraps each message. The trace context is extracted from the
+// message Attributes so the span links back to the upstream producer.
 func (s *GCPSubscriber) Subscribe(ctx context.Context, subscription string, handler Handler) error {
 	sub := s.client.Subscription(subscription)
 
 	slog.Info("subscribing to pubsub", "subscription", subscription)
 
+	tracer := otel.Tracer("github.com/Riku-KANO/ec-test/pkg/pubsub")
+
 	return sub.Receive(ctx, func(ctx context.Context, msg *gcppubsub.Message) {
+		ctx = tracing.ExtractAttrs(ctx, msg.Attributes)
+		ctx, span := tracer.Start(ctx, "pubsub.process "+subscription,
+			trace.WithSpanKind(trace.SpanKindConsumer),
+			trace.WithAttributes(
+				attribute.String("messaging.system", "gcp_pubsub"),
+				attribute.String("messaging.source.name", subscription),
+				attribute.String("messaging.operation", "process"),
+				attribute.String("messaging.message.id", msg.ID),
+			),
+		)
+		defer span.End()
+
 		event, err := Decode(msg.Data)
 		if err != nil {
-			slog.Error("failed to decode event",
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "decode failed")
+			slog.ErrorContext(ctx, "failed to decode event",
 				"subscription", subscription,
 				"error", err,
 			)
 			msg.Nack()
 			return
 		}
+
+		span.SetAttributes(
+			attribute.String("messaging.message.event_id", event.ID),
+			attribute.String("messaging.message.event_type", event.Type),
+		)
 
 		if err := handler(ctx, event); err != nil {
 			// If the handler returns a RetryAfterError, sleep for the requested
@@ -66,7 +96,7 @@ func (s *GCPSubscriber) Subscribe(ctx context.Context, subscription string, hand
 			// loops (e.g., while a concurrent processing claim is still active).
 			var retryErr *RetryAfterError
 			if errors.As(err, &retryErr) && retryErr.Delay > 0 {
-				slog.Info("handler requested delayed retry, sleeping before nack",
+				slog.InfoContext(ctx, "handler requested delayed retry, sleeping before nack",
 					"subscription", subscription,
 					"event_id", event.ID,
 					"delay", retryErr.Delay,
@@ -76,7 +106,9 @@ func (s *GCPSubscriber) Subscribe(ctx context.Context, subscription string, hand
 				case <-ctx.Done():
 				}
 			}
-			slog.Error("failed to handle event",
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "handler failed")
+			slog.ErrorContext(ctx, "failed to handle event",
 				"subscription", subscription,
 				"event_id", event.ID,
 				"event_type", event.Type,
@@ -87,7 +119,7 @@ func (s *GCPSubscriber) Subscribe(ctx context.Context, subscription string, hand
 		}
 
 		msg.Ack()
-		slog.Debug("event processed successfully",
+		slog.DebugContext(ctx, "event processed successfully",
 			"subscription", subscription,
 			"event_id", event.ID,
 			"event_type", event.Type,

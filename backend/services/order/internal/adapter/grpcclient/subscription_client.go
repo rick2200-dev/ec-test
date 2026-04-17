@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	subscriptionv1 "github.com/Riku-KANO/ec-test/services/subscription/api/gen/go/subscription/v1"
 )
 
@@ -54,10 +55,10 @@ type BuyerSubscriptionClient struct {
 // metadata; the subscription service's unary interceptor rejects calls
 // without it.
 func NewBuyerSubscriptionClient(addr, internalToken string) (*BuyerSubscriptionClient, error) {
-	conn, err := grpc.NewClient(addr,
+	conn, err := grpc.NewClient(addr, tracing.DialOptions(
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithPerRPCCredentials(internalTokenCreds{token: internalToken}),
-	)
+	)...)
 	if err != nil {
 		return nil, fmt.Errorf("dial subscription service: %w", err)
 	}

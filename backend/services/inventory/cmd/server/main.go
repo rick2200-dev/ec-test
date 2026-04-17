@@ -12,12 +12,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"google.golang.org/grpc"
 
 	inventoryv1 "github.com/Riku-KANO/ec-test/services/inventory/api/gen/go/inventory/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	"github.com/Riku-KANO/ec-test/pkg/pubsub"
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/grpc"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/http"
 	"github.com/Riku-KANO/ec-test/services/inventory/internal/adapter/postgres"
@@ -27,7 +30,14 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	slog.SetDefault(slog.New(tracing.NewSlogHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))))
+
+	tShutdown, err := tracing.Init(context.Background(), tracing.LoadConfig("inventory"))
+	if err != nil {
+		slog.Error("failed to init tracing", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = tShutdown(context.Background()) }()
 
 	cfg := config.Load()
 
@@ -131,7 +141,7 @@ func main() {
 	addr := ":" + cfg.HTTPPort
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      r,
+		Handler:      otelhttp.NewHandler(r, "http.server"),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -144,7 +154,9 @@ func main() {
 		slog.Error("failed to listen for gRPC", "error", err)
 		os.Exit(1)
 	}
-	grpcSrv := grpc.NewServer()
+	grpcSrv := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 	inventoryv1.RegisterInventoryServiceServer(grpcSrv, grpcserver.NewInventoryServer(inventorySvc))
 
 	// Start gRPC server in a goroutine.

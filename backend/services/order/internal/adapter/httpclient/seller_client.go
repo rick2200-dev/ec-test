@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // SellerClient is an HTTP client for the auth service's internal seller
@@ -31,7 +32,10 @@ func NewSellerClient(baseURL, internalToken string) *SellerClient {
 	return &SellerClient{
 		baseURL:       baseURL,
 		internalToken: internalToken,
-		http:          &http.Client{Timeout: 5 * time.Second},
+		http: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 

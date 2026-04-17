@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/port"
@@ -33,7 +34,10 @@ func NewCatalogClient(baseURL, internalToken string) *CatalogClient {
 	return &CatalogClient{
 		baseURL:       strings.TrimRight(baseURL, "/"),
 		internalToken: internalToken,
-		http:          &http.Client{Timeout: 5 * time.Second},
+		http: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 

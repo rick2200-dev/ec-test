@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/Riku-KANO/ec-test/pkg/tracing"
 	catalogv1 "github.com/Riku-KANO/ec-test/services/catalog/api/gen/go/catalog/v1"
 )
 
@@ -27,10 +28,10 @@ type CatalogClient struct {
 // applied to subscription is reused so the catalog side can authenticate the
 // caller.
 func NewCatalogClient(addr, internalToken string) (*CatalogClient, error) {
-	conn, err := grpc.NewClient(addr,
+	conn, err := grpc.NewClient(addr, tracing.DialOptions(
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithPerRPCCredentials(internalTokenCreds{token: internalToken}),
-	)
+	)...)
 	if err != nil {
 		return nil, fmt.Errorf("dial catalog service: %w", err)
 	}

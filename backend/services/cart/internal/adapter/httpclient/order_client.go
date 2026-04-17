@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/domain"
 )
@@ -32,7 +34,10 @@ func NewOrderClient(baseURL, internalToken string) *OrderClient {
 		internalToken: internalToken,
 		// Checkout fans out across multiple DB inserts + a Stripe call.
 		// Give it a generous timeout to absorb Stripe latency spikes.
-		http: &http.Client{Timeout: 30 * time.Second},
+		http: &http.Client{
+			Timeout:   30 * time.Second,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	}
 }
 
