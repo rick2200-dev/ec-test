@@ -63,41 +63,17 @@ func (s *OrderSubscriber) handleOrderCancelled(ctx context.Context, event pubsub
 		return fmt.Errorf("decode order.cancelled data: %w", err)
 	}
 
-	orderID, err := uuid.Parse(data.OrderId)
-	if err != nil {
-		return fmt.Errorf("invalid order_id %q in order.cancelled: %w", data.OrderId, err)
-	}
-
-	lines := make([]domain.CancellationLine, 0, len(data.LineItems))
-	for _, li := range data.LineItems {
-		if li.Quantity <= 0 {
-			continue
-		}
-		skuID, err := uuid.Parse(li.SkuId)
-		if err != nil {
-			// One bad line shouldn't poison the whole batch. Idempotency is
-			// preserved via the order-scoped movement guard in the service.
-			slog.Warn("skipping cancellation line with invalid sku_id",
-				"order_id", data.OrderId,
-				"sku_id", li.SkuId,
-				"error", err,
-			)
-			continue
-		}
-		lines = append(lines, domain.CancellationLine{
-			SKUID:    skuID,
-			Quantity: int(li.Quantity),
-		})
-	}
-
-	slog.Info("releasing stock for cancelled order",
+	// The checkout flow does not yet call ReserveStock, so
+	// quantity_reserved is never decremented at purchase time.
+	// Releasing stock here without a prior reserve would inflate
+	// quantity_available beyond the real physical count. Log the
+	// event for observability but skip the actual release until the
+	// full reserve→confirm→release cycle is wired up (requires
+	// ReserveStock at checkout + ConfirmSold on order.paid).
+	slog.Info("order.cancelled received; stock release skipped (no prior reserve)",
 		"order_id", data.OrderId,
-		"line_count", len(lines),
+		"line_count", len(data.LineItems),
 	)
-
-	if err := s.svc.ReleaseStockForOrderCancellation(ctx, orderID, lines); err != nil {
-		return fmt.Errorf("release stock for order %s: %w", data.OrderId, err)
-	}
 	return nil
 }
 
