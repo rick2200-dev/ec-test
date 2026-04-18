@@ -9,12 +9,8 @@
       "name": "LoyaltyService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/admin/loyalty/buyers/{buyer_auth0_id}/adjust": {
       "post": {
@@ -49,9 +45,7 @@
             }
           }
         ],
-        "tags": [
-          "LoyaltyService"
-        ]
+        "tags": ["LoyaltyService"]
       }
     },
     "/v1/admin/loyalty/buyers/{buyer_auth0_id}/balance": {
@@ -79,9 +73,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "LoyaltyService"
-        ]
+        "tags": ["LoyaltyService"]
       }
     },
     "/v1/admin/loyalty/buyers/{buyer_auth0_id}/transactions": {
@@ -123,9 +115,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "LoyaltyService"
-        ]
+        "tags": ["LoyaltyService"]
       }
     },
     "/v1/buyer/points/balance": {
@@ -154,9 +144,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "LoyaltyService"
-        ]
+        "tags": ["LoyaltyService"]
       }
     },
     "/v1/buyer/points/transactions": {
@@ -198,9 +186,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "LoyaltyService"
-        ]
+        "tags": ["LoyaltyService"]
       }
     }
   },

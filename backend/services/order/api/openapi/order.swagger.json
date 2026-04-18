@@ -9,12 +9,8 @@
       "name": "OrderService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/buyer/orders": {
       "get": {
@@ -55,9 +51,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/cancellation-requests": {
@@ -107,9 +101,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/cancellation-requests/{id}": {
@@ -137,9 +129,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/cancellation-requests/{id}/approve": {
@@ -176,9 +166,7 @@
             }
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/cancellation-requests/{id}/reject": {
@@ -215,9 +203,7 @@
             }
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/checkout": {
@@ -248,9 +234,7 @@
             }
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/orders/{id}": {
@@ -278,9 +262,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/orders/{id}/status": {
@@ -316,9 +298,7 @@
             }
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/orders/{order_id}/cancellation-request": {
@@ -355,9 +335,7 @@
             }
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/payouts": {
@@ -399,9 +377,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     },
     "/v1/seller/orders": {
@@ -450,9 +426,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "OrderService"
-        ]
+        "tags": ["OrderService"]
       }
     }
   },

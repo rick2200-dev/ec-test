@@ -23,12 +23,12 @@
 
 導入前は「配送」に関する情報が order サービスに散在し、以下の課題があった。
 
-| 課題 | 詳細 |
-|------|------|
-| **追跡情報が保存できない** | `orders` テーブルに `tracking_number`・`carrier`・`shipped_at`・`delivered_at` カラムが存在せず、買い手への追跡番号通知が不可能 |
-| **出荷実体がない** | shipment という集約がないため、配送イベント履歴の記録・将来の分割出荷への対応が困難 |
-| **ステータス遷移が曖昧** | `UpdateOrderStatus` で任意の文字列を受け付けており、shipped/delivered の遷移ガードが薄かった |
-| **イベントペイロードが貧弱** | `order.shipped` は `{order_id}` のみで、通知メールに追跡番号を含めることができなかった |
+| 課題                         | 詳細                                                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **追跡情報が保存できない**   | `orders` テーブルに `tracking_number`・`carrier`・`shipped_at`・`delivered_at` カラムが存在せず、買い手への追跡番号通知が不可能 |
+| **出荷実体がない**           | shipment という集約がないため、配送イベント履歴の記録・将来の分割出荷への対応が困難                                             |
+| **ステータス遷移が曖昧**     | `UpdateOrderStatus` で任意の文字列を受け付けており、shipped/delivered の遷移ガードが薄かった                                    |
+| **イベントペイロードが貧弱** | `order.shipped` は `{order_id}` のみで、通知メールに追跡番号を含めることができなかった                                          |
 
 これらを解消するために **shipping サービス** を独立した境界として切り出す。
 
@@ -36,13 +36,13 @@
 
 ## v1 スコープ
 
-| 項目 | v1 方針 |
-|------|---------|
-| キャリア連携 | **手動入力のみ** — セラーがキャリア名・追跡番号を手動入力。自動追跡 API・送り状 PDF 発行は将来 |
-| shipment 作成 | `order.paid` イベントを購読し、shipping サービスが自動で `ready_to_ship` の shipment を作成 |
-| 住所帳 | **持たない** — `orders.shipping_address` の JSON スナップショットを shipment にコピーして利用 |
-| 分割出荷 | **非対応** — 1 注文 = 1 shipment (v1) |
-| 再配達 / 不在対応 | **スコープ外** |
+| 項目              | v1 方針                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| キャリア連携      | **手動入力のみ** — セラーがキャリア名・追跡番号を手動入力。自動追跡 API・送り状 PDF 発行は将来 |
+| shipment 作成     | `order.paid` イベントを購読し、shipping サービスが自動で `ready_to_ship` の shipment を作成    |
+| 住所帳            | **持たない** — `orders.shipping_address` の JSON スナップショットを shipment にコピーして利用  |
+| 分割出荷          | **非対応** — 1 注文 = 1 shipment (v1)                                                          |
+| 再配達 / 不在対応 | **スコープ外**                                                                                 |
 
 ---
 
@@ -133,37 +133,38 @@ order-cancellation 側では `shipped` 以降の注文はキャンセル申請�
 
 [`infra/db/migrations/shipping/001_create_shipments.up.sql`](../infra/db/migrations/shipping/001_create_shipments.up.sql)
 
-| カラム | 型 | 用途 |
-|---|---|---|
-| `id` | UUID PK | shipment ID |
-| `seller_id` | UUID NOT NULL | 出荷責任を持つセラー |
-| `order_id` | UUID NOT NULL UNIQUE | 紐付く注文 (v1: 1:1) |
-| `buyer_auth0_id` | VARCHAR(255) NOT NULL | 通知 / 認可チェックに使用 |
-| `status` | VARCHAR(20) NOT NULL | `pending` / `ready_to_ship` / `shipped` / `delivered` / `cancelled` |
-| `shipping_address` | JSONB NOT NULL | 注文時点の配送先スナップショット |
-| `carrier` | VARCHAR(64) NULL | `yamato` / `sagawa` / `jp_post` / `other` 等 |
-| `tracking_number` | VARCHAR(128) NULL | キャリアの追跡番号 |
-| `shipped_at` | TIMESTAMPTZ NULL | 発送日時 |
-| `delivered_at` | TIMESTAMPTZ NULL | 配達完了日時 |
-| `note` | TEXT NULL | セラー任意メモ |
-| `created_at` / `updated_at` | TIMESTAMPTZ NOT NULL | |
+| カラム                      | 型                    | 用途                                                                |
+| --------------------------- | --------------------- | ------------------------------------------------------------------- |
+| `id`                        | UUID PK               | shipment ID                                                         |
+| `seller_id`                 | UUID NOT NULL         | 出荷責任を持つセラー                                                |
+| `order_id`                  | UUID NOT NULL UNIQUE  | 紐付く注文 (v1: 1:1)                                                |
+| `buyer_auth0_id`            | VARCHAR(255) NOT NULL | 通知 / 認可チェックに使用                                           |
+| `status`                    | VARCHAR(20) NOT NULL  | `pending` / `ready_to_ship` / `shipped` / `delivered` / `cancelled` |
+| `shipping_address`          | JSONB NOT NULL        | 注文時点の配送先スナップショット                                    |
+| `carrier`                   | VARCHAR(64) NULL      | `yamato` / `sagawa` / `jp_post` / `other` 等                        |
+| `tracking_number`           | VARCHAR(128) NULL     | キャリアの追跡番号                                                  |
+| `shipped_at`                | TIMESTAMPTZ NULL      | 発送日時                                                            |
+| `delivered_at`              | TIMESTAMPTZ NULL      | 配達完了日時                                                        |
+| `note`                      | TEXT NULL             | セラー任意メモ                                                      |
+| `created_at` / `updated_at` | TIMESTAMPTZ NOT NULL  |                                                                     |
 
 **制約**:
+
 - `UNIQUE (order_id)` — 同一注文に対して shipment は 1 件のみ
 - `CHECK (status IN ('pending','ready_to_ship','shipped','delivered','cancelled'))`
 
 ### テーブル `shipping_svc.shipment_events` (監査ログ)
 
-| カラム | 型 | 用途 |
-|---|---|---|
-| `id` | UUID PK | |
-| `shipment_id` | UUID NOT NULL FK → `shipments(id)` | |
-| `from_status` | VARCHAR(20) NULL | 遷移前ステータス |
-| `to_status` | VARCHAR(20) NOT NULL | 遷移後ステータス |
-| `actor_type` | VARCHAR(20) NOT NULL | `seller` / `system` |
-| `actor_id` | VARCHAR(255) NULL | seller_id or Auth0 sub |
-| `payload` | JSONB NULL | 付加情報 (tracking 情報の差分など) |
-| `created_at` | TIMESTAMPTZ NOT NULL | |
+| カラム        | 型                                 | 用途                               |
+| ------------- | ---------------------------------- | ---------------------------------- |
+| `id`          | UUID PK                            |                                    |
+| `shipment_id` | UUID NOT NULL FK → `shipments(id)` |                                    |
+| `from_status` | VARCHAR(20) NULL                   | 遷移前ステータス                   |
+| `to_status`   | VARCHAR(20) NOT NULL               | 遷移後ステータス                   |
+| `actor_type`  | VARCHAR(20) NOT NULL               | `seller` / `system`                |
+| `actor_id`    | VARCHAR(255) NULL                  | seller_id or Auth0 sub             |
+| `payload`     | JSONB NULL                         | 付加情報 (tracking 情報の差分など) |
+| `created_at`  | TIMESTAMPTZ NOT NULL               |                                    |
 
 ---
 
@@ -181,12 +182,12 @@ order-cancellation 側では `shipped` 以降の注文はキャンセル申請�
                               [cancelled]
 ```
 
-| 遷移 | トリガー | ガード |
-|------|---------|--------|
-| `pending → ready_to_ship` | `order.paid` イベント受信 (自動) | upsert (ON CONFLICT DO NOTHING) |
-| `ready_to_ship → shipped` | `POST /seller/shipments/{id}/register` | WHERE status='ready_to_ship' |
-| `shipped → delivered` | `POST /seller/shipments/{id}/deliver` | WHERE status='shipped' |
-| `pending/ready_to_ship → cancelled` | `order.cancelled` イベント受信 (自動) | WHERE status IN ('pending','ready_to_ship') |
+| 遷移                                | トリガー                               | ガード                                      |
+| ----------------------------------- | -------------------------------------- | ------------------------------------------- |
+| `pending → ready_to_ship`           | `order.paid` イベント受信 (自動)       | upsert (ON CONFLICT DO NOTHING)             |
+| `ready_to_ship → shipped`           | `POST /seller/shipments/{id}/register` | WHERE status='ready_to_ship'                |
+| `shipped → delivered`               | `POST /seller/shipments/{id}/deliver`  | WHERE status='shipped'                      |
+| `pending/ready_to_ship → cancelled` | `order.cancelled` イベント受信 (自動)  | WHERE status IN ('pending','ready_to_ship') |
 
 `RowsAffected == 0` の場合は遷移対象外として `ErrInvalidTransition` を返す。
 
@@ -333,14 +334,14 @@ shipment 単一取得。
 
 ### Semantic error codes 一覧
 
-| Code | HTTP | 意味 |
-|---|---|---|
-| `SHIPMENT_NOT_FOUND` | 404 | shipment が存在しない / テナント違い |
-| `NOT_ORDER_SELLER` | 404 | 呼び出し元が出荷担当セラーではない (漏洩対策で 404 wrap) |
-| `NOT_ORDER_BUYER` | 404 | 呼び出し元が注文買い手ではない (漏洩対策で 404 wrap) |
-| `SHIPMENT_INVALID_TRANSITION` | 409 | 現ステータスから要求の遷移は不可 |
-| `SHIPMENT_ALREADY_REGISTERED` | 409 | 既に追跡番号が登録済み |
-| `TRACKING_NUMBER_REQUIRED` | 400 | carrier または tracking_number が空 |
+| Code                          | HTTP | 意味                                                     |
+| ----------------------------- | ---- | -------------------------------------------------------- |
+| `SHIPMENT_NOT_FOUND`          | 404  | shipment が存在しない / テナント違い                     |
+| `NOT_ORDER_SELLER`            | 404  | 呼び出し元が出荷担当セラーではない (漏洩対策で 404 wrap) |
+| `NOT_ORDER_BUYER`             | 404  | 呼び出し元が注文買い手ではない (漏洩対策で 404 wrap)     |
+| `SHIPMENT_INVALID_TRANSITION` | 409  | 現ステータスから要求の遷移は不可                         |
+| `SHIPMENT_ALREADY_REGISTERED` | 409  | 既に追跡番号が登録済み                                   |
+| `TRACKING_NUMBER_REQUIRED`    | 400  | carrier または tracking_number が空                      |
 
 ---
 
@@ -348,28 +349,28 @@ shipment 単一取得。
 
 ### shipping サービスが購読するイベント
 
-| Topic | Subscription | イベント型 | ハンドラ |
-|-------|-------------|-----------|---------|
-| `order-events` | `order-events-shipping` (新規) | `order.paid` | shipment を upsert (ready_to_ship) |
+| Topic          | Subscription                   | イベント型        | ハンドラ                                            |
+| -------------- | ------------------------------ | ----------------- | --------------------------------------------------- |
+| `order-events` | `order-events-shipping` (新規) | `order.paid`      | shipment を upsert (ready_to_ship)                  |
 | `order-events` | `order-events-shipping` (新規) | `order.cancelled` | shipment を cancelled に遷移 (shipped 以降は no-op) |
 
 ### shipping サービスが発行するイベント
 
 トピック: `shipping-events` (新規)
 
-| Type | ペイロード | 購読側 |
-|------|-----------|--------|
-| `shipment.shipped` | `{shipment_id, order_id, seller_id, buyer_auth0_id, carrier, tracking_number, shipped_at}` | notification (追跡番号入りメール), order (orders.status→shipped) |
-| `shipment.delivered` | `{shipment_id, order_id, seller_id, buyer_auth0_id, delivered_at}` | notification (配達完了メール), order (orders.status→delivered) |
-| `shipment.cancelled` | `{shipment_id, order_id, reason}` | 監査ログのみ (v1) |
+| Type                 | ペイロード                                                                                 | 購読側                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `shipment.shipped`   | `{shipment_id, order_id, seller_id, buyer_auth0_id, carrier, tracking_number, shipped_at}` | notification (追跡番号入りメール), order (orders.status→shipped) |
+| `shipment.delivered` | `{shipment_id, order_id, seller_id, buyer_auth0_id, delivered_at}`                         | notification (配達完了メール), order (orders.status→delivered)   |
+| `shipment.cancelled` | `{shipment_id, order_id, reason}`                                                          | 監査ログのみ (v1)                                                |
 
 ### 購読側のサブスクリプション
 
-| Subscription | Consumer | 対応ファイル |
-|---|---|---|
-| `order-events-shipping` | shipping | `adapter/pubsub/order_subscriber.go` (新規) |
+| Subscription                   | Consumer     | 対応ファイル                                   |
+| ------------------------------ | ------------ | ---------------------------------------------- |
+| `order-events-shipping`        | shipping     | `adapter/pubsub/order_subscriber.go` (新規)    |
 | `shipping-events-notification` | notification | `adapter/pubsub/shipping_subscriber.go` (新規) |
-| `shipping-events-order` | order | `adapter/pubsub/shipping_subscriber.go` (新規) |
+| `shipping-events-order`        | order        | `adapter/pubsub/shipping_subscriber.go` (新規) |
 
 Pub/Sub subscription のプロビジョニングはローカル / 本番デプロイ時に以下を実行するか、Terraform に追加する。
 
@@ -387,16 +388,19 @@ gcloud pubsub subscriptions create shipping-events-order --topic=shipping-events
 ### order サービス
 
 **段階廃止**:
+
 - `UpdateOrderStatus` での直接 `shipped`/`delivered` 遷移は過渡期に両経路を許容。
 - `order.shipped` の発行は `shipment.shipped` 側に移管後に削除予定 (v2)。
 - notification の `order.shipped` ハンドラは `shipment.shipped` 側に移管されるため、将来削除。
 
 **追加**:
+
 - `shipping-events-order` サブスクリプションを購読し、`shipment.shipped` / `shipment.delivered` を受け取って `orders.status` を更新する subscriber (`adapter/pubsub/shipping_subscriber.go`) を追加。
 
 ### notification サービス
 
 **追加**:
+
 - `shipping-events-notification` サブスクリプションを購読する `ShippingSubscriber` を追加。
 - `shipment.shipped` → 追跡番号入り発送メール (carrier + tracking_number を本文に含む)
 - `shipment.delivered` → 配達完了メール + レビュー誘導
@@ -404,6 +408,7 @@ gcloud pubsub subscriptions create shipping-events-order --topic=shipping-events
 ### gateway サービス
 
 **追加**:
+
 - `ShippingServiceURL` 設定と `Shipping *ServiceClient` を proxy.Services に追加 (port 8092)。
 - `/seller/shipments/*` と `/seller/orders/{order_id}/shipment`、`/buyer/orders/{order_id}/shipment` のプロキシハンドラを追加。
 
@@ -477,6 +482,7 @@ v1 では 1 注文 = 1 shipment。複数セラーの注文はセラー単位で�
 `shipment.shipped` / `shipment.delivered` イベントは、ステータス更新と同一 DB トランザクション内で `shipping_svc.outbox_events` テーブルへ書き込まれる。`OutboxRelay` ワーカーが 5 秒ごとにテーブルをポーリングし、Pub/Sub へ非同期発行する。
 
 配信保証:
+
 - **at-least-once**: DB コミット後にプロセスがクラッシュしても、次回起動時にリレーが未配信行を再送する
 - **重複排除**: `outbox_events.id` が Pub/Sub エンベロープの `event_id` として設定される。コンシューマは `event_id` をべき等キーとして利用することで重複処理を防げる
 

@@ -86,20 +86,20 @@
 
 ## サービス一覧
 
-| サービス         | ポート | 役割                                                                                                     | DB スキーマ     |
-| ---------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------- |
-| **gateway**      | 8080   | API Gateway。JWT 検証、リクエストルーティング、レート制限                                                | なし            |
-| **auth**         | 8081   | セラー登録・管理、ユーザー認証連携 (Auth0)、RBAC・API トークン                                          | `auth_svc`      |
-| **subscription** | 8089   | セラー/バイヤーのサブスクリプションプラン・加入状態管理 (Phase 2 で auth から分離)                      | `subscription_svc` |
-| **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                                                            | `catalog_svc`   |
-| **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                                                               | `inventory_svc` |
-| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金          | `order_svc`     |
-| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                                                         | `search_svc`    |
-| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                                                       | `recommend_svc` |
+| サービス         | ポート | 役割                                                                                                     | DB スキーマ        |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------------------- | ------------------ |
+| **gateway**      | 8080   | API Gateway。JWT 検証、リクエストルーティング、レート制限                                                | なし               |
+| **auth**         | 8081   | セラー登録・管理、ユーザー認証連携 (Auth0)、RBAC・API トークン                                           | `auth_svc`         |
+| **subscription** | 8089   | セラー/バイヤーのサブスクリプションプラン・加入状態管理 (Phase 2 で auth から分離)                       | `subscription_svc` |
+| **catalog**      | 8082   | 商品・SKU・カテゴリ管理、商品公開・非公開制御                                                            | `catalog_svc`      |
+| **inventory**    | 8084   | 在庫数量管理、在庫引当・解放、在庫移動履歴                                                               | `inventory_svc`    |
+| **order**        | 8083   | 注文作成・管理、決済処理 (Stripe)、**注文キャンセル申請・返金処理**、コミッション計算、売上送金          | `order_svc`        |
+| **search**       | 8085   | 商品検索 (Vertex AI Search 連携)、ファセット検索                                                         | `search_svc`       |
+| **recommend**    | 8086   | レコメンデーション、パーソナライズ                                                                       | `recommend_svc`    |
 | **notification** | 8087   | メール・プッシュ通知、イベント購読による自動通知                                                         | `notification_svc` |
-| **cart**         | 8088   | カート管理 (Redis 永続化)、マルチセラーチェックアウトのオーケストレーション                              | なし (Redis)    |
-| **inquiry**      | 8090   | 買い手→売り手お問い合わせスレッド (購入済み SKU 単位)、order サービスへの購入検証内部呼び出し            | `inquiry_svc`   |
-| **review**       | 8091   | 商品レビュー・評価 (購入検証付き)、セラー返信、商品別集計評価 (非正規化)、catalog/order への内部呼び出し | `review_svc`    |
+| **cart**         | 8088   | カート管理 (Redis 永続化)、マルチセラーチェックアウトのオーケストレーション                              | なし (Redis)       |
+| **inquiry**      | 8090   | 買い手→売り手お問い合わせスレッド (購入済み SKU 単位)、order サービスへの購入検証内部呼び出し            | `inquiry_svc`      |
+| **review**       | 8091   | 商品レビュー・評価 (購入検証付き)、セラー返信、商品別集計評価 (非正規化)、catalog/order への内部呼び出し | `review_svc`       |
 
 ---
 
@@ -340,19 +340,19 @@ erDiagram
 
 Phase 3 により、全サービスが独立した PostgreSQL インスタンスを持ちます。各サービスは自身のスキーマのみにアクセスし、他サービスとのデータ連携は gRPC / Pub/Sub イベントで行います。
 
-| スキーマ            | 担当サービス  | DB (ローカル)                  | テーブル                                               |
-| ------------------- | ------------- | ------------------------------ | ------------------------------------------------------ |
-| `auth_svc`          | auth          | `auth_dev` (:5437)             | `sellers`, `seller_users`, `buyers`                    |
-| `subscription_svc`  | subscription  | `subscription_dev` (:5434)     | `subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions` |
-| `catalog_svc`       | catalog       | `catalog_dev` (:5442)          | `categories`, `products`, `skus`, `product_categories`, `outbox_events` |
-| `inventory_svc`     | inventory     | `inventory_dev` (:5436)        | `inventory`, `stock_movements`                         |
-| `order_svc`         | order         | `order_dev` (:5443)            | `orders`, `order_lines`, `commission_rules`, `payouts`, `order_cancellation_requests` |
-| `inquiry_svc`       | inquiry       | `inquiry_dev` (:5438)          | `inquiries`, `inquiry_messages`                        |
-| `review_svc`        | review        | `review_dev` (:5439)           | `reviews`, `review_replies`, `product_ratings`         |
-| `shipping_svc`      | shipping      | `shipping_dev` (:5435)         | `shipments`, `shipment_events`, `outbox_events`, `cancelled_order_tombstones` |
-| `notification_svc`  | notification  | `notification_dev` (:5433)     | `processed_events`                                     |
-| `search_svc`        | search        | `search_dev` (:5440)           | `seller_plan_boost`, `products`                        |
-| `recommend_svc`     | recommend     | `recommend_dev` (:5441)        | `user_events`, `products`, `product_categories`, `popular_products` (matview) |
+| スキーマ           | 担当サービス | DB (ローカル)              | テーブル                                                                              |
+| ------------------ | ------------ | -------------------------- | ------------------------------------------------------------------------------------- |
+| `auth_svc`         | auth         | `auth_dev` (:5437)         | `sellers`, `seller_users`, `buyers`                                                   |
+| `subscription_svc` | subscription | `subscription_dev` (:5434) | `subscription_plans`, `seller_subscriptions`, `buyer_plans`, `buyer_subscriptions`    |
+| `catalog_svc`      | catalog      | `catalog_dev` (:5442)      | `categories`, `products`, `skus`, `product_categories`, `outbox_events`               |
+| `inventory_svc`    | inventory    | `inventory_dev` (:5436)    | `inventory`, `stock_movements`                                                        |
+| `order_svc`        | order        | `order_dev` (:5443)        | `orders`, `order_lines`, `commission_rules`, `payouts`, `order_cancellation_requests` |
+| `inquiry_svc`      | inquiry      | `inquiry_dev` (:5438)      | `inquiries`, `inquiry_messages`                                                       |
+| `review_svc`       | review       | `review_dev` (:5439)       | `reviews`, `review_replies`, `product_ratings`                                        |
+| `shipping_svc`     | shipping     | `shipping_dev` (:5435)     | `shipments`, `shipment_events`, `outbox_events`, `cancelled_order_tombstones`         |
+| `notification_svc` | notification | `notification_dev` (:5433) | `processed_events`                                                                    |
+| `search_svc`       | search       | `search_dev` (:5440)       | `seller_plan_boost`, `products`                                                       |
+| `recommend_svc`    | recommend    | `recommend_dev` (:5441)    | `user_events`, `products`, `product_categories`, `popular_products` (matview)         |
 
 ### マルチセラー注文のグルーピング
 
@@ -444,12 +444,12 @@ sequenceDiagram
 
 ### ロール一覧
 
-| ロール           | 説明                   | アクセス範囲         |
-| ---------------- | ---------------------- | -------------------- |
-| `platform:admin` | プラットフォーム管理者 | 全操作               |
-| `seller:admin`   | セラー管理者           | 自セラーの全操作     |
-| `seller:member`  | セラーメンバー         | 自セラーの限定操作   |
-| `buyer`          | 購入者                 | 商品閲覧・購入       |
+| ロール           | 説明                   | アクセス範囲       |
+| ---------------- | ---------------------- | ------------------ |
+| `platform:admin` | プラットフォーム管理者 | 全操作             |
+| `seller:admin`   | セラー管理者           | 自セラーの全操作   |
+| `seller:member`  | セラーメンバー         | 自セラーの限定操作 |
+| `buyer`          | 購入者                 | 商品閲覧・購入     |
 
 ---
 

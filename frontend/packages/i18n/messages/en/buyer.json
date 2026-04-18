@@ -13,6 +13,7 @@
   },
   "product": {
     "addToCart": "Add to Cart",
+    "selectVariantPrompt": "Please select a variant",
     "sellerInfo": "Seller Information",
     "verifiedSeller": "Verified Seller",
     "seller": "Seller",
@@ -41,7 +42,12 @@
     "totalResults": "{count} products found",
     "categories": "Categories",
     "priceRange": "Price Range",
-    "searchPlaceholder": "Enter keywords..."
+    "searchPlaceholder": "Enter keywords...",
+    "loading": "Searching...",
+    "errorGeneric": "Search failed. Please try again later.",
+    "clearFilters": "Clear filters",
+    "prevPage": "Previous",
+    "nextPage": "Next"
   },
   "footer": {
     "description": "A marketplace where you can find everything you want",
@@ -134,6 +140,152 @@
     "errorPurchaseRequired": "You must purchase this product before writing a review",
     "errorAlreadyReviewed": "You have already reviewed this product",
     "errorGeneric": "A network error occurred. Please try again later."
+  },
+  "cart": {
+    "title": "Shopping cart",
+    "loading": "Loading your cart...",
+    "emptyTitle": "Your cart is empty",
+    "emptyDescription": "Add items you'd like to buy and they'll appear here",
+    "browseCta": "Browse products",
+    "totalLabel": "Total",
+    "checkoutCta": "Proceed to checkout",
+    "loginRequiredTitle": "Please log in to see your cart",
+    "loginRequiredCta": "Log in",
+    "errorGeneric": "Failed to load your cart. Please try again later.",
+    "addingToCart": "Adding...",
+    "addedToCart": "Added to cart",
+    "clearConfirm": "Are you sure you want to empty your cart?",
+    "actions": {
+      "increment": "Increase quantity",
+      "decrement": "Decrease quantity",
+      "remove": "Remove",
+      "clearAll": "Empty cart",
+      "clearing": "Removing..."
+    },
+    "columns": {
+      "item": "Item",
+      "quantity": "Qty",
+      "unitPrice": "Unit price",
+      "lineTotal": "Subtotal"
+    }
+  },
+  "points": {
+    "title": "Loyalty points",
+    "loading": "Loading...",
+    "errorGeneric": "Failed to load your points balance",
+    "loginRequired": {
+      "title": "Please log in to view your points",
+      "cta": "Log in"
+    },
+    "balance": {
+      "spendable": "Spendable points",
+      "pending": "Pending",
+      "lifetimeEarned": "Lifetime earned",
+      "lifetimeRedeemed": "Lifetime redeemed",
+      "pointsUnit": "pt"
+    },
+    "tabs": {
+      "transactions": "Points history",
+      "coupons": "Coupon usage"
+    },
+    "transactions": {
+      "empty": "No point activity yet",
+      "columns": {
+        "date": "Date",
+        "type": "Type",
+        "amount": "Change",
+        "balanceAfter": "Balance after",
+        "note": "Note"
+      }
+    },
+    "txType": {
+      "earn": "Earn",
+      "redeem": "Redeem",
+      "refund": "Refund",
+      "reverseEarn": "Reverse earn",
+      "adjust": "Adjust",
+      "expire": "Expire"
+    },
+    "coupons": {
+      "empty": "No coupon usage yet",
+      "columns": {
+        "date": "Date",
+        "orderId": "Order ID",
+        "discount": "Discount",
+        "refunded": "Refunded",
+        "status": "Status"
+      },
+      "status": {
+        "active": "Active",
+        "refundedFully": "Fully refunded",
+        "refundedPartially": "Partially refunded"
+      }
+    }
+  },
+  "checkout": {
+    "title": "Checkout",
+    "loading": "Loading...",
+    "submit": "Place order",
+    "submitting": "Submitting...",
+    "loginRequired": {
+      "title": "Please log in to continue to checkout",
+      "cta": "Log in"
+    },
+    "emptyCart": {
+      "title": "Your cart is empty",
+      "description": "Add items to your cart before checking out",
+      "browseCta": "Browse products"
+    },
+    "shipping": {
+      "title": "Shipping address",
+      "recipient": "Recipient name",
+      "phone": "Phone",
+      "postalCode": "Postal code",
+      "region": "State / Region",
+      "city": "City",
+      "line1": "Street address",
+      "line2": "Apt / Suite / Building"
+    },
+    "coupon": {
+      "title": "Coupon",
+      "placeholder": "Enter a coupon code",
+      "apply": "Apply",
+      "applying": "Checking...",
+      "clear": "Remove",
+      "appliedDiscount": "Discount",
+      "errorNotFound": "We couldn't find that coupon",
+      "errorMinOrder": "This coupon requires a higher subtotal",
+      "errorExpired": "This coupon has expired",
+      "errorUsageLimit": "This coupon has reached its usage limit",
+      "errorGeneric": "Failed to check the coupon"
+    },
+    "points": {
+      "title": "Use points",
+      "spendable": "Spendable",
+      "use": "Points to use",
+      "none": "You have no spendable points"
+    },
+    "summary": {
+      "title": "Order summary",
+      "items": "Items",
+      "subtotal": "Subtotal",
+      "couponDiscount": "Coupon discount",
+      "pointsRedeemed": "Points used",
+      "total": "Total to pay"
+    },
+    "errors": {
+      "addressIncomplete": "Please complete the required address fields",
+      "stockInsufficient": "Some items are out of stock. Please review your cart.",
+      "priceMismatch": "Prices have changed. Please reload your cart.",
+      "generic": "Failed to place your order. Please try again later."
+    },
+    "complete": {
+      "title": "Thank you for your order!",
+      "description": "We'll email you an order confirmation as soon as payment clears.",
+      "orderIdLabel": "Order ID",
+      "viewOrderCta": "View order details",
+      "continueCta": "Continue shopping"
+    }
   },
   "orders": {
     "pageTitle": "Purchase history",

@@ -20,6 +20,9 @@ importers:
 
   frontend/apps/admin:
     dependencies:
+      '@ec-marketplace/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@ec-marketplace/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n

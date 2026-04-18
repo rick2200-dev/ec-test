@@ -24,7 +24,6 @@ type Story = StoryObj<typeof AdminSidebarPresenter>;
 
 const sampleNav: AdminSidebarNavItem[] = [
   { href: "/", label: "ダッシュボード", icon: "grid", active: true },
-  { href: "/tenants", label: "テナント", icon: "building", active: false },
   { href: "/sellers", label: "セラー", icon: "users", active: false },
   { href: "/plans", label: "プラン", icon: "credit-card", active: false },
   { href: "/commissions", label: "手数料", icon: "percent", active: false },

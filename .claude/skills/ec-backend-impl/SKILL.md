@@ -19,18 +19,18 @@ Proto definitions live in `backend/proto/`, generated code in `backend/gen/go/`.
 
 ## Services at a Glance
 
-| Service | Port | Role | Communication |
-|---------|------|------|---------------|
-| gateway | 8080 | JWT validation, routing, rate limiting | REST in → gRPC/HTTP out |
-| auth | 8081 | Tenants, sellers, buyers, RBAC, API tokens | HTTP |
-| catalog | 8082 | Products, SKUs, categories | gRPC + HTTP |
-| order | 8083 | Orders, Stripe payments, commissions | gRPC + HTTP + Pub/Sub |
-| inventory | 8084 | Stock reservation / release | gRPC + Pub/Sub (subscriber) |
-| search | 8085 | Vertex AI Search indexing | HTTP + Pub/Sub (subscriber) |
-| recommend | 8086 | Personalized recommendations | HTTP + Pub/Sub (subscriber) |
-| notification | 8087 | Email/push notifications | Pub/Sub only (subscriber) |
-| cart | 8088 | Cart (Redis) + multi-seller checkout | HTTP |
-| inquiry | 8090 | Buyer↔seller conversations | HTTP |
+| Service      | Port | Role                                       | Communication               |
+| ------------ | ---- | ------------------------------------------ | --------------------------- |
+| gateway      | 8080 | JWT validation, routing, rate limiting     | REST in → gRPC/HTTP out     |
+| auth         | 8081 | Tenants, sellers, buyers, RBAC, API tokens | HTTP                        |
+| catalog      | 8082 | Products, SKUs, categories                 | gRPC + HTTP                 |
+| order        | 8083 | Orders, Stripe payments, commissions       | gRPC + HTTP + Pub/Sub       |
+| inventory    | 8084 | Stock reservation / release                | gRPC + Pub/Sub (subscriber) |
+| search       | 8085 | Vertex AI Search indexing                  | HTTP + Pub/Sub (subscriber) |
+| recommend    | 8086 | Personalized recommendations               | HTTP + Pub/Sub (subscriber) |
+| notification | 8087 | Email/push notifications                   | Pub/Sub only (subscriber)   |
+| cart         | 8088 | Cart (Redis) + multi-seller checkout       | HTTP                        |
+| inquiry      | 8090 | Buyer↔seller conversations                 | HTTP                        |
 
 ---
 
@@ -81,7 +81,9 @@ domain/ ←── port/ ←── app/ ←── adapter/*  ←── cmd/
 ## Error Handling: Two Layers
 
 ### In `app/` (business logic)
+
 Return **domain sentinel errors** for business rule violations:
+
 ```go
 // domain/errors.go
 var ErrOrderNotFound   = errors.New("order not found")
@@ -99,7 +101,9 @@ if err := s.repo.Create(ctx, order); err != nil {
 ```
 
 ### In `adapter/http/` (handler layer)
+
 Map domain errors → HTTP status via a local `mapError()`:
+
 ```go
 // adapter/http/error_mapper.go
 func mapError(err error) *apperrors.AppError {
@@ -119,6 +123,7 @@ func mapError(err error) *apperrors.AppError {
 ## Event Publishing: Typed Structs
 
 Never use `map[string]any`. Always define typed structs in `domain/events.go`:
+
 ```go
 // domain/events.go
 const EventTypeOrderCreated = "order.created"
@@ -133,6 +138,7 @@ type OrderCreatedEvent struct {
 ```
 
 Then publish from `app/`:
+
 ```go
 pubsub.PublishEvent(ctx, s.publisher, tenantID,
     domain.EventTypeOrderCreated, "order-events",
@@ -140,6 +146,7 @@ pubsub.PublishEvent(ctx, s.publisher, tenantID,
 ```
 
 Pub/Sub topics & subscriptions:
+
 - One topic per domain area: `order-events`, `cart-events`, `product-events`
 - One subscription **per consuming service**: `order-events-inventory`, `order-events-notification`
 - Subscribers re-declare mirrored structs locally (services are separate modules)
@@ -165,6 +172,7 @@ func (r *UserRepo) Create(ctx context.Context, u *domain.User) error {
 ```
 
 `TxRunner` port:
+
 ```go
 type TxRunner interface {
     RunTenantTx(ctx context.Context, tenantID uuid.UUID, fn func(ctx context.Context) error) error
@@ -189,9 +197,9 @@ and also used in the app layer) belong in `port/` — not in `domain/` and not i
 
 For detailed patterns, read the relevant reference file when needed:
 
-| Topic | File |
-|-------|------|
-| Transactions, gRPC, HTTP clients, multi-tenancy | `references/patterns.md` |
+| Topic                                                     | File                               |
+| --------------------------------------------------------- | ---------------------------------- |
+| Transactions, gRPC, HTTP clients, multi-tenancy           | `references/patterns.md`           |
 | Service boundaries, communication choices, batch patterns | `references/service-boundaries.md` |
-| Adding a feature or new service step-by-step | `references/new-feature.md` |
-| Transactional outbox pattern (reliable event publishing) | `references/outbox-pattern.md` |
+| Adding a feature or new service step-by-step              | `references/new-feature.md`        |
+| Transactional outbox pattern (reliable event publishing)  | `references/outbox-pattern.md`     |

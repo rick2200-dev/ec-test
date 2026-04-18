@@ -11,6 +11,8 @@
     "sellers": "セラー管理",
     "plans": "サブスクリプションプラン",
     "commissions": "手数料設定",
+    "coupons": "クーポン管理",
+    "loyalty": "ロイヤリティ",
     "analytics": "プラットフォーム分析",
     "settings": "システム設定"
   },
@@ -58,7 +60,8 @@
     "sellerCount": "セラー数",
     "createdDate": "作成日",
     "actions": "操作",
-    "edit": "編集"
+    "edit": "編集",
+    "empty": "テナントが存在しません。認証設定が未完了の場合は空表示になります。"
   },
   "newTenant": {
     "title": "新規テナント作成",
@@ -69,8 +72,10 @@
     "tenantDescription": "説明",
     "descriptionPlaceholder": "テナントの説明を入力",
     "create": "作成する",
+    "creating": "作成中...",
     "cancel": "キャンセル",
-    "createdMessage": "テナントを作成しました（モック）"
+    "createdMessage": "テナントを作成しました",
+    "errorGeneric": "テナントの作成に失敗しました"
   },
   "commissions": {
     "title": "手数料設定",
@@ -135,7 +140,8 @@
     "actions": "操作",
     "edit": "編集",
     "unlimited": "無制限",
-    "free": "無料"
+    "free": "無料",
+    "empty": "プランが存在しません。認証設定が未完了の場合は空表示になります。"
   },
   "newPlan": {
     "title": "新規プラン作成",
@@ -150,8 +156,134 @@
     "promotedResults": "プロモーション結果数",
     "stripePriceId": "Stripe Price ID",
     "create": "作成する",
+    "creating": "作成中...",
     "cancel": "キャンセル",
-    "createdMessage": "プランを作成しました（モック）"
+    "createdMessage": "プランを作成しました",
+    "errorGeneric": "プランの作成に失敗しました"
+  },
+  "coupons": {
+    "title": "クーポン管理",
+    "description": "プラットフォームクーポンを発行・失効できます",
+    "createNew": "新規クーポン作成",
+    "empty": "クーポンはまだ作成されていません",
+    "columns": {
+      "code": "コード",
+      "title": "タイトル",
+      "discount": "割引",
+      "minOrder": "最低注文額",
+      "usage": "利用回数",
+      "status": "状態",
+      "actions": "操作"
+    },
+    "status": {
+      "active": "有効",
+      "revoked": "失効済み"
+    },
+    "actions": {
+      "detail": "詳細"
+    }
+  },
+  "newCoupon": {
+    "title": "新規クーポン作成",
+    "description": "クーポンコードと割引条件を入力してください",
+    "code": "クーポンコード",
+    "couponTitle": "タイトル",
+    "couponDescription": "説明",
+    "minOrderAmount": "最低注文額（円）",
+    "expiresAt": "有効期限",
+    "usageLimitTotal": "総利用回数上限（空欄で無制限）",
+    "usageLimitPerUser": "ユーザーあたりの上限（空欄で無制限）",
+    "discount": {
+      "legend": "割引方式",
+      "percent": "パーセント",
+      "fixed": "定額",
+      "percentLabel": "割引率（%）",
+      "maxAmount": "最大割引額（空欄で上限なし）",
+      "fixedAmount": "割引額（円）"
+    },
+    "create": "作成する",
+    "creating": "作成中...",
+    "cancel": "キャンセル",
+    "errorGeneric": "クーポンの作成に失敗しました"
+  },
+  "couponDetail": {
+    "backToList": "一覧に戻る",
+    "overview": "概要",
+    "status": "ステータス",
+    "active": "有効",
+    "revoked": "失効済み",
+    "currency": "通貨",
+    "discountType": "割引",
+    "minOrderAmount": "最低注文額",
+    "validFrom": "有効開始",
+    "expiresAt": "有効期限",
+    "noExpiry": "無期限",
+    "usageLimitTotal": "総利用上限",
+    "usageLimitPerUser": "ユーザーあたり上限",
+    "unlimited": "無制限",
+    "stats": "利用統計",
+    "redeemed": "利用回数",
+    "totalDiscount": "割引総額",
+    "pendingReservation": "予約中",
+    "statsUnavailable": "統計を取得できませんでした",
+    "dangerZone": "危険な操作",
+    "revokeNotice": "失効させると以降このクーポンは利用できなくなります。この操作は取り消せません。",
+    "revoke": "クーポンを失効させる",
+    "revoking": "失効処理中...",
+    "confirmRevoke": "このクーポンを失効させますか?",
+    "revokeFailed": "クーポンの失効に失敗しました"
+  },
+  "loyalty": {
+    "title": "ロイヤリティポイント管理",
+    "description": "購入者のポイント残高を確認し、手動調整できます",
+    "success": "ポイントを調整しました",
+    "lookup": {
+      "label": "購入者 Auth0 ID",
+      "search": "検索",
+      "searching": "検索中..."
+    },
+    "balance": {
+      "title": "現在の残高",
+      "buyerId": "購入者 ID",
+      "spendable": "利用可能",
+      "pending": "保留中",
+      "lifetimeEarned": "累計獲得",
+      "lifetimeRedeemed": "累計利用"
+    },
+    "adjust": {
+      "title": "手動調整",
+      "hint": "プラス値で加算、マイナス値で減算します。理由は監査ログに残ります。",
+      "amountLabel": "増減量",
+      "amountHint": "例: +500 / -200",
+      "reasonLabel": "理由",
+      "reasonPlaceholder": "例: 返金対応による補填",
+      "submit": "調整する",
+      "submitting": "処理中..."
+    },
+    "history": {
+      "title": "取引履歴",
+      "empty": "取引履歴はありません",
+      "date": "日時",
+      "type": "種別",
+      "amount": "増減",
+      "balance": "残高",
+      "note": "メモ"
+    },
+    "txType": {
+      "earn": "獲得",
+      "redeem": "利用",
+      "refund": "返金",
+      "reverseEarn": "獲得取消",
+      "adjust": "調整",
+      "expire": "失効"
+    },
+    "errors": {
+      "notFound": "該当する購入者が見つかりません",
+      "lookupFailed": "残高の取得に失敗しました",
+      "adjustFailed": "ポイントの調整に失敗しました",
+      "reasonRequired": "理由を入力してください",
+      "amountRequired": "増減量を0以外にしてください"
+    }
   },
   "admin": {
     "role": "管理者"

@@ -7,7 +7,8 @@
     "title": "EC Marketplace",
     "version": "Platform Admin v0.1",
     "dashboard": "Dashboard",
-    "tenants": "Tenants",
+    "coupons": "Coupons",
+    "loyalty": "Loyalty",
     "sellers": "Sellers",
     "plans": "Subscription Plans",
     "commissions": "Commissions",
@@ -17,7 +18,6 @@
   "dashboard": {
     "title": "Dashboard",
     "description": "Platform overview",
-    "totalTenants": "Total Tenants",
     "totalSellers": "Total Sellers",
     "monthlyTransaction": "Monthly Transaction Volume",
     "monthlyCommission": "Monthly Commission Revenue",
@@ -47,30 +47,6 @@
     "approve": "Approve",
     "suspend": "Suspend",
     "resume": "Resume"
-  },
-  "tenants": {
-    "title": "Tenants",
-    "description": "Manage platform tenants",
-    "createNew": "Create New Tenant",
-    "tenantName": "Tenant Name",
-    "slug": "Slug",
-    "status": "Status",
-    "sellerCount": "Seller Count",
-    "createdDate": "Created Date",
-    "actions": "Actions",
-    "edit": "Edit"
-  },
-  "newTenant": {
-    "title": "Create New Tenant",
-    "description": "Create a new tenant",
-    "tenantName": "Tenant Name",
-    "slug": "Slug",
-    "slugHint": "Auto-generated from the tenant name",
-    "tenantDescription": "Description",
-    "descriptionPlaceholder": "Enter a tenant description",
-    "create": "Create",
-    "cancel": "Cancel",
-    "createdMessage": "Tenant created (mock)"
   },
   "commissions": {
     "title": "Commission Settings",
@@ -135,7 +111,8 @@
     "actions": "Actions",
     "edit": "Edit",
     "unlimited": "Unlimited",
-    "free": "Free"
+    "free": "Free",
+    "empty": "No plans yet (shown empty until admin auth is wired)"
   },
   "newPlan": {
     "title": "Create New Plan",
@@ -150,8 +127,134 @@
     "promotedResults": "Promoted Results",
     "stripePriceId": "Stripe Price ID",
     "create": "Create",
+    "creating": "Creating...",
     "cancel": "Cancel",
-    "createdMessage": "Plan created (mock)"
+    "createdMessage": "Plan created",
+    "errorGeneric": "Failed to create plan"
+  },
+  "coupons": {
+    "title": "Coupons",
+    "description": "Issue and revoke platform coupons",
+    "createNew": "New Coupon",
+    "empty": "No coupons yet",
+    "columns": {
+      "code": "Code",
+      "title": "Title",
+      "discount": "Discount",
+      "minOrder": "Min order",
+      "usage": "Usage",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    },
+    "actions": {
+      "detail": "View"
+    }
+  },
+  "newCoupon": {
+    "title": "Create coupon",
+    "description": "Enter the coupon code and discount rules",
+    "code": "Coupon code",
+    "couponTitle": "Title",
+    "couponDescription": "Description",
+    "minOrderAmount": "Min order amount (JPY)",
+    "expiresAt": "Expires at",
+    "usageLimitTotal": "Total usage limit (blank = unlimited)",
+    "usageLimitPerUser": "Per-user limit (blank = unlimited)",
+    "discount": {
+      "legend": "Discount type",
+      "percent": "Percent",
+      "fixed": "Fixed amount",
+      "percentLabel": "Percent (%)",
+      "maxAmount": "Max discount amount (blank = none)",
+      "fixedAmount": "Amount (JPY)"
+    },
+    "create": "Create",
+    "creating": "Creating...",
+    "cancel": "Cancel",
+    "errorGeneric": "Failed to create coupon"
+  },
+  "couponDetail": {
+    "backToList": "Back to list",
+    "overview": "Overview",
+    "status": "Status",
+    "active": "Active",
+    "revoked": "Revoked",
+    "currency": "Currency",
+    "discountType": "Discount",
+    "minOrderAmount": "Min order amount",
+    "validFrom": "Valid from",
+    "expiresAt": "Expires at",
+    "noExpiry": "No expiry",
+    "usageLimitTotal": "Total usage limit",
+    "usageLimitPerUser": "Per-user limit",
+    "unlimited": "Unlimited",
+    "stats": "Usage stats",
+    "redeemed": "Redemptions",
+    "totalDiscount": "Total discount applied",
+    "pendingReservation": "Pending reservations",
+    "statsUnavailable": "Stats could not be loaded",
+    "dangerZone": "Danger zone",
+    "revokeNotice": "Revoking a coupon makes it permanently unavailable. This cannot be undone.",
+    "revoke": "Revoke coupon",
+    "revoking": "Revoking...",
+    "confirmRevoke": "Revoke this coupon?",
+    "revokeFailed": "Failed to revoke coupon"
+  },
+  "loyalty": {
+    "title": "Loyalty points admin",
+    "description": "Inspect a buyer's points balance and apply manual adjustments",
+    "success": "Points adjusted",
+    "lookup": {
+      "label": "Buyer Auth0 ID",
+      "search": "Search",
+      "searching": "Searching..."
+    },
+    "balance": {
+      "title": "Current balance",
+      "buyerId": "Buyer ID",
+      "spendable": "Spendable",
+      "pending": "Pending",
+      "lifetimeEarned": "Lifetime earned",
+      "lifetimeRedeemed": "Lifetime redeemed"
+    },
+    "adjust": {
+      "title": "Manual adjustment",
+      "hint": "Positive values credit; negative values debit. The reason is recorded in the audit log.",
+      "amountLabel": "Amount",
+      "amountHint": "e.g., +500 / -200",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "e.g., Refund compensation",
+      "submit": "Adjust",
+      "submitting": "Processing..."
+    },
+    "history": {
+      "title": "Transaction history",
+      "empty": "No transactions yet",
+      "date": "Date",
+      "type": "Type",
+      "amount": "Change",
+      "balance": "Balance",
+      "note": "Note"
+    },
+    "txType": {
+      "earn": "Earn",
+      "redeem": "Redeem",
+      "refund": "Refund",
+      "reverseEarn": "Reverse earn",
+      "adjust": "Adjust",
+      "expire": "Expire"
+    },
+    "errors": {
+      "notFound": "No buyer found with that Auth0 ID",
+      "lookupFailed": "Failed to fetch balance",
+      "adjustFailed": "Failed to adjust points",
+      "reasonRequired": "Please enter a reason",
+      "amountRequired": "Amount must be non-zero"
+    }
   },
   "admin": {
     "role": "Administrator"

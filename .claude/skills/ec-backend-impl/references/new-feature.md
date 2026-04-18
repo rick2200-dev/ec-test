@@ -1,6 +1,7 @@
 # Adding Features & New Services
 
 ## Table of Contents
+
 1. [Adding a Use-Case Method to an Existing Service](#adding-a-use-case-method-to-an-existing-service)
 2. [Adding a Domain Entity](#adding-a-domain-entity)
 3. [Adding a Pub/Sub Event](#adding-a-pubsub-event)
@@ -15,13 +16,16 @@
 Example: adding `ArchiveProduct` to the catalog service.
 
 ### Step 1 — Domain (`internal/domain/`)
+
 Add the domain error if the business rule can fail:
+
 ```go
 // domain/errors.go
 var ErrProductAlreadyArchived = errors.New("product is already archived")
 ```
 
 Add behavior to the entity if it encapsulates a state change:
+
 ```go
 // domain/product.go
 func (p *Product) Archive() error {
@@ -35,7 +39,9 @@ func (p *Product) Archive() error {
 ```
 
 ### Step 2 — Port (`internal/port/`)
+
 Add the method to the driving port (`service.go`) and any new repo method to the driven port (`store.go`):
+
 ```go
 // port/service.go — add to CatalogUseCase interface
 ArchiveProduct(ctx context.Context, tenantID, productID uuid.UUID) error
@@ -48,7 +54,9 @@ type ProductStore interface {
 ```
 
 ### Step 3 — App (`internal/app/`)
+
 Implement the use-case method. Use only `domain/` + `port/` imports:
+
 ```go
 // app/catalog_service.go
 func (s *CatalogService) ArchiveProduct(ctx context.Context, tenantID, productID uuid.UUID) error {
@@ -73,7 +81,9 @@ func (s *CatalogService) ArchiveProduct(ctx context.Context, tenantID, productID
 ```
 
 ### Step 4 — Adapter: postgres (`internal/adapter/postgres/`)
+
 Implement the new repo method:
+
 ```go
 // adapter/postgres/product_repo.go
 func (r *ProductRepo) SetStatus(ctx context.Context, tenantID, productID uuid.UUID, status string) error {
@@ -86,7 +96,9 @@ func (r *ProductRepo) SetStatus(ctx context.Context, tenantID, productID uuid.UU
 ```
 
 ### Step 5 — Adapter: HTTP handler (`internal/adapter/http/`)
+
 Add the route. Map domain errors in the same file or in `error_mapper.go`:
+
 ```go
 // adapter/http/catalog_handler.go
 func (h *CatalogHandler) handleArchiveProduct(w http.ResponseWriter, r *http.Request) {
@@ -102,12 +114,14 @@ func (h *CatalogHandler) handleArchiveProduct(w http.ResponseWriter, r *http.Req
 ```
 
 Add to `error_mapper.go` if a new domain error needs mapping:
+
 ```go
 case errors.Is(err, domain.ErrProductAlreadyArchived):
     return apperrors.Conflict(err.Error())
 ```
 
 ### Step 6 — Verify
+
 ```bash
 cd backend/services/catalog
 go build ./...
@@ -137,6 +151,7 @@ Example: adding a `Review` entity to the catalog service.
 ### Publishing side (the service that owns the fact)
 
 1. Add constant + struct to `domain/events.go`:
+
 ```go
 const EventTypeReviewPublished = "review.published"
 
@@ -197,6 +212,7 @@ Use this checklist when the feature genuinely warrants a new service
 (see `service-boundaries.md` for when NOT to add a new service).
 
 ### 1. Scaffold the Go module
+
 ```
 services/{name}/
   go.mod                         # module github.com/Riku-KANO/ec-test/services/{name}
@@ -215,6 +231,7 @@ services/{name}/
 ```
 
 ### 2. go.mod with replace directives
+
 ```
 module github.com/Riku-KANO/ec-test/services/{name}
 
@@ -231,6 +248,7 @@ replace github.com/Riku-KANO/ec-test/pkg => ../../pkg
 ```
 
 ### 3. config/config.go pattern
+
 ```go
 type Config struct {
     Addr        string `env:"PORT,default=:8091"`
@@ -248,6 +266,7 @@ func Load() Config {
 ```
 
 ### 4. main.go wiring order
+
 ```
 config.Load()
 → database.NewPool()
@@ -263,11 +282,14 @@ config.Load()
 ```
 
 ### 5. Register in the gateway
+
 If the new service is accessed by buyers/sellers via the gateway:
+
 - Add a reverse proxy route in `gateway/internal/proxy/`
 - Or add a gRPC client in `gateway/internal/grpcclient/` if gRPC
 
 ### 6. Infra checklist
+
 - [ ] PostgreSQL schema migration in `db/migrations/`
 - [ ] Pub/Sub topics + subscriptions provisioned (or added to emulator setup)
 - [ ] Environment variables documented in `.env.example`

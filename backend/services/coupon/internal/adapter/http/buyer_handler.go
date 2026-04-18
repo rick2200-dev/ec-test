@@ -74,7 +74,34 @@ func (h *BuyerHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, apperrors.NotFound("coupon not found").WithCode("COUPON_NOT_FOUND"))
 		return
 	}
-	httputil.JSON(w, http.StatusOK, result)
+	httputil.JSON(w, http.StatusOK, toPreviewResponse(result))
+}
+
+// previewResponse is the snake_case HTTP envelope around port.PreviewResult.
+// The port struct is intentionally JSON-tag free (it's a service-layer DTO);
+// this keeps the wire format stable for frontend consumers.
+type previewResponse struct {
+	CouponID           string  `json:"coupon_id"`
+	Title              string  `json:"title"`
+	Description        string  `json:"description"`
+	DiscountAmount     int64   `json:"discount_amount"`
+	ApplicableSellerID *string `json:"applicable_seller_id,omitempty"`
+	ExpiresAt          *string `json:"expires_at,omitempty"`
+}
+
+func toPreviewResponse(r *port.PreviewResult) previewResponse {
+	resp := previewResponse{
+		CouponID:       r.CouponID.String(),
+		Title:          r.Title,
+		Description:    r.Description,
+		DiscountAmount: r.DiscountAmount,
+		ExpiresAt:      r.ExpiresAt,
+	}
+	if r.ApplicableSellerID != nil {
+		s := r.ApplicableSellerID.String()
+		resp.ApplicableSellerID = &s
+	}
+	return resp
 }
 
 type redemptionListResponse struct {

@@ -9,12 +9,8 @@
       "name": "CouponService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/admin/coupons": {
       "get": {
@@ -56,9 +52,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       },
       "post": {
         "operationId": "CouponService_CreateCoupon",
@@ -86,9 +80,7 @@
             }
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       }
     },
     "/v1/admin/coupons/{coupon_id}": {
@@ -116,9 +108,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       }
     },
     "/v1/admin/coupons/{coupon_id}/revoke": {
@@ -154,9 +144,7 @@
             }
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       }
     },
     "/v1/admin/coupons/{coupon_id}/stats": {
@@ -184,9 +172,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       }
     },
     "/v1/buyer/coupons/preview": {
@@ -217,9 +203,7 @@
             }
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       }
     },
     "/v1/buyer/coupons/redemptions": {
@@ -261,9 +245,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "CouponService"
-        ]
+        "tags": ["CouponService"]
       }
     }
   },

@@ -37,13 +37,13 @@
 
 ### 確定仕様 (2026-04-18 ユーザー確認)
 
-| 項目 | 方針 |
-|---|---|
-| MVP スコープ | クーポン + ポイント付与 + ポイント利用すべて一括実装 |
-| クーポン発行主体 | プラットフォームのみ |
+| 項目                 | 方針                                                               |
+| -------------------- | ------------------------------------------------------------------ |
+| MVP スコープ         | クーポン + ポイント付与 + ポイント利用すべて一括実装               |
+| クーポン発行主体     | プラットフォームのみ                                               |
 | コミッション計算基準 | 常に **割引前小計** (割引はプラットフォーム負担、セラー売上は不変) |
-| キャンセル時 | 利用ポイントは返還、獲得ポイントは取消 |
-| 通貨 | JPY のみ |
+| キャンセル時         | 利用ポイントは返還、獲得ポイントは取消                             |
+| 通貨                 | JPY のみ                                                           |
 
 ---
 
@@ -83,14 +83,14 @@
 
 `order_svc.orders` に次の列が追加済み (migration 006):
 
-| 列 | 型 | 用途 |
-|---|---|---|
-| `coupon_discount_amount` | BIGINT NOT NULL default 0 | この注文に割り当てられたクーポン割引分 (比例配分後) |
-| `point_discount_amount` | BIGINT NOT NULL default 0 | この注文に割り当てられたポイント利用分 |
-| `coupon_id` | UUID NULL | 使用されたクーポン (表示/参照用) |
-| `coupon_reservation_id` | UUID NULL | coupon-svc の予約 ID (**anchor order のみ**に格納) |
-| `point_reservation_id` | UUID NULL | loyalty-svc の予約 ID (**anchor order のみ**) |
-| `points_earned` | BIGINT NOT NULL default 0 | 購入確定後に付与されたポイント (表示用ミラー、権威は loyalty ledger) |
+| 列                       | 型                        | 用途                                                                 |
+| ------------------------ | ------------------------- | -------------------------------------------------------------------- |
+| `coupon_discount_amount` | BIGINT NOT NULL default 0 | この注文に割り当てられたクーポン割引分 (比例配分後)                  |
+| `point_discount_amount`  | BIGINT NOT NULL default 0 | この注文に割り当てられたポイント利用分                               |
+| `coupon_id`              | UUID NULL                 | 使用されたクーポン (表示/参照用)                                     |
+| `coupon_reservation_id`  | UUID NULL                 | coupon-svc の予約 ID (**anchor order のみ**に格納)                   |
+| `point_reservation_id`   | UUID NULL                 | loyalty-svc の予約 ID (**anchor order のみ**)                        |
+| `points_earned`          | BIGINT NOT NULL default 0 | 購入確定後に付与されたポイント (表示用ミラー、権威は loyalty ledger) |
 
 `total_amount = subtotal + shipping_fee - coupon_discount_amount - point_discount_amount`
 
@@ -105,7 +105,7 @@
 
 ### Loyalty Svc
 
-- `loyalty_svc.point_accounts` — 買い手ごとの残高 (balance / pending_redemption / lifetime_*、version で楽観ロック)
+- `loyalty_svc.point_accounts` — 買い手ごとの残高 (balance / pending*redemption / lifetime*\*、version で楽観ロック)
 - `loyalty_svc.point_reservations` — ポイント利用の pending 予約
 - `loyalty_svc.point_transactions` — **append-only 台帳**
   - `type`: `earn` / `redeem` / `refund` / `reverse_earn` / `adjust` / `expire`
@@ -118,31 +118,33 @@
 
 ### 買い手向け (Gateway `/api/v1/buyer/*`、JWT 必須)
 
-| Method | Path | 目的 |
-|---|---|---|
-| GET  | `/points/balance` | 残高 + pending + lifetime 取得 |
-| GET  | `/points/transactions?limit=&offset=` | 履歴ページング |
-| POST | `/coupons/preview` | コード + カート内容を dry-run して割引額を返す |
-| GET  | `/coupons/redemptions` | 自分の過去 redemption 一覧 |
+| Method | Path                                  | 目的                                           |
+| ------ | ------------------------------------- | ---------------------------------------------- |
+| GET    | `/points/balance`                     | 残高 + pending + lifetime 取得                 |
+| GET    | `/points/transactions?limit=&offset=` | 履歴ページング                                 |
+| POST   | `/coupons/preview`                    | コード + カート内容を dry-run して割引額を返す |
+| GET    | `/coupons/redemptions`                | 自分の過去 redemption 一覧                     |
 
 ### 管理者向け (`/api/v1/admin/*`、platform_admin ロール必須)
 
-| Method | Path | 目的 |
-|---|---|---|
-| POST | `/coupons/` | クーポン作成 (code, discount_type, 制限, 有効期間) |
-| GET  | `/coupons/` | 一覧 (status フィルタ + ページング) |
-| GET  | `/coupons/{id}` | 詳細 |
-| POST | `/coupons/{id}/revoke` | 失効 (既存 redemption は保持) |
-| GET  | `/coupons/{id}/stats` | 利用状況 (redeemed_count, total_discount, pending_reservation) |
+| Method | Path                   | 目的                                                           |
+| ------ | ---------------------- | -------------------------------------------------------------- |
+| POST   | `/coupons/`            | クーポン作成 (code, discount_type, 制限, 有効期間)             |
+| GET    | `/coupons/`            | 一覧 (status フィルタ + ページング)                            |
+| GET    | `/coupons/{id}`        | 詳細                                                           |
+| POST   | `/coupons/{id}/revoke` | 失効 (既存 redemption は保持)                                  |
+| GET    | `/coupons/{id}/stats`  | 利用状況 (redeemed_count, total_discount, pending_reservation) |
 
 ### 内部 API (クラスタ内のみ、X-Internal-Token 必須)
 
 Coupon Svc `:8093`:
+
 - `POST /internal/reservations` → `Reserve`
 - `POST /internal/reservations/{id}/commit` → `Commit`
 - `POST /internal/reservations/{id}/release` → `Release`
 
 Loyalty Svc `:8094`:
+
 - `POST /internal/earn` — 純粋な earn (reservation なしの order.paid 経路)
 - `POST /internal/reservations` → `Reserve` (利用予約)
 - `POST /internal/reservations/{id}/commit` → `Commit` (redeem + earn)
@@ -176,7 +178,7 @@ Buyer ──▶ Gateway ──▶ Cart ──▶ Order: POST /internal/checkouts
                                    │
                                    ▼
   [Order Svc.CreateCheckout]
-  ├─ 1. validate (feature flag / lines) 
+  ├─ 1. validate (feature flag / lines)
   ├─ 2. group lines by seller_id → pre-discount subtotals
   ├─ 3. shipping fee (subscription check)
   ├─ 4. per-seller commission (pre-discount subtotal × rate_bps / 10_000)
@@ -210,13 +212,14 @@ if effective <= 0 { /* 予約スキップ */ }
 マルチセラー注文では、クーポン割引・ポイント割引とも **カート全体から各注文へ subtotal 比例で配分** する。残り端数は最後の非ゼロバケットが吸収する (決定的な挙動で、テストで pin されている)。
 
 | 例: coupon_discount = 300, subtotals = [1000, 2000] |
-| --- |
-| share[0] = floor(300 × 1000 / 3000) = 100 |
-| share[1] = floor(300 × 2000 / 3000) = 200 |
-| remainder = 0 |
-| result = [100, 200] |
+| --------------------------------------------------- |
+| share[0] = floor(300 × 1000 / 3000) = 100           |
+| share[1] = floor(300 × 2000 / 3000) = 200           |
+| remainder = 0                                       |
+| result = [100, 200]                                 |
 
 端数ケース (discount=100, subtotals=[333, 333, 334]):
+
 - shares = [33, 33, 34] (最後が +1 で端数吸収)
 
 ### 予約 ID の保持場所
@@ -266,6 +269,7 @@ for each order:
 **旧実装 2**: (A)(B) に分けたが publish を `transferPending` ブロック内に置いていたため、Commit 初回失敗 → retry 成功のシナリオで publish が永遠に発行されず、shipping / notification / loyalty-earn-fanin が停滞。
 
 **新実装 (3 ブロック)**:
+
 - `(A)` は payout `pending` のときだけ → 二重 Stripe Transfer を防ぐ
 - payout allow-list で `failed`/`reversed` は全 skip → 誤コミット防止
 - `(B)` は pending/completed 両方で実行 → 初回失敗した Commit を retry で補償可能
@@ -273,12 +277,12 @@ for each order:
 
 ### Commit / publish の冪等性キー
 
-| 操作 | idempotency key |
-|---|---|
-| coupon redeemption | `UNIQUE (coupon_id, order_id)` on `coupon_redemptions` |
-| loyalty redeem    | `UNIQUE (source_type='reservation_commit', source_id=reservation_id, type='redeem')` on `point_transactions` |
-| loyalty earn       | `UNIQUE (source_type='order_paid', source_id=order_id, type='earn')` on `point_transactions` |
-| event publish     | `orders.paid_event_published_at IS NULL` ガード付き UPDATE |
+| 操作               | idempotency key                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| coupon redeemption | `UNIQUE (coupon_id, order_id)` on `coupon_redemptions`                                                       |
+| loyalty redeem     | `UNIQUE (source_type='reservation_commit', source_id=reservation_id, type='redeem')` on `point_transactions` |
+| loyalty earn       | `UNIQUE (source_type='order_paid', source_id=order_id, type='earn')` on `point_transactions`                 |
+| event publish      | `orders.paid_event_published_at IS NULL` ガード付き UPDATE                                                   |
 
 ---
 
@@ -336,16 +340,16 @@ message OrderCancelled {
 
 ### トピックとサブスクリプション
 
-| トピック | パブリッシャ | サブスクリプション | コンシューマ |
-|---|---|---|---|
-| `order-events` | order-svc | `order-events-inventory` | inventory (stock release) |
-| | | `order-events-notification` | notification (email) |
-| | | `order-events-recommend` | recommend (purchase signal) |
-| | | `order-events-shipping` | shipping (shipment create) |
-| | | `order-events-coupon` | **coupon (refund redemption)** |
-| | | `order-events-loyalty` | **loyalty (earn + refund + reverse_earn)** |
-| `coupon-events` | coupon-svc | *(将来)* | notification / analytics |
-| `loyalty-events` | loyalty-svc | `loyalty-events-notification` | notification |
+| トピック         | パブリッシャ | サブスクリプション            | コンシューマ                               |
+| ---------------- | ------------ | ----------------------------- | ------------------------------------------ |
+| `order-events`   | order-svc    | `order-events-inventory`      | inventory (stock release)                  |
+|                  |              | `order-events-notification`   | notification (email)                       |
+|                  |              | `order-events-recommend`      | recommend (purchase signal)                |
+|                  |              | `order-events-shipping`       | shipping (shipment create)                 |
+|                  |              | `order-events-coupon`         | **coupon (refund redemption)**             |
+|                  |              | `order-events-loyalty`        | **loyalty (earn + refund + reverse_earn)** |
+| `coupon-events`  | coupon-svc   | _(将来)_                      | notification / analytics                   |
+| `loyalty-events` | loyalty-svc  | `loyalty-events-notification` | notification                               |
 
 ### coupon-events (publish のみ、現状 subscribe 未実装)
 
@@ -379,11 +383,11 @@ message OrderCancelled {
 
 Stripe の `payment_intent.succeeded` は最大 3 日間リトライされる。本サービスは以下の方針で対応:
 
-| 状況 | 動作 |
-|---|---|
-| 既払注文への重複 webhook | SetPaid は NotPending エラーを吸収、(A) 送金ブロックはスキップ、(B) Commit は毎回実行 |
-| (B) の一部失敗 (coupon OK, loyalty NG) | error を返し Stripe にリトライさせる → 次回 (B) で両方 dedupe されて確定 |
-| order.cancelled の重複 delivery | refund / reverse_earn の UNIQUE キーで 2 回目は no-op |
+| 状況                                   | 動作                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------- |
+| 既払注文への重複 webhook               | SetPaid は NotPending エラーを吸収、(A) 送金ブロックはスキップ、(B) Commit は毎回実行 |
+| (B) の一部失敗 (coupon OK, loyalty NG) | error を返し Stripe にリトライさせる → 次回 (B) で両方 dedupe されて確定              |
+| order.cancelled の重複 delivery        | refund / reverse_earn の UNIQUE キーで 2 回目は no-op                                 |
 
 ### チェックアウト失敗時の予約解放
 
@@ -411,15 +415,15 @@ order-svc の環境変数で機能単位に on/off できる:
 
 ## 既知の制約と将来拡張
 
-| 項目 | 状態 | 対応予定 |
-|---|---|---|
-| セラー発行クーポン | 未実装 (DB 列のみ用意) | Phase 5 以降 |
-| クーポンのスタッキング (複数同時使用) | 未実装 (MVP 仕様通り 1 枚のみ) | Phase 5 以降 |
-| ポイント有効期限ジョブ | 未実装 (`point_transactions.expires_at` 列は用意済み) | 運用実績を見てから |
-| 階段還元率 (会員ランク) | 未実装 (earn_rate_bps は単一値) | Phase 5 以降 |
-| Frontend UI | 未実装 | API は完成、次フェーズで実装 |
-| `lifetime_redeemed` の補償時減算 | しない設計 | 仕様として固定 |
-| ¥0 決済への対応 | `total_amount = 0` の場合でも Stripe PI を作成 (最低額は Stripe 側ガード) | 実用上問題視する報告があれば調整 |
+| 項目                                  | 状態                                                                      | 対応予定                         |
+| ------------------------------------- | ------------------------------------------------------------------------- | -------------------------------- |
+| セラー発行クーポン                    | 未実装 (DB 列のみ用意)                                                    | Phase 5 以降                     |
+| クーポンのスタッキング (複数同時使用) | 未実装 (MVP 仕様通り 1 枚のみ)                                            | Phase 5 以降                     |
+| ポイント有効期限ジョブ                | 未実装 (`point_transactions.expires_at` 列は用意済み)                     | 運用実績を見てから               |
+| 階段還元率 (会員ランク)               | 未実装 (earn_rate_bps は単一値)                                           | Phase 5 以降                     |
+| Frontend UI                           | 未実装                                                                    | API は完成、次フェーズで実装     |
+| `lifetime_redeemed` の補償時減算      | しない設計                                                                | 仕様として固定                   |
+| ¥0 決済への対応                       | `total_amount = 0` の場合でも Stripe PI を作成 (最低額は Stripe 側ガード) | 実用上問題視する報告があれば調整 |
 
 ---
 

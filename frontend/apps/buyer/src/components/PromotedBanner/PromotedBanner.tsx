@@ -1,9 +1,9 @@
 import { useTranslations } from "next-intl";
-import type { ProductHit } from "@/lib/types";
+import type { ProductSearchHit } from "@ec-marketplace/types";
 import { PromotedBannerPresenter, type PromotedBannerItem } from "./PromotedBanner.presenter";
 
 interface PromotedBannerProps {
-  products: ProductHit[];
+  products: ProductSearchHit[];
 }
 
 function formatPrice(amount: number, currency: string) {

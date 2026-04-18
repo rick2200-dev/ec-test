@@ -42,21 +42,21 @@
 
 ## 技術スタック
 
-| カテゴリ                     | 技術                       | バージョン / 備考                 |
-| ---------------------------- | -------------------------- | --------------------------------- |
-| バックエンド                 | Go                         | 1.25                              |
-| フロントエンド               | Next.js (App Router)       | latest                            |
-| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                         |
-| モノレポ管理 (Backend)       | Go Workspaces              | go.work                           |
-| データベース                 | PostgreSQL                 | 16                                |
-| キャッシュ                   | Redis                      | 7                                 |
-| メッセージング               | Cloud Pub/Sub              | GCP                               |
-| 認証                         | Auth0                      | JWT + Organizations               |
-| 決済                         | Stripe Connect             | マーケットプレイス決済            |
-| 検索                         | Vertex AI Search           | GCP                               |
-| コンテナオーケストレーション | GKE                        | Google Kubernetes Engine          |
-| CI/CD                        | GitHub Actions + ArgoCD    | GitOps                            |
-| API 定義                     | Protocol Buffers / OpenAPI | buf + openapi-generator           |
+| カテゴリ                     | 技術                       | バージョン / 備考        |
+| ---------------------------- | -------------------------- | ------------------------ |
+| バックエンド                 | Go                         | 1.25                     |
+| フロントエンド               | Next.js (App Router)       | latest                   |
+| モノレポ管理 (Frontend)      | Turborepo + pnpm           | pnpm 10.x                |
+| モノレポ管理 (Backend)       | Go Workspaces              | go.work                  |
+| データベース                 | PostgreSQL                 | 16                       |
+| キャッシュ                   | Redis                      | 7                        |
+| メッセージング               | Cloud Pub/Sub              | GCP                      |
+| 認証                         | Auth0                      | JWT + Organizations      |
+| 決済                         | Stripe Connect             | マーケットプレイス決済   |
+| 検索                         | Vertex AI Search           | GCP                      |
+| コンテナオーケストレーション | GKE                        | Google Kubernetes Engine |
+| CI/CD                        | GitHub Actions + ArgoCD    | GitOps                   |
+| API 定義                     | Protocol Buffers / OpenAPI | buf + openapi-generator  |
 
 ## クイックスタート
 

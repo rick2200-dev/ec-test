@@ -9,12 +9,8 @@
       "name": "SubscriptionService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/buyer-plans": {
       "get": {
@@ -34,9 +30,7 @@
             }
           }
         },
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       },
       "post": {
         "operationId": "SubscriptionService_CreateBuyerPlan",
@@ -64,9 +58,7 @@
             }
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       }
     },
     "/v1/buyer-plans/{plan_id}": {
@@ -94,9 +86,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       },
       "put": {
         "operationId": "SubscriptionService_UpdateBuyerPlan",
@@ -130,9 +120,7 @@
             }
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       }
     },
     "/v1/buyers/{buyer_auth0_id}/subscription": {
@@ -161,9 +149,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       },
       "post": {
         "operationId": "SubscriptionService_SubscribeBuyer",
@@ -197,9 +183,7 @@
             }
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       }
     },
     "/v1/seller-plans": {
@@ -220,9 +204,7 @@
             }
           }
         },
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       },
       "post": {
         "operationId": "SubscriptionService_CreateSellerPlan",
@@ -250,9 +232,7 @@
             }
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       }
     },
     "/v1/seller-plans/{plan_id}": {
@@ -280,9 +260,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       },
       "put": {
         "operationId": "SubscriptionService_UpdateSellerPlan",
@@ -316,9 +294,7 @@
             }
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       }
     },
     "/v1/sellers/{seller_id}/subscription": {
@@ -347,9 +323,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       },
       "post": {
         "operationId": "SubscriptionService_SubscribeSeller",
@@ -383,9 +357,7 @@
             }
           }
         ],
-        "tags": [
-          "SubscriptionService"
-        ]
+        "tags": ["SubscriptionService"]
       }
     }
   },

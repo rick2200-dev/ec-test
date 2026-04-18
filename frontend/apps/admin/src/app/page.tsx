@@ -45,12 +45,6 @@ export default async function AdminDashboardPage() {
 
   const statsCards: AdminDashboardStatCard[] = [
     {
-      id: "tenants",
-      title: t("dashboard.totalTenants"),
-      value: `${platformStats.totalTenants}`,
-      subtitle: "前月比 +2",
-    },
-    {
       id: "sellers",
       title: t("dashboard.totalSellers"),
       value: `${platformStats.totalSellers}`,

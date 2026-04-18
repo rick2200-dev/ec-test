@@ -347,11 +347,11 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
 
 ### イベント型
 
-| Type                           | Subscriber                                | 用途                                          |
-| ------------------------------ | ----------------------------------------- | --------------------------------------------- |
-| `order.cancellation_requested` | notification                              | セラーに「申請が来ました」メール              |
-| `order.cancellation_rejected`  | notification                              | 買い手に「却下されました」メール              |
-| `order.cancellation_approved`  | notification                              | 買い手に「承認されました」メール (返金額付き) |
+| Type                           | Subscriber                                       | 用途                                                                 |
+| ------------------------------ | ------------------------------------------------ | -------------------------------------------------------------------- |
+| `order.cancellation_requested` | notification                                     | セラーに「申請が来ました」メール                                     |
+| `order.cancellation_rejected`  | notification                                     | 買い手に「却下されました」メール                                     |
+| `order.cancellation_approved`  | notification                                     | 買い手に「承認されました」メール (返金額付き)                        |
 | `order.cancelled`              | notification, inventory, **coupon**, **loyalty** | 買い手に最終メール、inventory が在庫解放、クーポン返金、ポイント返還 |
 
 ### `order.cancelled` のペイロード
@@ -386,8 +386,8 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
 | --------------------------- | ------------ | --------------------------------------------------------------------- |
 | `order-events-notification` | notification | 既存。cancellation 4 イベントをハンドリングするために switch 文へ追加 |
 | `order-events-inventory`    | inventory    | `ReleaseStockForOrderCancellation` を呼ぶ                             |
-| `order-events-coupon`       | coupon-svc   | `order.cancelled` を受け取り `RefundRedemption` を実行 (Phase 5)       |
-| `order-events-loyalty`      | loyalty-svc  | `order.paid` で earn、`order.cancelled` で refund + reverse_earn       |
+| `order-events-coupon`       | coupon-svc   | `order.cancelled` を受け取り `RefundRedemption` を実行 (Phase 5)      |
+| `order-events-loyalty`      | loyalty-svc  | `order.paid` で earn、`order.cancelled` で refund + reverse_earn      |
 
 Pub/Sub subscription 自体のプロビジョニングは `infra/scripts/pubsub_emulator_init.sh` で local emulator 用にシードされる。本番デプロイ時は `gcloud pubsub subscriptions create order-events-{name} --topic=order-events` もしくは Terraform で作成すること。
 

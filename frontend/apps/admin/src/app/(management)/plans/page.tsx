@@ -1,9 +1,12 @@
 import StatusBadge from "@/components/StatusBadge";
-import { subscriptionPlans } from "@/lib/mock-data";
+import { listAdminPlans } from "@/lib/api";
 import { getTranslations } from "next-intl/server";
+
+export const dynamic = "force-dynamic";
 
 export default async function PlansPage() {
   const t = await getTranslations();
+  const subscriptionPlans = await listAdminPlans();
 
   const formatPrice = (amount: number) => {
     if (amount === 0) return t("plans.free");
@@ -62,6 +65,13 @@ export default async function PlansPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
+              {subscriptionPlans.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-sm text-text-secondary">
+                    {t("plans.empty")}
+                  </td>
+                </tr>
+              )}
               {subscriptionPlans.map((plan) => (
                 <tr key={plan.id} className="hover:bg-surface-hover transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-text-primary">{plan.name}</td>

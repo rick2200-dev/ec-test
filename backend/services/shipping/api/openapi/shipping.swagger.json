@@ -9,12 +9,8 @@
       "name": "ShippingService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/orders/{order_id}/shipment": {
       "get": {
@@ -41,9 +37,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "ShippingService"
-        ]
+        "tags": ["ShippingService"]
       }
     },
     "/v1/shipments/{id}/deliver": {
@@ -79,9 +73,7 @@
             }
           }
         ],
-        "tags": [
-          "ShippingService"
-        ]
+        "tags": ["ShippingService"]
       }
     },
     "/v1/shipments/{id}/register": {
@@ -117,9 +109,7 @@
             }
           }
         ],
-        "tags": [
-          "ShippingService"
-        ]
+        "tags": ["ShippingService"]
       }
     }
   },

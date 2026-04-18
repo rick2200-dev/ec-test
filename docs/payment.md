@@ -202,6 +202,7 @@ for each order in orders_by_payment_intent:
 **旧実装 3**: (C) を独立ブロックにしたが、`PublishProtoEvent` は publish 失敗をログだけ出して error を返さず、Pub/Sub 一時失敗でも `MarkPaidEventPublished` まで到達して「発行済み」扱い → retry しても再発行なし。また 2 つの webhook が並行配信されると両方が `paid_event_published_at IS NULL` を見て両方 publish する race があった。
 
 **新実装 (現状 3 ブロック + Claim→Publish→Mark)**:
+
 - `(A)` は payout `pending` のときだけ → 二重 Stripe Transfer を防ぐ
 - payout allow-list で `failed`/`reversed` は全 skip → 誤コミットを防ぐ
 - `(B)` は pending/completed どちらでも実行 → 初回失敗した Commit を retry で補償可能
@@ -212,21 +213,21 @@ for each order in orders_by_payment_intent:
 
 ### payout.Status の取り扱い
 
-| Status | 初回 (pending で来る) | retry (非 pending) | 備考 |
-|---|---|---|---|
-| `pending` | (A)(B)(C) 全実行 | – | 正常系初回 |
-| `completed` | – | (B)(C) のみ実行 ((A) skip) | Commit 再試行や publish 再試行 |
-| `failed` | – | continue (全 skip) | Stripe Transfer 失敗、手動復旧待ち |
-| `reversed` | – | continue (全 skip) | キャンセル承認で transfer 取消済み |
+| Status      | 初回 (pending で来る) | retry (非 pending)         | 備考                               |
+| ----------- | --------------------- | -------------------------- | ---------------------------------- |
+| `pending`   | (A)(B)(C) 全実行      | –                          | 正常系初回                         |
+| `completed` | –                     | (B)(C) のみ実行 ((A) skip) | Commit 再試行や publish 再試行     |
+| `failed`    | –                     | continue (全 skip)         | Stripe Transfer 失敗、手動復旧待ち |
+| `reversed`  | –                     | continue (全 skip)         | キャンセル承認で transfer 取消済み |
 
 ### Commit / publish の冪等性キー一覧
 
-| 操作 | idempotency key |
-|---|---|
-| coupon redeemption | `UNIQUE (coupon_id, order_id)` on `coupon_redemptions` |
-| loyalty redeem    | `UNIQUE (source_type='reservation_commit', source_id=reservation_id, type='redeem')` on `point_transactions` |
-| loyalty earn       | `UNIQUE (source_type='order_paid', source_id=order_id, type='earn')` on `point_transactions` |
-| event publish     | `orders.paid_event_published_at IS NULL` ガード付き UPDATE |
+| 操作               | idempotency key                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| coupon redeemption | `UNIQUE (coupon_id, order_id)` on `coupon_redemptions`                                                       |
+| loyalty redeem     | `UNIQUE (source_type='reservation_commit', source_id=reservation_id, type='redeem')` on `point_transactions` |
+| loyalty earn       | `UNIQUE (source_type='order_paid', source_id=order_id, type='earn')` on `point_transactions`                 |
+| event publish      | `orders.paid_event_published_at IS NULL` ガード付き UPDATE                                                   |
 
 ### イベント発行の確実性と重複防止
 

@@ -122,7 +122,98 @@
     "current": "Current Plan",
     "upgrade": "Upgrade",
     "downgrade": "Downgrade",
-    "perMonth": "/mo"
+    "perMonth": "/mo",
+    "loading": "Loading plans...",
+    "empty": "No plans are available right now",
+    "confirm": "Change to \"{name}\"?",
+    "actionSuccess": "Switched to \"{name}\"",
+    "errors": {
+      "loadFailed": "Failed to load subscription plans",
+      "subscribeFailed": "Failed to change plan"
+    }
+  },
+  "shipments": {
+    "title": "Shipments",
+    "description": "Register tracking and confirm delivery for your orders",
+    "loading": "Loading...",
+    "empty": "No shipments match the current filter",
+    "filterLabel": "Status",
+    "filter": {
+      "all": "All"
+    },
+    "status": {
+      "pending": "Pending",
+      "readyToShip": "Ready to ship",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "columns": {
+      "orderId": "Order",
+      "status": "Status",
+      "carrier": "Carrier",
+      "tracking": "Tracking #",
+      "shippedAt": "Shipped at",
+      "actions": "Actions"
+    },
+    "actions": {
+      "register": "Register",
+      "deliver": "Mark delivered",
+      "delivering": "Updating..."
+    },
+    "register": {
+      "title": "Register shipment",
+      "carrier": "Carrier",
+      "trackingNumber": "Tracking number",
+      "note": "Note (optional)",
+      "submit": "Register",
+      "submitting": "Registering...",
+      "cancel": "Cancel"
+    },
+    "errors": {
+      "loadFailed": "Failed to load shipments",
+      "registerFailed": "Failed to register shipment",
+      "deliverFailed": "Failed to mark as delivered"
+    }
+  },
+  "reviews": {
+    "title": "Reviews",
+    "description": "View reviews of your products and post replies",
+    "loading": "Loading...",
+    "empty": "No reviews yet",
+    "deleteConfirm": "Delete this reply?",
+    "badge": {
+      "noReply": "Not replied",
+      "replied": "Replied"
+    },
+    "columns": {
+      "product": "Product",
+      "rating": "Rating",
+      "title": "Content",
+      "date": "Posted",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "actions": {
+      "reply": "Reply",
+      "edit": "Edit reply"
+    },
+    "form": {
+      "createTitle": "Reply to review",
+      "editTitle": "Edit reply",
+      "bodyLabel": "Reply",
+      "bodyPlaceholder": "Write your reply to the buyer",
+      "submit": "Send",
+      "submitting": "Sending...",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    },
+    "errors": {
+      "loadFailed": "Failed to load reviews",
+      "replyFailed": "Failed to submit reply",
+      "deleteFailed": "Failed to delete reply"
+    }
   },
   "store": {
     "sampleStore": "Sample Store"

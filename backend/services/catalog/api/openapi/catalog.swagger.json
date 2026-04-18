@@ -9,12 +9,8 @@
       "name": "CatalogService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/categories": {
       "get": {
@@ -34,9 +30,7 @@
             }
           }
         },
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       },
       "post": {
         "operationId": "CatalogService_CreateCategory",
@@ -64,9 +58,7 @@
             }
           }
         ],
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       }
     },
     "/v1/products": {
@@ -124,9 +116,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       },
       "post": {
         "operationId": "CatalogService_CreateProduct",
@@ -154,9 +144,7 @@
             }
           }
         ],
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       }
     },
     "/v1/products/{id}": {
@@ -192,9 +180,7 @@
             }
           }
         ],
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       }
     },
     "/v1/products/{id}/status": {
@@ -230,9 +216,7 @@
             }
           }
         ],
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       }
     },
     "/v1/products/{slug}": {
@@ -266,9 +250,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "CatalogService"
-        ]
+        "tags": ["CatalogService"]
       }
     }
   },

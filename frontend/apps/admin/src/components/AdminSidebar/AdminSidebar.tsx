@@ -21,6 +21,8 @@ const navItemDefs: NavItemDef[] = [
   { href: "/sellers", labelKey: "sidebar.sellers", icon: "users" },
   { href: "/plans", labelKey: "sidebar.plans", icon: "credit-card" },
   { href: "/commissions", labelKey: "sidebar.commissions", icon: "percent" },
+  { href: "/coupons", labelKey: "sidebar.coupons", icon: "percent" },
+  { href: "/loyalty", labelKey: "sidebar.loyalty", icon: "credit-card" },
   { href: "/analytics", labelKey: "sidebar.analytics", icon: "chart" },
   { href: "/settings", labelKey: "sidebar.settings", icon: "settings" },
 ];

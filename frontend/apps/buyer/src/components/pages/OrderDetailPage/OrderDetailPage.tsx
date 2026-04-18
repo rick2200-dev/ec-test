@@ -4,6 +4,7 @@ import { formatPrice } from "@/lib/mock-data";
 import { fetchAPI, getOrderCancellationRequest } from "@/lib/api";
 import StartInquiryButton from "@/components/StartInquiryButton";
 import CancelOrderButton from "@/components/CancelOrderButton";
+import ShipmentTrackingBlock from "@/components/ShipmentTrackingBlock";
 import type { OrderDetail, OrderStatus } from "@/lib/types";
 import type { CancellationRequest, CancellationRequestStatus } from "@ec-marketplace/types";
 import { OrderDetailPagePresenter, type OrderDetailLineItem } from "./OrderDetailPage.presenter";
@@ -148,6 +149,7 @@ export async function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       purchaseRequiredNotice={contactable ? undefined : t("orders.purchaseRequiredNotice")}
       lines={lines}
       cancellation={cancellationSection}
+      shipmentSlot={<ShipmentTrackingBlock orderId={detail.id} />}
     />
   );
 }

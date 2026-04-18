@@ -54,6 +54,8 @@ export interface OrderDetailPagePresenterProps {
   lines: OrderDetailLineItem[];
   /** Cancellation banner + button slot. */
   cancellation?: OrderDetailCancellationSection;
+  /** Optional block (e.g. shipment tracking) rendered below the totals. */
+  shipmentSlot?: ReactNode;
 }
 
 /**
@@ -81,6 +83,7 @@ export function OrderDetailPagePresenter({
   purchaseRequiredNotice,
   lines,
   cancellation,
+  shipmentSlot,
 }: OrderDetailPagePresenterProps) {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -155,6 +158,8 @@ export function OrderDetailPagePresenter({
           </div>
         </dl>
       </section>
+
+      {shipmentSlot && <div className="mt-6">{shipmentSlot}</div>}
 
       {cancellation?.cancelButton && (
         <div className="mt-6 flex justify-end">{cancellation.cancelButton}</div>

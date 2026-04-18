@@ -9,12 +9,8 @@
       "name": "InventoryService"
     }
   ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "paths": {
     "/v1/inventory": {
       "get": {
@@ -55,9 +51,7 @@
             "format": "int32"
           }
         ],
-        "tags": [
-          "InventoryService"
-        ]
+        "tags": ["InventoryService"]
       }
     },
     "/v1/inventory/{sku_id}": {
@@ -85,9 +79,7 @@
             "type": "string"
           }
         ],
-        "tags": [
-          "InventoryService"
-        ]
+        "tags": ["InventoryService"]
       },
       "put": {
         "operationId": "InventoryService_UpdateStock",
@@ -121,9 +113,7 @@
             }
           }
         ],
-        "tags": [
-          "InventoryService"
-        ]
+        "tags": ["InventoryService"]
       }
     }
   },

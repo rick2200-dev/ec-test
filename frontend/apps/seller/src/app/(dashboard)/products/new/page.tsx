@@ -6,6 +6,9 @@ import { categories } from "@/lib/mock-data";
 import { ProductForm } from "@/components/ProductForm";
 import { SKUManager, SKUInput } from "@/components/SKUManager";
 import { useTranslations } from "next-intl";
+import { ApiError, fetchAPI } from "@ec-marketplace/api-client";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function NewProductPage() {
   const t = useTranslations();
@@ -50,35 +53,71 @@ export default function NewProductPage() {
     setIsSubmitting(true);
     setError(null);
 
-    try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          slug,
-          description,
-          category_id: categoryId,
-          status,
-          skus: skus.map((s) => ({
-            code: s.code,
-            price: parseInt(s.price, 10),
-            attributes: {
-              ...(s.color ? { color: s.color } : {}),
-              ...(s.size ? { size: s.size } : {}),
-            },
-          })),
-        }),
-      });
+    // Seller identity has to ride in the body until seller-side Auth0
+    // wiring lands and the gateway can inject it from JWT context.
+    // NEXT_PUBLIC_DEV_SELLER_ID is the dev-only escape hatch.
+    const sellerID = process.env.NEXT_PUBLIC_DEV_SELLER_ID;
+    if (!sellerID || !UUID_RE.test(sellerID)) {
+      setError(
+        "NEXT_PUBLIC_DEV_SELLER_ID is not configured (need a UUID until seller auth is wired)."
+      );
+      setIsSubmitting(false);
+      return;
+    }
 
+    // Mock categories use "cat-1"-style ids that the catalog service
+    // rejects (column is uuid). Drop non-UUID ids so the request succeeds.
+    const categoryUUID = categoryId && UUID_RE.test(categoryId) ? categoryId : undefined;
+
+    const body = {
+      seller_id: sellerID,
+      name,
+      slug,
+      description,
+      ...(categoryUUID ? { category_id: categoryUUID } : {}),
+      skus: skus.map((s) => {
+        const attrs: Record<string, string> = {};
+        if (s.color) attrs.color = s.color;
+        if (s.size) attrs.size = s.size;
+        return {
+          sku_code: s.code,
+          price_amount: parseInt(s.price, 10),
+          price_currency: "JPY",
+          ...(Object.keys(attrs).length ? { attributes: attrs } : {}),
+        };
+      }),
+    };
+
+    try {
+      const res = await fetchAPI("/api/v1/seller/products", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `エラー: ${res.status}`);
+        const parsed = (await res.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+          code?: string;
+        } | null;
+        const detail = parsed?.error ?? parsed?.message ?? `HTTP ${res.status}`;
+        throw new ApiError(res.status, detail, parsed, parsed?.code);
       }
+
+      // Status update is a separate endpoint (PUT /products/{id}/status); the
+      // create call always lands in "draft". Honoring the form's status
+      // selection requires a follow-up call, which we'll wire when the
+      // seller dashboard gets the real product list page.
+      void status;
 
       router.push("/products");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("newProduct.savedMessage"));
+      if (err instanceof ApiError) {
+        setError(err.message || `エラー: ${err.status}`);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("newProduct.savedMessage"));
+      }
     } finally {
       setIsSubmitting(false);
     }

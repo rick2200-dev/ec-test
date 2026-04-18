@@ -19,3 +19,48 @@ export type {
 } from "./cancellation";
 
 export type { Review, ReviewReply, ProductRating, ReviewListResponse } from "./review";
+
+export type { Cart, CartItem, ShippingAddress, CheckoutRequest, CheckoutResult } from "./cart";
+
+export type {
+  Coupon,
+  CouponDiscountType,
+  CouponIssuerType,
+  CouponStatus,
+  SellerSubtotal,
+  CouponPreviewRequest,
+  CouponPreviewResult,
+  CouponRedemption,
+  CouponRedemptionListResponse,
+  CouponListResponse,
+  CouponStats,
+  CreateCouponRequest,
+} from "./coupon";
+
+export type {
+  PointsBalance,
+  PointsTransaction,
+  PointsTransactionType,
+  PointsSourceType,
+  PointsTransactionListResponse,
+  AdjustPointsRequest,
+  AdjustPointsResponse,
+} from "./loyalty";
+
+export type {
+  Shipment,
+  ShipmentStatus,
+  ShipmentListResponse,
+  RegisterShipmentRequest,
+  MarkDeliveredRequest,
+} from "./shipment";
+
+export type {
+  ProductSearchHit,
+  SearchFacet,
+  SearchFacetValue,
+  SearchResponse,
+  SearchRequestParams,
+  SearchSuggestion,
+  SearchSuggestResponse,
+} from "./search";

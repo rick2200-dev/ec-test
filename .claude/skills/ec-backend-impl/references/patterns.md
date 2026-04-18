@@ -1,6 +1,7 @@
 # Implementation Patterns Reference
 
 ## Table of Contents
+
 1. [Multi-Tenancy](#multi-tenancy)
 2. [Transaction Handling](#transaction-handling)
 3. [gRPC Adapter Pattern](#grpc-adapter-pattern)
@@ -25,6 +26,7 @@ JWT claim → pkg/middleware/auth.go → tenant.Context → ctx → repo.Method(
 **Always** pass `tenantID` as the first parameter after `ctx` in service and repo methods.
 
 Extracting from context in a handler:
+
 ```go
 tc, ok := tenant.FromContext(r.Context())
 if !ok {
@@ -42,12 +44,14 @@ before executing any query in a tenant-scoped connection or transaction.
 ## Transaction Handling
 
 ### The contract
+
 - `pgx.Tx` **never** appears in `port/` or `app/` signatures.
 - Transactions flow as context values.
 - Repository methods use `database.QueryerFromContext(ctx, r.pool)` to get either the
   active transaction or the pool, making them work both inside and outside a transaction.
 
 ### TxRunner port
+
 ```go
 // port/store.go
 type TxRunner interface {
@@ -56,6 +60,7 @@ type TxRunner interface {
 ```
 
 ### App layer usage
+
 ```go
 // app/auth_service.go
 func (s *AuthService) AddSellerUser(ctx context.Context, tenantID uuid.UUID, ...) error {
@@ -70,6 +75,7 @@ func (s *AuthService) AddSellerUser(ctx context.Context, tenantID uuid.UUID, ...
 ```
 
 ### Adapter/postgres repository
+
 ```go
 // adapter/postgres/user_repo.go
 func (r *UserRepo) Create(ctx context.Context, u *domain.User) error {
@@ -83,6 +89,7 @@ func (r *UserRepo) Create(ctx context.Context, u *domain.User) error {
 ## gRPC Adapter Pattern
 
 ### File layout
+
 ```
 adapter/grpc/
   server.go      # implements the generated gRPC service interface
@@ -90,6 +97,7 @@ adapter/grpc/
 ```
 
 ### server.go skeleton
+
 ```go
 package grpcserver
 
@@ -126,12 +134,14 @@ func toGRPCError(err error) error {
 ```
 
 ### convert.go — keep conversions separate
+
 ```go
 func productToProto(p *domain.Product) *catalogpb.Product { ... }
 func protoToProductFilter(f *catalogpb.ProductFilter) domain.ProductFilter { ... }
 ```
 
 ### Starting gRPC server in main.go
+
 ```go
 grpcSrv := grpc.NewServer(grpc.ChainUnaryInterceptor(
     middleware.TenantUnaryInterceptor(tenantJWTVerifier),
@@ -148,6 +158,7 @@ go grpcSrv.Serve(grpcListener)
 Used for service-to-service calls when gRPC is not available (e.g., cart → catalog, inquiry → order).
 
 ### Location: `adapter/httpclient/{target}_client.go`
+
 ### Interface: defined in `port/store.go`
 
 ```go
@@ -210,6 +221,7 @@ func (c *CatalogClient) LookupSKU(ctx context.Context, tenantID, skuID uuid.UUID
 ```
 
 **Internal token validation** on the receiving service side:
+
 ```go
 // Handler or middleware on the catalog service
 if r.Header.Get("X-Internal-Token") != expectedToken {
@@ -249,6 +261,7 @@ func (s *OrderSubscriber) handleEvent(ctx context.Context, event pubsub.Event) e
 ```
 
 ### Decoding event data
+
 `event.Data` comes back as `map[string]any` from JSON. Round-trip through JSON to decode
 into a typed struct:
 
@@ -266,6 +279,7 @@ func decodeEventData(eventData any, target any) error {
 ```
 
 ### Dependency injection in main.go
+
 ```go
 orderSub := ordersubscriber.NewOrderSubscriber(gcpSubscriber, inventorySvc)
 go func() {
@@ -287,6 +301,7 @@ Move mutation logic into the domain when it reduces app-layer boilerplate and th
 is a pure business rule with no infrastructure dependencies.
 
 Good candidates:
+
 - Status guard predicates: `order.CanBeCancelled() bool`
 - In-place mutations: `cart.AddItem()`, `cart.RemoveItem()`, `cart.SetItemQuantity()`
 - Derived values: `cart.Total() int64`, `cart.IsEmpty() bool`
@@ -321,16 +336,19 @@ func (c *Cart) SetItemQuantity(skuID uuid.UUID, quantity int) error {
 ## Port Interface Design
 
 ### Driving port (`port/service.go`) — what handlers call
+
 - One `XxxUseCase` interface per service
 - All methods take `ctx context.Context` + `tenantID uuid.UUID` as first two params
 - Return domain types, not proto types or HTTP response structs
 
 ### Driven ports (`port/store.go`) — what app needs from infrastructure
+
 - Separate interfaces per resource: `OrderStore`, `PayoutStore`, `StripePayments`
 - Each interface is narrow: only the methods actually used
 - `TxRunner` always goes here if transactions are needed
 
 ### DTO placement rule
+
 If a type is returned by an httpclient adapter AND consumed by the app layer, put it in `port/`
 to avoid circular imports. Example: `port.SKULookup`, `port.PurchaseCheckResult`.
 

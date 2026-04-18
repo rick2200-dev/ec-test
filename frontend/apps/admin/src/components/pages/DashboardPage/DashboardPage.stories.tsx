@@ -16,7 +16,6 @@ const sampleArgs = {
     description: "テナントとセラーの状況を確認できます",
   },
   statsCards: [
-    { id: "tenants", title: "総テナント数", value: "12", subtitle: "前月比 +2" },
     { id: "sellers", title: "総セラー数", value: "248", subtitle: "前月比 +18" },
     {
       id: "transactions",

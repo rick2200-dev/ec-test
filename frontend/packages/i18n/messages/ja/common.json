@@ -45,7 +45,8 @@
   "auth": {
     "login": "ログイン",
     "logout": "ログアウト",
-    "loginToReview": "ログインしてレビューを書く"
+    "loginToReview": "ログインしてレビューを書く",
+    "loginToContinue": "ログインして続ける"
   },
   "a11y": {
     "skipToContent": "コンテンツへスキップ",

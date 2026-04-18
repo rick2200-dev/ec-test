@@ -15,6 +15,7 @@ const navItemDefs: NavItemDef[] = [
   { href: "/", labelKey: "sidebar.dashboard", icon: "grid" },
   { href: "/products", labelKey: "sidebar.products", icon: "package" },
   { href: "/orders", labelKey: "sidebar.orders", icon: "shopping-cart" },
+  { href: "/shipments", labelKey: "sidebar.shipments", icon: "package" },
   {
     href: "/cancellation-requests",
     labelKey: "sidebar.cancellationRequests",
@@ -22,6 +23,7 @@ const navItemDefs: NavItemDef[] = [
   },
   { href: "/inventory", labelKey: "sidebar.inventory", icon: "warehouse" },
   { href: "/inquiries", labelKey: "sidebar.inquiries", icon: "mail" },
+  { href: "/reviews", labelKey: "sidebar.reviews", icon: "mail" },
   { href: "/notifications", labelKey: "sidebar.notifications", icon: "bell" },
   { href: "/sales", labelKey: "sidebar.sales", icon: "trending-up" },
   { href: "/subscription", labelKey: "sidebar.subscription", icon: "credit-card" },

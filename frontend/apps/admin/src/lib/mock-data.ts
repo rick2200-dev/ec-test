@@ -1,13 +1,25 @@
-import type { Tenant, Seller, CommissionRule, PlatformStats, SubscriptionPlan } from "./types";
+import type { Seller, CommissionRule, PlatformStats, SubscriptionPlan } from "./types";
 
 export const platformStats: PlatformStats = {
-  totalTenants: 12,
   totalSellers: 156,
   monthlyTransactionAmount: 48750000,
   monthlyCommissionIncome: 4875000,
 };
 
-export const tenants: Tenant[] = [
+// Internal mock tenant shape. Kept here for the commissions/new dropdown
+// mock — the public `Tenant` type was removed along with the tenant
+// management UI (single-marketplace operation has no need to CRUD
+// tenants).
+interface MockTenant {
+  id: string;
+  name: string;
+  slug: string;
+  status: "active" | "suspended" | "pending";
+  sellerCount: number;
+  createdAt: string;
+}
+
+export const tenants: MockTenant[] = [
   {
     id: "t-001",
     name: "東京マーケット",

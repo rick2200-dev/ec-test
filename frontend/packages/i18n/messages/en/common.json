@@ -45,7 +45,8 @@
   "auth": {
     "login": "Log in",
     "logout": "Log out",
-    "loginToReview": "Log in to write a review"
+    "loginToReview": "Log in to write a review",
+    "loginToContinue": "Log in to continue"
   },
   "a11y": {
     "skipToContent": "Skip to content",

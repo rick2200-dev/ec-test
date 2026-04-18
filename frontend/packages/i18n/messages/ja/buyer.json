@@ -13,6 +13,7 @@
   },
   "product": {
     "addToCart": "カートに追加",
+    "selectVariantPrompt": "バリエーションを選択してください",
     "sellerInfo": "販売者情報",
     "verifiedSeller": "認証済みセラー",
     "seller": "セラー",
@@ -41,7 +42,12 @@
     "totalResults": "{count}件の商品が見つかりました",
     "categories": "カテゴリ",
     "priceRange": "価格帯",
-    "searchPlaceholder": "キーワードを入力..."
+    "searchPlaceholder": "キーワードを入力...",
+    "loading": "検索しています...",
+    "errorGeneric": "検索に失敗しました。時間をおいて再度お試しください",
+    "clearFilters": "条件をクリア",
+    "prevPage": "前へ",
+    "nextPage": "次へ"
   },
   "footer": {
     "description": "あなたの欲しいものが見つかるマーケットプレイス",
@@ -134,6 +140,152 @@
     "errorPurchaseRequired": "この商品を購入していないため、レビューを投稿できません",
     "errorAlreadyReviewed": "この商品にはすでにレビューを投稿済みです",
     "errorGeneric": "通信エラーが発生しました。時間をおいて再度お試しください"
+  },
+  "cart": {
+    "title": "ショッピングカート",
+    "loading": "カートを読み込んでいます...",
+    "emptyTitle": "カートは空です",
+    "emptyDescription": "気になる商品を見つけたらカートに追加してください",
+    "browseCta": "商品を探す",
+    "totalLabel": "合計",
+    "checkoutCta": "チェックアウトへ進む",
+    "loginRequiredTitle": "カートを表示するにはログインが必要です",
+    "loginRequiredCta": "ログインする",
+    "errorGeneric": "カートの取得に失敗しました。時間をおいて再度お試しください",
+    "addingToCart": "追加中...",
+    "addedToCart": "カートに追加しました",
+    "clearConfirm": "カートを空にしてもよろしいですか?",
+    "actions": {
+      "increment": "数量を増やす",
+      "decrement": "数量を減らす",
+      "remove": "削除",
+      "clearAll": "カートを空にする",
+      "clearing": "削除中..."
+    },
+    "columns": {
+      "item": "商品",
+      "quantity": "数量",
+      "unitPrice": "単価",
+      "lineTotal": "小計"
+    }
+  },
+  "points": {
+    "title": "ポイント",
+    "loading": "読み込み中...",
+    "errorGeneric": "ポイント情報の取得に失敗しました",
+    "loginRequired": {
+      "title": "ポイントを表示するにはログインが必要です",
+      "cta": "ログインする"
+    },
+    "balance": {
+      "spendable": "利用可能ポイント",
+      "pending": "保留中",
+      "lifetimeEarned": "累計獲得",
+      "lifetimeRedeemed": "累計利用",
+      "pointsUnit": "pt"
+    },
+    "tabs": {
+      "transactions": "ポイント履歴",
+      "coupons": "クーポン利用履歴"
+    },
+    "transactions": {
+      "empty": "ポイント履歴はまだありません",
+      "columns": {
+        "date": "日時",
+        "type": "種別",
+        "amount": "増減",
+        "balanceAfter": "残高",
+        "note": "メモ"
+      }
+    },
+    "txType": {
+      "earn": "獲得",
+      "redeem": "利用",
+      "refund": "返金",
+      "reverseEarn": "獲得取消",
+      "adjust": "調整",
+      "expire": "失効"
+    },
+    "coupons": {
+      "empty": "クーポン利用履歴はまだありません",
+      "columns": {
+        "date": "日付",
+        "orderId": "注文番号",
+        "discount": "割引額",
+        "refunded": "返金額",
+        "status": "状態"
+      },
+      "status": {
+        "active": "適用中",
+        "refundedFully": "全額返金済み",
+        "refundedPartially": "一部返金済み"
+      }
+    }
+  },
+  "checkout": {
+    "title": "ご注文手続き",
+    "loading": "読み込み中...",
+    "submit": "注文を確定する",
+    "submitting": "送信中...",
+    "loginRequired": {
+      "title": "チェックアウトにはログインが必要です",
+      "cta": "ログインする"
+    },
+    "emptyCart": {
+      "title": "カートが空です",
+      "description": "商品をカートに追加してからお越しください",
+      "browseCta": "商品を探す"
+    },
+    "shipping": {
+      "title": "お届け先",
+      "recipient": "お名前",
+      "phone": "電話番号",
+      "postalCode": "郵便番号",
+      "region": "都道府県",
+      "city": "市区町村",
+      "line1": "番地",
+      "line2": "建物名・部屋番号"
+    },
+    "coupon": {
+      "title": "クーポン",
+      "placeholder": "クーポンコードを入力",
+      "apply": "適用",
+      "applying": "確認中...",
+      "clear": "解除",
+      "appliedDiscount": "割引額",
+      "errorNotFound": "クーポンが見つかりません",
+      "errorMinOrder": "最低注文金額に達していません",
+      "errorExpired": "このクーポンは有効期限切れです",
+      "errorUsageLimit": "このクーポンは利用上限に達しています",
+      "errorGeneric": "クーポンの確認に失敗しました"
+    },
+    "points": {
+      "title": "ポイントを利用",
+      "spendable": "利用可能",
+      "use": "利用ポイント",
+      "none": "利用可能なポイントはありません"
+    },
+    "summary": {
+      "title": "ご注文内容",
+      "items": "商品数",
+      "subtotal": "小計",
+      "couponDiscount": "クーポン割引",
+      "pointsRedeemed": "ポイント利用",
+      "total": "お支払い合計"
+    },
+    "errors": {
+      "addressIncomplete": "お届け先の必須項目を入力してください",
+      "stockInsufficient": "在庫が不足しています。カートを見直してください",
+      "priceMismatch": "価格に変動がありました。カートを再読み込みしてください",
+      "generic": "注文の作成に失敗しました。時間をおいて再度お試しください"
+    },
+    "complete": {
+      "title": "ご注文ありがとうございます",
+      "description": "決済が完了次第、注文確認メールをお送りします",
+      "orderIdLabel": "注文番号",
+      "viewOrderCta": "注文詳細を見る",
+      "continueCta": "ショッピングを続ける"
+    }
   },
   "orders": {
     "pageTitle": "購入履歴",

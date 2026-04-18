@@ -1,6 +1,7 @@
 # Service Boundaries & Communication Patterns
 
 ## Table of Contents
+
 1. [Choosing a Communication Mechanism](#choosing-a-communication-mechanism)
 2. [Synchronous: gRPC vs HTTP](#synchronous-grpc-vs-http)
 3. [Asynchronous: Pub/Sub Events](#asynchronous-pubsub-events)
@@ -15,31 +16,34 @@
 
 Ask these questions in order:
 
-| Question | Answer → Mechanism |
-|----------|-------------------|
-| Does the caller need the result immediately to serve the request? | Yes → **synchronous** (gRPC or HTTP) |
-| Is there an existing gRPC contract for this service pair? | Yes → **gRPC** |
-| gRPC not yet set up, or it's a lightweight one-off call? | → **Internal HTTP** (with `X-Internal-Token`) |
-| Is the caller fine if the downstream processes the event later (seconds/minutes)? | → **Pub/Sub** |
-| Does multiple services need to react to the same fact? | → **Pub/Sub** (fan-out via separate subscriptions) |
-| Is it a background sweep / nightly job? | → **Pub/Sub trigger** from a scheduled job, or a standalone task runner |
+| Question                                                                          | Answer → Mechanism                                                      |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Does the caller need the result immediately to serve the request?                 | Yes → **synchronous** (gRPC or HTTP)                                    |
+| Is there an existing gRPC contract for this service pair?                         | Yes → **gRPC**                                                          |
+| gRPC not yet set up, or it's a lightweight one-off call?                          | → **Internal HTTP** (with `X-Internal-Token`)                           |
+| Is the caller fine if the downstream processes the event later (seconds/minutes)? | → **Pub/Sub**                                                           |
+| Does multiple services need to react to the same fact?                            | → **Pub/Sub** (fan-out via separate subscriptions)                      |
+| Is it a background sweep / nightly job?                                           | → **Pub/Sub trigger** from a scheduled job, or a standalone task runner |
 
 ---
 
 ## Synchronous: gRPC vs HTTP
 
 ### Use gRPC when
+
 - The connection is `gateway → downstream` (gateway has a gRPC client pool)
 - The API is complex (multiple RPCs, streaming, pagination)
 - Catalog, Order, Inventory already have `.proto` definitions — prefer gRPC for those
 - You are defining a new permanent API surface
 
 ### Use Internal HTTP when
+
 - The gRPC contract doesn't exist yet and velocity matters
 - The call is narrow / one-off (e.g., `GET /internal/purchase-check`)
 - The service pair is: cart→catalog, cart→order, inquiry→order
 
 ### Internal HTTP conventions
+
 - Endpoint prefix: `/internal/`
 - Auth: `X-Internal-Token` header (shared secret per service, set via env var)
 - Tenant: `X-Tenant-ID` header (UUID string)
@@ -51,24 +55,30 @@ Ask these questions in order:
 ## Asynchronous: Pub/Sub Events
 
 ### When to use events
+
 - Downstream doesn't need to answer the request (fire-and-forget)
 - Multiple services react to the same fact (e.g., `order.cancelled` → inventory AND notification)
 - Loose coupling is desired (order service shouldn't know about inventory or notification)
 - Eventual consistency is acceptable
 
 ### Topic naming
+
 ```
 {domain}-events      e.g.  order-events, cart-events, product-events
 ```
+
 One topic covers all events for a domain. Consumers filter by `event.Type`.
 
 ### Subscription naming
+
 ```
 {topic}-{consuming-service}   e.g.  order-events-inventory, order-events-notification
 ```
+
 Each consumer gets its own subscription = its own delivery cursor = at-least-once independently.
 
 ### Event payload design
+
 - Define typed structs in the **publishing** service's `domain/events.go`
 - Each consuming service **re-declares** the struct locally (separate Go modules can't share)
 - Embed all data the consumer needs to act — avoid making consumers call back to get more info
@@ -77,12 +87,14 @@ Each consumer gets its own subscription = its own delivery cursor = at-least-onc
 - Field names (JSON tags) are a **public contract** — renaming is a breaking change
 
 ### Idempotency requirement
+
 Every subscriber must be idempotent. Pub/Sub guarantees at-least-once delivery.
 Typical guard: insert a unique row (e.g., `inventory_movements` keyed on `order_id`)
 inside the same transaction as the state change. On duplicate, the insert fails and
 the handler returns nil (ack without processing again).
 
 ### Error handling in subscribers
+
 ```
 decode error   → return error (Nack → redelivery; poisonous messages need a dead-letter config)
 unknown type   → return nil (Ack; silently discard unrecognized events)
@@ -94,11 +106,13 @@ business error → return error (Nack) if retrying makes sense, else log + Ack
 ## Bounded Contexts Within a Service
 
 Not every feature belongs at the top level of a service. A **bounded context** is appropriate when:
+
 - The feature has its own domain model (state machine, specialized entities)
 - It has a multi-step workflow with rollback semantics (e.g., Stripe calls + DB writes)
 - It should be testable in isolation without depending on the parent service's wiring
 
 **Example: Order Cancellation** (`services/order/internal/cancellation/`)
+
 ```
 cancellation/
   domain.go          # CancellationRequest entity + Status type
@@ -108,6 +122,7 @@ cancellation/
   service.go         # orchestration: request → Stripe refund → DB write → events
   handler.go         # HTTP handler
 ```
+
 The cancellation package has its own narrow interfaces (`OrderReader`, `PayoutReader`, `StripeClient`)
 rather than depending on the parent service's full port interfaces. This makes unit testing trivial.
 
@@ -119,6 +134,7 @@ Use bounded contexts only for genuinely complex, self-contained workflows.
 ## Batch & Scheduled Work
 
 ### Current state
+
 There are currently **no batch jobs** in this codebase. All processing is event-driven via Pub/Sub.
 
 ### Patterns for future batch work
@@ -131,17 +147,20 @@ boundary and uses the same at-least-once + idempotency guarantees as other event
 **Option 2: Standalone task runner**
 For heavy ETL or data migrations, add a `cmd/task/main.go` alongside `cmd/server/main.go`.
 It wires the same repositories and service layer, runs the job, then exits.
+
 ```
 services/{name}/
   cmd/
     server/main.go   # long-running HTTP+gRPC server
     task/main.go     # one-shot batch job: go run ./cmd/task -- --job=backfill-foo
 ```
+
 The task binary imports the same `app/` and `adapter/postgres/` packages — no code duplication.
 
 **Option 3: Periodic in-process job**
 Use `time.Ticker` in `cmd/server/main.go` for low-frequency, low-stakes sweeps
 (e.g., `recommend.RefreshPopularProducts()` every hour).
+
 ```go
 go func() {
     ticker := time.NewTicker(1 * time.Hour)
@@ -152,10 +171,12 @@ go func() {
     }
 }()
 ```
+
 Only appropriate when: the job is cheap, failure is non-critical, and horizontal scaling
 won't cause duplicate runs (or duplicate runs are idempotent).
 
 ### Batch design rules
+
 1. Always idempotent — batches can be re-run safely
 2. Use the existing `TxRunner` for atomic DB updates
 3. Use `domain/errors.go` sentinel errors for business rule violations inside the batch
@@ -227,10 +248,10 @@ Cart events:
 
 **Internal token matrix** (who calls whom with X-Internal-Token):
 
-| Caller | Called | Endpoint |
-|--------|--------|----------|
-| cart | catalog | `GET /internal/skus/{id}` |
-| cart | order | `POST /internal/checkouts` |
-| inquiry | order | `GET /internal/purchase-check` |
-| order | auth | `GET /internal/buyer-subscriptions/{auth0id}` |
-| gateway | all | healthz + authz endpoints |
+| Caller  | Called  | Endpoint                                      |
+| ------- | ------- | --------------------------------------------- |
+| cart    | catalog | `GET /internal/skus/{id}`                     |
+| cart    | order   | `POST /internal/checkouts`                    |
+| inquiry | order   | `GET /internal/purchase-check`                |
+| order   | auth    | `GET /internal/buyer-subscriptions/{auth0id}` |
+| gateway | all     | healthz + authz endpoints                     |

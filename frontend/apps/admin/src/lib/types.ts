@@ -1,12 +1,3 @@
-export interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  status: "active" | "suspended" | "pending";
-  sellerCount: number;
-  createdAt: string;
-}
-
 export interface Seller {
   id: string;
   name: string;
@@ -29,7 +20,6 @@ export interface CommissionRule {
 }
 
 export interface PlatformStats {
-  totalTenants: number;
   totalSellers: number;
   monthlyTransactionAmount: number;
   monthlyCommissionIncome: number;

@@ -27,6 +27,7 @@ failures are rare in steady state. The unrecoverable case is a process crash
 between commit and publish.
 
 This is documented as a known limitation. When this matters most:
+
 - `shipment.shipped` → order status + buyer email (tracking number)
 - `shipment.delivered` → order status + buyer email + review prompt
 - `order.paid` → inventory reservation, shipment creation

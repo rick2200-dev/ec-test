@@ -9,6 +9,7 @@ import { ProductViewTracker } from "@/components/ProductViewTracker";
 import ProductRatingSummary from "@/components/ProductRatingSummary";
 import ReviewList from "@/components/ReviewList";
 import WriteReviewButton from "@/components/WriteReviewButton";
+import AddToCartButton from "@/components/AddToCartButton";
 import { useTranslations } from "next-intl";
 
 interface ProductDetailPageProps {
@@ -160,10 +161,11 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             </div>
           ))}
 
-          {/* Add to cart */}
-          <button className="mt-8 w-full rounded-lg bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-            {t("product.addToCart")}
-          </button>
+          {/* Add to cart — selectedSku?.id is the SKU UUID from catalog */}
+          <AddToCartButton skuId={selectedSku?.id} />
+          {!selectedSku && (
+            <p className="mt-2 text-sm text-gray-500">{t("product.selectVariantPrompt")}</p>
+          )}
 
           {/* Seller info */}
           {seller && (

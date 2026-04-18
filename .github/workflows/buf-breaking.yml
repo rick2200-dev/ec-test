@@ -3,12 +3,12 @@ name: Buf Breaking
 on:
   pull_request:
     paths:
-      - 'backend/buf.yaml'
-      - 'backend/buf.lock'
-      - 'backend/**/*.proto'
-      - 'backend/services/*/api/buf.gen.yaml'
-      - 'backend/shared/api/buf.gen.yaml'
-      - '.github/workflows/buf-breaking.yml'
+      - "backend/buf.yaml"
+      - "backend/buf.lock"
+      - "backend/**/*.proto"
+      - "backend/services/*/api/buf.gen.yaml"
+      - "backend/shared/api/buf.gen.yaml"
+      - ".github/workflows/buf-breaking.yml"
 
 permissions:
   contents: read

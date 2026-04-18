@@ -7,6 +7,14 @@ import type {
   InquiryListResponse,
   InquiryMessage,
   InquiryWithMessages,
+  MarkDeliveredRequest,
+  RegisterShipmentRequest,
+  Review,
+  ReviewListResponse,
+  ReviewReply,
+  Shipment,
+  ShipmentListResponse,
+  ShipmentStatus,
 } from "@ec-marketplace/types";
 
 export { fetchAPI, ApiError } from "@ec-marketplace/api-client";
@@ -104,4 +112,129 @@ export async function rejectCancellationRequest(
     body: JSON.stringify({ seller_comment: sellerComment }),
   });
   return jsonOrThrow<CancellationRequest>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Shipments (seller-side)
+// ---------------------------------------------------------------------------
+
+/** List shipments owned by the current seller, optionally filtered by status. */
+export async function listSellerShipments(
+  params: { status?: ShipmentStatus | "all"; limit?: number; offset?: number } = {}
+): Promise<ShipmentListResponse> {
+  const qs = new URLSearchParams();
+  if (params.status && params.status !== "all") qs.set("status", params.status);
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const res = await fetchAPI(`/api/v1/seller/shipments${qs.toString() ? `?${qs}` : ""}`);
+  return jsonOrThrow<ShipmentListResponse>(res);
+}
+
+/** Get a single shipment by id. */
+export async function getSellerShipment(id: string): Promise<Shipment> {
+  const res = await fetchAPI(`/api/v1/seller/shipments/${id}`);
+  return jsonOrThrow<Shipment>(res);
+}
+
+/**
+ * Register tracking on a ready_to_ship shipment. Returns the updated
+ * shipment in the `shipped` state.
+ */
+export async function registerShipment(
+  id: string,
+  body: RegisterShipmentRequest
+): Promise<Shipment> {
+  const res = await fetchAPI(`/api/v1/seller/shipments/${id}/register`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return jsonOrThrow<Shipment>(res);
+}
+
+/** Mark a shipped shipment as delivered. */
+export async function markShipmentDelivered(
+  id: string,
+  body: MarkDeliveredRequest = {}
+): Promise<Shipment> {
+  const res = await fetchAPI(`/api/v1/seller/shipments/${id}/deliver`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return jsonOrThrow<Shipment>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Reviews (seller-side)
+// ---------------------------------------------------------------------------
+
+/** List reviews for the authenticated seller's products. */
+export async function listSellerReviews(
+  params: { limit?: number; offset?: number } = {}
+): Promise<ReviewListResponse> {
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const res = await fetchAPI(`/api/v1/seller/reviews${qs.toString() ? `?${qs}` : ""}`);
+  return jsonOrThrow<ReviewListResponse>(res);
+}
+
+/** Fetch a single review owned by the current seller. */
+export async function getSellerReview(id: string): Promise<Review> {
+  const res = await fetchAPI(`/api/v1/seller/reviews/${id}`);
+  return jsonOrThrow<Review>(res);
+}
+
+/** Post a new reply to a review. 409 if a reply already exists. */
+export async function createReviewReply(id: string, body: string): Promise<ReviewReply> {
+  const res = await fetchAPI(`/api/v1/seller/reviews/${id}/reply`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+  return jsonOrThrow<ReviewReply>(res);
+}
+
+/** Edit the seller's existing reply. 404 if no reply has been posted. */
+export async function updateReviewReply(id: string, body: string): Promise<ReviewReply> {
+  const res = await fetchAPI(`/api/v1/seller/reviews/${id}/reply`, {
+    method: "PUT",
+    body: JSON.stringify({ body }),
+  });
+  return jsonOrThrow<ReviewReply>(res);
+}
+
+/** Delete the seller's reply. */
+export async function deleteReviewReply(id: string): Promise<void> {
+  const res = await fetchAPI(`/api/v1/seller/reviews/${id}/reply`, {
+    method: "DELETE",
+  });
+  await jsonOrThrow<void>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Subscription (seller-side)
+// ---------------------------------------------------------------------------
+
+import type { SellerSubscription, SubscriptionPlan } from "./types";
+
+export async function listSellerPlans(): Promise<SubscriptionPlan[]> {
+  const res = await fetchAPI(`/api/v1/seller/plans`);
+  return jsonOrThrow<SubscriptionPlan[]>(res);
+}
+
+/** Returns null when the seller has no active subscription (404). */
+export async function getMySubscription(): Promise<SellerSubscription | null> {
+  const res = await fetchAPI(`/api/v1/seller/subscription`);
+  if (res.status === 404) return null;
+  return jsonOrThrow<SellerSubscription>(res);
+}
+
+export async function subscribeToPlan(input: {
+  plan_id: string;
+  stripe_payment_method_id?: string;
+}): Promise<SellerSubscription> {
+  const res = await fetchAPI(`/api/v1/seller/subscription`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<SellerSubscription>(res);
 }
