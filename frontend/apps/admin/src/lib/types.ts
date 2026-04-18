@@ -1,22 +1,28 @@
+// Mirrors backend auth-svc domain.Seller (JSON shape). `status` also
+// allows "rejected" which the UI renders as "suspended" for now (the
+// tabs treat non-active sellers uniformly).
 export interface Seller {
   id: string;
+  auth0_org_id: string;
   name: string;
-  tenantName: string;
-  status: "pending" | "approved" | "suspended";
-  commissionRate: number;
-  stripeConnected: boolean;
-  createdAt: string;
+  slug: string;
+  status: "pending" | "approved" | "rejected" | "suspended";
+  stripe_account_id: string;
+  commission_rate_bps: number;
+  created_at: string;
+  updated_at: string;
 }
 
+// Mirrors backend order-svc domain.CommissionRule.
 export interface CommissionRule {
   id: string;
-  tenantName: string;
-  sellerName: string | null;
-  category: string | null;
-  rate: number;
+  seller_id: string | null;
+  category_id: string | null;
+  rate_bps: number;
   priority: number;
-  validFrom: string;
-  validUntil: string | null;
+  valid_from: string;
+  valid_until: string | null;
+  created_at: string;
 }
 
 export interface PlatformStats {

@@ -34,9 +34,9 @@ const sampleArgs = {
     title: "セラー申請",
     viewAllHref: "/sellers",
     viewAllLabel: "すべて表示",
+    emptyLabel: "承認待ちはありません",
     columnLabels: {
       sellerName: "セラー名",
-      tenant: "テナント",
       applicationDate: "申請日",
       status: "ステータス",
     },
@@ -44,14 +44,12 @@ const sampleArgs = {
       {
         id: "s1",
         name: "Kyoto Crafts",
-        tenantName: "Default Tenant",
         createdAtLabel: "2025-04-08",
         badge: { tone: "warning" as const, label: "承認待ち" },
       },
       {
         id: "s2",
         name: "Hokkaido Foods",
-        tenantName: "Default Tenant",
         createdAtLabel: "2025-04-09",
         badge: { tone: "warning" as const, label: "承認待ち" },
       },

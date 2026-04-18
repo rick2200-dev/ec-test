@@ -575,6 +575,89 @@ func (s *Service) ApplyCancellation(ctx context.Context, in port.CancelPointsInp
 	return &out, nil
 }
 
+// AdjustPoints applies a signed admin-initiated delta to a buyer's
+// balance and appends an `adjust` ledger row. Positive credits the
+// account; negative debits it (capped by spendable balance). reason and
+// admin_user_id are persisted on the row for audit. Each call gets a
+// fresh source_id (ledger uuid) since admin intent does not have the
+// replay semantics that webhook/pubsub paths do — every click is an
+// explicit action.
+func (s *Service) AdjustPoints(ctx context.Context, in port.AdjustPointsInput) (*port.AdjustPointsResult, error) {
+	if in.BuyerAuth0ID == "" {
+		return nil, apperrors.BadRequest("buyer_auth0_id is required")
+	}
+	if in.Amount == 0 {
+		return nil, domain.ErrInvalidAmount
+	}
+	if in.Reason == "" {
+		return nil, apperrors.BadRequest("reason is required")
+	}
+
+	var result port.AdjustPointsResult
+	err := s.tx.RunTx(ctx, func(ctx context.Context) error {
+		if err := s.accounts.EnsureExists(ctx, in.BuyerAuth0ID); err != nil {
+			return fmt.Errorf("ensure account: %w", err)
+		}
+		acct, err := s.accounts.LockForUpdate(ctx, in.BuyerAuth0ID)
+		if err != nil {
+			return fmt.Errorf("lock account: %w", err)
+		}
+		if in.Amount < 0 && acct.Spendable()+in.Amount < 0 {
+			return domain.ErrInsufficientPoints
+		}
+
+		newBalance := acct.Balance + in.Amount
+		if err := s.accounts.ApplyDelta(ctx, in.BuyerAuth0ID, port.AccountDelta{
+			BalanceDelta: in.Amount,
+		}, acct.Version); err != nil {
+			return fmt.Errorf("apply adjust delta: %w", err)
+		}
+
+		row := &domain.Transaction{
+			ID:           uuid.New(),
+			BuyerAuth0ID: in.BuyerAuth0ID,
+			Type:         domain.TransactionTypeAdjust,
+			Amount:       in.Amount,
+			BalanceAfter: newBalance,
+			SourceType:   domain.SourceTypeAdminAdjust,
+			Note:         formatAdjustNote(in.AdminUserID, in.Reason),
+		}
+		// source_id is the row's own uuid: admin actions are not idempotent
+		// across retries, so each submission intentionally writes a new
+		// ledger row. Using the tx ID keeps the (source_type, source_id,
+		// type) key unique without requiring an external idempotency token.
+		row.SourceID = row.ID.String()
+
+		if err := s.transactions.Insert(ctx, row); err != nil {
+			return fmt.Errorf("insert adjust row: %w", err)
+		}
+		result.Transaction = row
+		result.NewBalance = newBalance
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrInsufficientPoints) {
+			return nil, err
+		}
+		return nil, apperrors.Internal("failed to adjust points", err)
+	}
+	slog.Info("loyalty points adjusted",
+		"buyer", in.BuyerAuth0ID, "amount", in.Amount,
+		"admin", in.AdminUserID, "new_balance", result.NewBalance)
+	return &result, nil
+}
+
+// formatAdjustNote packs admin_user_id + reason into the ledger note
+// field. The Transaction schema does not have a dedicated admin column,
+// and adding one for a single code path wasn't worth a migration — the
+// prefix is machine-parseable if ops ever needs to filter by admin.
+func formatAdjustNote(adminUserID, reason string) string {
+	if adminUserID == "" {
+		return reason
+	}
+	return "admin=" + adminUserID + ": " + reason
+}
+
 // ExpireStaleReservations is driven by the reaper goroutine. Pending
 // reservations past their TTL are flipped to expired and each
 // buyer's pending_redemption decremented.

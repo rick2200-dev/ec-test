@@ -248,6 +248,138 @@ func TestAwardEarn_ZeroEarnIsNoOp(t *testing.T) {
 	}
 }
 
+// TestAdjustPoints_Credit exercises a positive admin adjustment:
+// balance goes up by amount and an `adjust` ledger row is recorded
+// with admin_user_id in the note for audit.
+func TestAdjustPoints_Credit(t *testing.T) {
+	accounts := &fakeAccountStore{
+		acct: &domain.Account{BuyerAuth0ID: "auth0|buyer", Balance: 500, Version: 3},
+	}
+	transactions := &fakeTransactionStore{}
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+
+	result, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Amount:       200,
+		Reason:       "apology for late delivery",
+		AdminUserID:  "admin-42",
+	})
+	if err != nil {
+		t.Fatalf("AdjustPoints() error = %v", err)
+	}
+	if result.NewBalance != 700 {
+		t.Errorf("NewBalance = %d, want 700", result.NewBalance)
+	}
+	if accounts.acct.Balance != 700 {
+		t.Errorf("acct.Balance = %d, want 700", accounts.acct.Balance)
+	}
+	if len(transactions.inserts) != 1 {
+		t.Fatalf("inserts len = %d, want 1", len(transactions.inserts))
+	}
+	row := transactions.inserts[0]
+	if row.Type != domain.TransactionTypeAdjust {
+		t.Errorf("row.Type = %s, want adjust", row.Type)
+	}
+	if row.Amount != 200 {
+		t.Errorf("row.Amount = %d, want 200", row.Amount)
+	}
+	if row.SourceType != domain.SourceTypeAdminAdjust {
+		t.Errorf("row.SourceType = %s, want admin_adjust", row.SourceType)
+	}
+	if !containsSubstr(row.Note, "admin=admin-42") {
+		t.Errorf("row.Note = %q, want to contain admin=admin-42", row.Note)
+	}
+	if !containsSubstr(row.Note, "apology for late delivery") {
+		t.Errorf("row.Note = %q, want to contain reason", row.Note)
+	}
+}
+
+// TestAdjustPoints_Debit exercises a negative admin adjustment within
+// spendable balance — balance decreases and a debit ledger row is
+// recorded.
+func TestAdjustPoints_Debit(t *testing.T) {
+	accounts := &fakeAccountStore{
+		acct: &domain.Account{BuyerAuth0ID: "auth0|buyer", Balance: 500, Version: 1},
+	}
+	transactions := &fakeTransactionStore{}
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+
+	result, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Amount:       -150,
+		Reason:       "duplicate credit rollback",
+		AdminUserID:  "admin-1",
+	})
+	if err != nil {
+		t.Fatalf("AdjustPoints() error = %v", err)
+	}
+	if result.NewBalance != 350 {
+		t.Errorf("NewBalance = %d, want 350", result.NewBalance)
+	}
+	if transactions.inserts[0].Amount != -150 {
+		t.Errorf("row.Amount = %d, want -150", transactions.inserts[0].Amount)
+	}
+}
+
+// TestAdjustPoints_InsufficientBalance rejects a debit that would push
+// spendable negative without mutating state.
+func TestAdjustPoints_InsufficientBalance(t *testing.T) {
+	accounts := &fakeAccountStore{
+		acct: &domain.Account{BuyerAuth0ID: "auth0|buyer", Balance: 100, Version: 0},
+	}
+	transactions := &fakeTransactionStore{}
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+
+	_, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Amount:       -500,
+		Reason:       "test",
+	})
+	if !errors.Is(err, domain.ErrInsufficientPoints) {
+		t.Fatalf("err = %v, want ErrInsufficientPoints", err)
+	}
+	if accounts.acct.Balance != 100 {
+		t.Errorf("balance mutated: %d, want 100", accounts.acct.Balance)
+	}
+	if len(transactions.inserts) != 0 {
+		t.Errorf("inserts written on rejection: %+v", transactions.inserts)
+	}
+}
+
+// TestAdjustPoints_ZeroAmount rejects zero-delta calls so we don't
+// pollute the ledger with no-op audit rows.
+func TestAdjustPoints_ZeroAmount(t *testing.T) {
+	accounts := &fakeAccountStore{}
+	transactions := &fakeTransactionStore{}
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+
+	_, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Amount:       0,
+		Reason:       "test",
+	})
+	if !errors.Is(err, domain.ErrInvalidAmount) {
+		t.Fatalf("err = %v, want ErrInvalidAmount", err)
+	}
+}
+
+// TestAdjustPoints_MissingReason enforces the audit requirement: every
+// admin adjustment must carry a human-readable reason.
+func TestAdjustPoints_MissingReason(t *testing.T) {
+	accounts := &fakeAccountStore{}
+	transactions := &fakeTransactionStore{}
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+
+	_, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Amount:       100,
+		Reason:       "",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing reason")
+	}
+}
+
 // helpers
 
 func equalPrefix(got, want []string) bool {

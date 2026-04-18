@@ -1,19 +1,22 @@
-import { platformStats, pendingApplications, serviceHealth } from "@/lib/mock-data";
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+
 import {
   AdminDashboardPagePresenter,
   type AdminDashboardStatCard,
   type AdminPendingApplicationRow,
-  type AdminServiceHealthRow,
 } from "@/components/pages/DashboardPage/DashboardPage.presenter";
 import type { StatusBadgePresenterProps } from "@/components/StatusBadge";
 import type { StatusType } from "@/components/StatusBadge";
+import { listSellers } from "@/lib/api";
+import type { Seller } from "@/lib/types";
 
-function formatCurrency(amount: number): string {
-  return `¥${amount.toLocaleString()}`;
-}
-
-function statusToBadge(status: StatusType, t: (key: string) => string): StatusBadgePresenterProps {
+function statusToBadge(
+  status: StatusType,
+  t: (key: string) => string
+): StatusBadgePresenterProps {
   const toneMap: Record<StatusType, StatusBadgePresenterProps["tone"]> = {
     active: "success",
     archived: "neutral",
@@ -40,41 +43,61 @@ function statusToBadge(status: StatusType, t: (key: string) => string): StatusBa
   };
 }
 
-export default async function AdminDashboardPage() {
-  const t = await getTranslations();
+function formatDate(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString();
+}
+
+// Dashboard pulls what it can from sellers-svc (total + pending list).
+// Monthly transaction / commission totals have no aggregation API yet
+// — surfaced as em-dashes with a "集計未実装" subtitle so the page is
+// honest about the state rather than fabricating numbers.
+export default function AdminDashboardPage() {
+  const t = useTranslations();
+  const [sellers, setSellers] = useState<Seller[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await listSellers();
+      if (!cancelled) setSellers(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const totalSellers = sellers == null ? "…" : String(sellers.length);
+  const pending = sellers == null ? [] : sellers.filter((s) => s.status === "pending");
 
   const statsCards: AdminDashboardStatCard[] = [
     {
       id: "sellers",
       title: t("dashboard.totalSellers"),
-      value: `${platformStats.totalSellers}`,
-      subtitle: "前月比 +18",
+      value: totalSellers,
+      subtitle: "",
     },
     {
       id: "transactions",
       title: t("dashboard.monthlyTransaction"),
-      value: formatCurrency(platformStats.monthlyTransactionAmount),
-      subtitle: "前月比 +15.2%",
+      value: "—",
+      subtitle: t("dashboard.metricUnavailable"),
     },
     {
       id: "commission",
       title: t("dashboard.monthlyCommission"),
-      value: formatCurrency(platformStats.monthlyCommissionIncome),
-      subtitle: "前月比 +15.2%",
+      value: "—",
+      subtitle: t("dashboard.metricUnavailable"),
     },
   ];
 
-  const pendingRows: AdminPendingApplicationRow[] = pendingApplications.map((seller) => ({
+  const pendingRows: AdminPendingApplicationRow[] = pending.map((seller) => ({
     id: seller.id,
     name: seller.name,
-    tenantName: seller.tenantName,
-    createdAtLabel: seller.createdAt,
-    badge: statusToBadge(seller.status as StatusType, t),
-  }));
-
-  const serviceRows: AdminServiceHealthRow[] = serviceHealth.map((service) => ({
-    name: service.name,
-    badge: statusToBadge(service.status, t),
+    createdAtLabel: formatDate(seller.created_at),
+    badge: statusToBadge("pending", t),
   }));
 
   return (
@@ -88,18 +111,18 @@ export default async function AdminDashboardPage() {
         title: t("dashboard.pendingApplications"),
         viewAllHref: "/sellers",
         viewAllLabel: t("common.viewAll"),
+        emptyLabel: t("dashboard.noPending"),
         columnLabels: {
           sellerName: t("dashboard.sellerName"),
-          tenant: t("dashboard.tenant"),
           applicationDate: t("dashboard.applicationDate"),
           status: t("dashboard.status"),
         },
         rows: pendingRows,
       }}
-      serviceHealthSection={{
-        title: t("dashboard.serviceHealth"),
-        services: serviceRows,
-      }}
+      // serviceHealthSection intentionally omitted: there's no real
+      // health registry yet, and the previously-hardcoded list was
+      // misleading. Reintroduce once the gateway health check actually
+      // probes downstreams.
     />
   );
 }

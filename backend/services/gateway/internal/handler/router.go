@@ -309,6 +309,17 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 				cr.Post("/{id}/revoke", coupon.AdminRevoke)
 				cr.Get("/{id}/stats", coupon.AdminStats)
 			})
+
+			// Loyalty administration (buyer lookup + manual adjust).
+			ar.Route("/loyalty", func(lr chi.Router) {
+				lr.Get("/buyers/{buyer_auth0_id}/balance", loyalty.AdminGetBalance)
+				lr.Get("/buyers/{buyer_auth0_id}/transactions", loyalty.AdminListTransactions)
+				lr.Post("/buyers/{buyer_auth0_id}/adjust", loyalty.AdminAdjust)
+			})
+
+			// Commission-rule catalog lives in order-svc.
+			ar.Get("/commissions", admin.ListCommissions)
+			ar.Post("/commissions", admin.CreateCommission)
 		})
 	})
 

@@ -1,26 +1,50 @@
-import { platformStats } from "@/lib/mock-data";
-import { getTranslations } from "next-intl/server";
+"use client";
 
-function formatCurrency(amount: number): string {
-  return `¥${amount.toLocaleString()}`;
-}
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
-export default async function AnalyticsPage() {
-  const t = await getTranslations();
+import { listSellers } from "@/lib/api";
 
-  const metrics = [
+// Aggregate transaction / commission totals have no backing API yet —
+// the numbers shown as "—" below go live once an analytics service (or
+// an on-demand aggregation endpoint) lands. Active seller count is the
+// one metric we can derive honestly from sellers-svc alone.
+export default function AnalyticsPage() {
+  const t = useTranslations();
+  const [activeSellers, setActiveSellers] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const sellers = await listSellers();
+      if (cancelled) return;
+      setActiveSellers(sellers.filter((s) => s.status === "approved").length);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const metrics: { title: string; value: string; hint?: string }[] = [
     {
       title: t("analytics.monthlyTransaction"),
-      value: formatCurrency(platformStats.monthlyTransactionAmount),
-      change: "+15.2%",
+      value: "—",
+      hint: t("analytics.metricUnavailable"),
     },
     {
       title: t("analytics.monthlyCommission"),
-      value: formatCurrency(platformStats.monthlyCommissionIncome),
-      change: "+15.2%",
+      value: "—",
+      hint: t("analytics.metricUnavailable"),
     },
-    { title: t("analytics.averageOrder"), value: formatCurrency(12500), change: "+3.1%" },
-    { title: t("analytics.activeSellers"), value: "142", change: "+8" },
+    {
+      title: t("analytics.averageOrder"),
+      value: "—",
+      hint: t("analytics.metricUnavailable"),
+    },
+    {
+      title: t("analytics.activeSellers"),
+      value: activeSellers == null ? "…" : String(activeSellers),
+    },
   ];
 
   return (
@@ -30,7 +54,6 @@ export default async function AnalyticsPage() {
         <p className="text-text-secondary mt-1">{t("analytics.description")}</p>
       </div>
 
-      {/* Key metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric) => (
           <div
@@ -39,12 +62,11 @@ export default async function AnalyticsPage() {
           >
             <p className="text-sm text-text-secondary">{metric.title}</p>
             <p className="text-2xl font-bold text-text-primary mt-1">{metric.value}</p>
-            <p className="text-xs text-success mt-2">{metric.change}</p>
+            {metric.hint && <p className="text-xs text-text-secondary mt-2">{metric.hint}</p>}
           </div>
         ))}
       </div>
 
-      {/* Chart placeholders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg border border-border shadow-sm p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">

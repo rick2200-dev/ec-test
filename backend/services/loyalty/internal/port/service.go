@@ -50,6 +50,13 @@ type LoyaltyUseCase interface {
 	// via (order_cancelled, orderID, refund) and (order_cancelled,
 	// orderID, reverse_earn).
 	ApplyCancellation(ctx context.Context, input CancelPointsInput) (*CancelPointsResult, error)
+
+	// AdjustPoints applies a signed admin-initiated balance delta.
+	// Positive credits, negative debits. reason is required (audit).
+	// adminUserID is recorded on the ledger row for traceability.
+	// A debit that would push spendable negative returns
+	// domain.ErrInsufficientPoints.
+	AdjustPoints(ctx context.Context, input AdjustPointsInput) (*AdjustPointsResult, error)
 }
 
 // CancelPointsInput is the payload extracted from OrderCancelled for
@@ -79,4 +86,21 @@ type CommitPointsResult struct {
 	Earned           int64
 	NewBalance       int64
 	AlreadyCommitted bool
+}
+
+// AdjustPointsInput carries a signed manual adjustment initiated by an
+// admin. Amount is non-zero; reason is required; AdminUserID is the
+// caller's identity, persisted on the ledger row for audit.
+type AdjustPointsInput struct {
+	BuyerAuth0ID string
+	Amount       int64
+	Reason       string
+	AdminUserID  string
+}
+
+// AdjustPointsResult returns the ledger row that was written and the
+// buyer's post-adjustment balance.
+type AdjustPointsResult struct {
+	Transaction *domain.Transaction
+	NewBalance  int64
 }

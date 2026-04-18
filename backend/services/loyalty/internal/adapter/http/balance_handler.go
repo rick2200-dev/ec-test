@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -34,6 +35,7 @@ func (h *BalanceHandler) Routes() chi.Router {
 	// Also support the admin-addressed variant for the admin app.
 	r.Get("/buyers/{buyer_auth0_id}/balance", h.AdminGetBalance)
 	r.Get("/buyers/{buyer_auth0_id}/transactions", h.AdminListTransactions)
+	r.Post("/buyers/{buyer_auth0_id}/adjust", h.AdminAdjust)
 	return r
 }
 
@@ -108,6 +110,53 @@ func (h *BalanceHandler) AdminListTransactions(w http.ResponseWriter, r *http.Re
 		return
 	}
 	h.list(w, r, buyer)
+}
+
+type adjustRequest struct {
+	Amount      int64  `json:"amount"`
+	Reason      string `json:"reason"`
+	AdminUserID string `json:"admin_user_id"`
+}
+
+type adjustResponse struct {
+	Transaction domain.Transaction `json:"transaction"`
+	NewBalance  int64              `json:"new_balance"`
+}
+
+// AdminAdjust applies a signed manual adjustment. Frontend: admin app
+// loyalty page. admin_user_id in the body comes from the admin client;
+// gateway also forwards the caller's auth in X-User-ID which would be
+// stricter but this preserves the proto contract for the gRPC parity.
+func (h *BalanceHandler) AdminAdjust(w http.ResponseWriter, r *http.Request) {
+	buyer := chi.URLParam(r, "buyer_auth0_id")
+	if buyer == "" {
+		httputil.Error(w, apperrors.BadRequest("buyer_auth0_id is required"))
+		return
+	}
+	var req adjustRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.Error(w, apperrors.BadRequest("invalid JSON body"))
+		return
+	}
+	// Fall back to the authenticated caller if the client omitted it,
+	// so the audit trail is never empty when the gateway has a user.
+	if req.AdminUserID == "" {
+		req.AdminUserID = r.Header.Get("X-User-ID")
+	}
+	result, err := h.svc.AdjustPoints(r.Context(), port.AdjustPointsInput{
+		BuyerAuth0ID: buyer,
+		Amount:       req.Amount,
+		Reason:       req.Reason,
+		AdminUserID:  req.AdminUserID,
+	})
+	if err != nil {
+		httputil.Error(w, mapError(err))
+		return
+	}
+	httputil.JSON(w, http.StatusOK, adjustResponse{
+		Transaction: *result.Transaction,
+		NewBalance:  result.NewBalance,
+	})
 }
 
 func (h *BalanceHandler) list(w http.ResponseWriter, r *http.Request, buyer string) {

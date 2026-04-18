@@ -1,24 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { tenants, sellers } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { createAdminCommission, listSellers } from "@/lib/api";
+import type { Seller } from "@/lib/types";
+
 export default function NewCommissionRulePage() {
-  const [tenantId, setTenantId] = useState("");
+  const router = useRouter();
+  const t = useTranslations();
+
+  const [sellers, setSellers] = useState<Seller[]>([]);
   const [sellerId, setSellerId] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [rateBasisPoints, setRateBasisPoints] = useState("");
   const [priority, setPriority] = useState("1");
   const [validFrom, setValidFrom] = useState("");
   const [validUntil, setValidUntil] = useState("");
-  const t = useTranslations();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await listSellers();
+      if (!cancelled) setSellers(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const ratePercent = rateBasisPoints ? (Number(rateBasisPoints) / 100).toFixed(2) : "0.00";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(t("newCommission.createdMessage"));
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await createAdminCommission({
+        seller_id: sellerId || null,
+        category_id: categoryId || null,
+        rate_bps: Number(rateBasisPoints),
+        priority: Number(priority),
+        valid_from: new Date(validFrom).toISOString(),
+        valid_until: validUntil ? new Date(validUntil).toISOString() : null,
+      });
+      router.push("/commissions");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("newCommission.errorGeneric"));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -32,26 +67,11 @@ export default function NewCommissionRulePage() {
         onSubmit={handleSubmit}
         className="bg-white rounded-lg border border-border shadow-sm p-6 space-y-6"
       >
-        <div>
-          <label htmlFor="tenant" className="block text-sm font-medium text-text-primary mb-1">
-            {t("newCommission.tenant")} <span className="text-danger">*</span>
-          </label>
-          <select
-            id="tenant"
-            value={tenantId}
-            onChange={(e) => setTenantId(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-            required
-            aria-required="true"
-          >
-            <option value="">{t("newCommission.tenant")}</option>
-            {tenants.map((tn) => (
-              <option key={tn.id} value={tn.id}>
-                {tn.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {error && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger">
+            {error}
+          </div>
+        )}
 
         <div>
           <label htmlFor="seller" className="block text-sm font-medium text-text-primary mb-1">
@@ -79,8 +99,9 @@ export default function NewCommissionRulePage() {
           <input
             id="category"
             type="text"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            placeholder={t("newCommission.categoryHint")}
             className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
           />
         </div>
@@ -160,9 +181,10 @@ export default function NewCommissionRulePage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
+            disabled={submitting}
+            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium disabled:opacity-50"
           >
-            {t("newCommission.create")}
+            {submitting ? t("newCommission.creating") : t("newCommission.create")}
           </button>
           <a
             href="/commissions"

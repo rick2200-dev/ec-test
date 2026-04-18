@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,12 +12,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"google.golang.org/grpc"
 
+	loyaltyv1 "github.com/Riku-KANO/ec-test/services/loyalty/api/gen/go/loyalty/v1"
 	"github.com/Riku-KANO/ec-test/pkg/database"
 	pkgmiddleware "github.com/Riku-KANO/ec-test/pkg/middleware"
 	pkgpubsub "github.com/Riku-KANO/ec-test/pkg/pubsub"
 	"github.com/Riku-KANO/ec-test/pkg/tracing"
+	grpcserver "github.com/Riku-KANO/ec-test/services/loyalty/internal/adapter/grpc"
 	handler "github.com/Riku-KANO/ec-test/services/loyalty/internal/adapter/http"
 	loyaltypubsub "github.com/Riku-KANO/ec-test/services/loyalty/internal/adapter/pubsub"
 	repository "github.com/Riku-KANO/ec-test/services/loyalty/internal/adapter/postgres"
@@ -117,6 +122,21 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// gRPC listener. Only AdjustPoints is currently live; other RPCs
+	// fall through to UnimplementedLoyaltyServiceServer. Same
+	// internal-token gate as HTTP.
+	grpcAddr := ":" + cfg.GRPCPort
+	grpcListener, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		slog.Error("failed to listen for gRPC", "error", err)
+		os.Exit(1)
+	}
+	grpcSrv := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.UnaryInterceptor(pkgmiddleware.UnaryInternalTokenInterceptor(cfg.InternalToken)),
+	)
+	loyaltyv1.RegisterLoyaltyServiceServer(grpcSrv, grpcserver.NewServer(svc))
+
 	// Start the reservation reaper goroutine so stale pending holds
 	// auto-release their pending_redemption.
 	reaperCtx, reaperCancel := context.WithCancel(context.Background())
@@ -148,6 +168,14 @@ func main() {
 	}
 
 	go func() {
+		slog.Info("starting loyalty gRPC server", "addr", grpcAddr)
+		if err := grpcSrv.Serve(grpcListener); err != nil {
+			slog.Error("gRPC server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	go func() {
 		slog.Info("starting loyalty service", "addr", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "error", err)
@@ -160,6 +188,7 @@ func main() {
 	sig := <-quit
 	slog.Info("shutting down", "signal", sig.String())
 
+	grpcSrv.GracefulStop()
 	subscriberCancel()
 	reaperCancel()
 

@@ -13,7 +13,6 @@ export interface AdminDashboardStatCard {
 export interface AdminPendingApplicationRow {
   id: string;
   name: string;
-  tenantName: string;
   createdAtLabel: string;
   badge: StatusBadgePresenterProps;
 }
@@ -30,15 +29,17 @@ export interface AdminDashboardPagePresenterProps {
     title: string;
     viewAllHref: string;
     viewAllLabel: string;
+    emptyLabel: string;
     columnLabels: {
       sellerName: string;
-      tenant: string;
       applicationDate: string;
       status: string;
     };
     rows: AdminPendingApplicationRow[];
   };
-  serviceHealthSection: {
+  // Optional: service health is not instrumented yet; omit to hide the
+  // panel entirely.
+  serviceHealthSection?: {
     title: string;
     services: AdminServiceHealthRow[];
   };
@@ -88,9 +89,6 @@ export function AdminDashboardPagePresenter({
                     {pendingSection.columnLabels.sellerName}
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    {pendingSection.columnLabels.tenant}
-                  </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                     {pendingSection.columnLabels.applicationDate}
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
@@ -99,37 +97,49 @@ export function AdminDashboardPagePresenter({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {pendingSection.rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-hover transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-text-primary">{row.name}</td>
-                    <td className="px-6 py-4 text-sm text-text-secondary">{row.tenantName}</td>
-                    <td className="px-6 py-4 text-sm text-text-secondary">{row.createdAtLabel}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadgePresenter {...row.badge} />
+                {pendingSection.rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-6 text-center text-sm text-text-secondary">
+                      {pendingSection.emptyLabel}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  pendingSection.rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-surface-hover transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                        {row.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-text-secondary">
+                        {row.createdAtLabel}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadgePresenter {...row.badge} />
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Platform health */}
-        <div className="bg-white rounded-lg border border-border shadow-sm">
-          <div className="px-6 py-4 border-b border-border">
-            <h3 className="text-lg font-semibold text-text-primary">
-              {serviceHealthSection.title}
-            </h3>
+        {serviceHealthSection && (
+          <div className="bg-white rounded-lg border border-border shadow-sm">
+            <div className="px-6 py-4 border-b border-border">
+              <h3 className="text-lg font-semibold text-text-primary">
+                {serviceHealthSection.title}
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
+              {serviceHealthSection.services.map((service) => (
+                <div key={service.name} className="flex items-center justify-between">
+                  <span className="text-sm text-text-primary">{service.name}</span>
+                  <StatusBadgePresenter {...service.badge} />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="p-6 space-y-4">
-            {serviceHealthSection.services.map((service) => (
-              <div key={service.name} className="flex items-center justify-between">
-                <span className="text-sm text-text-primary">{service.name}</span>
-                <StatusBadgePresenter {...service.badge} />
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

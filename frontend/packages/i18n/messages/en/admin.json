@@ -22,11 +22,13 @@
     "monthlyTransaction": "Monthly Transaction Volume",
     "monthlyCommission": "Monthly Commission Revenue",
     "pendingApplications": "Pending Seller Applications",
+    "noPending": "No pending applications",
     "serviceHealth": "Service Health Status",
     "sellerName": "Seller Name",
     "tenant": "Tenant",
     "applicationDate": "Application Date",
-    "status": "Status"
+    "status": "Status",
+    "metricUnavailable": "Aggregation API not implemented"
   },
   "sellers": {
     "title": "Sellers",
@@ -45,10 +47,15 @@
     "connected": "Connected",
     "notConnected": "Not Connected",
     "approve": "Approve",
+    "approving": "Approving...",
     "suspend": "Suspend",
-    "resume": "Resume"
+    "resume": "Resume",
+    "loading": "Loading...",
+    "empty": "No sellers yet. While admin auth is not wired up, this view renders empty."
   },
   "commissions": {
+    "loading": "Loading...",
+    "empty": "No commission rules configured yet",
     "title": "Commission Settings",
     "description": "Manage commission rules",
     "createNew": "Create New Rule",
@@ -65,11 +72,11 @@
   "newCommission": {
     "title": "Create New Commission Rule",
     "description": "Set up a new commission rule",
-    "tenant": "Tenant",
     "seller": "Seller",
-    "sellerOptional": "Seller (optional)",
+    "sellerOptional": "Seller (optional, blank = all sellers)",
     "category": "Category",
-    "categoryOptional": "Category (optional)",
+    "categoryOptional": "Category ID (optional)",
+    "categoryHint": "UUID-form category ID",
     "allSellers": "All Sellers",
     "rate": "Commission Rate (basis points)",
     "rateHint": "100 basis points = 1%",
@@ -80,8 +87,9 @@
     "validUntil": "Valid Until",
     "validUntilOptional": "Valid Until (optional)",
     "create": "Create",
+    "creating": "Creating...",
     "cancel": "Cancel",
-    "createdMessage": "Commission rule created (mock)"
+    "errorGeneric": "Failed to create commission rule"
   },
   "analytics": {
     "title": "Platform Analytics",
@@ -93,7 +101,8 @@
     "transactionTrend": "Transaction Trend",
     "salesBySeller": "Sales by Seller",
     "salesByCategory": "Sales by Category",
-    "chartPlaceholder": "Chart component (coming soon)"
+    "chartPlaceholder": "Chart component (coming soon)",
+    "metricUnavailable": "Aggregation API not implemented"
   },
   "plans": {
     "title": "Subscription Plans",
@@ -258,5 +267,10 @@
   },
   "admin": {
     "role": "Administrator"
+  },
+  "settings": {
+    "title": "System Settings",
+    "description": "Configure platform-wide settings",
+    "empty": "No settings are configurable yet. Branding, default commission rate, and other controls will land here as they are introduced."
   }
 }

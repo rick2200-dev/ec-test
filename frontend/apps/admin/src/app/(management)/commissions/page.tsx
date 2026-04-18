@@ -1,8 +1,45 @@
-import { commissionRules } from "@/lib/mock-data";
-import { getTranslations } from "next-intl/server";
+"use client";
 
-export default async function CommissionsPage() {
-  const t = await getTranslations();
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+
+import { listAdminCommissions, listSellers } from "@/lib/api";
+import type { CommissionRule, Seller } from "@/lib/types";
+
+function formatRate(bps: number): string {
+  if (!Number.isFinite(bps) || bps < 0) return "-";
+  return `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString();
+}
+
+export default function CommissionsPage() {
+  const t = useTranslations();
+  const [rules, setRules] = useState<CommissionRule[]>([]);
+  const [sellerById, setSellerById] = useState<Record<string, Seller>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const [rs, sellers] = await Promise.all([listAdminCommissions(), listSellers()]);
+      if (cancelled) return;
+      const byId: Record<string, Seller> = {};
+      for (const s of sellers) byId[s.id] = s;
+      setRules(rs);
+      setSellerById(byId);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -25,9 +62,6 @@ export default async function CommissionsPage() {
             <thead>
               <tr className="border-b border-border bg-surface">
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  {t("commissions.tenant")}
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   {t("commissions.seller")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
@@ -45,24 +79,43 @@ export default async function CommissionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {commissionRules.map((rule) => (
-                <tr key={rule.id} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-text-primary">
-                    {rule.tenantName}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">
-                    {rule.sellerName ?? t("commissions.allSellers")}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">
-                    {rule.category ?? t("commissions.allCategories")}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-text-primary">{rule.rate}%</td>
-                  <td className="px-6 py-4 text-sm text-text-primary">{rule.priority}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">
-                    {rule.validFrom} ~ {rule.validUntil ?? t("commissions.unlimited")}
+              {loading && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-6 text-center text-sm text-text-secondary">
+                    {t("commissions.loading")}
                   </td>
                 </tr>
-              ))}
+              )}
+              {!loading && rules.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-6 text-center text-sm text-text-secondary">
+                    {t("commissions.empty")}
+                  </td>
+                </tr>
+              )}
+              {!loading &&
+                rules.map((rule) => {
+                  const sellerName =
+                    rule.seller_id && sellerById[rule.seller_id]
+                      ? sellerById[rule.seller_id]!.name
+                      : t("commissions.allSellers");
+                  return (
+                    <tr key={rule.id} className="hover:bg-surface-hover transition-colors">
+                      <td className="px-6 py-4 text-sm text-text-primary">{sellerName}</td>
+                      <td className="px-6 py-4 text-sm text-text-secondary">
+                        {rule.category_id ?? t("commissions.allCategories")}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                        {formatRate(rule.rate_bps)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-text-primary">{rule.priority}</td>
+                      <td className="px-6 py-4 text-sm text-text-secondary">
+                        {formatDate(rule.valid_from)} ~{" "}
+                        {rule.valid_until ? formatDate(rule.valid_until) : t("commissions.unlimited")}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

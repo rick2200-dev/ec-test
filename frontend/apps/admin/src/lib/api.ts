@@ -23,7 +23,7 @@ import type {
   PointsBalance,
   PointsTransactionListResponse,
 } from "@ec-marketplace/types";
-import type { Seller, SubscriptionPlan } from "./types";
+import type { CommissionRule, Seller, SubscriptionPlan } from "./types";
 
 export { fetchAPI, ApiError, jsonOrThrow } from "@ec-marketplace/api-client";
 
@@ -62,6 +62,52 @@ export async function listSellers(): Promise<Seller[]> {
     total: 0,
   });
   return res.items ?? [];
+}
+
+// Approves a pending seller application. Only makes sense when the
+// seller is currently in pending state.
+export async function approveAdminSeller(id: string): Promise<void> {
+  const res = await fetchAPI(`/api/v1/admin/sellers/${encodeURIComponent(id)}/approve`, {
+    method: "PUT",
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(body || `approve failed: ${res.status}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Commissions
+// ---------------------------------------------------------------------------
+
+interface CommissionsListResponse {
+  items: CommissionRule[];
+  total: number;
+}
+
+export async function listAdminCommissions(): Promise<CommissionRule[]> {
+  const res = await softList<CommissionsListResponse>("/api/v1/admin/commissions", {
+    items: [],
+    total: 0,
+  });
+  return res.items ?? [];
+}
+
+export interface CreateCommissionInput {
+  seller_id: string | null;
+  category_id: string | null;
+  rate_bps: number;
+  priority: number;
+  valid_from: string;
+  valid_until: string | null;
+}
+
+export async function createAdminCommission(input: CreateCommissionInput): Promise<CommissionRule> {
+  const res = await fetchAPI("/api/v1/admin/commissions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<CommissionRule>(res);
 }
 
 // ---------------------------------------------------------------------------

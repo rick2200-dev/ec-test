@@ -1,15 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import StatusBadge from "@/components/StatusBadge";
-import { sellers } from "@/lib/mock-data";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+
+import StatusBadge from "@/components/StatusBadge";
+import { approveAdminSeller, listSellers } from "@/lib/api";
+import type { Seller } from "@/lib/types";
 
 type FilterTab = "all" | "pending" | "approved" | "suspended";
 
+function formatRateBps(bps: number): string {
+  if (!Number.isFinite(bps) || bps <= 0) return "-";
+  return `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString();
+}
+
 export default function SellersPage() {
-  const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const t = useTranslations();
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    const items = await listSellers();
+    setSellers(items);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const handleApprove = async (seller: Seller) => {
+    if (busyId) return;
+    setBusyId(seller.id);
+    try {
+      await approveAdminSeller(seller.id);
+      await reload();
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: "all", label: t("sellers.all") },
@@ -18,8 +57,11 @@ export default function SellersPage() {
     { key: "suspended", label: t("sellers.suspended") },
   ];
 
-  const filteredSellers =
-    activeTab === "all" ? sellers : sellers.filter((s) => s.status === activeTab);
+  const filteredSellers = sellers.filter((s) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "suspended") return s.status === "suspended" || s.status === "rejected";
+    return s.status === activeTab;
+  });
 
   return (
     <div className="space-y-6">
@@ -28,7 +70,6 @@ export default function SellersPage() {
         <p className="text-text-secondary mt-1">{t("sellers.description")}</p>
       </div>
 
-      {/* Filter tabs */}
       <div className="flex gap-1 bg-surface rounded-lg p-1 w-fit" role="tablist">
         {tabs.map((tab) => (
           <button
@@ -56,9 +97,6 @@ export default function SellersPage() {
                   {t("sellers.sellerName")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  {t("sellers.tenant")}
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
                   {t("sellers.status")}
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
@@ -76,56 +114,67 @@ export default function SellersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredSellers.map((seller) => (
-                <tr key={seller.id} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-text-primary">{seller.name}</td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{seller.tenantName}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={seller.status} />
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-primary">{seller.commissionRate}%</td>
-                  <td className="px-6 py-4">
-                    {seller.stripeConnected ? (
-                      <span className="text-success text-sm font-medium">
-                        {t("sellers.connected")}
-                      </span>
-                    ) : (
-                      <span className="text-text-secondary text-sm">
-                        {t("sellers.notConnected")}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-text-secondary">{seller.createdAt}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {seller.status === "pending" && (
-                        <button
-                          className="text-sm text-success hover:text-green-700 font-medium"
-                          aria-label={`${t("sellers.approve")} ${seller.name}`}
-                        >
-                          {t("sellers.approve")}
-                        </button>
-                      )}
-                      {seller.status === "approved" && (
-                        <button
-                          className="text-sm text-danger hover:text-red-700 font-medium"
-                          aria-label={`${t("sellers.suspend")} ${seller.name}`}
-                        >
-                          {t("sellers.suspend")}
-                        </button>
-                      )}
-                      {seller.status === "suspended" && (
-                        <button
-                          className="text-sm text-accent hover:text-accent-hover font-medium"
-                          aria-label={`${t("sellers.resume")} ${seller.name}`}
-                        >
-                          {t("sellers.resume")}
-                        </button>
-                      )}
-                    </div>
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-center text-sm text-text-secondary">
+                    {t("sellers.loading")}
                   </td>
                 </tr>
-              ))}
+              )}
+              {!loading && filteredSellers.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-6 text-center text-sm text-text-secondary">
+                    {t("sellers.empty")}
+                  </td>
+                </tr>
+              )}
+              {!loading &&
+                filteredSellers.map((seller) => {
+                  const stripeConnected = seller.stripe_account_id !== "";
+                  const displayStatus =
+                    seller.status === "rejected" ? "suspended" : seller.status;
+                  return (
+                    <tr key={seller.id} className="hover:bg-surface-hover transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-text-primary">
+                        {seller.name}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={displayStatus} />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-text-primary">
+                        {formatRateBps(seller.commission_rate_bps)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {stripeConnected ? (
+                          <span className="text-success text-sm font-medium">
+                            {t("sellers.connected")}
+                          </span>
+                        ) : (
+                          <span className="text-text-secondary text-sm">
+                            {t("sellers.notConnected")}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-text-secondary">
+                        {formatDate(seller.created_at)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          {seller.status === "pending" && (
+                            <button
+                              onClick={() => handleApprove(seller)}
+                              disabled={busyId === seller.id}
+                              className="text-sm text-success hover:text-green-700 font-medium disabled:opacity-50"
+                              aria-label={`${t("sellers.approve")} ${seller.name}`}
+                            >
+                              {busyId === seller.id ? t("sellers.approving") : t("sellers.approve")}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

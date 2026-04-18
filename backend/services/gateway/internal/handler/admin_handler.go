@@ -13,6 +13,7 @@ import (
 type AdminHandler struct {
 	auth         *proxy.ServiceClient
 	subscription *proxy.ServiceClient
+	order        *proxy.ServiceClient
 }
 
 // NewAdminHandler creates a new AdminHandler.
@@ -20,6 +21,7 @@ func NewAdminHandler(svc *proxy.Services) *AdminHandler {
 	return &AdminHandler{
 		auth:         svc.Auth,
 		subscription: svc.Subscription,
+		order:        svc.Order,
 	}
 }
 
@@ -67,6 +69,30 @@ func (h *AdminHandler) ApproveSeller(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("proxy to auth failed", "error", err)
 		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "auth service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// ListCommissions proxies the commission-rule catalog owned by order-svc.
+// GET /commissions
+func (h *AdminHandler) ListCommissions(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.order.Get(r.Context(), "/commissions", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+// CreateCommission forwards rule creation to order-svc.
+// POST /commissions
+func (h *AdminHandler) CreateCommission(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.order.Post(r.Context(), "/commissions", r.Body)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
 		return
 	}
 	writeRaw(w, status, body)
