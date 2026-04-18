@@ -49,10 +49,14 @@ func (f *fakeCouponStore) SetStatus(ctx context.Context, id uuid.UUID, status do
 }
 
 type fakeRedemptionStore struct {
-	redemption      *domain.CouponRedemption
-	refundedAmount  int64
-	fullyRefunded   bool
-	applyCallCount  int
+	redemption     *domain.CouponRedemption
+	refundedAmount int64
+	fullyRefunded  bool
+	applyCallCount int
+	// refundEvents tracks which (redemption, cancelled_order) pairs
+	// have been claimed via InsertRefundEvent, mirroring the DB's
+	// UNIQUE(redemption_id, cancelled_order_id) contract.
+	refundEvents map[string]struct{}
 }
 
 func (f *fakeRedemptionStore) Insert(ctx context.Context, r *domain.CouponRedemption) error {
@@ -101,6 +105,18 @@ func (f *fakeRedemptionStore) ApplyPartialRefund(ctx context.Context, redemption
 		f.fullyRefunded = true
 	}
 	return applied, justFinished, false, nil
+}
+
+func (f *fakeRedemptionStore) InsertRefundEvent(ctx context.Context, redemptionID, cancelledOrderID uuid.UUID, share int64, reason string) error {
+	if f.refundEvents == nil {
+		f.refundEvents = map[string]struct{}{}
+	}
+	key := redemptionID.String() + "|" + cancelledOrderID.String()
+	if _, ok := f.refundEvents[key]; ok {
+		return port.ErrDuplicateRefundEvent
+	}
+	f.refundEvents[key] = struct{}{}
+	return nil
 }
 
 type immediateTx struct{}
@@ -261,6 +277,76 @@ func TestRefundRedemption_MissingRedemptionSkips(t *testing.T) {
 	}
 	if !res.Skipped {
 		t.Errorf("expected Skipped=true, got %+v", res)
+	}
+}
+
+// TestRefundRedemption_PerOrderIdempotentOnRedelivery is the direct
+// regression test for the per-order double-refund bug: if the same
+// order.cancelled event is redelivered (Pub/Sub at-least-once), the
+// refund must apply exactly once. Without the InsertRefundEvent
+// gate, ApplyPartialRefund would see refunded_at still NULL (cart is
+// only partially refunded) and add the share a second time.
+func TestRefundRedemption_PerOrderIdempotentOnRedelivery(t *testing.T) {
+	svc, coupons, red, reservationID, _ := setupService()
+	orderA := uuid.New()
+
+	// First delivery: applies 333 to a 1000-discount cart.
+	res1, err := svc.RefundRedemption(context.Background(), reservationID, orderA, 333, "cancel")
+	if err != nil {
+		t.Fatalf("first delivery: %v", err)
+	}
+	if res1.AppliedAmount != 333 || res1.FullyRefunded {
+		t.Errorf("first delivery unexpected: %+v", res1)
+	}
+
+	// Pub/Sub redelivers the SAME cancel event. Must not double-count.
+	res2, err := svc.RefundRedemption(context.Background(), reservationID, orderA, 333, "cancel")
+	if err != nil {
+		t.Fatalf("redelivery: %v", err)
+	}
+	if !res2.AlreadyRefunded {
+		t.Error("redelivery must report AlreadyRefunded")
+	}
+	if res2.AppliedAmount != 0 {
+		t.Errorf("redelivery applied %d, expected 0", res2.AppliedAmount)
+	}
+	if red.refundedAmount != 333 {
+		t.Errorf("refunded_amount = %d, want 333 (single apply despite redelivery)", red.refundedAmount)
+	}
+
+	// Different order's cancel for the same reservation still works.
+	orderB := uuid.New()
+	res3, err := svc.RefundRedemption(context.Background(), reservationID, orderB, 333, "cancel")
+	if err != nil {
+		t.Fatalf("order B cancel: %v", err)
+	}
+	if res3.AppliedAmount != 333 || res3.FullyRefunded {
+		t.Errorf("order B cancel unexpected: %+v", res3)
+	}
+	if red.refundedAmount != 666 {
+		t.Errorf("after order B cancel refunded_amount = %d, want 666", red.refundedAmount)
+	}
+
+	// Third order's cancel fully refunds, triggers one seat release.
+	orderC := uuid.New()
+	res4, err := svc.RefundRedemption(context.Background(), reservationID, orderC, 334, "cancel")
+	if err != nil {
+		t.Fatalf("order C cancel: %v", err)
+	}
+	if !res4.FullyRefunded {
+		t.Error("order C cancel must be fully refunded")
+	}
+	if len(coupons.decrementLog) != 1 {
+		t.Errorf("seat release count = %d, want 1", len(coupons.decrementLog))
+	}
+
+	// Redelivering order C post-full-refund: still idempotent.
+	_, err = svc.RefundRedemption(context.Background(), reservationID, orderC, 334, "cancel")
+	if err != nil {
+		t.Fatalf("post-full redelivery: %v", err)
+	}
+	if len(coupons.decrementLog) != 1 {
+		t.Errorf("post-full redelivery released seat again; log len = %d", len(coupons.decrementLog))
 	}
 }
 

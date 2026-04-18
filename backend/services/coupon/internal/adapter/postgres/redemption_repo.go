@@ -278,6 +278,29 @@ func (r *RedemptionRepository) ApplyPartialRefund(ctx context.Context, redemptio
 	return applied, fullyRefunded, alreadyFull, err
 }
 
+// InsertRefundEvent writes a per-(redemption, cancelled_order) row.
+// UNIQUE (redemption_id, cancelled_order_id) makes this the arbiter
+// of per-order refund idempotency: a redelivered order.cancelled for
+// the same order hits the constraint and the caller returns
+// AlreadyRefunded without re-applying the share.
+func (r *RedemptionRepository) InsertRefundEvent(ctx context.Context, redemptionID, cancelledOrderID uuid.UUID, shareApplied int64, reason string) error {
+	return database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO coupon_svc.coupon_refund_events
+			   (redemption_id, cancelled_order_id, share_applied, reason)
+			 VALUES ($1, $2, $3, $4)`,
+			redemptionID, cancelledOrderID, shareApplied, reason,
+		)
+		if err != nil {
+			if isDuplicateRefundEvent(err) {
+				return port.ErrDuplicateRefundEvent
+			}
+			return fmt.Errorf("insert refund event: %w", err)
+		}
+		return nil
+	})
+}
+
 // isDuplicateRedemption recognizes the (coupon_id, order_id) UNIQUE
 // violation. Matching on the constraint name keeps us from catching an
 // unrelated UNIQUE (e.g. a future PK on id).
@@ -288,4 +311,17 @@ func isDuplicateRedemption(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "coupon_redemptions_coupon_order_unique") ||
 		(strings.Contains(msg, "duplicate key") && strings.Contains(msg, "coupon_redemptions"))
+}
+
+// isDuplicateRefundEvent recognizes the (redemption_id, cancelled_order_id)
+// UNIQUE violation on coupon_refund_events. Narrows the string match
+// to the expected constraint name so unrelated PK conflicts surface
+// as the real error.
+func isDuplicateRefundEvent(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "coupon_refund_events_per_order_unique") ||
+		(strings.Contains(msg, "duplicate key") && strings.Contains(msg, "coupon_refund_events"))
 }

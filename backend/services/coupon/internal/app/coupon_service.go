@@ -454,21 +454,45 @@ func (s *Service) RefundRedemption(ctx context.Context, reservationID, orderID u
 			return nil
 		}
 
+		// (1) Claim the (redemption, cancelled_order) pair via a
+		// UNIQUE-constrained ledger insert. The first INSERT for a
+		// given cancelled order wins; a redelivered
+		// order.cancelled event hits ErrDuplicateRefundEvent and
+		// short-circuits as AlreadyRefunded *for this order*. This
+		// is what makes the per-order refund idempotent — without
+		// it, a redelivered event would pass the refunded_at IS
+		// NULL guard on ApplyPartialRefund and add the same share
+		// a second time.
+		if err := s.redemptions.InsertRefundEvent(ctx, redemption.ID, orderID, share, reason); err != nil {
+			if errors.Is(err, port.ErrDuplicateRefundEvent) {
+				out.AlreadyRefunded = true
+				return nil
+			}
+			return fmt.Errorf("insert refund event: %w", err)
+		}
+
+		// (2) Now that this order's share is claimed exactly once,
+		// apply it to the redemption's accumulated refunded_amount.
+		// The repo still caps at discount_applied defensively.
 		applied, fully, alreadyFull, err := s.redemptions.ApplyPartialRefund(ctx, redemption.ID, share, reason)
 		if err != nil {
 			return fmt.Errorf("apply partial refund: %w", err)
 		}
 		if alreadyFull {
+			// Another order already brought the redemption to full
+			// refund in a concurrent tx — our event row stays on the
+			// ledger as audit, but we didn't actually move the
+			// accumulator.
 			out.AlreadyRefunded = true
 			return nil
 		}
 		out.AppliedAmount = applied
 		out.FullyRefunded = fully
 		if fully {
-			// Releasing the seat happens exactly on the transition to
-			// fully-refunded. usage_count is floored at zero in the
-			// repo, so a would-be double-release from a redelivered
-			// "final" cancel is harmless.
+			// Releasing the seat happens exactly on the transition
+			// to fully-refunded. DecrementUsage is floored at zero,
+			// so a would-be double-release from a racing tx is
+			// harmless.
 			if err := s.coupons.DecrementUsage(ctx, redemption.CouponID); err != nil {
 				return fmt.Errorf("decrement usage on full refund: %w", err)
 			}

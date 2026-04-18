@@ -89,7 +89,11 @@ type RedemptionStore interface {
 	StatsByCoupon(ctx context.Context, couponID uuid.UUID) (count int, totalDiscount int64, err error)
 
 	// ApplyPartialRefund credits `share` worth of refund against the
-	// redemption. Semantics:
+	// redemption. Called by the app layer AFTER a successful
+	// InsertRefundEvent so the two steps together are per-order
+	// idempotent.
+	//
+	// Semantics:
 	//   - applied:       amount actually added (capped at the unrefunded
 	//                    remainder so a wrong-sized share is clipped
 	//                    safely, not rejected)
@@ -99,4 +103,15 @@ type RedemptionStore interface {
 	//                    before this call (replay, returns without
 	//                    touching anything)
 	ApplyPartialRefund(ctx context.Context, redemptionID uuid.UUID, share int64, reason string) (applied int64, fullyRefunded, alreadyFull bool, err error)
+
+	// InsertRefundEvent records that a specific cancelled order has
+	// contributed its share to the redemption's refunded_amount.
+	// UNIQUE (redemption_id, cancelled_order_id) makes the first
+	// INSERT the arbiter — a redelivered order.cancelled event for
+	// the same order hits the constraint and the caller returns
+	// AlreadyRefunded without re-applying the share.
+	//
+	// Returns ErrDuplicateRefundEvent when the (redemption, order)
+	// pair has already been recorded.
+	InsertRefundEvent(ctx context.Context, redemptionID, cancelledOrderID uuid.UUID, shareApplied int64, reason string) error
 }

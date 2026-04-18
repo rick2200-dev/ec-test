@@ -14,4 +14,10 @@ var (
 	// Insert. App returns the existing redemption row and reports
 	// already_committed=true to the caller.
 	ErrDuplicateRedemption = errors.New("duplicate redemption")
+
+	// ErrDuplicateRefundEvent: (redemption_id, cancelled_order_id)
+	// UNIQUE violation on InsertRefundEvent. App treats this as
+	// "already refunded this order's share" and reports
+	// AlreadyRefunded=true without mutating the redemption.
+	ErrDuplicateRefundEvent = errors.New("duplicate refund event")
 )

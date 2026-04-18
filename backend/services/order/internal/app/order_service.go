@@ -792,24 +792,47 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			}
 		}
 
-		// --- (C) One-time publish, gated on paid_event_published_at ---
-		// Running this block on every successful pass (not just
-		// transferPending) is what guarantees shipping / notification
-		// / recommend / loyalty-earn-fanin receive `order.paid` even
-		// when an earlier attempt got past the transfer but died
-		// before publish because coupon or loyalty Commit erroreda.
-		// The MarkPaidEventPublished update uses a WHERE NULL guard
-		// so concurrent handler runs serialize at the row level.
+		// --- (C) Claim → Publish → Mark ---
+		// Closes two separate reliability windows:
+		//
+		//   C.1 Claim: ClaimPaidEventPublish atomically serializes
+		//     concurrent handler runs with a TTL-bounded row lock.
+		//     Only the winner proceeds to C.2. Losers skip — either
+		//     the current claim-holder is publishing (and will mark
+		//     on success), or the row is already fully published.
+		//     The TTL self-heals a crashed publisher: once
+		//     publishClaimTTL elapses another attempt may re-claim.
+		//
+		//   C.2 Publish: PublishProtoEventWithErr returns the broker
+		//     error instead of swallowing it. If either event fails
+		//     we return an error so Stripe redelivers the webhook —
+		//     the next attempt re-claims (after TTL) and re-publishes.
+		//     Subscribers are idempotent by order_id so a duplicate
+		//     caused by a racing stale-claim recovery is tolerable;
+		//     a DROPPED event is not.
+		//
+		//   C.3 Mark: MarkPaidEventPublished stamps the final "done"
+		//     flag, which makes C.1 fail on all future attempts and
+		//     short-circuits the whole block.
 		if order.PaidEventPublishedAt != nil {
-			// Already published on a prior attempt — skip entirely.
 			continue
 		}
+		claimed, err := s.orderRepo.ClaimPaidEventPublish(ctx, order.ID, publishClaimTTL)
+		if err != nil {
+			return apperrors.Internal("claim paid event publish slot", err)
+		}
+		if !claimed {
+			slog.Info("paid-event publish claim held by another handler; skipping",
+				"order_id", order.ID, "payment_intent", stripePaymentIntentID)
+			continue
+		}
+
 		lineItems, linesErr := s.loadPaidLineItems(ctx, order.ID)
 		if linesErr != nil {
 			slog.Warn("failed to load line items for order.paid event; publishing without them",
 				"order_id", order.ID, "error", linesErr)
 		}
-		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", &orderv1.OrderPaid{
+		if err := pubsub.PublishProtoEventWithErr(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", &orderv1.OrderPaid{
 			OrderId:                 order.ID.String(),
 			SellerId:                order.SellerID.String(),
 			BuyerAuth0Id:            order.BuyerAuth0ID,
@@ -821,20 +844,26 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			PointDiscountAmount:     order.PointDiscountAmount,
 			SubtotalBeforeDiscounts: order.SubtotalAmount,
 			PointsEarned:            order.PointsEarned,
-		})
-		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", &orderv1.PayoutCompleted{
+		}); err != nil {
+			slog.Error("failed to publish order.paid; returning error so Stripe retries",
+				"error", err, "order_id", order.ID)
+			return apperrors.Internal("publish order.paid", err)
+		}
+		if err := pubsub.PublishProtoEventWithErr(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", &orderv1.PayoutCompleted{
 			PayoutId:         payout.ID.String(),
 			OrderId:          order.ID.String(),
 			SellerId:         order.SellerID.String(),
 			Amount:           payout.Amount,
 			Currency:         payout.Currency,
 			StripeTransferId: transferID,
-		})
-		// Stamp the guard column. A failure here is a real issue
-		// because the next retry will re-publish (tiny risk of
-		// duplicate events for one order); we log loudly instead of
-		// returning error, because we already published — there is
-		// nothing productive a Stripe retry can do about it.
+		}); err != nil {
+			slog.Error("failed to publish payout.completed; returning error so Stripe retries",
+				"error", err, "order_id", order.ID)
+			return apperrors.Internal("publish payout.completed", err)
+		}
+		// Both publishes succeeded → stamp the done flag. A failure
+		// here means the next Stripe retry will republish (idempotent
+		// at subscriber-level), which is still safer than dropping.
 		if _, err := s.orderRepo.MarkPaidEventPublished(ctx, order.ID); err != nil {
 			slog.Error("failed to mark paid_event_published_at; next retry may republish",
 				"error", err, "order_id", order.ID)
