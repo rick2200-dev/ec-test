@@ -28,13 +28,16 @@ func NewOrderCancelledSubscriber(svc port.CouponUseCase, subscriber pkgpubsub.Su
 }
 
 // orderCancelledPayload mirrors the subset of order.v1.OrderCancelled
-// this subscriber needs. OrderID + CouponID are both UUIDs, and
-// either being empty means "not a coupon-bearing cancellation" —
-// subscriber short-circuits without an error.
+// this subscriber needs. coupon_reservation_id + coupon_discount_amount
+// are stamped on every seller order that received a share of the cart-
+// wide coupon, so per-seller cancellations can refund their slice of
+// the shared redemption without needing to look anything up across
+// services.
 type orderCancelledPayload struct {
-	OrderID  string `json:"order_id"`
-	CouponID string `json:"coupon_id"`
-	Reason   string `json:"reason"`
+	OrderID              string `json:"order_id"`
+	CouponReservationID  string `json:"coupon_reservation_id"`
+	CouponDiscountAmount int64  `json:"coupon_discount_amount,string"`
+	Reason               string `json:"reason"`
 }
 
 // Run blocks until ctx is cancelled. Non-order.cancelled events are
@@ -49,19 +52,23 @@ func (s *OrderCancelledSubscriber) Run(ctx context.Context, subscription string)
 		if err := decodePayload(event.Data, &payload); err != nil {
 			return fmt.Errorf("decode order.cancelled payload: %w", err)
 		}
-		if payload.OrderID == "" || payload.CouponID == "" {
+		if payload.OrderID == "" || payload.CouponReservationID == "" {
 			// Non-coupon cancellation — nothing for us to do.
 			return nil
 		}
-		couponID, err := uuid.Parse(payload.CouponID)
+		reservationID, err := uuid.Parse(payload.CouponReservationID)
 		if err != nil {
-			return fmt.Errorf("parse coupon_id: %w", err)
+			return fmt.Errorf("parse coupon_reservation_id: %w", err)
 		}
 		orderID, err := uuid.Parse(payload.OrderID)
 		if err != nil {
 			return fmt.Errorf("parse order_id: %w", err)
 		}
-		if _, err := s.svc.RefundRedemption(ctx, couponID, orderID, payload.Reason); err != nil {
+		// The payload carries this seller order's share of the
+		// cart-wide discount; the service accumulates it into the
+		// single redemption row and only releases the coupon seat
+		// when the row is fully refunded.
+		if _, err := s.svc.RefundRedemption(ctx, reservationID, orderID, payload.CouponDiscountAmount, payload.Reason); err != nil {
 			return fmt.Errorf("refund redemption: %w", err)
 		}
 		return nil

@@ -164,6 +164,9 @@ func (f *fakeOrderStore) SetPointsEarned(ctx context.Context, orderID uuid.UUID,
 func (f *fakeOrderStore) MarkPaidEventPublished(ctx context.Context, orderID uuid.UUID) (bool, error) {
 	return true, nil
 }
+func (f *fakeOrderStore) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error) {
+	return true, nil
+}
 
 // fakeStripe records the amount passed to CreatePlatformPaymentIntent
 // so tests can assert post-discount totals.

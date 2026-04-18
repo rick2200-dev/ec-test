@@ -67,19 +67,39 @@ func Decode(data []byte) (Event, error) {
 // contract (services/*/api/proto/*/events.proto). The payload is encoded as
 // protojson with snake_case field names so the wire format stays compatible
 // with existing JSON-based consumers. It is a no-op if publisher is nil.
+//
+// This is the fire-and-forget variant: publish failures are logged but the
+// caller never sees them. Suitable for best-effort notifications where a
+// lost event is tolerable. For cases that need publish-success-or-retry
+// (e.g. webhook handlers that gate idempotency markers on publish success),
+// use PublishProtoEventWithErr instead.
 func PublishProtoEvent(ctx context.Context, publisher Publisher, eventType, topic string, payload proto.Message) {
+	if err := PublishProtoEventWithErr(ctx, publisher, eventType, topic, payload); err != nil {
+		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
+	}
+}
+
+// PublishProtoEventWithErr is the error-returning variant of
+// PublishProtoEvent. Callers use this when publish success drives a
+// downstream state transition — e.g. stamping a
+// `paid_event_published_at` column only after the event actually lands,
+// so a Pub/Sub outage during the first webhook delivery doesn't leave
+// subscribers permanently unaware that the order was paid.
+//
+// A nil publisher is treated as success (matches the fire-and-forget
+// variant's "safe for tests without a broker" behavior). A marshal
+// failure is returned as an error because a malformed payload is a
+// caller bug, not an external broker hiccup.
+func PublishProtoEventWithErr(ctx context.Context, publisher Publisher, eventType, topic string, payload proto.Message) error {
 	if publisher == nil {
-		return
+		return nil
 	}
 	raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(payload)
 	if err != nil {
-		slog.Warn("failed to marshal proto event payload", "event_type", eventType, "error", err)
-		return
+		return fmt.Errorf("marshal proto event: %w", err)
 	}
 	event := NewEvent(eventType, json.RawMessage(raw))
-	if err := publisher.Publish(ctx, topic, event); err != nil {
-		slog.Warn("failed to publish event", "event_type", eventType, "topic", topic, "error", err)
-	}
+	return publisher.Publish(ctx, topic, event)
 }
 
 // PublishEvent publishes an event, logging a warning on failure.

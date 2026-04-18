@@ -93,18 +93,26 @@ type CouponReservation struct {
 	ReleasedAt            *time.Time        `json:"released_at,omitempty"`
 }
 
-// CouponRedemption is an immutable ledger entry written once a
-// reservation commits. (coupon_id, order_id) is UNIQUE so webhook
-// replays insert nothing the second time and the handler reports
-// "already_committed" to the caller.
+// CouponRedemption is the ledger entry for a committed coupon use.
+// (coupon_id, order_id) is UNIQUE so webhook replays insert nothing
+// the second time and the handler reports "already_committed".
+//
+// One redemption row covers the whole cart — Commit writes it keyed
+// on the anchor order_id, and the per-seller-order shares are
+// tracked by accumulating RefundedAmount as individual orders get
+// cancelled. refunded_at is stamped (and the coupon seat released
+// via DecrementUsage) only when RefundedAmount reaches DiscountApplied.
 type CouponRedemption struct {
-	ID              uuid.UUID `json:"id"`
-	CouponID        uuid.UUID `json:"coupon_id"`
-	BuyerAuth0ID    string    `json:"buyer_auth0_id"`
-	OrderID         uuid.UUID `json:"order_id"`
-	DiscountApplied int64     `json:"discount_applied"`
-	ReservationID   uuid.UUID `json:"reservation_id"`
-	CommittedAt     time.Time `json:"committed_at"`
+	ID              uuid.UUID  `json:"id"`
+	CouponID        uuid.UUID  `json:"coupon_id"`
+	BuyerAuth0ID    string     `json:"buyer_auth0_id"`
+	OrderID         uuid.UUID  `json:"order_id"`
+	DiscountApplied int64      `json:"discount_applied"`
+	RefundedAmount  int64      `json:"refunded_amount"`
+	ReservationID   uuid.UUID  `json:"reservation_id"`
+	CommittedAt     time.Time  `json:"committed_at"`
+	RefundedAt      *time.Time `json:"refunded_at,omitempty"`
+	RefundedReason  string     `json:"refunded_reason,omitempty"`
 }
 
 // SellerSubtotal is the per-seller-group subtotal passed in at Reserve

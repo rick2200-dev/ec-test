@@ -52,11 +52,56 @@ func (r *RedemptionRepository) GetByCouponAndOrder(ctx context.Context, couponID
 	)
 	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx,
-			`SELECT id, coupon_id, buyer_auth0_id, order_id, discount_applied, reservation_id, committed_at
+			`SELECT id, coupon_id, buyer_auth0_id, order_id, discount_applied, refunded_amount,
+			        reservation_id, committed_at, refunded_at, refunded_reason
 			 FROM coupon_svc.coupon_redemptions
 			 WHERE coupon_id = $1 AND order_id = $2`,
 			couponID, orderID,
-		).Scan(&red.ID, &red.CouponID, &red.BuyerAuth0ID, &red.OrderID, &red.DiscountApplied, &red.ReservationID, &red.CommittedAt)
+		).Scan(
+			&red.ID, &red.CouponID, &red.BuyerAuth0ID, &red.OrderID,
+			&red.DiscountApplied, &red.RefundedAmount,
+			&red.ReservationID, &red.CommittedAt, &red.RefundedAt, &red.RefundedReason,
+		)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, nil
+	}
+	return &red, nil
+}
+
+// GetByReservationID loads the cart's redemption via its reservation
+// foreign key. Used by cancellation: each seller order in the cart
+// carries the same coupon_reservation_id on its OrderCancelled event,
+// so any of them can find the redemption without knowing the anchor
+// order_id.
+func (r *RedemptionRepository) GetByReservationID(ctx context.Context, reservationID uuid.UUID) (*domain.CouponRedemption, error) {
+	var (
+		red   domain.CouponRedemption
+		found bool
+	)
+	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx,
+			`SELECT id, coupon_id, buyer_auth0_id, order_id, discount_applied, refunded_amount,
+			        reservation_id, committed_at, refunded_at, refunded_reason
+			 FROM coupon_svc.coupon_redemptions
+			 WHERE reservation_id = $1`,
+			reservationID,
+		).Scan(
+			&red.ID, &red.CouponID, &red.BuyerAuth0ID, &red.OrderID,
+			&red.DiscountApplied, &red.RefundedAmount,
+			&red.ReservationID, &red.CommittedAt, &red.RefundedAt, &red.RefundedReason,
+		)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -91,7 +136,8 @@ func (r *RedemptionRepository) ListByBuyer(ctx context.Context, buyerAuth0ID str
 			return nil
 		}
 		q, err := tx.Query(ctx,
-			`SELECT id, coupon_id, buyer_auth0_id, order_id, discount_applied, reservation_id, committed_at
+			`SELECT id, coupon_id, buyer_auth0_id, order_id, discount_applied, refunded_amount,
+			        reservation_id, committed_at, refunded_at, refunded_reason
 			 FROM coupon_svc.coupon_redemptions
 			 WHERE buyer_auth0_id = $1
 			 ORDER BY committed_at DESC
@@ -104,7 +150,11 @@ func (r *RedemptionRepository) ListByBuyer(ctx context.Context, buyerAuth0ID str
 		defer q.Close()
 		for q.Next() {
 			var red domain.CouponRedemption
-			if err := q.Scan(&red.ID, &red.CouponID, &red.BuyerAuth0ID, &red.OrderID, &red.DiscountApplied, &red.ReservationID, &red.CommittedAt); err != nil {
+			if err := q.Scan(
+				&red.ID, &red.CouponID, &red.BuyerAuth0ID, &red.OrderID,
+				&red.DiscountApplied, &red.RefundedAmount,
+				&red.ReservationID, &red.CommittedAt, &red.RefundedAt, &red.RefundedReason,
+			); err != nil {
 				return err
 			}
 			rows = append(rows, red)
@@ -151,25 +201,81 @@ func (r *RedemptionRepository) StatsByCoupon(ctx context.Context, couponID uuid.
 	return count, total, nil
 }
 
-// MarkRefunded stamps refunded_at + refunded_reason on a redemption.
-// The WHERE filters out already-refunded rows so a replayed cancel
-// returns (false, nil) without clobbering the original timestamp.
-func (r *RedemptionRepository) MarkRefunded(ctx context.Context, redemptionID uuid.UUID, reason string) (bool, error) {
-	var affected bool
-	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx,
-			`UPDATE coupon_svc.coupon_redemptions
-			 SET refunded_at = NOW(), refunded_reason = $2
-			 WHERE id = $1 AND refunded_at IS NULL`,
-			redemptionID, reason,
+// ApplyPartialRefund increments refunded_amount by the caller-supplied
+// share. It caps the new total at discount_applied (defense against a
+// caller passing a too-large share) and, on the transition that brings
+// refunded_amount equal to discount_applied, stamps refunded_at so the
+// app layer can release the coupon seat exactly once.
+//
+// Returns:
+//   - applied:        the amount actually added to refunded_amount
+//     (may be smaller than share when another concurrent call or the
+//     cap already exhausted the remaining discount)
+//   - fullyRefunded:  whether this call brought the redemption to a
+//     fully-refunded state (→ caller decrements usage_count)
+//   - alreadyFull:    refunded_at was already set before this call
+//     (replayed cancel delivery — idempotent no-op)
+//
+// The whole update is a single atomic UPDATE ... RETURNING, so racing
+// cancel deliveries are serialized at the row level.
+func (r *RedemptionRepository) ApplyPartialRefund(ctx context.Context, redemptionID uuid.UUID, share int64, reason string) (applied int64, fullyRefunded, alreadyFull bool, err error) {
+	if share <= 0 {
+		return 0, false, false, nil
+	}
+	err = database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		// Use LEAST() to cap the increment at what's still unrefunded
+		// on the row; a single UPDATE is safer than read-modify-write
+		// under concurrent cancel deliveries.
+		var (
+			oldRefunded int64
+			newRefunded int64
+			applied_    int64
+			fully       bool
+			wasFull     bool
 		)
-		if err != nil {
-			return fmt.Errorf("mark redemption refunded: %w", err)
+		rowErr := tx.QueryRow(ctx,
+			`WITH prev AS (
+			     SELECT discount_applied, refunded_amount, refunded_at IS NOT NULL AS was_full
+			       FROM coupon_svc.coupon_redemptions
+			      WHERE id = $1
+			 ),
+			 upd AS (
+			     UPDATE coupon_svc.coupon_redemptions
+			        SET refunded_amount = LEAST(refunded_amount + $2, discount_applied),
+			            refunded_at     = CASE
+			                WHEN refunded_at IS NULL
+			                     AND LEAST(refunded_amount + $2, discount_applied) >= discount_applied
+			                THEN NOW()
+			                ELSE refunded_at
+			            END,
+			            refunded_reason = CASE
+			                WHEN refunded_at IS NULL
+			                     AND LEAST(refunded_amount + $2, discount_applied) >= discount_applied
+			                THEN $3
+			                ELSE refunded_reason
+			            END
+			      WHERE id = $1 AND refunded_at IS NULL
+			  RETURNING refunded_amount, refunded_at IS NOT NULL AS now_full
+			 )
+			 SELECT prev.refunded_amount,
+			        COALESCE(upd.refunded_amount, prev.refunded_amount),
+			        COALESCE(upd.now_full, false),
+			        prev.was_full
+			   FROM prev LEFT JOIN upd ON TRUE`,
+			redemptionID, share, reason,
+		).Scan(&oldRefunded, &newRefunded, &fully, &wasFull)
+		if rowErr != nil {
+			return fmt.Errorf("apply partial refund: %w", rowErr)
 		}
-		affected = tag.RowsAffected() > 0
+		alreadyFull = wasFull
+		if !wasFull {
+			applied_ = newRefunded - oldRefunded
+			fullyRefunded = fully
+		}
+		applied = applied_
 		return nil
 	})
-	return affected, err
+	return applied, fullyRefunded, alreadyFull, err
 }
 
 // isDuplicateRedemption recognizes the (coupon_id, order_id) UNIQUE

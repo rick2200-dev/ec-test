@@ -16,6 +16,14 @@ import (
 	"github.com/Riku-KANO/ec-test/services/order/internal/port"
 )
 
+// publishClaimTTL caps how long a HandlePaymentSuccess pass can hold
+// the paid-event publish slot before another concurrent delivery may
+// re-acquire it. Must comfortably exceed the 95th-percentile publish
+// latency (Pub/Sub publish + marshal + DB roundtrip). Two minutes is
+// generous for the current footprint and still fast enough that a
+// crashed publisher doesn't block downstream consumers for long.
+const publishClaimTTL = 2 * time.Minute
+
 // OrderService implements order business logic.
 //
 // couponReserver / pointReserver / enableCoupons / enableLoyalty are
@@ -435,11 +443,34 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		batch[i].Order.TotalAmount = orderTotal
 		cartTotal += orderTotal
 	}
-	if couponReservation != nil && len(batch) > 0 {
-		batch[0].Order.CouponID = &couponReservation.CouponID
+	// Stamp coupon identifiers on EVERY order that actually received
+	// a discount share. Originally only the anchor order (batch[0])
+	// carried these so the webhook Commit could use a single round-
+	// trip, but cancellation runs per-order: if a non-anchor order is
+	// cancelled, its OrderCancelled event would omit coupon_id and
+	// the coupon subscriber would skip the refund entirely. Making
+	// every discounted order carry the IDs lets the subscriber
+	// compute per-order partial refunds against the single shared
+	// redemption row.
+	//
+	// Commit still uses only the anchor's reservation_id — coupon-svc
+	// writes one redemption per cart, keyed on (coupon_id, anchor
+	// order_id). Per-order refunds find that row via
+	// coupon_reservation_id on the event payload.
+	if couponReservation != nil {
+		cid := couponReservation.CouponID
 		rid := couponReservation.ReservationID
-		batch[0].Order.CouponReservationID = &rid
+		for i := range batch {
+			if couponShares[i] > 0 {
+				batch[i].Order.CouponID = &cid
+				batch[i].Order.CouponReservationID = &rid
+			}
+		}
 	}
+	// Point redemption stays anchor-only: loyalty refund uses the
+	// per-order point_discount_amount from the event payload, and
+	// the refund ledger row is keyed on (order_cancelled, order_id,
+	// refund) — no lookup by reservation_id is needed.
 	if pointReservation != nil && len(batch) > 0 {
 		rid := pointReservation.ReservationID
 		batch[0].Order.PointReservationID = &rid

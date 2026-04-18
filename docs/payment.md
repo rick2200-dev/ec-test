@@ -184,22 +184,31 @@ for each order in orders_by_payment_intent:
      enable_loyalty なら           → loyalty.Commit (redeem + earn、UNIQUE idempotency key)
      失敗時は error を return → Stripe が webhook を再配信 → 次回 (B) を再実行
 
-  ── (C) One-time publish ── (orders.paid_event_published_at IS NULL のときだけ)
-     order.paid と payout.completed をトピックへ発行
-     orders.paid_event_published_at = NOW() に stamp (WHERE NULL ガード付き UPDATE)
+  ── (C) Claim → Publish → Mark (3 ステップ)
+     1. ClaimPaidEventPublish で paid_event_claim_at を TTL 付きで取得
+        (他 handler が保持中 or 完了済みなら skip)
+     2. PublishProtoEventWithErr で order.paid と payout.completed を発行
+        publish 失敗は error 返却 → Stripe 再配信 → TTL 後に再 claim
+     3. MarkPaidEventPublished で paid_event_published_at = NOW() を stamp
+        (WHERE paid_event_published_at IS NULL で最終ガード)
 ```
 
-### なぜ 3 ブロック構造なのか
+### なぜ 3 ブロック + 3 ステップ Publish なのか
 
-**旧実装 1 の問題**: `payout.status != pending` で `continue` していたため、「初回 webhook で Stripe Transfer は成功したが coupon/loyalty Commit で 5xx」シナリオでは、リトライも payout status guard で continue → Commit に到達できなかった。
+**旧実装 1**: `payout.status != pending` で `continue` していたため、「初回 webhook で Stripe Transfer 成功したが coupon/loyalty Commit で 5xx」シナリオで retry でも Commit に到達できなかった。
 
-**旧実装 2 の問題**: (A)(B) に分けたが、publish を `transferPending` ブロック内に置いていたため、初回で transfer 成功 → Commit 失敗 → retry で Commit だけ成功するケースで **publish が永遠に発行されず**、shipping / notification / loyalty-earn-fanin が停滞した。
+**旧実装 2**: (A)(B) に分けたが、publish を `transferPending` ブロック内に置いていたため、初回 transfer 成功 → Commit 失敗 → retry で Commit だけ成功するケースで publish が発行されず、shipping / notification が停滞した。
 
-**新実装 (現状 3 ブロック)**:
+**旧実装 3**: (C) を独立ブロックにしたが、`PublishProtoEvent` は publish 失敗をログだけ出して error を返さず、Pub/Sub 一時失敗でも `MarkPaidEventPublished` まで到達して「発行済み」扱い → retry しても再発行なし。また 2 つの webhook が並行配信されると両方が `paid_event_published_at IS NULL` を見て両方 publish する race があった。
+
+**新実装 (現状 3 ブロック + Claim→Publish→Mark)**:
 - `(A)` は payout `pending` のときだけ → 二重 Stripe Transfer を防ぐ
 - payout allow-list で `failed`/`reversed` は全 skip → 誤コミットを防ぐ
 - `(B)` は pending/completed どちらでも実行 → 初回失敗した Commit を retry で補償可能
-- `(C)` は `paid_event_published_at` DB フラグで gate → Commit 成功した attempt で必ず publish が走る、かつ重複 publish は DB の NULL ガードで弾かれる
+- `(C)` は 3 ステップ:
+  - TTL 付き `paid_event_claim_at` で 1 行ロック相当 (並行 handler を serialize)
+  - `PublishProtoEventWithErr` で publish 失敗を error として受け、両成功後のみ mark
+  - crash で claim が stuck しても TTL (2分) 経過で別 attempt が再取得可能
 
 ### payout.Status の取り扱い
 

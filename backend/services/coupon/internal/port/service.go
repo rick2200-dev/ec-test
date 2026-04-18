@@ -41,20 +41,30 @@ type CouponUseCase interface {
 
 	// --- Cancellation (called by the order.cancelled subscriber) ---
 
-	// RefundRedemption marks a previously committed redemption as
-	// refunded and decrements the coupon's usage_count so the seat
-	// returns to the pool. Idempotent: a second call with the same
-	// (coupon_id, order_id) no-ops and reports already_refunded.
-	RefundRedemption(ctx context.Context, couponID, orderID uuid.UUID, reason string) (*RefundResult, error)
+	// RefundRedemption credits `share` of the coupon's discount back
+	// on cancellation of one seller order in a multi-seller cart.
+	// Cart-wide coupons produce a single redemption row keyed on
+	// (coupon_id, anchor order_id) but discount is distributed per
+	// seller order; each per-order cancellation refunds its own
+	// share via this method, and the seat is released only when the
+	// cumulative refunds reach the full discount.
+	//
+	// reservationID identifies the cart's redemption (each order in
+	// the cart carries the same reservation_id in its cancellation
+	// event). orderID is the cancelled order, included for
+	// idempotency and audit. share is the cancelled order's slice of
+	// the coupon discount.
+	RefundRedemption(ctx context.Context, reservationID uuid.UUID, orderID uuid.UUID, share int64, reason string) (*RefundResult, error)
 }
 
-// RefundResult tells the subscriber whether compensation actually
-// wrote a row. AlreadyRefunded=true on a duplicate delivery.
+// RefundResult describes what the refund call did. The fields tell
+// the subscriber how to log / whether to expect follow-up work.
 type RefundResult struct {
-	RedemptionID     uuid.UUID
-	RefundedAmount   int64
-	AlreadyRefunded  bool
-	Skipped          bool // no matching redemption (order never redeemed this coupon)
+	RedemptionID    uuid.UUID
+	AppliedAmount   int64 // actually credited this call (0 on idempotent replay)
+	FullyRefunded   bool  // reached discount_applied on this call (seat just released)
+	AlreadyRefunded bool  // row was already fully refunded before this call
+	Skipped         bool  // no matching redemption (cancel targets a non-coupon order)
 }
 
 // CreateCouponInput carries just the fields the admin form owns —

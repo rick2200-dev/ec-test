@@ -73,6 +73,12 @@ type RedemptionStore interface {
 
 	GetByCouponAndOrder(ctx context.Context, couponID, orderID uuid.UUID) (*domain.CouponRedemption, error)
 
+	// GetByReservationID loads the redemption that was written when
+	// the reservation committed. Used by the cancellation subscriber
+	// to find the cart's redemption from any seller order's
+	// cancellation event — not just the anchor order's.
+	GetByReservationID(ctx context.Context, reservationID uuid.UUID) (*domain.CouponRedemption, error)
+
 	ListByBuyer(ctx context.Context, buyerAuth0ID string, limit, offset int) ([]domain.CouponRedemption, int, error)
 
 	// CountByBuyerAndCoupon is the per-user usage limit check.
@@ -82,8 +88,15 @@ type RedemptionStore interface {
 	// total discount applied) — cheaper than scanning the raw rows.
 	StatsByCoupon(ctx context.Context, couponID uuid.UUID) (count int, totalDiscount int64, err error)
 
-	// MarkRefunded stamps refunded_at / refunded_reason on a
-	// redemption. Returns (true, nil) on the first call and
-	// (false, nil) on a replay (row already had refunded_at set).
-	MarkRefunded(ctx context.Context, redemptionID uuid.UUID, reason string) (bool, error)
+	// ApplyPartialRefund credits `share` worth of refund against the
+	// redemption. Semantics:
+	//   - applied:       amount actually added (capped at the unrefunded
+	//                    remainder so a wrong-sized share is clipped
+	//                    safely, not rejected)
+	//   - fullyRefunded: true on the transition that takes the row to
+	//                    discount_applied (→ caller releases the seat)
+	//   - alreadyFull:   true when the row was already fully refunded
+	//                    before this call (replay, returns without
+	//                    touching anything)
+	ApplyPartialRefund(ctx context.Context, redemptionID uuid.UUID, share int64, reason string) (applied int64, fullyRefunded, alreadyFull bool, err error)
 }

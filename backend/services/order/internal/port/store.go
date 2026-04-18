@@ -51,6 +51,16 @@ type OrderStore interface {
 	// publish bundle on this flag so Commit-failure retries can still
 	// emit the events eventually.
 	MarkPaidEventPublished(ctx context.Context, orderID uuid.UUID) (bool, error)
+
+	// ClaimPaidEventPublish atomically claims the right to publish
+	// the paid-event bundle for a TTL-bounded window. Returns
+	// (true, nil) when the caller just won the claim and should
+	// proceed to publish; (false, nil) when another handler holds a
+	// fresh claim or the row is already fully published. The claim
+	// self-heals: a stale claim older than ttl is transparently
+	// re-acquired so a crashed mid-publish handler doesn't block
+	// the publish forever.
+	ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error)
 }
 
 // CommissionStore is the driven port for commission rule persistence.

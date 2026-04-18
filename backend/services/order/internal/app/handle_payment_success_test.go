@@ -113,6 +113,26 @@ func (r *recordingOrderStore) MarkPaidEventPublished(ctx context.Context, orderI
 	}
 	return true, nil
 }
+func (r *recordingOrderStore) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error) {
+	// In-memory fake for the claim pattern. Matches the repo semantics:
+	// succeeds on first call (or when the prior claim is older than
+	// ttl), fails when a fresh claim is held or the row is already
+	// published. Stores the claim stamp on the order record so tests
+	// can assert on claim state.
+	o, ok := r.orderByID[orderID]
+	if !ok {
+		return false, nil
+	}
+	if o.PaidEventPublishedAt != nil {
+		return false, nil
+	}
+	if o.PaidEventClaimAt != nil && time.Since(*o.PaidEventClaimAt) < ttl {
+		return false, nil
+	}
+	now := time.Now()
+	o.PaidEventClaimAt = &now
+	return true, nil
+}
 
 type recordingPayoutStore struct {
 	byOrder map[uuid.UUID]*domain.Payout

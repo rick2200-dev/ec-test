@@ -73,6 +73,14 @@ type Order struct {
 	// but also doesn't drop the events when Commit failures force the
 	// handler to return before reaching the original publish site.
 	PaidEventPublishedAt *time.Time `json:"paid_event_published_at,omitempty"`
+
+	// PaidEventClaimAt is the TTL-bounded claim used to serialize
+	// concurrent handler runs through the publish block. Set by
+	// ClaimPaidEventPublish, cleared implicitly when the caller sets
+	// PaidEventPublishedAt. A stale (non-null, older than the TTL)
+	// value is re-acquired by a retry so a crashed publisher doesn't
+	// block publication forever.
+	PaidEventClaimAt *time.Time `json:"paid_event_claim_at,omitempty"`
 }
 
 // TotalDiscount returns the sum of coupon and point discounts applied.

@@ -401,52 +401,91 @@ func (s *Service) ReleaseReservation(ctx context.Context, reservationID uuid.UUI
 	return released, nil
 }
 
-// RefundRedemption reverses a committed redemption when the order is
-// cancelled. The row stays in coupon_redemptions (audit trail) with a
-// refunded_at stamp, and the coupon's usage_count is decremented so
-// another buyer can claim the seat. Idempotent: a replay returns
-// AlreadyRefunded=true. A cancellation for an order that never
-// committed a redemption (e.g. payment failed before Commit) returns
-// Skipped=true — the order-events fan-out triggers this code for
-// every cancelled order regardless of whether it actually used a
-// coupon.
-func (s *Service) RefundRedemption(ctx context.Context, couponID, orderID uuid.UUID, reason string) (*port.RefundResult, error) {
-	if couponID == uuid.Nil || orderID == uuid.Nil {
-		return nil, apperrors.BadRequest("coupon_id and order_id are required")
+// RefundRedemption credits `share` of the coupon discount back when
+// one order in a (potentially multi-order) cart is cancelled. The
+// redemption is cart-wide — commit wrote a single row keyed on the
+// anchor order_id, and the per-order discount distribution is
+// tracked by accumulating refunded_amount here. The coupon seat
+// (usage_count) is only released on the transition that brings
+// refunded_amount equal to discount_applied, which happens on the
+// final cancel of a partially-cancelled cart or on the first cancel
+// of a single-order cart.
+//
+// Idempotency:
+//   - reservation_id resolves to exactly one redemption row; a
+//     cancel event for a non-coupon order passes reservationID =
+//     uuid.Nil and we short-circuit with Skipped=true.
+//   - `order.cancelled` is fired per-order; each delivery carries its
+//     own share. The ApplyPartialRefund SQL is a single atomic
+//     UPDATE guarded by refunded_at IS NULL, so a redelivered event
+//     for the same order can't double-count.
+//   - Clamping at discount_applied belt-and-suspenders a malformed
+//     caller that sends a share larger than what remains.
+func (s *Service) RefundRedemption(ctx context.Context, reservationID, orderID uuid.UUID, share int64, reason string) (*port.RefundResult, error) {
+	if reservationID == uuid.Nil {
+		// Non-coupon order cancellation — nothing to do.
+		return &port.RefundResult{Skipped: true}, nil
 	}
+	if orderID == uuid.Nil {
+		return nil, apperrors.BadRequest("order_id is required")
+	}
+	if share < 0 {
+		return nil, apperrors.BadRequest("share must be non-negative")
+	}
+
 	var out port.RefundResult
 	err := s.tx.RunTx(ctx, func(ctx context.Context) error {
-		redemption, err := s.redemptions.GetByCouponAndOrder(ctx, couponID, orderID)
+		redemption, err := s.redemptions.GetByReservationID(ctx, reservationID)
 		if err != nil {
-			return fmt.Errorf("load redemption: %w", err)
+			return fmt.Errorf("load redemption by reservation: %w", err)
 		}
 		if redemption == nil {
+			// Reservation exists on the order side but no redemption
+			// was committed (e.g. payment failed before Commit).
+			// Nothing to reverse.
 			out.Skipped = true
 			return nil
 		}
 		out.RedemptionID = redemption.ID
-		out.RefundedAmount = redemption.DiscountApplied
-		marked, err := s.redemptions.MarkRefunded(ctx, redemption.ID, reason)
-		if err != nil {
-			return fmt.Errorf("mark refunded: %w", err)
+
+		if share == 0 {
+			// Zero-share cancel on a coupon order is a no-op, but we
+			// still report the redemption so callers can log sensibly.
+			return nil
 		}
-		if !marked {
+
+		applied, fully, alreadyFull, err := s.redemptions.ApplyPartialRefund(ctx, redemption.ID, share, reason)
+		if err != nil {
+			return fmt.Errorf("apply partial refund: %w", err)
+		}
+		if alreadyFull {
 			out.AlreadyRefunded = true
 			return nil
 		}
-		// Decrement usage_count so the freed seat is available
-		// again. DecrementUsage is floored at zero.
-		if err := s.coupons.DecrementUsage(ctx, couponID); err != nil {
-			return fmt.Errorf("decrement usage on refund: %w", err)
+		out.AppliedAmount = applied
+		out.FullyRefunded = fully
+		if fully {
+			// Releasing the seat happens exactly on the transition to
+			// fully-refunded. usage_count is floored at zero in the
+			// repo, so a would-be double-release from a redelivered
+			// "final" cancel is harmless.
+			if err := s.coupons.DecrementUsage(ctx, redemption.CouponID); err != nil {
+				return fmt.Errorf("decrement usage on full refund: %w", err)
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, apperrors.Internal("failed to refund redemption", err)
 	}
-	if out.RedemptionID != uuid.Nil && !out.AlreadyRefunded && !out.Skipped {
-		slog.Info("coupon redemption refunded",
-			"redemption_id", out.RedemptionID, "coupon_id", couponID, "order_id", orderID, "reason", reason)
+	if out.RedemptionID != uuid.Nil && out.AppliedAmount > 0 {
+		slog.Info("coupon redemption refund applied",
+			"redemption_id", out.RedemptionID,
+			"order_id", orderID,
+			"applied", out.AppliedAmount,
+			"fully_refunded", out.FullyRefunded,
+			"reason", reason,
+		)
 	}
 	return &out, nil
 }

@@ -531,6 +531,38 @@ func (r *OrderRepository) MarkPaidEventPublished(ctx context.Context, orderID uu
 	return marked, err
 }
 
+// ClaimPaidEventPublish acquires a TTL-bounded claim on the paid
+// publish slot for this order. The UPDATE is the single atomic
+// synchronization primitive — Postgres serializes concurrent
+// attempts at the row level, and the WHERE clause lets through
+// exactly one winner per TTL window.
+//
+// The claim auto-expires: if a handler crashes between claim and
+// MarkPaidEventPublished, a subsequent Stripe retry arriving after
+// ttl elapses re-acquires cleanly. Tuning ttl vs Stripe's retry
+// cadence is what decides how long a partial failure blocks
+// downstream consumers — pick something comfortably above the 95th
+// percentile publish latency.
+func (r *OrderRepository) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error) {
+	var claimed bool
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx,
+			`UPDATE order_svc.orders
+			 SET paid_event_claim_at = NOW(), updated_at = NOW()
+			 WHERE id = $1
+			   AND paid_event_published_at IS NULL
+			   AND (paid_event_claim_at IS NULL OR paid_event_claim_at < NOW() - ($2::bigint * INTERVAL '1 second'))`,
+			orderID, int64(ttl.Seconds()),
+		)
+		if err != nil {
+			return fmt.Errorf("claim paid event publish: %w", err)
+		}
+		claimed = tag.RowsAffected() > 0
+		return nil
+	})
+	return claimed, err
+}
+
 // SetPointsEarned records the loyalty points earned on order payment.
 // Called from HandlePaymentSuccess after loyalty-svc confirms the
 // ledger write. Safe to call multiple times — the value is the
