@@ -42,6 +42,12 @@ services:
       SHIPPING_SERVICE_URL: http://shipping:8092
       # Must match SHIPPING_INTERNAL_TOKEN on the shipping service.
       SHIPPING_INTERNAL_TOKEN: local-dev-shipping-internal-token
+      COUPON_SERVICE_URL: http://coupon:8093
+      # Must match COUPON_INTERNAL_TOKEN on the coupon service.
+      COUPON_INTERNAL_TOKEN: local-dev-coupon-internal-token
+      LOYALTY_SERVICE_URL: http://loyalty:8094
+      # Must match LOYALTY_INTERNAL_TOKEN on the loyalty service.
+      LOYALTY_INTERNAL_TOKEN: local-dev-loyalty-internal-token
       # Must match AUTH_INTERNAL_TOKEN on the auth service.
       AUTH_INTERNAL_TOKEN: ${AUTH_INTERNAL_TOKEN:-dev-internal-token}
       # Must match CATALOG_INTERNAL_TOKEN on the catalog service.
@@ -180,6 +186,15 @@ services:
       CATALOG_INTERNAL_TOKEN: local-dev-catalog-internal-token
       # Must match cart/inquiry ORDER_INTERNAL_TOKEN.
       ORDER_INTERNAL_TOKEN: local-dev-order-internal-token
+      COUPON_SERVICE_GRPC_ADDR: coupon:50060
+      # Must match COUPON_INTERNAL_TOKEN on the coupon service.
+      COUPON_INTERNAL_TOKEN: local-dev-coupon-internal-token
+      LOYALTY_SERVICE_GRPC_ADDR: loyalty:50061
+      # Must match LOYALTY_INTERNAL_TOKEN on the loyalty service.
+      LOYALTY_INTERNAL_TOKEN: local-dev-loyalty-internal-token
+      # Feature flags: off by default until end-to-end verified.
+      ENABLE_COUPONS: "false"
+      ENABLE_LOYALTY: "false"
     depends_on:
       postgres-order:
         condition: service_healthy
@@ -540,6 +555,82 @@ services:
     networks:
       - backend
 
+  coupon:
+    build:
+      context: ../..
+      dockerfile: backend/services/coupon/Dockerfile
+    # Not publishing host ports: coupon is reached only by gateway
+    # (HTTP) and order (gRPC) over the backend docker network.
+    expose:
+      - "8093"
+      - "50060"
+    environment:
+      HTTP_PORT: "8093"
+      GRPC_PORT: "50060"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: coupon
+      OTEL_TRACES_SAMPLER: parentbased_always_on
+      DATABASE_URL: postgres://coupon_role:localdev@postgres-coupon:5432/coupon_dev?sslmode=disable
+      PUBSUB_PROJECT_ID: local-project
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      # Must match COUPON_INTERNAL_TOKEN on gateway + order.
+      COUPON_INTERNAL_TOKEN: local-dev-coupon-internal-token
+      RESERVATION_TTL_MINUTES: "30"
+    depends_on:
+      postgres-coupon:
+        condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8093/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  loyalty:
+    build:
+      context: ../..
+      dockerfile: backend/services/loyalty/Dockerfile
+    # Not publishing host ports: loyalty is reached only by gateway
+    # (HTTP) and order (gRPC) over the backend docker network.
+    expose:
+      - "8094"
+      - "50061"
+    environment:
+      HTTP_PORT: "8094"
+      GRPC_PORT: "50061"
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: loyalty
+      OTEL_TRACES_SAMPLER: parentbased_always_on
+      DATABASE_URL: postgres://loyalty_role:localdev@postgres-loyalty:5432/loyalty_dev?sslmode=disable
+      PUBSUB_PROJECT_ID: local-project
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+      # Must match LOYALTY_INTERNAL_TOKEN on gateway + order.
+      LOYALTY_INTERNAL_TOKEN: local-dev-loyalty-internal-token
+      # bps: 100 = 1%. Overrideable so QA can turn the earn rate up/down.
+      EARN_RATE_BPS: "100"
+      RESERVATION_TTL_MINUTES: "30"
+    depends_on:
+      postgres-loyalty:
+        condition: service_healthy
+      pubsub-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8094/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
   postgres:
     extends:
       file: docker-compose.deps.yaml
@@ -638,6 +729,20 @@ services:
     networks:
       - backend
 
+  postgres-coupon:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-coupon
+    networks:
+      - backend
+
+  postgres-loyalty:
+    extends:
+      file: docker-compose.deps.yaml
+      service: postgres-loyalty
+    networks:
+      - backend
+
   # One-shot init container that seeds the emulator with every topic +
   # subscription the services expect. Publishers / subscribers fail with
   # NotFound unless the resource exists, and the emulator image itself
@@ -673,3 +778,5 @@ volumes:
   pgdata-catalog:
   pgdata-search:
   pgdata-recommend:
+  pgdata-coupon:
+  pgdata-loyalty:

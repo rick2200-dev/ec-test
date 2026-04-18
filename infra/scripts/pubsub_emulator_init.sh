@@ -12,8 +12,10 @@ HOST="${PUBSUB_EMULATOR_HOST:-pubsub-emulator:8085}"
 
 TOPICS="
 cart-events
+coupon-events
 inquiry-events
 inventory-events
+loyalty-events
 order-events
 payout-events
 product-events
@@ -31,6 +33,8 @@ order-events     order-events-inventory
 order-events     order-events-notification
 order-events     order-events-recommend
 order-events     order-events-shipping
+order-events     order-events-coupon
+order-events     order-events-loyalty
 product-events   product-events-recommend
 product-events   product-events-search
 review-events    review-events-notification
@@ -38,6 +42,8 @@ shipping-events       shipping-events-notification
 shipping-events       shipping-events-order
 subscription-events   subscription-events-search
 user-events           user-events-recommend
+loyalty-events        loyalty-events-notification
+coupon-events         coupon-events-notification
 "
 
 echo "waiting for Pub/Sub emulator at ${HOST}"

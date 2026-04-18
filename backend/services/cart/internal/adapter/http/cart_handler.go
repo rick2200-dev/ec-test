@@ -10,6 +10,7 @@ import (
 	apperrors "github.com/Riku-KANO/ec-test/pkg/errors"
 	"github.com/Riku-KANO/ec-test/pkg/httputil"
 	"github.com/Riku-KANO/ec-test/pkg/tenant"
+	"github.com/Riku-KANO/ec-test/services/cart/internal/domain"
 	"github.com/Riku-KANO/ec-test/services/cart/internal/port"
 )
 
@@ -150,10 +151,15 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, cart)
 }
 
-// checkoutRequest is the payload for POST /cart/checkout.
+// checkoutRequest is the payload for POST /cart/checkout. CouponCode
+// and PointsToRedeem are pass-through to order-svc — cart-svc itself
+// does no validation on them, relying on the order service to return a
+// stable error Code on rejection.
 type checkoutRequest struct {
 	ShippingAddress json.RawMessage `json:"shipping_address"`
 	Currency        string          `json:"currency"`
+	CouponCode      string          `json:"coupon_code,omitempty"`
+	PointsToRedeem  int64           `json:"points_to_redeem,omitempty"`
 }
 
 // Checkout handles POST /cart/checkout.
@@ -175,7 +181,12 @@ func (h *CartHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.svc.Checkout(r.Context(), tc.UserID, req.ShippingAddress, req.Currency)
+	result, err := h.svc.Checkout(r.Context(), tc.UserID, domain.CheckoutOptions{
+		ShippingAddress: req.ShippingAddress,
+		Currency:        req.Currency,
+		CouponCode:      req.CouponCode,
+		PointsToRedeem:  req.PointsToRedeem,
+	})
 	if err != nil {
 		httputil.Error(w, mapError(err))
 		return

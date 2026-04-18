@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package coupon.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/coupon/api/gen/go/coupon/v1;couponv1";
+
+import "google/protobuf/timestamp.proto";
+
+// ─── coupon-events topic ─────────────────────────────────────
+
+// CouponIssued is published when an admin creates a new coupon.
+// Consumers: notification (optional analytics / announcement channel).
+message CouponIssued {
+  string coupon_id = 1;
+  string code = 2;
+  string issuer_type = 3;
+  google.protobuf.Timestamp issued_at = 4;
+}
+
+// CouponRedeemed is published when a reservation is committed (i.e. the
+// corresponding order paid). Consumers: notification ("coupon used"),
+// any future analytics pipeline.
+message CouponRedeemed {
+  string redemption_id = 1;
+  string coupon_id = 2;
+  string code = 3;
+  string buyer_auth0_id = 4;
+  string order_id = 5;
+  int64  discount_applied = 6;
+  google.protobuf.Timestamp committed_at = 7;
+}
+
+// CouponRevoked is published when an admin revokes a coupon. Any
+// pending reservations get released via the revoke flow — consumers
+// treat this as "stop surfacing this code".
+message CouponRevoked {
+  string coupon_id = 1;
+  string code = 2;
+  google.protobuf.Timestamp revoked_at = 3;
+}

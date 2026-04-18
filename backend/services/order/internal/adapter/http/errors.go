@@ -25,6 +25,30 @@ func mapError(err error) error {
 		return apperrors.BadRequest(err.Error())
 	case errors.Is(err, domain.ErrOrderNotPending):
 		return apperrors.Conflict(err.Error())
+	// ─── Discount / coupon mapping ───────────────────────────────
+	// Stable Code values match coupon-svc so the frontend's existing
+	// switch (e.g. "COUPON_EXPIRED" → "This code has expired") works
+	// for buyers regardless of which service produced the error.
+	case errors.Is(err, domain.ErrCouponNotFound):
+		return apperrors.NotFound(err.Error()).WithCode("COUPON_NOT_FOUND")
+	case errors.Is(err, domain.ErrCouponExpired):
+		return apperrors.BadRequest(err.Error()).WithCode("COUPON_EXPIRED")
+	case errors.Is(err, domain.ErrCouponRevoked):
+		return apperrors.BadRequest(err.Error()).WithCode("COUPON_REVOKED")
+	case errors.Is(err, domain.ErrCouponNotStarted):
+		return apperrors.BadRequest(err.Error()).WithCode("COUPON_NOT_STARTED")
+	case errors.Is(err, domain.ErrCouponUsageLimitHit):
+		return apperrors.Conflict(err.Error()).WithCode("COUPON_USAGE_LIMIT")
+	case errors.Is(err, domain.ErrCouponPerUserLimit):
+		return apperrors.Conflict(err.Error()).WithCode("COUPON_PER_USER_LIMIT")
+	case errors.Is(err, domain.ErrCouponMinOrderNotMet):
+		return apperrors.BadRequest(err.Error()).WithCode("COUPON_MIN_ORDER")
+	case errors.Is(err, domain.ErrCouponCurrencyMismatch):
+		return apperrors.BadRequest(err.Error()).WithCode("COUPON_CURRENCY")
+	case errors.Is(err, domain.ErrInsufficientPoints):
+		return apperrors.BadRequest(err.Error()).WithCode("INSUFFICIENT_POINTS")
+	case errors.Is(err, domain.ErrFeatureDisabled):
+		return apperrors.BadRequest(err.Error()).WithCode("FEATURE_DISABLED")
 	default:
 		return apperrors.Internal("internal error", err)
 	}

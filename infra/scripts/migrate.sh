@@ -21,6 +21,8 @@ SERVICES=(
   notification
   recommend
   search
+  coupon
+  loyalty
   grants
 )
 
@@ -62,6 +64,12 @@ db_url_for_service() {
       ;;
     order)
       echo "${ORDER_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5443/order_dev?sslmode=disable}"
+      ;;
+    coupon)
+      echo "${COUPON_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5444/coupon_dev?sslmode=disable}"
+      ;;
+    loyalty)
+      echo "${LOYALTY_DATABASE_URL:-postgres://ecmarket:localdev@localhost:5445/loyalty_dev?sslmode=disable}"
       ;;
     *)
       echo "$DATABASE_URL"

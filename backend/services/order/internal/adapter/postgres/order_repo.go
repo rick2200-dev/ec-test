@@ -52,12 +52,14 @@ func insertOrderTx(ctx context.Context, tx pgx.Tx, order *domain.Order, lines []
 
 	err := tx.QueryRow(ctx,
 		`INSERT INTO order_svc.orders
-		 (id, seller_id, seller_name, buyer_auth0_id, status, subtotal_amount, shipping_fee, commission_amount, total_amount, currency, shipping_address, stripe_payment_intent_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		 (id, seller_id, seller_name, buyer_auth0_id, status, subtotal_amount, shipping_fee, commission_amount, total_amount, currency, shipping_address, stripe_payment_intent_id,
+		  coupon_discount_amount, point_discount_amount, coupon_id, coupon_reservation_id, point_reservation_id, points_earned)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		 RETURNING created_at, updated_at`,
 		order.ID, order.SellerID, order.SellerName, order.BuyerAuth0ID, order.Status,
 		order.SubtotalAmount, order.ShippingFee, order.CommissionAmount, order.TotalAmount, order.Currency,
 		order.ShippingAddress, order.StripePaymentIntentID,
+		order.CouponDiscountAmount, order.PointDiscountAmount, order.CouponID, order.CouponReservationID, order.PointReservationID, order.PointsEarned,
 	).Scan(&order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("insert order: %w", err)
@@ -137,7 +139,10 @@ func (r *OrderRepository) GetByID(ctx context.Context, orderID uuid.UUID) (*doma
 			`SELECT id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
-			        created_at, updated_at
+			        created_at, updated_at,
+			        coupon_discount_amount, point_discount_amount, coupon_id,
+			        coupon_reservation_id, point_reservation_id, points_earned,
+			        paid_event_published_at
 			 FROM order_svc.orders WHERE id = $1`,
 			orderID,
 		).Scan(
@@ -145,6 +150,9 @@ func (r *OrderRepository) GetByID(ctx context.Context, orderID uuid.UUID) (*doma
 			&result.SubtotalAmount, &result.ShippingFee, &result.CommissionAmount, &result.TotalAmount, &result.Currency,
 			&result.ShippingAddress, &result.StripePaymentIntentID, &result.PaidAt, &result.CancelledAt, &result.CancellationReason,
 			&result.CreatedAt, &result.UpdatedAt,
+			&result.CouponDiscountAmount, &result.PointDiscountAmount, &result.CouponID,
+			&result.CouponReservationID, &result.PointReservationID, &result.PointsEarned,
+			&result.PaidEventPublishedAt,
 		)
 		if err == pgx.ErrNoRows {
 			return nil
@@ -250,7 +258,10 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, buyerAuth0ID string, 
 			`SELECT id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
-			        created_at, updated_at
+			        created_at, updated_at,
+			        coupon_discount_amount, point_discount_amount, coupon_id,
+			        coupon_reservation_id, point_reservation_id, points_earned,
+			        paid_event_published_at
 			 FROM order_svc.orders WHERE buyer_auth0_id = $1
 			 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 			buyerAuth0ID, limit, offset,
@@ -267,6 +278,9 @@ func (r *OrderRepository) ListByBuyer(ctx context.Context, buyerAuth0ID string, 
 				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
 				&o.CreatedAt, &o.UpdatedAt,
+				&o.CouponDiscountAmount, &o.PointDiscountAmount, &o.CouponID,
+				&o.CouponReservationID, &o.PointReservationID, &o.PointsEarned,
+				&o.PaidEventPublishedAt,
 			); err != nil {
 				return fmt.Errorf("scan order: %w", err)
 			}
@@ -305,7 +319,10 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID, 
 			`SELECT id, seller_id, seller_name, buyer_auth0_id, status,
 			        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 			        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
-			        created_at, updated_at
+			        created_at, updated_at,
+			        coupon_discount_amount, point_discount_amount, coupon_id,
+			        coupon_reservation_id, point_reservation_id, points_earned,
+			        paid_event_published_at
 			 FROM order_svc.orders WHERE %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 			conditions, argIdx, argIdx+1,
 		)
@@ -324,6 +341,9 @@ func (r *OrderRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID, 
 				&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 				&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
 				&o.CreatedAt, &o.UpdatedAt,
+				&o.CouponDiscountAmount, &o.PointDiscountAmount, &o.CouponID,
+				&o.CouponReservationID, &o.PointReservationID, &o.PointsEarned,
+				&o.PaidEventPublishedAt,
 			); err != nil {
 				return fmt.Errorf("scan order: %w", err)
 			}
@@ -401,7 +421,10 @@ func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, payme
 		`SELECT id, seller_id, seller_name, buyer_auth0_id, status,
 		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 		        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
-		        created_at, updated_at
+		        created_at, updated_at,
+		        coupon_discount_amount, point_discount_amount, coupon_id,
+		        coupon_reservation_id, point_reservation_id, points_earned,
+		        paid_event_published_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1`,
 		paymentIntentID,
 	).Scan(
@@ -409,6 +432,9 @@ func (r *OrderRepository) FindByStripePaymentIntentID(ctx context.Context, payme
 		&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 		&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
 		&o.CreatedAt, &o.UpdatedAt,
+		&o.CouponDiscountAmount, &o.PointDiscountAmount, &o.CouponID,
+		&o.CouponReservationID, &o.PointReservationID, &o.PointsEarned,
+		&o.PaidEventPublishedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -427,7 +453,10 @@ func (r *OrderRepository) FindAllByStripePaymentIntentID(ctx context.Context, pa
 		`SELECT id, seller_id, seller_name, buyer_auth0_id, status,
 		        subtotal_amount, shipping_fee, commission_amount, total_amount, currency,
 		        shipping_address, stripe_payment_intent_id, paid_at, cancelled_at, cancellation_reason,
-		        created_at, updated_at
+		        created_at, updated_at,
+		        coupon_discount_amount, point_discount_amount, coupon_id,
+		        coupon_reservation_id, point_reservation_id, points_earned,
+		        paid_event_published_at
 		 FROM order_svc.orders WHERE stripe_payment_intent_id = $1
 		 ORDER BY created_at ASC`,
 		paymentIntentID,
@@ -445,6 +474,9 @@ func (r *OrderRepository) FindAllByStripePaymentIntentID(ctx context.Context, pa
 			&o.SubtotalAmount, &o.ShippingFee, &o.CommissionAmount, &o.TotalAmount, &o.Currency,
 			&o.ShippingAddress, &o.StripePaymentIntentID, &o.PaidAt, &o.CancelledAt, &o.CancellationReason,
 			&o.CreatedAt, &o.UpdatedAt,
+			&o.CouponDiscountAmount, &o.PointDiscountAmount, &o.CouponID,
+			&o.CouponReservationID, &o.PointReservationID, &o.PointsEarned,
+			&o.PaidEventPublishedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
@@ -469,6 +501,50 @@ func (r *OrderRepository) SetStripePaymentIntentID(ctx context.Context, orderID 
 		}
 		if tag.RowsAffected() == 0 {
 			return fmt.Errorf("order not found")
+		}
+		return nil
+	})
+}
+
+// MarkPaidEventPublished stamps paid_event_published_at with the
+// current timestamp if it was previously NULL. Returns (true, nil)
+// when the column was just set (caller just published events) and
+// (false, nil) on a replay where the column was already populated
+// (caller should not re-publish). The WHERE clause enforces the
+// once-only semantics at the DB level even under concurrent handler
+// replays.
+func (r *OrderRepository) MarkPaidEventPublished(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	var marked bool
+	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx,
+			`UPDATE order_svc.orders
+			 SET paid_event_published_at = NOW(), updated_at = NOW()
+			 WHERE id = $1 AND paid_event_published_at IS NULL`,
+			orderID,
+		)
+		if err != nil {
+			return fmt.Errorf("mark paid event published: %w", err)
+		}
+		marked = tag.RowsAffected() > 0
+		return nil
+	})
+	return marked, err
+}
+
+// SetPointsEarned records the loyalty points earned on order payment.
+// Called from HandlePaymentSuccess after loyalty-svc confirms the
+// ledger write. Safe to call multiple times — the value is the
+// authoritative totals from loyalty-svc, not an accumulator.
+func (r *OrderRepository) SetPointsEarned(ctx context.Context, orderID uuid.UUID, amount int64) error {
+	return database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx,
+			`UPDATE order_svc.orders
+			 SET points_earned = $2, updated_at = NOW()
+			 WHERE id = $1`,
+			orderID, amount,
+		)
+		if err != nil {
+			return fmt.Errorf("set points earned: %w", err)
 		}
 		return nil
 	})

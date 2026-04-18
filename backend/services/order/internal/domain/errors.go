@@ -26,4 +26,25 @@ var (
 	// payment_intent.succeeded for an already-paid or cancelled order must not
 	// trigger a second Stripe Transfer.
 	ErrOrderNotPending = errors.New("order is not in pending status")
+
+	// ─── Discount / coupon sentinels ──────────────────────────────
+	// These mirror coupon-svc's error codes so a 400 from Reserve can
+	// be surfaced to the buyer without swallowing the reason.
+
+	ErrCouponNotFound         = errors.New("coupon not found")
+	ErrCouponExpired          = errors.New("coupon has expired")
+	ErrCouponRevoked          = errors.New("coupon is no longer available")
+	ErrCouponNotStarted       = errors.New("coupon is not yet valid")
+	ErrCouponUsageLimitHit    = errors.New("coupon usage limit reached")
+	ErrCouponPerUserLimit     = errors.New("coupon already used by this buyer")
+	ErrCouponMinOrderNotMet   = errors.New("order subtotal is below the coupon minimum")
+	ErrCouponCurrencyMismatch = errors.New("coupon currency does not match order currency")
+
+	// ErrInsufficientPoints is returned when the buyer asked to redeem
+	// more points than their account has spendable. Mirrors loyalty-svc.
+	ErrInsufficientPoints = errors.New("insufficient point balance")
+
+	// ErrFeatureDisabled is returned when the client supplied coupon_code
+	// or points_to_redeem but the feature flag is off in this environment.
+	ErrFeatureDisabled = errors.New("coupon / loyalty feature is disabled")
 )

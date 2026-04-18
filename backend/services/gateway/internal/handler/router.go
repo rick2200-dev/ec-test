@@ -71,6 +71,8 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 		inquiry := NewInquiryHandler(svc)
 		review := NewReviewHandler(svc)
 		shipping := NewShippingHandler(svc)
+		loyalty := NewLoyaltyHandler(svc)
+		buyerCoupon := NewCouponHandler(svc)
 		api.Route("/buyer", func(br chi.Router) {
 			br.Use(jwtMW.VerifyJWT)
 			br.Get("/products", buyer.ListProducts)
@@ -88,6 +90,19 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 			br.Get("/plans", buyer.ListBuyerPlans)
 			br.Get("/subscription", buyer.GetSubscription)
 			br.Post("/subscription", buyer.Subscribe)
+
+			// Loyalty point endpoints (MVP Phase 2: read-only).
+			br.Route("/points", func(pr chi.Router) {
+				pr.Get("/balance", loyalty.GetBalance)
+				pr.Get("/transactions", loyalty.ListTransactions)
+			})
+
+			// Coupon endpoints — buyer can preview a code before
+			// committing to checkout and look back at past redemptions.
+			br.Route("/coupons", func(cr chi.Router) {
+				cr.Post("/preview", buyerCoupon.Preview)
+				cr.Get("/redemptions", buyerCoupon.ListMyRedemptions)
+			})
 
 			// Cart routes — all buyer purchases start here.
 			br.Route("/cart", func(cr chi.Router) {
@@ -249,6 +264,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 		// Admin routes (requires platform_admin role at the JWT level)
 		admin := NewAdminHandler(svc)
 		platformAdmin := NewPlatformAdminHandler(svc, rbacLoader)
+		coupon := NewCouponHandler(svc)
 		api.Route("/admin", func(ar chi.Router) {
 			ar.Use(jwtMW.VerifyJWT)
 			ar.Use(pkgmw.RequireRole("platform_admin"))
@@ -283,6 +299,15 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 			ar.Group(func(adr chi.Router) {
 				adr.Use(pkgauthz.RequirePlatformAdminRole(rbacLoader, pkgauthz.PlatformAdminRoleSuperAdmin))
 				adr.Get("/audit", platformAdmin.ListAudit)
+			})
+
+			// Coupon administration (platform coupons only in MVP).
+			ar.Route("/coupons", func(cr chi.Router) {
+				cr.Post("/", coupon.AdminCreate)
+				cr.Get("/", coupon.AdminList)
+				cr.Get("/{id}", coupon.AdminGet)
+				cr.Post("/{id}/revoke", coupon.AdminRevoke)
+				cr.Get("/{id}/stats", coupon.AdminStats)
 			})
 		})
 	})

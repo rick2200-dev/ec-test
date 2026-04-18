@@ -75,12 +75,28 @@ func publishOrderCancelled(ctx context.Context, pub pubsub.Publisher, req *Cance
 	}
 
 	evt := &orderv1.OrderCancelled{
-		OrderId:      order.ID.String(),
-		SellerId:     order.SellerID.String(),
-		BuyerAuth0Id: order.BuyerAuth0ID,
-		RequestId:    req.ID.String(),
-		Reason:       req.Reason,
-		LineItems:    cancelledLines,
+		OrderId:              order.ID.String(),
+		SellerId:             order.SellerID.String(),
+		BuyerAuth0Id:         order.BuyerAuth0ID,
+		RequestId:            req.ID.String(),
+		Reason:               req.Reason,
+		LineItems:            cancelledLines,
+		CouponDiscountAmount: order.CouponDiscountAmount,
+		PointDiscountAmount:  order.PointDiscountAmount,
+		PointsEarned:         order.PointsEarned,
+	}
+	// Carry reservation + coupon ids so the coupon and loyalty
+	// subscribers can reverse their own ledger entries without
+	// reverse-looking up order-svc. Empty when the cancelled order
+	// had no discount.
+	if order.CouponID != nil {
+		evt.CouponId = order.CouponID.String()
+	}
+	if order.CouponReservationID != nil {
+		evt.CouponReservationId = order.CouponReservationID.String()
+	}
+	if order.PointReservationID != nil {
+		evt.PointReservationId = order.PointReservationID.String()
 	}
 	if order.CancelledAt != nil {
 		evt.CancelledAt = timestamppb.New(order.CancelledAt.UTC())

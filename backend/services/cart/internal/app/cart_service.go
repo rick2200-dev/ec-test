@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -158,8 +157,7 @@ func (s *CartService) ClearCart(ctx context.Context, buyerAuth0ID string) (*doma
 func (s *CartService) Checkout(
 	ctx context.Context,
 	buyerAuth0ID string,
-	shippingAddress json.RawMessage,
-	currency string,
+	opts domain.CheckoutOptions,
 ) (*domain.CheckoutResult, error) {
 	cart, err := s.cartRepo.Get(ctx, buyerAuth0ID)
 	if err != nil {
@@ -181,6 +179,7 @@ func (s *CartService) Checkout(
 		})
 	}
 
+	currency := opts.Currency
 	if currency == "" {
 		if len(cart.Items) > 0 && cart.Items[0].Currency != "" {
 			currency = cart.Items[0].Currency
@@ -192,8 +191,10 @@ func (s *CartService) Checkout(
 	input := domain.CheckoutInput{
 		BuyerAuth0ID:        buyerAuth0ID,
 		Currency:            currency,
-		ShippingAddressJSON: shippingAddress,
+		ShippingAddressJSON: opts.ShippingAddress,
 		Lines:               lines,
+		CouponCode:          opts.CouponCode,
+		PointsToRedeem:      opts.PointsToRedeem,
 	}
 
 	result, err := s.orderClient.CreateCheckout(ctx, input)

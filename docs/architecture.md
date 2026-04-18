@@ -592,6 +592,8 @@ Stripe ──▶ POST /webhooks/stripe (order service)
 
 - **[docs/payment.md](./payment.md)** — Stripe Connect の設定、決済フロー詳細、コミッション計算、payout ライフサイクル、webhook ハンドリング、べき等性、既知の制約
 - **[docs/cart-and-checkout.md](./cart-and-checkout.md)** — カートのデータモデル、API 仕様、チェックアウトオーケストレーション、フロントエンド連携 (未実装)
+- **[docs/coupons-and-loyalty.md](./coupons-and-loyalty.md)** — クーポン / ポイント機能のサービス構成、データモデル、Reserve/Commit/Release フロー、キャンセル時の refund / reverse_earn
+- **[docs/order-cancellation.md](./order-cancellation.md)** — キャンセル申請〜承認のワークフロー、Stripe Refund / Transfer Reversal、クーポン返金とポイント返還
 
 ---
 

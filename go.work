@@ -8,11 +8,15 @@ use (
 	./backend/services/cart/api/gen/go
 	./backend/services/catalog
 	./backend/services/catalog/api/gen/go
+	./backend/services/coupon
+	./backend/services/coupon/api/gen/go
 	./backend/services/gateway
 	./backend/services/inquiry
 	./backend/services/inquiry/api/gen/go
 	./backend/services/inventory
 	./backend/services/inventory/api/gen/go
+	./backend/services/loyalty
+	./backend/services/loyalty/api/gen/go
 	./backend/services/notification
 	./backend/services/order
 	./backend/services/order/api/gen/go

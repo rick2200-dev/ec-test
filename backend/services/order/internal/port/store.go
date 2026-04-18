@@ -35,6 +35,22 @@ type OrderStore interface {
 	FindAllByStripePaymentIntentID(ctx context.Context, paymentIntentID string) ([]domain.Order, error)
 	// SetStripePaymentIntentID links a Stripe payment intent ID to an order before payment is confirmed.
 	SetStripePaymentIntentID(ctx context.Context, orderID uuid.UUID, paymentIntentID string) error
+
+	// SetPointsEarned records how many loyalty points the order earned
+	// on payment. Called from HandlePaymentSuccess after the ledger row
+	// is appended in loyalty-svc. A failure here is non-fatal — the
+	// loyalty ledger is the authoritative source.
+	SetPointsEarned(ctx context.Context, orderID uuid.UUID, amount int64) error
+
+	// MarkPaidEventPublished stamps paid_event_published_at = NOW()
+	// on the order row but only if it was previously NULL. Returns
+	// (true, nil) when the stamp was applied (publish just succeeded),
+	// (false, nil) on a replay where the column was already set
+	// (events were previously published — skip to avoid duplicates).
+	// HandlePaymentSuccess guards the order.paid / payout.completed
+	// publish bundle on this flag so Commit-failure retries can still
+	// emit the events eventually.
+	MarkPaidEventPublished(ctx context.Context, orderID uuid.UUID) (bool, error)
 }
 
 // CommissionStore is the driven port for commission rule persistence.

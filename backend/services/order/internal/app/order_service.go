@@ -17,6 +17,13 @@ import (
 )
 
 // OrderService implements order business logic.
+//
+// couponReserver / pointReserver / enableCoupons / enableLoyalty are
+// the discount integration seams added alongside the coupon + loyalty
+// MVP. Nil reservers combined with the feature flags off keeps the
+// service usable in environments where either subsystem is not yet
+// deployed — the non-nil check short-circuits cleanly so tests and
+// local dev don't need stubs.
 type OrderService struct {
 	orderRepo          port.OrderStore
 	commissionRepo     port.CommissionStore
@@ -27,6 +34,11 @@ type OrderService struct {
 	sellerLookup       port.SellerLookup
 	skuLookup          port.SKULookup
 	defaultShippingFee int64
+
+	couponReserver port.CouponReserver
+	pointReserver  port.PointReserver
+	enableCoupons  bool
+	enableLoyalty  bool
 }
 
 // NewOrderService creates a new OrderService. sellerLookup and skuLookup
@@ -56,6 +68,23 @@ func NewOrderService(
 		skuLookup:          skuLookup,
 		defaultShippingFee: defaultShippingFee,
 	}
+}
+
+// WithCouponReserver injects the coupon-svc client and turns the
+// coupon feature on. No-op if r is nil.
+func (s *OrderService) WithCouponReserver(r port.CouponReserver, enabled bool) *OrderService {
+	s.couponReserver = r
+	s.enableCoupons = enabled && r != nil
+	return s
+}
+
+// WithPointReserver injects the loyalty-svc client and turns the
+// loyalty feature on. Enables the earn-on-paid path independently of
+// the redeem-at-checkout path, which may not be wired yet.
+func (s *OrderService) WithPointReserver(r port.PointReserver, enabled bool) *OrderService {
+	s.pointReserver = r
+	s.enableLoyalty = enabled && r != nil
+	return s
 }
 
 // CreateOrder creates a new order with Stripe PaymentIntent.
@@ -205,6 +234,15 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		return nil, domain.ErrBuyerRequired
 	}
 
+	// Feature-flag gating. A disabled feature with a non-empty input
+	// fails fast rather than silently dropping the discount.
+	if input.CouponCode != "" && !s.enableCoupons {
+		return nil, domain.ErrFeatureDisabled
+	}
+	if input.PointsToRedeem > 0 && !s.enableLoyalty {
+		return nil, domain.ErrFeatureDisabled
+	}
+
 	currency := input.Currency
 	if currency == "" {
 		currency = "jpy"
@@ -240,9 +278,10 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 	}
 
 	// 3. Build an (Order, Lines, Payout) tuple for each seller group and
-	//    compute the cart-wide total for the PaymentIntent.
+	//    record pre-discount subtotals in order.
 	batch := make([]domain.CheckoutBatchItem, 0, len(groupOrder))
-	var cartTotal int64
+	subtotals := make([]int64, 0, len(groupOrder))
+	var cartSubtotal int64
 	for _, sellerID := range groupOrder {
 		group := groups[sellerID]
 
@@ -267,11 +306,12 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		}
 		var commissionAmount int64
 		if rule != nil {
+			// MVP: coupons are platform-issued → commission is computed
+			// on the pre-discount subtotal so the seller's revenue is
+			// unaffected by the discount. A future seller-issued coupon
+			// phase flips this to post-discount on a per-order basis.
 			commissionAmount = subtotal * int64(rule.RateBps) / 10000
 		}
-
-		orderTotal := subtotal + shippingFeePerOrder
-		cartTotal += orderTotal
 
 		order := &domain.Order{
 			SellerID:         sellerID,
@@ -280,9 +320,9 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 			SubtotalAmount:   subtotal,
 			ShippingFee:      shippingFeePerOrder,
 			CommissionAmount: commissionAmount,
-			TotalAmount:      orderTotal,
 			Currency:         currency,
 			ShippingAddress:  input.ShippingAddress,
+			// TotalAmount is stamped after discount distribution below.
 			// StripePaymentIntentID is stamped after Stripe call below.
 		}
 
@@ -297,6 +337,112 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 			Lines:  lines,
 			Payout: payout,
 		})
+		subtotals = append(subtotals, subtotal)
+		cartSubtotal += subtotal
+	}
+
+	// 3b. Reserve the coupon + points with the external services. The
+	// cleanup closure releases whichever reservation succeeded if a
+	// later step fails; a success flag at the end of CreateCheckout
+	// disables it so only the real failure paths release.
+	var (
+		couponReservation *port.CouponReservation
+		pointReservation  *port.PointReservation
+		checkoutSucceeded bool
+	)
+	defer func() {
+		if checkoutSucceeded {
+			return
+		}
+		if couponReservation != nil && s.couponReserver != nil {
+			releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.couponReserver.Release(releaseCtx, couponReservation.ReservationID, "checkout_failed"); err != nil {
+				slog.Warn("failed to release coupon reservation after checkout failure", "reservation_id", couponReservation.ReservationID, "error", err)
+			}
+		}
+		if pointReservation != nil && s.pointReserver != nil {
+			releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.pointReserver.Release(releaseCtx, pointReservation.ReservationID, "checkout_failed"); err != nil {
+				slog.Warn("failed to release point reservation after checkout failure", "reservation_id", pointReservation.ReservationID, "error", err)
+			}
+		}
+	}()
+
+	if input.CouponCode != "" {
+		sellerSubs := make([]port.SellerSubtotal, len(batch))
+		for i, item := range batch {
+			sellerSubs[i] = port.SellerSubtotal{SellerID: item.Order.SellerID, Subtotal: subtotals[i]}
+		}
+		r, err := s.couponReserver.Reserve(ctx, input.CouponCode, input.BuyerAuth0ID, sellerSubs, currency)
+		if err != nil {
+			return nil, err // domain sentinel or infra error; handler translates
+		}
+		couponReservation = r
+	}
+	if input.PointsToRedeem > 0 {
+		// Clamp requested points to what the cart can actually absorb.
+		// Without this, DistributeDiscount silently caps each
+		// per-seller share at its subtotal but the full reservation
+		// still gets burned on Commit — the buyer would lose more
+		// points than the discount they actually received.
+		var couponDiscountSoFar int64
+		if couponReservation != nil {
+			couponDiscountSoFar = couponReservation.DiscountAmount
+		}
+		maxApplicable := cartSubtotal - couponDiscountSoFar
+		if maxApplicable < 0 {
+			maxApplicable = 0
+		}
+		effective := input.PointsToRedeem
+		if effective > maxApplicable {
+			effective = maxApplicable
+		}
+		if effective > 0 {
+			r, err := s.pointReserver.Reserve(ctx, input.BuyerAuth0ID, effective)
+			if err != nil {
+				return nil, err
+			}
+			pointReservation = r
+		}
+	}
+
+	// 3c. Distribute the discounts across seller orders proportionally
+	// to subtotal. Rounding remainders go to the last non-zero bucket
+	// so sum(shares) == discount exactly.
+	var couponDiscount, pointDiscount int64
+	if couponReservation != nil {
+		couponDiscount = couponReservation.DiscountAmount
+	}
+	if pointReservation != nil {
+		pointDiscount = pointReservation.Amount
+	}
+	couponShares := domain.DistributeDiscount(couponDiscount, subtotals)
+	pointShares := domain.DistributeDiscount(pointDiscount, subtotals)
+
+	// 3d. Apply shares to each order + compute per-order total. Stamp
+	// the reservation IDs on the first (anchor) order only, which
+	// drives the single Commit/Release round-trip on the webhook path.
+	var cartTotal int64
+	for i := range batch {
+		batch[i].Order.CouponDiscountAmount = couponShares[i]
+		batch[i].Order.PointDiscountAmount = pointShares[i]
+		orderTotal := batch[i].Order.SubtotalAmount + batch[i].Order.ShippingFee - couponShares[i] - pointShares[i]
+		if orderTotal < 0 {
+			orderTotal = 0
+		}
+		batch[i].Order.TotalAmount = orderTotal
+		cartTotal += orderTotal
+	}
+	if couponReservation != nil && len(batch) > 0 {
+		batch[0].Order.CouponID = &couponReservation.CouponID
+		rid := couponReservation.ReservationID
+		batch[0].Order.CouponReservationID = &rid
+	}
+	if pointReservation != nil && len(batch) > 0 {
+		rid := pointReservation.ReservationID
+		batch[0].Order.PointReservationID = &rid
 	}
 
 	// 4. Resolve seller_name + product_id snapshots via the owning services'
@@ -364,16 +510,23 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		batch[i].Order.StripePaymentIntentID = &piID
 	}
 
-	// 7. Publish order.created for each order in the checkout.
+	// 7. Publish order.created for each order in the checkout. The
+	// event now carries the per-order discount split + cart-wide
+	// subtotal_before_discounts so downstream analytics (and the
+	// loyalty earn-on-paid subscriber) can compute against the
+	// pre-discount base.
 	for i := range batch {
 		o := batch[i].Order
 		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderCreated, "order-events", &orderv1.OrderCreated{
-			OrderId:               o.ID.String(),
-			SellerId:              o.SellerID.String(),
-			BuyerAuth0Id:          o.BuyerAuth0ID,
-			TotalAmount:           o.TotalAmount,
-			Currency:              o.Currency,
-			StripePaymentIntentId: piID,
+			OrderId:                 o.ID.String(),
+			SellerId:                o.SellerID.String(),
+			BuyerAuth0Id:            o.BuyerAuth0ID,
+			TotalAmount:             o.TotalAmount,
+			Currency:                o.Currency,
+			StripePaymentIntentId:   piID,
+			CouponDiscountAmount:    o.CouponDiscountAmount,
+			PointDiscountAmount:     o.PointDiscountAmount,
+			SubtotalBeforeDiscounts: o.SubtotalAmount,
 		})
 	}
 
@@ -382,15 +535,21 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		"order_count", len(batch),
 		"total", cartTotal,
 		"payment_intent", piID,
+		"coupon_discount", couponDiscount,
+		"point_discount", pointDiscount,
 	)
 
 	// 8. Shape the return value.
 	result := &domain.CheckoutResult{
-		Orders:                make([]domain.OrderWithLines, 0, len(batch)),
-		StripeClientSecret:    clientSecret,
-		StripePaymentIntentID: piID,
-		TotalAmount:           cartTotal,
-		Currency:              currency,
+		Orders:                  make([]domain.OrderWithLines, 0, len(batch)),
+		StripeClientSecret:      clientSecret,
+		StripePaymentIntentID:   piID,
+		TotalAmount:             cartTotal,
+		Currency:                currency,
+		SubtotalBeforeDiscounts: cartSubtotal,
+		CouponDiscountAmount:    couponDiscount,
+		PointDiscountAmount:     pointDiscount,
+		AppliedCouponCode:       input.CouponCode,
 	}
 	for i := range batch {
 		result.Orders = append(result.Orders, domain.OrderWithLines{
@@ -398,6 +557,10 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 			Lines: batch[i].Lines,
 		})
 	}
+	// Disable the failure-path release: the orders are durable and
+	// the reservations will resolve to committed/released via the
+	// webhook handler.
+	checkoutSucceeded = true
 	return result, nil
 }
 
@@ -424,19 +587,61 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		//    reverting a cancelled order back to paid (and therefore
 		//    triggering a Stripe Transfer against funds that have
 		//    already been refunded and reversed).
+		// Cancelled orders short-circuit entirely: refund path already
+		// reversed any Stripe transfer. For any other non-pending
+		// status (paid, processing, …) we keep going so a retried
+		// webhook can redo missed Commit / earn work — those downstream
+		// calls are idempotent via DB UNIQUE keys, and the payout
+		// guard below prevents a double Stripe Transfer.
+		if order.Status == domain.StatusCancelled {
+			slog.Info("skipping payment success for cancelled order",
+				"order_id", order.ID,
+				"payment_intent", stripePaymentIntentID,
+			)
+			continue
+		}
 		if err := s.orderRepo.SetPaid(ctx, order.ID, now, stripePaymentIntentID); err != nil {
 			if errors.Is(err, domain.ErrOrderNotPending) {
-				slog.Info("skipping payment success for order that is not in pending status",
+				// Already transitioned past pending — safe to fall
+				// through to the retry-idempotent Commit path.
+				slog.Info("order already paid, re-running downstream commits if needed",
 					"order_id", order.ID,
 					"order_status", order.Status,
 					"payment_intent", stripePaymentIntentID,
 				)
-				continue
+			} else {
+				return apperrors.Internal("failed to update order to paid", err)
 			}
-			return apperrors.Internal("failed to update order to paid", err)
 		}
 
-		// 2. Locate the pending payout we inserted during checkout.
+		// The webhook handler is split into three sections so a
+		// retried Stripe delivery can complete whatever portion
+		// failed on the first pass:
+		//
+		//   (A) One-shot Stripe transfer — gated by payout.Status =
+		//       pending. A retry with a completed payout short-
+		//       circuits this block entirely; it never creates a
+		//       second Stripe Transfer. failed / reversed / other
+		//       terminal payout states abort the whole iteration
+		//       because the order is no longer in a "payout still
+		//       to settle" shape — proceeding would either mis-
+		//       attribute discounts to a failed order or re-apply
+		//       them to a reversed one.
+		//
+		//   (B) Idempotent downstream commits — coupon redemption
+		//       commit and loyalty redeem + earn. Every step is
+		//       safe to retry: the downstream services dedupe by
+		//       DB UNIQUE constraints. Failures here return an
+		//       error so Stripe replays the webhook.
+		//
+		//   (C) One-time event publish — gated by
+		//       orders.paid_event_published_at, NOT by payout status.
+		//       The flag makes the publish both "at most once"
+		//       (avoid duplicate notifications, etc.) and "at
+		//       least once" (guarantees shipping / notification /
+		//       loyalty-earn fan-in fire even when a prior attempt
+		//       got past the transfer but died before publish).
+
 		payout, err := s.payoutRepo.GetByOrderID(ctx, order.ID)
 		if err != nil {
 			return apperrors.Internal("failed to get payout for order", err)
@@ -446,9 +651,17 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 				"order_id", order.ID, "payment_intent", stripePaymentIntentID)
 			continue
 		}
-		// 2b. Belt-and-braces payout status guard.
-		if payout.Status != domain.PayoutStatusPending {
-			slog.Info("skipping payment success for non-pending payout",
+
+		// Payout-state allowlist. Only `pending` (first delivery)
+		// and `completed` (retry after a successful transfer) are
+		// compatible with the happy-path handler. `failed` and
+		// `reversed` require manual recovery and must not trigger
+		// coupon / loyalty commit work.
+		switch payout.Status {
+		case domain.PayoutStatusPending, domain.PayoutStatusCompleted:
+			// fall through to the handler body
+		default:
+			slog.Warn("payout in terminal non-success state; skipping handler body",
 				"order_id", order.ID,
 				"payout_id", payout.ID,
 				"payout_status", payout.Status,
@@ -457,62 +670,126 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			continue
 		}
 
-		// 3. Resolve the seller's connected Stripe account id.
-		sellerStripeAccountID := getSellerStripeAccountID(order.SellerID)
-
-		// 4. Create the Stripe Transfer on the platform-held funds.
-		transferID, transferErr := s.stripe.CreateTransfer(
-			payout.Amount,
-			payout.Currency,
-			sellerStripeAccountID,
-			stripePaymentIntentID,
+		// --- (A) One-shot transfer block ---
+		var (
+			transferID      string
+			transferPending = payout.Status == domain.PayoutStatusPending
 		)
-		if transferErr != nil {
-			slog.Error("failed to create stripe transfer",
-				"error", transferErr,
+		if transferPending {
+			sellerStripeAccountID := getSellerStripeAccountID(order.SellerID)
+			var transferErr error
+			transferID, transferErr = s.stripe.CreateTransfer(
+				payout.Amount,
+				payout.Currency,
+				sellerStripeAccountID,
+				stripePaymentIntentID,
+			)
+			if transferErr != nil {
+				slog.Error("failed to create stripe transfer",
+					"error", transferErr,
+					"order_id", order.ID,
+					"payout_id", payout.ID,
+					"amount", payout.Amount,
+				)
+				if failErr := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusFailed, nil); failErr != nil {
+					slog.Error("failed to mark payout failed", "error", failErr, "payout_id", payout.ID)
+				}
+				pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutFailed, "payout-events", &orderv1.PayoutFailed{
+					PayoutId: payout.ID.String(),
+					OrderId:  order.ID.String(),
+					SellerId: order.SellerID.String(),
+					Error:    transferErr.Error(),
+				})
+				// Payout has failed but the buyer's money is still
+				// on the platform; don't proceed to Commit the
+				// reservation because the payout state is in a
+				// manual-recovery situation that ops will unstick.
+				continue
+			}
+			if err := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusCompleted, &transferID); err != nil {
+				return apperrors.Internal("failed to mark payout completed", err)
+			}
+			slog.Info("order marked paid and transfer created",
+				"order_id", order.ID,
+				"payment_intent", stripePaymentIntentID,
+				"transfer_id", transferID,
+			)
+		} else {
+			// Retry / replay: payout already completed on a prior
+			// delivery. Skip the Stripe Transfer (avoid duplicate
+			// money movement) and fall through to (B) and (C) so
+			// previously-failed commits or publishes can recover.
+			slog.Info("payout already completed; retrying downstream commits / publish",
 				"order_id", order.ID,
 				"payout_id", payout.ID,
-				"amount", payout.Amount,
+				"payment_intent", stripePaymentIntentID,
 			)
-			if failErr := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusFailed, nil); failErr != nil {
-				slog.Error("failed to mark payout failed", "error", failErr, "payout_id", payout.ID)
+			if payout.StripeTransferID != nil {
+				transferID = *payout.StripeTransferID
 			}
-			pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutFailed, "payout-events", &orderv1.PayoutFailed{
-				PayoutId: payout.ID.String(),
-				OrderId:  order.ID.String(),
-				SellerId: order.SellerID.String(),
-				Error:    transferErr.Error(),
-			})
+		}
+
+		// --- (B) Idempotent downstream commits ---
+		// (B.1) Coupon redemption commit. Dedupes by
+		// (coupon_id, order_id) UNIQUE.
+		if order.CouponReservationID != nil && s.couponReserver != nil {
+			if _, err := s.couponReserver.Commit(ctx, *order.CouponReservationID, order.ID, stripePaymentIntentID); err != nil {
+				slog.Error("coupon commit failed; returning error so Stripe retries the webhook",
+					"error", err, "order_id", order.ID, "reservation_id", *order.CouponReservationID)
+				return apperrors.Internal("failed to commit coupon reservation", err)
+			}
+		}
+		// (B.2) Loyalty commit (redeem + earn). Dedupes by
+		// (reservation_commit, reservation_id, redeem) and
+		// (order_paid, order_id, earn) UNIQUE.
+		if s.pointReserver != nil && s.enableLoyalty {
+			subtotalForEarn := order.SubtotalAmount
+			earnResult, err := s.pointReserver.Commit(ctx, order.PointReservationID, order.BuyerAuth0ID, order.ID.String(), stripePaymentIntentID, subtotalForEarn, order.Currency)
+			if err != nil {
+				slog.Error("loyalty commit failed; returning error so Stripe retries the webhook",
+					"error", err, "order_id", order.ID)
+				return apperrors.Internal("failed to commit loyalty reservation / earn", err)
+			}
+			if earnResult != nil && earnResult.Earned > 0 {
+				// Best-effort mirror of the earned total onto the
+				// order row for display. The loyalty ledger is
+				// authoritative; a slip here is non-critical.
+				if err := s.orderRepo.SetPointsEarned(ctx, order.ID, earnResult.Earned); err != nil {
+					slog.Warn("failed to persist points_earned on order", "error", err, "order_id", order.ID, "earned", earnResult.Earned)
+				}
+				order.PointsEarned = earnResult.Earned
+			}
+		}
+
+		// --- (C) One-time publish, gated on paid_event_published_at ---
+		// Running this block on every successful pass (not just
+		// transferPending) is what guarantees shipping / notification
+		// / recommend / loyalty-earn-fanin receive `order.paid` even
+		// when an earlier attempt got past the transfer but died
+		// before publish because coupon or loyalty Commit erroreda.
+		// The MarkPaidEventPublished update uses a WHERE NULL guard
+		// so concurrent handler runs serialize at the row level.
+		if order.PaidEventPublishedAt != nil {
+			// Already published on a prior attempt — skip entirely.
 			continue
 		}
-
-		// 5. Mark the payout completed with the transfer id.
-		if err := s.payoutRepo.UpdateStatus(ctx, payout.ID, domain.PayoutStatusCompleted, &transferID); err != nil {
-			return apperrors.Internal("failed to mark payout completed", err)
-		}
-
-		slog.Info("order marked paid and transfer created",
-			"order_id", order.ID,
-			"payment_intent", stripePaymentIntentID,
-			"transfer_id", transferID,
-		)
-
-		// 6. Publish order.paid and payout.completed. Line items are
-		// attached so recommend can record one purchased event per product
-		// rather than falling back to the useless order-keyed signal.
 		lineItems, linesErr := s.loadPaidLineItems(ctx, order.ID)
 		if linesErr != nil {
 			slog.Warn("failed to load line items for order.paid event; publishing without them",
 				"order_id", order.ID, "error", linesErr)
 		}
 		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypeOrderPaid, "order-events", &orderv1.OrderPaid{
-			OrderId:               order.ID.String(),
-			SellerId:              order.SellerID.String(),
-			BuyerAuth0Id:          order.BuyerAuth0ID,
-			TotalAmount:           order.TotalAmount,
-			StripePaymentIntentId: stripePaymentIntentID,
-			ShippingAddressJson:   string(order.ShippingAddress),
-			LineItems:             lineItems,
+			OrderId:                 order.ID.String(),
+			SellerId:                order.SellerID.String(),
+			BuyerAuth0Id:            order.BuyerAuth0ID,
+			TotalAmount:             order.TotalAmount,
+			StripePaymentIntentId:   stripePaymentIntentID,
+			ShippingAddressJson:     string(order.ShippingAddress),
+			LineItems:               lineItems,
+			CouponDiscountAmount:    order.CouponDiscountAmount,
+			PointDiscountAmount:     order.PointDiscountAmount,
+			SubtotalBeforeDiscounts: order.SubtotalAmount,
+			PointsEarned:            order.PointsEarned,
 		})
 		pubsub.PublishProtoEvent(ctx, s.publisher, domain.EventTypePayoutCompleted, "payout-events", &orderv1.PayoutCompleted{
 			PayoutId:         payout.ID.String(),
@@ -522,6 +799,15 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 			Currency:         payout.Currency,
 			StripeTransferId: transferID,
 		})
+		// Stamp the guard column. A failure here is a real issue
+		// because the next retry will re-publish (tiny risk of
+		// duplicate events for one order); we log loudly instead of
+		// returning error, because we already published — there is
+		// nothing productive a Stripe retry can do about it.
+		if _, err := s.orderRepo.MarkPaidEventPublished(ctx, order.ID); err != nil {
+			slog.Error("failed to mark paid_event_published_at; next retry may republish",
+				"error", err, "order_id", order.ID)
+		}
 	}
 
 	return nil

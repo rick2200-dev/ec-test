@@ -29,6 +29,17 @@ const (
 )
 
 // Order represents a marketplace order.
+//
+// CouponDiscountAmount / PointDiscountAmount are the per-order shares of
+// the coupon and point redemptions applied at checkout. They are stamped
+// when the order is created and never mutate afterwards. total_amount =
+// subtotal + shipping_fee - coupon_discount - point_discount.
+//
+// CouponReservationID / PointReservationID are the opaque handles the
+// order service holds onto between checkout and Stripe webhook. Only
+// the "anchor" order within a multi-seller cart carries the reservation
+// IDs — they point to a single cart-wide reservation in coupon-svc /
+// loyalty-svc. Commit / Release go against those handles.
 type Order struct {
 	ID                    uuid.UUID       `json:"id"`
 	SellerID              uuid.UUID       `json:"seller_id"`
@@ -47,7 +58,27 @@ type Order struct {
 	CancellationReason    *string         `json:"cancellation_reason,omitempty"`
 	CreatedAt             time.Time       `json:"created_at"`
 	UpdatedAt             time.Time       `json:"updated_at"`
+
+	CouponDiscountAmount int64      `json:"coupon_discount_amount"`
+	PointDiscountAmount  int64      `json:"point_discount_amount"`
+	CouponID             *uuid.UUID `json:"coupon_id,omitempty"`
+	CouponReservationID  *uuid.UUID `json:"coupon_reservation_id,omitempty"`
+	PointReservationID   *uuid.UUID `json:"point_reservation_id,omitempty"`
+	PointsEarned         int64      `json:"points_earned"`
+
+	// PaidEventPublishedAt is the once-per-order guard for emitting
+	// `order.paid` + `payout.completed` to Pub/Sub. Stamped by
+	// HandlePaymentSuccess the first time the publish succeeds, then
+	// checked on every retry so a webhook replay doesn't double-emit
+	// but also doesn't drop the events when Commit failures force the
+	// handler to return before reaching the original publish site.
+	PaidEventPublishedAt *time.Time `json:"paid_event_published_at,omitempty"`
 }
+
+// TotalDiscount returns the sum of coupon and point discounts applied.
+// Useful for event payloads and analytics; the individual fields stay
+// separate on the order row so audits can tell the two apart.
+func (o *Order) TotalDiscount() int64 { return o.CouponDiscountAmount + o.PointDiscountAmount }
 
 // OrderLine represents a line item within an order.
 type OrderLine struct {
@@ -118,11 +149,18 @@ type OrderLineInput struct {
 // service groups the flat Lines list by seller_id, creates one Order per
 // seller in a single transaction, and then issues a single PaymentIntent
 // covering the whole cart.
+//
+// CouponCode and PointsToRedeem are optional — feature flags on the
+// order service env decide whether they are honored. When off, non-empty
+// values are rejected with 400 so clients see a clear failure rather
+// than a silent drop.
 type CheckoutInput struct {
 	BuyerAuth0ID    string              `json:"buyer_auth0_id"`
 	Lines           []CheckoutLineInput `json:"lines"`
 	ShippingAddress json.RawMessage     `json:"shipping_address"`
 	Currency        string              `json:"currency"`
+	CouponCode      string              `json:"coupon_code,omitempty"`
+	PointsToRedeem  int64               `json:"points_to_redeem,omitempty"`
 }
 
 // CheckoutLineInput is one line in a checkout request, carrying the seller_id
@@ -140,11 +178,15 @@ type CheckoutLineInput struct {
 // CheckoutResult is what CreateCheckout returns: the created orders (one per
 // seller) sharing a single Stripe PaymentIntent.
 type CheckoutResult struct {
-	Orders                []OrderWithLines `json:"orders"`
-	StripeClientSecret    string           `json:"stripe_client_secret"`
-	StripePaymentIntentID string           `json:"stripe_payment_intent_id"`
-	TotalAmount           int64            `json:"total_amount"`
-	Currency              string           `json:"currency"`
+	Orders                  []OrderWithLines `json:"orders"`
+	StripeClientSecret      string           `json:"stripe_client_secret"`
+	StripePaymentIntentID   string           `json:"stripe_payment_intent_id"`
+	TotalAmount             int64            `json:"total_amount"`
+	Currency                string           `json:"currency"`
+	SubtotalBeforeDiscounts int64            `json:"subtotal_before_discounts"`
+	CouponDiscountAmount    int64            `json:"coupon_discount_amount"`
+	PointDiscountAmount     int64            `json:"point_discount_amount"`
+	AppliedCouponCode       string           `json:"applied_coupon_code,omitempty"`
 }
 
 // CheckoutBatchItem is one (order, lines, payout) tuple for a single seller

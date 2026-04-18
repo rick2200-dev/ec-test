@@ -42,6 +42,18 @@ type Config struct {
 	// on the subscription service; without it every HasFreeShipping call
 	// will fail Unauthenticated.
 	SubscriptionInternalToken string
+
+	// Coupon + loyalty integration. URLs point at the coupon and
+	// loyalty HTTP services; tokens gate the /internal/* routes. The
+	// Enable* flags decide whether CreateCheckout / HandlePaymentSuccess
+	// actually call those services — we default to off so a fresh
+	// deployment stays safe until the flag is flipped.
+	CouponServiceURL     string
+	CouponInternalToken  string
+	LoyaltyServiceURL    string
+	LoyaltyInternalToken string
+	EnableCoupons        bool
+	EnableLoyalty        bool
 }
 
 // Load reads configuration from environment variables.
@@ -62,7 +74,28 @@ func Load() Config {
 		DefaultShippingFee:          getEnvInt64("DEFAULT_SHIPPING_FEE", 500),
 		InternalToken:             getEnv("ORDER_INTERNAL_TOKEN", ""),
 		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
+
+		CouponServiceURL:     getEnv("COUPON_SERVICE_URL", "http://localhost:8093"),
+		CouponInternalToken:  getEnv("COUPON_INTERNAL_TOKEN", ""),
+		LoyaltyServiceURL:    getEnv("LOYALTY_SERVICE_URL", "http://localhost:8094"),
+		LoyaltyInternalToken: getEnv("LOYALTY_INTERNAL_TOKEN", ""),
+		EnableCoupons:        getEnvBool("ENABLE_COUPONS", false),
+		EnableLoyalty:        getEnvBool("ENABLE_LOYALTY", false),
 	}
+}
+
+// getEnvBool accepts "true" / "1" / "yes" (case-insensitive); everything
+// else — including unset — is false. Keeps feature flags explicit.
+func getEnvBool(key string, fallback bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	switch v {
+	case "true", "TRUE", "True", "1", "yes", "YES", "Yes":
+		return true
+	}
+	return false
 }
 
 func getEnv(key, fallback string) string {

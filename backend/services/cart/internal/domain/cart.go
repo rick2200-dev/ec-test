@@ -100,6 +100,20 @@ type CheckoutInput struct {
 	Currency            string          `json:"currency"`
 	ShippingAddressJSON json.RawMessage `json:"shipping_address"`
 	Lines               []CheckoutLine  `json:"lines"`
+	// Optional discount inputs. Cart-svc passes these through
+	// verbatim; the order service validates + applies them.
+	CouponCode     string `json:"coupon_code,omitempty"`
+	PointsToRedeem int64  `json:"points_to_redeem,omitempty"`
+}
+
+// CheckoutOptions is the handler-facing shape of the optional checkout
+// parameters. It deliberately doesn't carry the cart identity — that is
+// resolved from the authenticated context by the service layer.
+type CheckoutOptions struct {
+	ShippingAddress json.RawMessage
+	Currency        string
+	CouponCode      string
+	PointsToRedeem  int64
 }
 
 // CheckoutLine carries one SKU across the cart→order boundary, including

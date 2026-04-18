@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package loyalty.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/loyalty/api/gen/go/loyalty/v1;loyaltyv1";
+
+import "google/protobuf/timestamp.proto";
+
+// ─── loyalty-events topic ────────────────────────────────────
+
+// PointsEarned is published when a buyer earns points on a paid order.
+// Consumers: notification (in-app "+N pt earned" toast / email).
+message PointsEarned {
+  string transaction_id = 1;
+  string buyer_auth0_id = 2;
+  int64  amount = 3;
+  int64  balance_after = 4;
+  string order_id = 5;
+  google.protobuf.Timestamp earned_at = 6;
+}
+
+// PointsRedeemed is published when reserved points are committed at
+// order.paid time. Consumers: notification, analytics.
+message PointsRedeemed {
+  string transaction_id = 1;
+  string buyer_auth0_id = 2;
+  int64  amount = 3;
+  int64  balance_after = 4;
+  string order_id = 5;
+  google.protobuf.Timestamp redeemed_at = 6;
+}
+
+// PointsRefunded fires when a post-payment order cancellation returns
+// redeemed points to the buyer or reverses previously-earned points.
+// The type field distinguishes "refund" vs "reverse_earn".
+message PointsRefunded {
+  string transaction_id = 1;
+  string buyer_auth0_id = 2;
+  int64  amount = 3;
+  int64  balance_after = 4;
+  string order_id = 5;
+  string type = 6;          // "refund" | "reverse_earn"
+  google.protobuf.Timestamp at = 7;
+}
+
+// PointsAdjusted fires when an admin manually credits/debits points.
+// Consumers: audit.
+message PointsAdjusted {
+  string transaction_id = 1;
+  string buyer_auth0_id = 2;
+  int64  amount = 3;
+  int64  balance_after = 4;
+  string admin_user_id = 5;
+  string reason = 6;
+  google.protobuf.Timestamp at = 7;
+}

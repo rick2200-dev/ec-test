@@ -1,0 +1,5 @@
+GRANT USAGE ON SCHEMA loyalty_svc TO loyalty_role;
+GRANT ALL ON ALL TABLES IN SCHEMA loyalty_svc TO loyalty_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA loyalty_svc TO loyalty_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA loyalty_svc GRANT ALL ON TABLES TO loyalty_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA loyalty_svc GRANT ALL ON SEQUENCES TO loyalty_role;

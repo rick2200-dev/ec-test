@@ -347,16 +347,16 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
 
 ### イベント型
 
-| Type                           | Subscriber                  | 用途                                          |
-| ------------------------------ | --------------------------- | --------------------------------------------- |
-| `order.cancellation_requested` | notification                | セラーに「申請が来ました」メール              |
-| `order.cancellation_rejected`  | notification                | 買い手に「却下されました」メール              |
-| `order.cancellation_approved`  | notification                | 買い手に「承認されました」メール (返金額付き) |
-| `order.cancelled`              | notification, **inventory** | 買い手に最終メール、inventory が在庫解放      |
+| Type                           | Subscriber                                | 用途                                          |
+| ------------------------------ | ----------------------------------------- | --------------------------------------------- |
+| `order.cancellation_requested` | notification                              | セラーに「申請が来ました」メール              |
+| `order.cancellation_rejected`  | notification                              | 買い手に「却下されました」メール              |
+| `order.cancellation_approved`  | notification                              | 買い手に「承認されました」メール (返金額付き) |
+| `order.cancelled`              | notification, inventory, **coupon**, **loyalty** | 買い手に最終メール、inventory が在庫解放、クーポン返金、ポイント返還 |
 
 ### `order.cancelled` のペイロード
 
-`order.cancelled` は単独で「注文がキャンセルされた」を表す汎用イベントで、今後 returns / admin cancel からも発行される可能性がある。ここでは cancellation が先行して発行する。
+`order.cancelled` は単独で「注文がキャンセルされた」を表す汎用イベントで、今後 returns / admin cancel からも発行される可能性がある。ここでは cancellation が先行して発行する。クーポン・ポイントを使用していた注文では、subscriber 側で補償 (refund / reverse_earn) を行うため、予約 ID と金額を同梱する。
 
 ```json
 {
@@ -366,20 +366,49 @@ reverse:  "cancellation:<request_id>:reverse:<payout_id>"
   "request_id": "uuid",
   "reason": "changed my mind",
   "cancelled_at": "2026-04-12T12:34:56Z",
-  "line_items": [{ "sku_id": "uuid", "product_name": "...", "sku_code": "...", "quantity": 2 }]
+  "line_items": [{ "sku_id": "uuid", "product_name": "...", "sku_code": "...", "quantity": 2 }],
+  "coupon_id": "uuid",
+  "coupon_reservation_id": "uuid",
+  "coupon_discount_amount": 540,
+  "point_reservation_id": "uuid",
+  "point_discount_amount": 500,
+  "points_earned": 50
 }
 ```
 
-`line_items` を同梱するのは意図的な設計選択: inventory サービスが注文サービスに RPC で問い合わせせずにそのまま在庫解放できるようにしている。注文の line_items は immutable なのでスナップショットで十分。
+`line_items` を同梱するのは意図的な設計選択: inventory サービスが注文サービスに RPC で問い合わせせずにそのまま在庫解放できるようにしている。同じ原則で discount / 予約 ID も同梱しており、coupon-svc と loyalty-svc は order-svc に reverse lookup せずに自己完結できる。
+
+クーポン / ポイントを使っていない注文では、該当フィールドが空文字 / 0 で届き、subscriber 側は安全に短絡する (`Skipped=true`)。
 
 ### Subscription 配線
 
 | Subscription                | Consumer     | 出典                                                                  |
 | --------------------------- | ------------ | --------------------------------------------------------------------- |
 | `order-events-notification` | notification | 既存。cancellation 4 イベントをハンドリングするために switch 文へ追加 |
-| `order-events-inventory`    | inventory    | **本 PR で新規追加**。`ReleaseStockForOrderCancellation` を呼ぶ       |
+| `order-events-inventory`    | inventory    | `ReleaseStockForOrderCancellation` を呼ぶ                             |
+| `order-events-coupon`       | coupon-svc   | `order.cancelled` を受け取り `RefundRedemption` を実行 (Phase 5)       |
+| `order-events-loyalty`      | loyalty-svc  | `order.paid` で earn、`order.cancelled` で refund + reverse_earn       |
 
-Pub/Sub subscription 自体のプロビジョニングは `infra/` 側に TODO として残っている。ローカル/本番デプロイ時に `gcloud pubsub subscriptions create order-events-inventory --topic=order-events` を実行するか、Terraform に追加すること。
+Pub/Sub subscription 自体のプロビジョニングは `infra/scripts/pubsub_emulator_init.sh` で local emulator 用にシードされる。本番デプロイ時は `gcloud pubsub subscriptions create order-events-{name} --topic=order-events` もしくは Terraform で作成すること。
+
+### クーポン返金の挙動 (coupon-svc)
+
+`order-events-coupon` subscriber は `order.cancelled` ごとに `RefundRedemption(coupon_id, order_id, reason)` を呼ぶ:
+
+1. `coupon_redemptions (coupon_id, order_id)` で検索 → 無ければ `Skipped=true` で終了
+2. 既に `refunded_at` が埋まっていれば `AlreadyRefunded=true` で終了 (webhook リプレイ耐性)
+3. それ以外は `refunded_at = NOW()` / `refunded_reason` を UPDATE、`coupons.usage_count` を 1 戻す (seat 復活)
+4. `usage_limit_per_user` のカウントは redemption 行ベースなので、`refunded_at IS NOT NULL` を除外するクエリに変えることで「返金済みは再利用可能」にできる (現状は厳格に carry-over する運用仕様)
+
+### ポイント返還の挙動 (loyalty-svc)
+
+`order-events-loyalty` subscriber は `order.cancelled` ごとに `ApplyCancellation` を呼ぶ:
+
+1. account を `LockForUpdate` で取得 (並行性保証)
+2. **refund** (`point_discount_amount > 0`) — idempotency キー `(order_cancelled, order_id, refund)`、台帳に `type=refund, amount=+N` を append、balance を +N
+3. **reverse_earn** (`points_earned > 0`) — idempotency キー `(order_cancelled, order_id, reverse_earn)`、balance から -N (ただし残高不足時は balance までで cap し warn ログ、`balance >= 0` の CHECK を守る)
+
+注: `lifetime_redeemed` は **戻さない**。買い手の「ポイント利用意思」は記録として保持し、ランク制度・不正検知などで参照可能にする。`lifetime_earned` は reverse_earn の分だけ減らす (対称)。
 
 ---
 
@@ -474,6 +503,7 @@ Stripe 管理画面からオペレータが手動で返金した場合、その�
 
 - [決済設計書](./payment.md) — Separate Charges and Transfers モデルと Transfer / Refund の関係
 - [カート・チェックアウト設計書](./cart-and-checkout.md) — 複数セラー checkout の詳細
+- [クーポン・ポイント設計書](./coupons-and-loyalty.md) — キャンセル時の refund / reverse_earn 挙動の詳細
 - [アーキテクチャ設計書](./architecture.md) — 全体像、イベント駆動アーキテクチャ
 - [Stripe Refunds 公式ドキュメント](https://stripe.com/docs/refunds)
 - [Stripe Transfer Reversal 公式ドキュメント](https://stripe.com/docs/connect/charges-transfers#reversing-transfers)

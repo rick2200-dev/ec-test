@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package coupon.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/coupon/api/gen/go/coupon/v1;couponv1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// CouponService owns platform-wide discount codes. MVP supports only
+// platform-issued coupons applied at checkout, with a two-phase Reserve
+// /Commit flow driven by the order service. The order service calls the
+// internal RPCs synchronously during CreateCheckout and HandlePaymentSuccess
+// — Pub/Sub subscription on order.cancelled is a safety net only.
+service CouponService {
+  // --- Buyer ---
+
+  // PreviewCoupon dry-runs a coupon against the buyer's current cart and
+  // returns the resulting discount without reserving anything. Used by
+  // the checkout UI to show "apply code" feedback before commitment.
+  rpc PreviewCoupon(PreviewCouponRequest) returns (PreviewCouponResponse) {
+    option (google.api.http) = {
+      post: "/v1/buyer/coupons/preview"
+      body: "*"
+    };
+  }
+  rpc ListMyRedemptions(ListMyRedemptionsRequest) returns (ListMyRedemptionsResponse) {
+    option (google.api.http) = {get: "/v1/buyer/coupons/redemptions"};
+  }
+
+  // --- Admin ---
+
+  rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/coupons"
+      body: "*"
+    };
+  }
+  rpc ListCoupons(ListCouponsRequest) returns (ListCouponsResponse) {
+    option (google.api.http) = {get: "/v1/admin/coupons"};
+  }
+  rpc GetCoupon(GetCouponRequest) returns (GetCouponResponse) {
+    option (google.api.http) = {get: "/v1/admin/coupons/{coupon_id}"};
+  }
+  rpc RevokeCoupon(RevokeCouponRequest) returns (RevokeCouponResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/coupons/{coupon_id}/revoke"
+      body: "*"
+    };
+  }
+  rpc GetCouponStats(GetCouponStatsRequest) returns (GetCouponStatsResponse) {
+    option (google.api.http) = {get: "/v1/admin/coupons/{coupon_id}/stats"};
+  }
+
+  // --- Internal (order-svc) ---
+  // Called synchronously from order-svc during CreateCheckout, guarded by
+  // X-Internal-Token HTTP header / x-internal-token gRPC metadata.
+
+  rpc ReserveCoupon(ReserveCouponRequest) returns (ReserveCouponResponse);
+  rpc CommitCouponReservation(CommitCouponReservationRequest) returns (CommitCouponReservationResponse);
+  rpc ReleaseCouponReservation(ReleaseCouponReservationRequest) returns (ReleaseCouponReservationResponse);
+}
+
+// ─── Domain messages ─────────────────────────────────────────
+
+// Coupon is the admin-visible representation. The redacted buyer view
+// (PreviewCouponResponse) only returns discount math + title/description.
+message Coupon {
+  string id = 1;
+  string code = 2;
+  string issuer_type = 3;          // "platform" | "seller"
+  string issuer_id = 4;            // optional; empty for platform
+  string discount_type = 5;        // "percent" | "fixed_amount"
+  int32  discount_percent_bps = 6; // set when discount_type = percent
+  common.v1.Money discount_amount = 7; // set when discount_type = fixed_amount
+  int64  min_order_amount = 8;
+  int64  max_discount_amount = 9;
+  google.protobuf.Timestamp valid_from = 10;
+  google.protobuf.Timestamp expires_at = 11;
+  int32  usage_limit_total = 12;
+  int32  usage_limit_per_user = 13;
+  int32  usage_count = 14;
+  string status = 15;              // "active" | "revoked"
+  string title = 16;
+  string description = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+}
+
+message SellerSubtotal {
+  string seller_id = 1;
+  int64  subtotal = 2;
+}
+
+// ─── Buyer RPCs ──────────────────────────────────────────────
+
+message PreviewCouponRequest {
+  string code = 1;
+  string buyer_auth0_id = 2;
+  repeated SellerSubtotal seller_subtotals = 3;
+  string currency = 4;
+}
+
+message PreviewCouponResponse {
+  string coupon_id = 1;
+  string title = 2;
+  string description = 3;
+  int64  discount_amount = 4;
+  string applicable_seller_id = 5;
+  google.protobuf.Timestamp expires_at = 6;
+}
+
+message RedemptionSummary {
+  string id = 1;
+  string coupon_id = 2;
+  string coupon_code = 3;
+  string coupon_title = 4;
+  string order_id = 5;
+  int64  discount_applied = 6;
+  google.protobuf.Timestamp committed_at = 7;
+}
+
+message ListMyRedemptionsRequest {
+  string buyer_auth0_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+message ListMyRedemptionsResponse {
+  repeated RedemptionSummary redemptions = 1;
+  int32 total = 2;
+}
+
+// ─── Admin RPCs ──────────────────────────────────────────────
+
+message CreateCouponRequest {
+  string code = 1;
+  string issuer_type = 2;           // MVP accepts only "platform"
+  string issuer_id = 3;
+  string discount_type = 4;
+  int32  discount_percent_bps = 5;
+  int64  discount_amount = 6;
+  string currency = 7;
+  int64  min_order_amount = 8;
+  int64  max_discount_amount = 9;
+  google.protobuf.Timestamp valid_from = 10;
+  google.protobuf.Timestamp expires_at = 11;
+  int32  usage_limit_total = 12;
+  int32  usage_limit_per_user = 13;
+  string title = 14;
+  string description = 15;
+}
+message CreateCouponResponse { Coupon coupon = 1; }
+
+message ListCouponsRequest {
+  string status = 1;        // optional filter: active | revoked | ""
+  int32 limit = 2;
+  int32 offset = 3;
+}
+message ListCouponsResponse {
+  repeated Coupon coupons = 1;
+  int32 total = 2;
+}
+
+message GetCouponRequest { string coupon_id = 1; }
+message GetCouponResponse { Coupon coupon = 1; }
+
+message RevokeCouponRequest { string coupon_id = 1; }
+message RevokeCouponResponse { Coupon coupon = 1; }
+
+message GetCouponStatsRequest { string coupon_id = 1; }
+message GetCouponStatsResponse {
+  string coupon_id = 1;
+  int32  redeemed_count = 2;
+  int64  total_discount_applied = 3;
+  int32  pending_reservation_count = 4;
+}
+
+// ─── Internal RPCs ───────────────────────────────────────────
+
+message ReserveCouponRequest {
+  string code = 1;
+  string buyer_auth0_id = 2;
+  repeated SellerSubtotal seller_subtotals = 3;
+  string currency = 4;
+}
+message ReserveCouponResponse {
+  string reservation_id = 1;
+  string coupon_id = 2;
+  string issuer_type = 3;
+  string applicable_seller_id = 4; // empty = applies cart-wide
+  int64  discount_amount = 5;
+  google.protobuf.Timestamp expires_at = 6;
+}
+
+message CommitCouponReservationRequest {
+  string reservation_id = 1;
+  string order_id = 2;
+  string stripe_payment_intent_id = 3;
+}
+message CommitCouponReservationResponse {
+  string redemption_id = 1;
+  bool   already_committed = 2; // true on idempotent replay
+}
+
+message ReleaseCouponReservationRequest {
+  string reservation_id = 1;
+  string reason = 2; // "order_cancelled" | "checkout_abandoned" | "payment_failed"
+}
+message ReleaseCouponReservationResponse {
+  bool released = 1;
+}

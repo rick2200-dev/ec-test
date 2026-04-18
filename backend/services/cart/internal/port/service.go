@@ -2,7 +2,6 @@ package port
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/google/uuid"
 
@@ -22,6 +21,8 @@ type CartUseCase interface {
 	RemoveItem(ctx context.Context, buyerAuth0ID string, skuID uuid.UUID) (*domain.Cart, error)
 	// ClearCart removes all items from the cart.
 	ClearCart(ctx context.Context, buyerAuth0ID string) (*domain.Cart, error)
-	// Checkout converts the cart into one or more orders via the order service and returns the checkout result.
-	Checkout(ctx context.Context, buyerAuth0ID string, shippingAddress json.RawMessage, currency string) (*domain.CheckoutResult, error)
+	// Checkout converts the cart into one or more orders via the order
+	// service and returns the checkout result. opts carries the
+	// optional shipping_address / currency / coupon / points overrides.
+	Checkout(ctx context.Context, buyerAuth0ID string, opts domain.CheckoutOptions) (*domain.CheckoutResult, error)
 }

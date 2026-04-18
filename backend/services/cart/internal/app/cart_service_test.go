@@ -456,7 +456,7 @@ func TestCheckout_Success(t *testing.T) {
 	svc := newService(store, nil, orderClient)
 
 	shippingAddr := json.RawMessage(`{"city":"Tokyo"}`)
-	result, err := svc.Checkout(context.Background(), testBuyerID, shippingAddr, "jpy")
+	result, err := svc.Checkout(context.Background(), testBuyerID, domain.CheckoutOptions{ShippingAddress: shippingAddr, Currency: "jpy"})
 	if err != nil {
 		t.Fatalf("Checkout() error = %v, want nil", err)
 	}
@@ -500,7 +500,7 @@ func TestCheckout_EmptyCart(t *testing.T) {
 	store := &mockCartStore{cart: existing}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, domain.CheckoutOptions{Currency: "jpy"})
 	if !errors.Is(err, domain.ErrEmptyCart) {
 		t.Errorf("Checkout(empty cart) error = %v, want %v", err, domain.ErrEmptyCart)
 	}
@@ -510,7 +510,7 @@ func TestCheckout_NilCart(t *testing.T) {
 	store := &mockCartStore{cart: nil}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, domain.CheckoutOptions{Currency: "jpy"})
 	if !errors.Is(err, domain.ErrEmptyCart) {
 		t.Errorf("Checkout(nil cart) error = %v, want %v", err, domain.ErrEmptyCart)
 	}
@@ -522,7 +522,7 @@ func TestCheckout_OrderServiceError(t *testing.T) {
 	orderClient := &mockCheckoutClient{err: errors.New("order service unavailable")}
 	svc := newService(store, nil, orderClient)
 
-	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, domain.CheckoutOptions{Currency: "jpy"})
 	if err == nil {
 		t.Fatal("Checkout() error = nil, want error from order service")
 	}
@@ -536,7 +536,7 @@ func TestCheckout_RepoGetError(t *testing.T) {
 	store := &mockCartStore{getErr: errors.New("redis read failed")}
 	svc := newService(store, nil, nil)
 
-	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "jpy")
+	_, err := svc.Checkout(context.Background(), testBuyerID, domain.CheckoutOptions{Currency: "jpy"})
 	if err == nil {
 		t.Fatal("Checkout() error = nil, want error from repo")
 	}
@@ -558,7 +558,7 @@ func TestCheckout_DefaultCurrency(t *testing.T) {
 	svc := newService(store, nil, orderClient)
 
 	// Pass empty currency -- service should pick from cart item.
-	_, err := svc.Checkout(context.Background(), testBuyerID, nil, "")
+	_, err := svc.Checkout(context.Background(), testBuyerID, domain.CheckoutOptions{})
 	if err != nil {
 		t.Fatalf("Checkout() error = %v, want nil", err)
 	}

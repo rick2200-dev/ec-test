@@ -9,6 +9,7 @@
 - [カート操作 API](#カート操作-api)
 - [価格スナップショット戦略](#価格スナップショット戦略)
 - [チェックアウトオーケストレーション](#チェックアウトオーケストレーション)
+- [クーポン・ポイントの適用](#クーポンポイントの適用)
 - [マルチセラー注文の表示](#マルチセラー注文の表示)
 - [在庫引当のタイミング](#在庫引当のタイミング)
 - [フロントエンド連携 (未実装)](#フロントエンド連携-未実装)
@@ -160,9 +161,13 @@ Content-Type: application/json
     "postal_code": "1000001",
     "line1": "千代田区千代田 1-1"
   },
-  "currency": "JPY"
+  "currency": "JPY",
+  "coupon_code": "WELCOME10",
+  "points_to_redeem": 500
 }
 ```
+
+`coupon_code` と `points_to_redeem` は任意フィールド。指定ルールは [クーポン・ポイントの適用](#クーポンポイントの適用) 節と [クーポン・ポイント設計書](./coupons-and-loyalty.md) を参照。
 
 レスポンス:
 
@@ -171,7 +176,12 @@ Content-Type: application/json
   "order_ids": ["a1b2...", "c3d4..."],
   "stripe_payment_intent_id": "pi_1ABC...",
   "stripe_client_secret": "pi_1ABC..._secret_xyz",
-  "total": { "amount": 5400, "currency": "JPY" }
+  "total_amount": 4900,
+  "currency": "JPY",
+  "subtotal_before_discounts": 5400,
+  "coupon_discount_amount": 540,
+  "point_discount_amount": 0,
+  "applied_coupon_code": "WELCOME10"
 }
 ```
 
@@ -261,6 +271,52 @@ Stripe 呼び出しを挟んで DB トランザクションを分ける理由は
 ### 補償ロジック
 
 Stripe 呼び出しが失敗した場合、Tx #1 で作成した注文を `status='cancelled'` にマークする補償処理を実行する。Tx #2 の UPDATE 失敗は運用アラートで対応する (稀なケース)。
+
+クーポン / ポイント予約を取得した後にこのいずれかで失敗した場合は `defer` 経由で `Release` を呼び、seat と pending_redemption を解放する。
+
+---
+
+## クーポン・ポイントの適用
+
+チェックアウトは `coupon_code` / `points_to_redeem` を任意で受け取り、注文合計を減額する。詳細な仕様は [クーポン・ポイント設計書](./coupons-and-loyalty.md) に集約した。本節では **購入フロー上の立ち位置** だけを記す。
+
+### Order Svc 側の処理順序 (概略)
+
+1. seller 別グルーピング → 各注文の pre-discount subtotal を確定
+2. `coupon_code != ""` なら coupon-svc で `Reserve` (失敗時 400 + stable `code` で理由を伝播: `COUPON_EXPIRED` / `COUPON_USAGE_LIMIT` など)
+3. `points_to_redeem > 0` なら **カート小計 − クーポン割引** でクランプしてから loyalty-svc で `Reserve`
+   - クランプしないと、カート小計より多いポイントが予約され、後段の比例配分でクリップされた分までが Commit で burn される事故が起きる
+4. `domain.DistributeDiscount` で割引をカート内の各注文に subtotal 比例で配分 (端数は最後の注文が吸収)
+5. commission は **割引前 subtotal** に対して計算 (プラットフォームが割引を負担、セラー売上は不変)
+6. 注文テーブルに discount 列と予約 ID (anchor 注文のみ) を書き込み
+7. 合計額 = `subtotal + shipping - coupon_discount - point_discount` で Stripe PaymentIntent を作成
+
+### フィーチャーフラグ
+
+order-svc の `ENABLE_COUPONS` / `ENABLE_LOYALTY` 環境変数で機能単位に ON/OFF できる。OFF の環境で値が送られると `400 FEATURE_DISABLED` を返す。既定は両方 OFF なので、新規環境では admin からテストクーポンを作成 → preview で確認 → フラグ ON の順でロールアウトする。
+
+### 決済成功時の確定
+
+Stripe webhook の `payment_intent.succeeded` で order-svc は **3 段階に分けて** 次を実行する:
+
+- `(A)` 送金 (Stripe Transfer) — payout が `pending` のときだけ 1 回実行
+- `(B)` coupon Commit + loyalty Commit (redeem + earn) — payout が `pending` / `completed` どちらでも実行、DB UNIQUE で冪等
+- `(C)` `order.paid` / `payout.completed` 発行 — `orders.paid_event_published_at` が NULL のときだけ実行、stamp で 2 回目以降はスキップ
+
+`payout.Status` が `failed` / `reversed` の場合は全ブロックを skip して `continue` する (手動復旧対象)。
+
+`(C)` を DB フラグで gate しているのは、初回 webhook で `(A)` の送金まで成功 → `(B)` の Commit で失敗 → Stripe が retry → retry で `(B)` が成功、というシナリオで **publish が確実に発行されるように** するため。subscribers (shipping / notification / loyalty-earn-fanin) が永久停滞するリスクを消す。
+
+詳細は [決済設計書 § webhook (HandlePaymentSuccess)](./payment.md#webhook-handlepaymentsuccess) を参照。
+
+### キャンセル時の補償
+
+`order.cancelled` イベントには `coupon_id` / `coupon_reservation_id` / `point_reservation_id` / `coupon_discount_amount` / `point_discount_amount` / `points_earned` が含まれる。coupon-svc と loyalty-svc はそれぞれ独自の subscription で購読して:
+
+- coupon: redemption を `refunded_at` 付きでマーク、`coupons.usage_count` を 1 戻す
+- loyalty: `refund` (利用ポイント返還) と `reverse_earn` (獲得ポイント取消) を ledger に append (冪等性キー `(order_cancelled, order_id, refund|reverse_earn)`)
+
+詳しくは [注文キャンセル設計書](./order-cancellation.md) と [クーポン・ポイント設計書 § キャンセル時の補償](./coupons-and-loyalty.md#キャンセル時の補償-refund--reverse) を参照。
 
 ---
 

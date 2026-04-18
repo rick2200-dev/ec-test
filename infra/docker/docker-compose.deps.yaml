@@ -223,6 +223,43 @@ services:
       timeout: 5s
       retries: 5
 
+  # coupon owns its own instance so a shared-cluster outage can't take
+  # down discount redemption at checkout.
+  postgres-coupon:
+    image: postgres:16-alpine
+    ports:
+      - "5444:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: coupon_dev
+    volumes:
+      - pgdata-coupon:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d coupon_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # loyalty owns its own instance: the points ledger is append-only and
+  # growth-dominant, so isolating its write volume keeps the shared
+  # cluster healthy.
+  postgres-loyalty:
+    image: postgres:16-alpine
+    ports:
+      - "5445:5432"
+    environment:
+      POSTGRES_USER: ecmarket
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: loyalty_dev
+    volumes:
+      - pgdata-loyalty:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecmarket -d loyalty_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   pgdata-notification:
@@ -236,3 +273,5 @@ volumes:
   pgdata-recommend:
   pgdata-order:
   pgdata-catalog:
+  pgdata-coupon:
+  pgdata-loyalty:

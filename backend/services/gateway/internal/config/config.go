@@ -23,6 +23,8 @@ type Config struct {
 	ReviewServiceURL       string
 	SubscriptionServiceURL string
 	ShippingServiceURL     string
+	CouponServiceURL       string
+	LoyaltyServiceURL      string
 
 	// JWT / Auth0 settings
 	JWTIssuer   string
@@ -46,6 +48,14 @@ type Config struct {
 	// Shared secret for the catalog gRPC service. Must match
 	// CATALOG_INTERNAL_TOKEN on the catalog service.
 	CatalogInternalToken string
+
+	// Shared secret for the coupon service. Must match
+	// COUPON_INTERNAL_TOKEN on the coupon service.
+	CouponInternalToken string
+
+	// Shared secret for the loyalty service. Must match
+	// LOYALTY_INTERNAL_TOKEN on the loyalty service.
+	LoyaltyInternalToken string
 
 	// gRPC service addresses (host:port)
 	CatalogGRPCAddr   string
@@ -85,6 +95,8 @@ func Load() Config {
 		ReviewServiceURL:       getEnv("REVIEW_SERVICE_URL", "http://localhost:8091"),
 		SubscriptionServiceURL: getEnv("SUBSCRIPTION_SERVICE_URL", "http://localhost:8089"),
 		ShippingServiceURL:     getEnv("SHIPPING_SERVICE_URL", "http://localhost:8092"),
+		CouponServiceURL:       getEnv("COUPON_SERVICE_URL", "http://localhost:8093"),
+		LoyaltyServiceURL:      getEnv("LOYALTY_SERVICE_URL", "http://localhost:8094"),
 
 		JWTIssuer:   getEnv("JWT_ISSUER", "https://ecmarket.example.com/"),
 		JWTAudience: getEnv("JWT_AUDIENCE", "https://api.ecmarket.example.com"),
@@ -94,6 +106,8 @@ func Load() Config {
 		SubscriptionInternalToken: getEnv("SUBSCRIPTION_INTERNAL_TOKEN", ""),
 		ShippingInternalToken:     getEnv("SHIPPING_INTERNAL_TOKEN", ""),
 		CatalogInternalToken:      getEnv("CATALOG_INTERNAL_TOKEN", ""),
+		CouponInternalToken:       getEnv("COUPON_INTERNAL_TOKEN", ""),
+		LoyaltyInternalToken:      getEnv("LOYALTY_INTERNAL_TOKEN", ""),
 
 		// Note: catalog's GRPC_PORT default is 50052 (see
 		// backend/services/catalog/internal/config/config.go). Keep this in

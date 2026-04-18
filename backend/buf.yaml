@@ -5,8 +5,10 @@ modules:
   - path: shared/api/proto
   - path: services/cart/api/proto
   - path: services/catalog/api/proto
+  - path: services/coupon/api/proto
   - path: services/inquiry/api/proto
   - path: services/inventory/api/proto
+  - path: services/loyalty/api/proto
   - path: services/order/api/proto
   - path: services/review/api/proto
   - path: services/shipping/api/proto

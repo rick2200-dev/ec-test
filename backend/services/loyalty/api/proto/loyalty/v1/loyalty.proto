@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package loyalty.v1;
+
+option go_package = "github.com/Riku-KANO/ec-test/services/loyalty/api/gen/go/loyalty/v1;loyaltyv1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+// LoyaltyService owns buyer point balances, the append-only transaction
+// ledger, and the two-phase reservation flow order-svc uses to let
+// buyers redeem points at checkout. Points are earned on order.paid
+// (triggered synchronously from order-svc, Pub/Sub as a safety net).
+service LoyaltyService {
+  // --- Buyer ---
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {
+    option (google.api.http) = {get: "/v1/buyer/points/balance"};
+  }
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = {get: "/v1/buyer/points/transactions"};
+  }
+
+  // --- Internal (order-svc) ---
+
+  rpc ReservePoints(ReservePointsRequest) returns (ReservePointsResponse);
+  rpc CommitPointsReservation(CommitPointsReservationRequest) returns (CommitPointsReservationResponse);
+  rpc ReleasePointsReservation(ReleasePointsReservationRequest) returns (ReleasePointsReservationResponse);
+
+  // --- Admin ---
+
+  rpc GetBuyerBalance(GetBuyerBalanceRequest) returns (GetBuyerBalanceResponse) {
+    option (google.api.http) = {get: "/v1/admin/loyalty/buyers/{buyer_auth0_id}/balance"};
+  }
+  rpc ListBuyerTransactions(ListBuyerTransactionsRequest) returns (ListBuyerTransactionsResponse) {
+    option (google.api.http) = {get: "/v1/admin/loyalty/buyers/{buyer_auth0_id}/transactions"};
+  }
+  rpc AdjustPoints(AdjustPointsRequest) returns (AdjustPointsResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/loyalty/buyers/{buyer_auth0_id}/adjust"
+      body: "*"
+    };
+  }
+}
+
+// ─── Domain messages ─────────────────────────────────────────
+
+message Balance {
+  string buyer_auth0_id = 1;
+  int64  balance = 2;
+  int64  pending_redemption = 3;
+  int64  spendable = 4;            // = balance - pending_redemption
+  int64  lifetime_earned = 5;
+  int64  lifetime_redeemed = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message Transaction {
+  string id = 1;
+  string buyer_auth0_id = 2;
+  string type = 3;                  // earn | redeem | refund | reverse_earn | adjust | expire
+  int64  amount = 4;
+  int64  balance_after = 5;
+  string source_type = 6;
+  string source_id = 7;
+  string reservation_id = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  string note = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// ─── Buyer RPCs ──────────────────────────────────────────────
+
+message GetBalanceRequest { string buyer_auth0_id = 1; }
+message GetBalanceResponse { Balance balance = 1; }
+
+message ListTransactionsRequest {
+  string buyer_auth0_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  int32 total = 2;
+}
+
+// ─── Internal RPCs ───────────────────────────────────────────
+
+message ReservePointsRequest {
+  string buyer_auth0_id = 1;
+  int64  amount = 2;
+}
+message ReservePointsResponse {
+  string reservation_id = 1;
+  int64  amount = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message CommitPointsReservationRequest {
+  // reservation_id is optional — the order-svc may commit a pure earn
+  // (no redemption) by leaving it empty.
+  string reservation_id = 1;
+  string buyer_auth0_id = 2;
+  string order_id = 3;
+  string stripe_payment_intent_id = 4;
+  // paid_subtotal is the earn-base: the subtotal the buyer actually
+  // paid for goods (i.e. pre-discount product subtotal, excluding
+  // shipping & commission).
+  int64  paid_subtotal = 5;
+  string currency = 6;
+}
+message CommitPointsReservationResponse {
+  int64 redeemed = 1;
+  int64 earned = 2;
+  int64 new_balance = 3;
+  bool  already_committed = 4;   // true on idempotent replay
+}
+
+message ReleasePointsReservationRequest {
+  string reservation_id = 1;
+  string reason = 2;
+}
+message ReleasePointsReservationResponse {
+  bool released = 1;
+}
+
+// ─── Admin RPCs ──────────────────────────────────────────────
+
+message GetBuyerBalanceRequest { string buyer_auth0_id = 1; }
+message GetBuyerBalanceResponse { Balance balance = 1; }
+
+message ListBuyerTransactionsRequest {
+  string buyer_auth0_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+message ListBuyerTransactionsResponse {
+  repeated Transaction transactions = 1;
+  int32 total = 2;
+}
+
+message AdjustPointsRequest {
+  string buyer_auth0_id = 1;
+  int64  amount = 2;          // positive = credit, negative = debit
+  string reason = 3;
+  string admin_user_id = 4;   // for audit
+}
+message AdjustPointsResponse {
+  Transaction transaction = 1;
+  int64       new_balance = 2;
+}

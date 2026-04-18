@@ -23,16 +23,22 @@ const (
 )
 
 // OrderCreated is published when a new order is persisted.
+// coupon_discount_amount / point_discount_amount / subtotal_before_discounts
+// are informational for analytics and reconciliation; the authoritative
+// coupon commit and point earn both flow through order-svc on order.paid.
 type OrderCreated struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	OrderId               string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	SellerId              string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	BuyerAuth0Id          string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	TotalAmount           int64                  `protobuf:"varint,4,opt,name=total_amount,json=totalAmount,proto3" json:"total_amount,omitempty"`
-	Currency              string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
-	StripePaymentIntentId string                 `protobuf:"bytes,6,opt,name=stripe_payment_intent_id,json=stripePaymentIntentId,proto3" json:"stripe_payment_intent_id,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	OrderId                 string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	SellerId                string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	BuyerAuth0Id            string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	TotalAmount             int64                  `protobuf:"varint,4,opt,name=total_amount,json=totalAmount,proto3" json:"total_amount,omitempty"`
+	Currency                string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	StripePaymentIntentId   string                 `protobuf:"bytes,6,opt,name=stripe_payment_intent_id,json=stripePaymentIntentId,proto3" json:"stripe_payment_intent_id,omitempty"`
+	CouponDiscountAmount    int64                  `protobuf:"varint,7,opt,name=coupon_discount_amount,json=couponDiscountAmount,proto3" json:"coupon_discount_amount,omitempty"`
+	PointDiscountAmount     int64                  `protobuf:"varint,8,opt,name=point_discount_amount,json=pointDiscountAmount,proto3" json:"point_discount_amount,omitempty"`
+	SubtotalBeforeDiscounts int64                  `protobuf:"varint,9,opt,name=subtotal_before_discounts,json=subtotalBeforeDiscounts,proto3" json:"subtotal_before_discounts,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *OrderCreated) Reset() {
@@ -107,6 +113,27 @@ func (x *OrderCreated) GetStripePaymentIntentId() string {
 	return ""
 }
 
+func (x *OrderCreated) GetCouponDiscountAmount() int64 {
+	if x != nil {
+		return x.CouponDiscountAmount
+	}
+	return 0
+}
+
+func (x *OrderCreated) GetPointDiscountAmount() int64 {
+	if x != nil {
+		return x.PointDiscountAmount
+	}
+	return 0
+}
+
+func (x *OrderCreated) GetSubtotalBeforeDiscounts() int64 {
+	if x != nil {
+		return x.SubtotalBeforeDiscounts
+	}
+	return 0
+}
+
 // PaidLineItem is a per-line snapshot attached to OrderPaid so downstream
 // consumers (recommend) can record purchased events keyed on product_id
 // without calling back to the order service.
@@ -175,16 +202,20 @@ func (x *PaidLineItem) GetQuantity() int32 {
 // shipping address JSON snapshot at order creation time — the shipping
 // service uses it to create a shipment without calling back to order.
 type OrderPaid struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	OrderId               string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	SellerId              string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	BuyerAuth0Id          string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	TotalAmount           int64                  `protobuf:"varint,4,opt,name=total_amount,json=totalAmount,proto3" json:"total_amount,omitempty"`
-	StripePaymentIntentId string                 `protobuf:"bytes,5,opt,name=stripe_payment_intent_id,json=stripePaymentIntentId,proto3" json:"stripe_payment_intent_id,omitempty"`
-	ShippingAddressJson   string                 `protobuf:"bytes,6,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
-	LineItems             []*PaidLineItem        `protobuf:"bytes,7,rep,name=line_items,json=lineItems,proto3" json:"line_items,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	OrderId                 string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	SellerId                string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	BuyerAuth0Id            string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	TotalAmount             int64                  `protobuf:"varint,4,opt,name=total_amount,json=totalAmount,proto3" json:"total_amount,omitempty"`
+	StripePaymentIntentId   string                 `protobuf:"bytes,5,opt,name=stripe_payment_intent_id,json=stripePaymentIntentId,proto3" json:"stripe_payment_intent_id,omitempty"`
+	ShippingAddressJson     string                 `protobuf:"bytes,6,opt,name=shipping_address_json,json=shippingAddressJson,proto3" json:"shipping_address_json,omitempty"`
+	LineItems               []*PaidLineItem        `protobuf:"bytes,7,rep,name=line_items,json=lineItems,proto3" json:"line_items,omitempty"`
+	CouponDiscountAmount    int64                  `protobuf:"varint,8,opt,name=coupon_discount_amount,json=couponDiscountAmount,proto3" json:"coupon_discount_amount,omitempty"`
+	PointDiscountAmount     int64                  `protobuf:"varint,9,opt,name=point_discount_amount,json=pointDiscountAmount,proto3" json:"point_discount_amount,omitempty"`
+	SubtotalBeforeDiscounts int64                  `protobuf:"varint,10,opt,name=subtotal_before_discounts,json=subtotalBeforeDiscounts,proto3" json:"subtotal_before_discounts,omitempty"`
+	PointsEarned            int64                  `protobuf:"varint,11,opt,name=points_earned,json=pointsEarned,proto3" json:"points_earned,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *OrderPaid) Reset() {
@@ -264,6 +295,34 @@ func (x *OrderPaid) GetLineItems() []*PaidLineItem {
 		return x.LineItems
 	}
 	return nil
+}
+
+func (x *OrderPaid) GetCouponDiscountAmount() int64 {
+	if x != nil {
+		return x.CouponDiscountAmount
+	}
+	return 0
+}
+
+func (x *OrderPaid) GetPointDiscountAmount() int64 {
+	if x != nil {
+		return x.PointDiscountAmount
+	}
+	return 0
+}
+
+func (x *OrderPaid) GetSubtotalBeforeDiscounts() int64 {
+	if x != nil {
+		return x.SubtotalBeforeDiscounts
+	}
+	return 0
+}
+
+func (x *OrderPaid) GetPointsEarned() int64 {
+	if x != nil {
+		return x.PointsEarned
+	}
+	return 0
 }
 
 // OrderShipped is published when a seller marks an order as shipped.
@@ -624,16 +683,31 @@ func (x *CancellationApproved) GetRefundAmount() int64 {
 }
 
 // OrderCancelled fires after the cancellation completes. Subscribers:
-// notification, inventory (releases stock using line_items).
+// notification, inventory (releases stock using line_items), coupon
+// (refund the redemption + decrement usage_count), loyalty (refund
+// redeemed points + reverse earned points). The discount / reservation
+// fields give coupon + loyalty subscribers everything they need to
+// reverse their ledger without a reverse lookup against order-svc.
 type OrderCancelled struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	SellerId      string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
-	BuyerAuth0Id  string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
-	RequestId     string                 `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
-	LineItems     []*CancelledLineItem   `protobuf:"bytes,6,rep,name=line_items,json=lineItems,proto3" json:"line_items,omitempty"`
-	CancelledAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=cancelled_at,json=cancelledAt,proto3" json:"cancelled_at,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	OrderId      string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	SellerId     string                 `protobuf:"bytes,2,opt,name=seller_id,json=sellerId,proto3" json:"seller_id,omitempty"`
+	BuyerAuth0Id string                 `protobuf:"bytes,3,opt,name=buyer_auth0_id,json=buyerAuth0Id,proto3" json:"buyer_auth0_id,omitempty"`
+	RequestId    string                 `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Reason       string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	LineItems    []*CancelledLineItem   `protobuf:"bytes,6,rep,name=line_items,json=lineItems,proto3" json:"line_items,omitempty"`
+	CancelledAt  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=cancelled_at,json=cancelledAt,proto3" json:"cancelled_at,omitempty"`
+	// Populated when the cancelled order consumed a coupon at
+	// checkout. Empty / 0 otherwise.
+	CouponId             string `protobuf:"bytes,8,opt,name=coupon_id,json=couponId,proto3" json:"coupon_id,omitempty"`
+	CouponReservationId  string `protobuf:"bytes,9,opt,name=coupon_reservation_id,json=couponReservationId,proto3" json:"coupon_reservation_id,omitempty"`
+	CouponDiscountAmount int64  `protobuf:"varint,10,opt,name=coupon_discount_amount,json=couponDiscountAmount,proto3" json:"coupon_discount_amount,omitempty"`
+	// Populated when the cancelled order consumed points at checkout.
+	PointReservationId  string `protobuf:"bytes,11,opt,name=point_reservation_id,json=pointReservationId,proto3" json:"point_reservation_id,omitempty"`
+	PointDiscountAmount int64  `protobuf:"varint,12,opt,name=point_discount_amount,json=pointDiscountAmount,proto3" json:"point_discount_amount,omitempty"`
+	// Points credited on the order's payment — needs reversal on
+	// cancellation to prevent the buyer from keeping the earn.
+	PointsEarned  int64 `protobuf:"varint,13,opt,name=points_earned,json=pointsEarned,proto3" json:"points_earned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -715,6 +789,48 @@ func (x *OrderCancelled) GetCancelledAt() *timestamppb.Timestamp {
 		return x.CancelledAt
 	}
 	return nil
+}
+
+func (x *OrderCancelled) GetCouponId() string {
+	if x != nil {
+		return x.CouponId
+	}
+	return ""
+}
+
+func (x *OrderCancelled) GetCouponReservationId() string {
+	if x != nil {
+		return x.CouponReservationId
+	}
+	return ""
+}
+
+func (x *OrderCancelled) GetCouponDiscountAmount() int64 {
+	if x != nil {
+		return x.CouponDiscountAmount
+	}
+	return 0
+}
+
+func (x *OrderCancelled) GetPointReservationId() string {
+	if x != nil {
+		return x.PointReservationId
+	}
+	return ""
+}
+
+func (x *OrderCancelled) GetPointDiscountAmount() int64 {
+	if x != nil {
+		return x.PointDiscountAmount
+	}
+	return 0
+}
+
+func (x *OrderCancelled) GetPointsEarned() int64 {
+	if x != nil {
+		return x.PointsEarned
+	}
+	return 0
 }
 
 // PayoutFailed is published when a Stripe Transfer fails during payment
@@ -877,19 +993,22 @@ var File_order_v1_events_proto protoreflect.FileDescriptor
 
 const file_order_v1_events_proto_rawDesc = "" +
 	"\n" +
-	"\x15order/v1/events.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe4\x01\n" +
+	"\x15order/v1/events.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8a\x03\n" +
 	"\fOrderCreated\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12$\n" +
 	"\x0ebuyer_auth0_id\x18\x03 \x01(\tR\fbuyerAuth0Id\x12!\n" +
 	"\ftotal_amount\x18\x04 \x01(\x03R\vtotalAmount\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x127\n" +
-	"\x18stripe_payment_intent_id\x18\x06 \x01(\tR\x15stripePaymentIntentId\"`\n" +
+	"\x18stripe_payment_intent_id\x18\x06 \x01(\tR\x15stripePaymentIntentId\x124\n" +
+	"\x16coupon_discount_amount\x18\a \x01(\x03R\x14couponDiscountAmount\x122\n" +
+	"\x15point_discount_amount\x18\b \x01(\x03R\x13pointDiscountAmount\x12:\n" +
+	"\x19subtotal_before_discounts\x18\t \x01(\x03R\x17subtotalBeforeDiscounts\"`\n" +
 	"\fPaidLineItem\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x15\n" +
 	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\x05R\bquantity\"\xb0\x02\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\"\xfb\x03\n" +
 	"\tOrderPaid\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12$\n" +
@@ -898,7 +1017,12 @@ const file_order_v1_events_proto_rawDesc = "" +
 	"\x18stripe_payment_intent_id\x18\x05 \x01(\tR\x15stripePaymentIntentId\x122\n" +
 	"\x15shipping_address_json\x18\x06 \x01(\tR\x13shippingAddressJson\x125\n" +
 	"\n" +
-	"line_items\x18\a \x03(\v2\x16.order.v1.PaidLineItemR\tlineItems\")\n" +
+	"line_items\x18\a \x03(\v2\x16.order.v1.PaidLineItemR\tlineItems\x124\n" +
+	"\x16coupon_discount_amount\x18\b \x01(\x03R\x14couponDiscountAmount\x122\n" +
+	"\x15point_discount_amount\x18\t \x01(\x03R\x13pointDiscountAmount\x12:\n" +
+	"\x19subtotal_before_discounts\x18\n" +
+	" \x01(\x03R\x17subtotalBeforeDiscounts\x12#\n" +
+	"\rpoints_earned\x18\v \x01(\x03R\fpointsEarned\")\n" +
 	"\fOrderShipped\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\"\x84\x01\n" +
 	"\x11CancelledLineItem\x12\x15\n" +
@@ -927,7 +1051,7 @@ const file_order_v1_events_proto_rawDesc = "" +
 	"\tseller_id\x18\x03 \x01(\tR\bsellerId\x12$\n" +
 	"\x0ebuyer_auth0_id\x18\x04 \x01(\tR\fbuyerAuth0Id\x12(\n" +
 	"\x10stripe_refund_id\x18\x05 \x01(\tR\x0estripeRefundId\x12#\n" +
-	"\rrefund_amount\x18\x06 \x01(\x03R\frefundAmount\"\xa0\x02\n" +
+	"\rrefund_amount\x18\x06 \x01(\x03R\frefundAmount\"\xb2\x04\n" +
 	"\x0eOrderCancelled\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1b\n" +
 	"\tseller_id\x18\x02 \x01(\tR\bsellerId\x12$\n" +
@@ -937,7 +1061,14 @@ const file_order_v1_events_proto_rawDesc = "" +
 	"\x06reason\x18\x05 \x01(\tR\x06reason\x12:\n" +
 	"\n" +
 	"line_items\x18\x06 \x03(\v2\x1b.order.v1.CancelledLineItemR\tlineItems\x12=\n" +
-	"\fcancelled_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vcancelledAt\"y\n" +
+	"\fcancelled_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vcancelledAt\x12\x1b\n" +
+	"\tcoupon_id\x18\b \x01(\tR\bcouponId\x122\n" +
+	"\x15coupon_reservation_id\x18\t \x01(\tR\x13couponReservationId\x124\n" +
+	"\x16coupon_discount_amount\x18\n" +
+	" \x01(\x03R\x14couponDiscountAmount\x120\n" +
+	"\x14point_reservation_id\x18\v \x01(\tR\x12pointReservationId\x122\n" +
+	"\x15point_discount_amount\x18\f \x01(\x03R\x13pointDiscountAmount\x12#\n" +
+	"\rpoints_earned\x18\r \x01(\x03R\fpointsEarned\"y\n" +
 	"\fPayoutFailed\x12\x1b\n" +
 	"\tpayout_id\x18\x01 \x01(\tR\bpayoutId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x1b\n" +

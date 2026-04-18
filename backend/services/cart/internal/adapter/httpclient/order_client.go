@@ -66,14 +66,19 @@ func (c *OrderClient) CreateCheckout(ctx context.Context, in domain.CheckoutInpu
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
+		// Preserve the stable `code` value from the order service so
+		// the buyer UI can switch on COUPON_EXPIRED etc. without the
+		// cart service swallowing it.
 		var errResp struct {
 			Error string `json:"error"`
+			Code  string `json:"code"`
 		}
 		if jsonErr := json.Unmarshal(body, &errResp); jsonErr == nil && errResp.Error != "" {
-			if resp.StatusCode == http.StatusBadRequest {
-				return nil, apperrors.BadRequest(errResp.Error)
+			appErr := apperrors.New(resp.StatusCode, errResp.Error, nil)
+			if errResp.Code != "" {
+				appErr = appErr.WithCode(errResp.Code)
 			}
-			return nil, apperrors.Internal(errResp.Error, nil)
+			return nil, appErr
 		}
 		return nil, apperrors.Internal(
 			fmt.Sprintf("order checkout failed: status=%d body=%s", resp.StatusCode, string(body)),

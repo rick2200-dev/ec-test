@@ -10,6 +10,7 @@
 - [コミッション計算](#コミッション計算)
 - [Payout ライフサイクル](#payout-ライフサイクル)
 - [Webhook 処理](#webhook-処理)
+- [Webhook (HandlePaymentSuccess)](#webhook-handlepaymentsuccess)
 - [エラーハンドリングとべき等性](#エラーハンドリングとべき等性)
 - [テストモード](#テストモード)
 - [既知の制約](#既知の制約)
@@ -132,17 +133,20 @@ sequenceDiagram
 
 ```
 buyer 支払額 (PaymentIntent amount)
-  = Σ (各セラーの subtotal + 送料)
+  = Σ (各セラーの subtotal + 送料) - クーポン割引 - ポイント割引
 
 セラー受取額 (各 Transfer amount)
   = 各セラーの subtotal - 各セラーの commission_amount
   (送料の扱いは shipping-fee-handling 設計による: 現状はプラットフォーム収益)
+  ※ commission は割引前 subtotal で計算する (MVP は常にプラットフォーム負担)
 
 プラットフォーム収益
-  = Σ commission_amount + (送料 - 配送コスト)
+  = Σ commission_amount + (送料 - 配送コスト) - クーポン割引 - ポイント割引
 ```
 
 送料を買い手が支払ってもセラーに送金しない場合、差分は自動的にプラットフォーム口座に残る (Stripe 側で計算を意識する必要はない)。
+
+クーポン・ポイントによる割引はプラットフォームが吸収し、セラー受取額には影響しない。詳しくは [クーポン・ポイント設計書](./coupons-and-loyalty.md#機能概要と-mvp-スコープ)。
 
 ### なぜトランザクションを 2 段階に分けるか
 
@@ -153,6 +157,91 @@ buyer 支払額 (PaymentIntent amount)
 3. **DB トランザクション #2** — 発行された `stripe_payment_intent_id` を全 order に書き戻す
 
 Stripe 呼び出しの外で DB トランザクションを保持し続けると、ロックが長引き他の注文に影響する。また、Stripe のエラーで DB トランザクションをロールバックしてしまうとクライアント側の状態と不整合になるため、**先に DB に書いてから Stripe に投げる** 順序としている。Stripe 呼び出しが失敗した場合は既に作成した注文を `status='cancelled'` にマークする補償ロジックで対応する (詳細は [エラーハンドリング](#エラーハンドリングとべき等性))。
+
+---
+
+## Webhook (HandlePaymentSuccess)
+
+`POST /webhooks/stripe` の `payment_intent.succeeded` を受け取ったときの処理。同じ `payment_intent_id` に紐づく N 件の order (マルチセラー注文) を 1 件ずつ処理する。**Stripe webhook は最大 3 日間リトライされる** ため、べき等性と「初回失敗した処理を次回リトライで復旧できる」ことを第一に設計している。
+
+### 3 ブロック構造
+
+```
+for each order in orders_by_payment_intent:
+  order.status == cancelled → 完全スキップ (refund 経由で既に処理済み)
+
+  SetPaid (ErrOrderNotPending は fall-through 許容)
+  GetPayout
+  payout.Status allow-list: pending または completed 以外は continue
+  (failed / reversed は全 skip — 手動復旧対象)
+
+  ── (A) One-shot Stripe Transfer ── (payout.status == pending のときだけ)
+     Stripe.CreateTransfer → payout を completed に
+     (失敗時は payout を failed に、PayoutFailed を publish、continue)
+
+  ── (B) Idempotent downstream commits ── (pending / completed 両方で実行)
+     coupon_reservation_id があれば → coupon.Commit (UNIQUE(coupon_id, order_id))
+     enable_loyalty なら           → loyalty.Commit (redeem + earn、UNIQUE idempotency key)
+     失敗時は error を return → Stripe が webhook を再配信 → 次回 (B) を再実行
+
+  ── (C) One-time publish ── (orders.paid_event_published_at IS NULL のときだけ)
+     order.paid と payout.completed をトピックへ発行
+     orders.paid_event_published_at = NOW() に stamp (WHERE NULL ガード付き UPDATE)
+```
+
+### なぜ 3 ブロック構造なのか
+
+**旧実装 1 の問題**: `payout.status != pending` で `continue` していたため、「初回 webhook で Stripe Transfer は成功したが coupon/loyalty Commit で 5xx」シナリオでは、リトライも payout status guard で continue → Commit に到達できなかった。
+
+**旧実装 2 の問題**: (A)(B) に分けたが、publish を `transferPending` ブロック内に置いていたため、初回で transfer 成功 → Commit 失敗 → retry で Commit だけ成功するケースで **publish が永遠に発行されず**、shipping / notification / loyalty-earn-fanin が停滞した。
+
+**新実装 (現状 3 ブロック)**:
+- `(A)` は payout `pending` のときだけ → 二重 Stripe Transfer を防ぐ
+- payout allow-list で `failed`/`reversed` は全 skip → 誤コミットを防ぐ
+- `(B)` は pending/completed どちらでも実行 → 初回失敗した Commit を retry で補償可能
+- `(C)` は `paid_event_published_at` DB フラグで gate → Commit 成功した attempt で必ず publish が走る、かつ重複 publish は DB の NULL ガードで弾かれる
+
+### payout.Status の取り扱い
+
+| Status | 初回 (pending で来る) | retry (非 pending) | 備考 |
+|---|---|---|---|
+| `pending` | (A)(B)(C) 全実行 | – | 正常系初回 |
+| `completed` | – | (B)(C) のみ実行 ((A) skip) | Commit 再試行や publish 再試行 |
+| `failed` | – | continue (全 skip) | Stripe Transfer 失敗、手動復旧待ち |
+| `reversed` | – | continue (全 skip) | キャンセル承認で transfer 取消済み |
+
+### Commit / publish の冪等性キー一覧
+
+| 操作 | idempotency key |
+|---|---|
+| coupon redeemption | `UNIQUE (coupon_id, order_id)` on `coupon_redemptions` |
+| loyalty redeem    | `UNIQUE (source_type='reservation_commit', source_id=reservation_id, type='redeem')` on `point_transactions` |
+| loyalty earn       | `UNIQUE (source_type='order_paid', source_id=order_id, type='earn')` on `point_transactions` |
+| event publish     | `orders.paid_event_published_at IS NULL` ガード付き UPDATE |
+
+### イベント発行の確実性と重複防止
+
+`order.paid` / `payout.completed` は購読側 (shipping / notification / recommend / loyalty-earn-fanin) が注文完了の起点として使うため **「少なくとも 1 回発行」** が必須。一方メール二重送信などの副作用回避のため **「多くとも 1 回発行」** も欲しい。この両立を `orders.paid_event_published_at` 列で実現している:
+
+- (C) 実行時に `paid_event_published_at IS NULL` なら publish → 直後に NOW() で stamp
+- `UPDATE ... WHERE id=? AND paid_event_published_at IS NULL` なので同時配信のレースでも DB が 1 つだけ成立させる
+- stamp 失敗時は warn ログに留める (既に publish 済みなので retry に意味がない)
+
+### キャンセル注文への対応
+
+webhook が届いたときに `order.status == cancelled` なら、買い手が既にキャンセル完了しており Stripe の refund も実行済み。この webhook は完全に無視する (Stripe Transfer を送ると返金済みの資金を送金してしまう)。
+
+### Commit 失敗時の buyer 体験
+
+Commit が失敗してもバイヤーからは通常通り「購入完了」画面が見える (Stripe 側は成功しているため)。Stripe がリトライするまでの数分〜数時間だけ、`/account/points` の残高更新がディレイする可能性がある。到達不能な失敗が続く場合は、Stripe webhook のリトライ上限 (3 日) を超えた時点で運用アラートが必要。
+
+### テストでピン
+
+`backend/services/order/internal/app/handle_payment_success_test.go` に次のリグレッションテストを pin している:
+
+- **PublishAfterRetryRecoveredCommit**: 初回 Commit 失敗 → retry で成功 → publish が必ず走る
+- **FailedPayoutSkipsDownstream**: payout.Status=failed なら Commit も publish も走らない
+- **ReversedPayoutSkipsDownstream**: payout.Status=reversed も同様に全 skip
 
 ---
 

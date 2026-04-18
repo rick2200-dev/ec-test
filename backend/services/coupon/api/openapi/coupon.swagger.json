@@ -1,0 +1,618 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "coupon/v1/coupon.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "CouponService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/admin/coupons": {
+      "get": {
+        "operationId": "CouponService_ListCoupons",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListCouponsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "description": "optional filter: active | revoked | \"\"",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      },
+      "post": {
+        "operationId": "CouponService_CreateCoupon",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateCouponResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateCouponRequest"
+            }
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      }
+    },
+    "/v1/admin/coupons/{coupon_id}": {
+      "get": {
+        "operationId": "CouponService_GetCoupon",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetCouponResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "coupon_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      }
+    },
+    "/v1/admin/coupons/{coupon_id}/revoke": {
+      "post": {
+        "operationId": "CouponService_RevokeCoupon",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RevokeCouponResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "coupon_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CouponServiceRevokeCouponBody"
+            }
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      }
+    },
+    "/v1/admin/coupons/{coupon_id}/stats": {
+      "get": {
+        "operationId": "CouponService_GetCouponStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetCouponStatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "coupon_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      }
+    },
+    "/v1/buyer/coupons/preview": {
+      "post": {
+        "summary": "PreviewCoupon dry-runs a coupon against the buyer's current cart and\nreturns the resulting discount without reserving anything. Used by\nthe checkout UI to show \"apply code\" feedback before commitment.",
+        "operationId": "CouponService_PreviewCoupon",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PreviewCouponResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PreviewCouponRequest"
+            }
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      }
+    },
+    "/v1/buyer/coupons/redemptions": {
+      "get": {
+        "operationId": "CouponService_ListMyRedemptions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListMyRedemptionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "buyer_auth0_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "CouponService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "CouponServiceRevokeCouponBody": {
+      "type": "object"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1Coupon": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "issuer_type": {
+          "type": "string",
+          "title": "\"platform\" | \"seller\""
+        },
+        "issuer_id": {
+          "type": "string",
+          "title": "optional; empty for platform"
+        },
+        "discount_type": {
+          "type": "string",
+          "title": "\"percent\" | \"fixed_amount\""
+        },
+        "discount_percent_bps": {
+          "type": "integer",
+          "format": "int32",
+          "title": "set when discount_type = percent"
+        },
+        "discount_amount": {
+          "$ref": "#/definitions/v1Money",
+          "title": "set when discount_type = fixed_amount"
+        },
+        "min_order_amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "max_discount_amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "valid_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "usage_limit_total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "usage_limit_per_user": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "usage_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "status": {
+          "type": "string",
+          "title": "\"active\" | \"revoked\""
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "Coupon is the admin-visible representation. The redacted buyer view\n(PreviewCouponResponse) only returns discount math + title/description."
+    },
+    "v1CreateCouponRequest": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "issuer_type": {
+          "type": "string",
+          "title": "MVP accepts only \"platform\""
+        },
+        "issuer_id": {
+          "type": "string"
+        },
+        "discount_type": {
+          "type": "string"
+        },
+        "discount_percent_bps": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "discount_amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "min_order_amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "max_discount_amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "valid_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "usage_limit_total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "usage_limit_per_user": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CreateCouponResponse": {
+      "type": "object",
+      "properties": {
+        "coupon": {
+          "$ref": "#/definitions/v1Coupon"
+        }
+      }
+    },
+    "v1GetCouponResponse": {
+      "type": "object",
+      "properties": {
+        "coupon": {
+          "$ref": "#/definitions/v1Coupon"
+        }
+      }
+    },
+    "v1GetCouponStatsResponse": {
+      "type": "object",
+      "properties": {
+        "coupon_id": {
+          "type": "string"
+        },
+        "redeemed_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total_discount_applied": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pending_reservation_count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListCouponsResponse": {
+      "type": "object",
+      "properties": {
+        "coupons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Coupon"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListMyRedemptionsResponse": {
+      "type": "object",
+      "properties": {
+        "redemptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RedemptionSummary"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1Money": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "string",
+          "format": "int64",
+          "title": "Amount in smallest currency unit (e.g., cents/yen)"
+        },
+        "currency": {
+          "type": "string",
+          "title": "ISO 4217 currency code (e.g., \"JPY\")"
+        }
+      },
+      "description": "Money represents a monetary amount."
+    },
+    "v1PreviewCouponRequest": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "buyer_auth0_id": {
+          "type": "string"
+        },
+        "seller_subtotals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SellerSubtotal"
+          }
+        },
+        "currency": {
+          "type": "string"
+        }
+      }
+    },
+    "v1PreviewCouponResponse": {
+      "type": "object",
+      "properties": {
+        "coupon_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "discount_amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "applicable_seller_id": {
+          "type": "string"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1RedemptionSummary": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "coupon_id": {
+          "type": "string"
+        },
+        "coupon_code": {
+          "type": "string"
+        },
+        "coupon_title": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "discount_applied": {
+          "type": "string",
+          "format": "int64"
+        },
+        "committed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1RevokeCouponResponse": {
+      "type": "object",
+      "properties": {
+        "coupon": {
+          "$ref": "#/definitions/v1Coupon"
+        }
+      }
+    },
+    "v1SellerSubtotal": {
+      "type": "object",
+      "properties": {
+        "seller_id": {
+          "type": "string"
+        },
+        "subtotal": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    }
+  }
+}

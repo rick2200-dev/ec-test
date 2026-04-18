@@ -93,11 +93,16 @@ func (h *InternalHandler) CheckPurchase(w http.ResponseWriter, r *http.Request) 
 }
 
 // checkoutRequest is the request body for POST /internal/checkouts.
+// CouponCode and PointsToRedeem are optional and pass-through from
+// cart-svc: the order service gates them on its ENABLE_COUPONS /
+// ENABLE_LOYALTY feature flags.
 type checkoutRequest struct {
 	BuyerAuth0ID    string            `json:"buyer_auth0_id"`
 	Lines           []checkoutLineReq `json:"lines"`
 	ShippingAddress map[string]any    `json:"shipping_address"`
 	Currency        string            `json:"currency"`
+	CouponCode      string            `json:"coupon_code,omitempty"`
+	PointsToRedeem  int64             `json:"points_to_redeem,omitempty"`
 }
 
 type checkoutLineReq struct {
@@ -111,11 +116,15 @@ type checkoutLineReq struct {
 
 // checkoutResponse is the response body for POST /internal/checkouts.
 type checkoutResponse struct {
-	OrderIDs              []string `json:"order_ids"`
-	StripeClientSecret    string   `json:"stripe_client_secret"`
-	StripePaymentIntentID string   `json:"stripe_payment_intent_id"`
-	TotalAmount           int64    `json:"total_amount"`
-	Currency              string   `json:"currency"`
+	OrderIDs                []string `json:"order_ids"`
+	StripeClientSecret      string   `json:"stripe_client_secret"`
+	StripePaymentIntentID   string   `json:"stripe_payment_intent_id"`
+	TotalAmount             int64    `json:"total_amount"`
+	Currency                string   `json:"currency"`
+	SubtotalBeforeDiscounts int64    `json:"subtotal_before_discounts"`
+	CouponDiscountAmount    int64    `json:"coupon_discount_amount"`
+	PointDiscountAmount     int64    `json:"point_discount_amount"`
+	AppliedCouponCode       string   `json:"applied_coupon_code,omitempty"`
 }
 
 // CreateCheckout handles POST /internal/checkouts.
@@ -153,6 +162,8 @@ func (h *InternalHandler) CreateCheckout(w http.ResponseWriter, r *http.Request)
 		Lines:           lines,
 		ShippingAddress: shippingJSON,
 		Currency:        req.Currency,
+		CouponCode:      req.CouponCode,
+		PointsToRedeem:  req.PointsToRedeem,
 	})
 	if err != nil {
 		httputil.Error(w, mapError(err))
@@ -165,10 +176,14 @@ func (h *InternalHandler) CreateCheckout(w http.ResponseWriter, r *http.Request)
 	}
 
 	httputil.JSON(w, http.StatusCreated, checkoutResponse{
-		OrderIDs:              orderIDs,
-		StripeClientSecret:    result.StripeClientSecret,
-		StripePaymentIntentID: result.StripePaymentIntentID,
-		TotalAmount:           result.TotalAmount,
-		Currency:              result.Currency,
+		OrderIDs:                orderIDs,
+		StripeClientSecret:      result.StripeClientSecret,
+		StripePaymentIntentID:   result.StripePaymentIntentID,
+		TotalAmount:             result.TotalAmount,
+		Currency:                result.Currency,
+		SubtotalBeforeDiscounts: result.SubtotalBeforeDiscounts,
+		CouponDiscountAmount:    result.CouponDiscountAmount,
+		PointDiscountAmount:     result.PointDiscountAmount,
+		AppliedCouponCode:       result.AppliedCouponCode,
 	})
 }

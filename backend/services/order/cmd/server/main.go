@@ -141,8 +141,17 @@ func main() {
 	// Auth HTTP client: resolves seller_id -> name at checkout.
 	sellerClient := httpclient.NewSellerClient(cfg.AuthServiceURL, cfg.AuthInternalToken)
 
+	// Coupon / loyalty HTTP clients. The feature flags decide whether
+	// the service wires them into CreateCheckout — a disabled feature
+	// with a configured URL still constructs the client so the
+	// zero-value paths stay compilable.
+	couponClient := httpclient.NewCouponClient(cfg.CouponServiceURL, cfg.CouponInternalToken)
+	loyaltyClient := httpclient.NewLoyaltyClient(cfg.LoyaltyServiceURL, cfg.LoyaltyInternalToken)
+
 	// Service
-	orderSvc := app.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, sellerClient, catalogClient, cfg.DefaultShippingFee)
+	orderSvc := app.NewOrderService(orderRepo, commissionRepo, payoutRepo, sc, publisher, buyerSubClient, sellerClient, catalogClient, cfg.DefaultShippingFee).
+		WithCouponReserver(couponClient, cfg.EnableCoupons).
+		WithPointReserver(loyaltyClient, cfg.EnableLoyalty)
 
 	// Cancellation bounded context — see internal/cancellation/doc.go.
 	// Wired in parallel with (not nested under) the order service so
