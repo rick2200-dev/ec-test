@@ -817,14 +817,27 @@ func (s *OrderService) HandlePaymentSuccess(ctx context.Context, stripePaymentIn
 		if order.PaidEventPublishedAt != nil {
 			continue
 		}
-		claimed, err := s.orderRepo.ClaimPaidEventPublish(ctx, order.ID, publishClaimTTL)
+		claimed, alreadyPublished, err := s.orderRepo.ClaimPaidEventPublish(ctx, order.ID, publishClaimTTL)
 		if err != nil {
 			return apperrors.Internal("claim paid event publish slot", err)
 		}
 		if !claimed {
-			slog.Info("paid-event publish claim held by another handler; skipping",
+			if alreadyPublished {
+				// Another handler finished the publish between our
+				// initial read and the claim attempt — skip cleanly.
+				slog.Info("paid-event publish already completed by another handler",
+					"order_id", order.ID, "payment_intent", stripePaymentIntentID)
+				continue
+			}
+			// Another handler is currently publishing (fresh claim,
+			// not yet marked done). Returning cleanly here would
+			// tell Stripe "success" and orphan the publish if the
+			// claim-holder later fails. Surface a retryable error
+			// instead — after the TTL the claim becomes stale and
+			// the next Stripe redelivery wins it cleanly.
+			slog.Warn("paid-event publish claim held by another handler; retryable",
 				"order_id", order.ID, "payment_intent", stripePaymentIntentID)
-			continue
+			return apperrors.Internal("paid event publish claim held; retry after TTL", nil)
 		}
 
 		lineItems, linesErr := s.loadPaidLineItems(ctx, order.ID)

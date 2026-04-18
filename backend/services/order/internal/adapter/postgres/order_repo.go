@@ -532,35 +532,46 @@ func (r *OrderRepository) MarkPaidEventPublished(ctx context.Context, orderID uu
 }
 
 // ClaimPaidEventPublish acquires a TTL-bounded claim on the paid
-// publish slot for this order. The UPDATE is the single atomic
-// synchronization primitive — Postgres serializes concurrent
-// attempts at the row level, and the WHERE clause lets through
-// exactly one winner per TTL window.
+// publish slot for this order. A single CTE atomically attempts the
+// UPDATE and reports the post-update published-flag state, so the
+// caller can distinguish "someone else already published" (clean
+// skip) from "someone else is currently publishing" (retryable).
 //
-// The claim auto-expires: if a handler crashes between claim and
-// MarkPaidEventPublished, a subsequent Stripe retry arriving after
-// ttl elapses re-acquires cleanly. Tuning ttl vs Stripe's retry
-// cadence is what decides how long a partial failure blocks
-// downstream consumers — pick something comfortably above the 95th
-// percentile publish latency.
-func (r *OrderRepository) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error) {
-	var claimed bool
-	err := database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx,
-			`UPDATE order_svc.orders
-			 SET paid_event_claim_at = NOW(), updated_at = NOW()
-			 WHERE id = $1
-			   AND paid_event_published_at IS NULL
-			   AND (paid_event_claim_at IS NULL OR paid_event_claim_at < NOW() - ($2::bigint * INTERVAL '1 second'))`,
+// Outcomes:
+//   - acquired=true                                  — proceed to publish
+//   - acquired=false, alreadyPublished=true          — skip (done)
+//   - acquired=false, alreadyPublished=false         — another handler
+//     owns a fresh claim. Caller must surface a retryable error so
+//     Stripe redelivers after the TTL elapses; returning cleanly
+//     here would strand the publish if the claim-holder later fails.
+//
+// Stale claims (older than ttl) are transparently re-acquired so a
+// crashed mid-publish handler doesn't block the publish forever.
+func (r *OrderRepository) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (acquired, alreadyPublished bool, err error) {
+	err = database.Tx(ctx, r.pool, func(tx pgx.Tx) error {
+		// One round-trip: the UPDATE CTE only returns a row when we
+		// win the claim; the subsequent SELECT reads the final
+		// published-flag state (reflects the UPDATE if it ran, or
+		// the pre-existing value if it didn't). This is what makes
+		// "already_published" cheap to detect without an extra query.
+		return tx.QueryRow(ctx,
+			`WITH upd AS (
+			     UPDATE order_svc.orders
+			        SET paid_event_claim_at = NOW(), updated_at = NOW()
+			      WHERE id = $1
+			        AND paid_event_published_at IS NULL
+			        AND (paid_event_claim_at IS NULL
+			             OR paid_event_claim_at < NOW() - ($2::bigint * INTERVAL '1 second'))
+			  RETURNING id
+			 )
+			 SELECT
+			     EXISTS (SELECT 1 FROM upd)                                           AS acquired,
+			     COALESCE((SELECT paid_event_published_at IS NOT NULL
+			                 FROM order_svc.orders WHERE id = $1), false)             AS already_published`,
 			orderID, int64(ttl.Seconds()),
-		)
-		if err != nil {
-			return fmt.Errorf("claim paid event publish: %w", err)
-		}
-		claimed = tag.RowsAffected() > 0
-		return nil
+		).Scan(&acquired, &alreadyPublished)
 	})
-	return claimed, err
+	return acquired, alreadyPublished, err
 }
 
 // SetPointsEarned records the loyalty points earned on order payment.

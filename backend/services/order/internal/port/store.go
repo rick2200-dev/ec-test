@@ -53,14 +53,22 @@ type OrderStore interface {
 	MarkPaidEventPublished(ctx context.Context, orderID uuid.UUID) (bool, error)
 
 	// ClaimPaidEventPublish atomically claims the right to publish
-	// the paid-event bundle for a TTL-bounded window. Returns
-	// (true, nil) when the caller just won the claim and should
-	// proceed to publish; (false, nil) when another handler holds a
-	// fresh claim or the row is already fully published. The claim
-	// self-heals: a stale claim older than ttl is transparently
-	// re-acquired so a crashed mid-publish handler doesn't block
-	// the publish forever.
-	ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error)
+	// the paid-event bundle for a TTL-bounded window.
+	//
+	// Returns:
+	//   - acquired=true:  caller just won the claim → must publish
+	//   - acquired=false, alreadyPublished=true:  row is already
+	//     fully published — caller skips cleanly
+	//   - acquired=false, alreadyPublished=false: another handler
+	//     holds a fresh claim. Caller must NOT treat this as
+	//     success; returning cleanly would strand the publish if
+	//     the claim-holder's publish later fails. Surface a
+	//     retryable error so Stripe redelivers after the TTL.
+	//
+	// Stale claims (older than ttl) are transparently re-acquired,
+	// which makes the in-progress case self-heal — even when the
+	// prior claim-holder crashed.
+	ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (acquired, alreadyPublished bool, err error)
 }
 
 // CommissionStore is the driven port for commission rule persistence.

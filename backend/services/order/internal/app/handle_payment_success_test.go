@@ -113,25 +113,25 @@ func (r *recordingOrderStore) MarkPaidEventPublished(ctx context.Context, orderI
 	}
 	return true, nil
 }
-func (r *recordingOrderStore) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, error) {
-	// In-memory fake for the claim pattern. Matches the repo semantics:
-	// succeeds on first call (or when the prior claim is older than
-	// ttl), fails when a fresh claim is held or the row is already
-	// published. Stores the claim stamp on the order record so tests
-	// can assert on claim state.
+func (r *recordingOrderStore) ClaimPaidEventPublish(ctx context.Context, orderID uuid.UUID, ttl time.Duration) (bool, bool, error) {
+	// In-memory fake for the claim pattern. Matches the repo
+	// three-outcome contract: acquired, (acquired=false + already
+	// published), (acquired=false + claim held). Tests drive each
+	// branch by pre-setting PaidEventPublishedAt or PaidEventClaimAt
+	// on the order fixture.
 	o, ok := r.orderByID[orderID]
 	if !ok {
-		return false, nil
+		return false, false, nil
 	}
 	if o.PaidEventPublishedAt != nil {
-		return false, nil
+		return false, true, nil
 	}
 	if o.PaidEventClaimAt != nil && time.Since(*o.PaidEventClaimAt) < ttl {
-		return false, nil
+		return false, false, nil
 	}
 	now := time.Now()
 	o.PaidEventClaimAt = &now
-	return true, nil
+	return true, false, nil
 }
 
 type recordingPayoutStore struct {
@@ -379,6 +379,112 @@ func TestHandlePaymentSuccess_FailedPayoutSkipsDownstream(t *testing.T) {
 	}
 	if orders.markPublishedCalls != 0 {
 		t.Errorf("Failed payout must not publish events; MarkPaidEventPublished calls = %d", orders.markPublishedCalls)
+	}
+}
+
+// TestHandlePaymentSuccess_ClaimHeldReturnsRetryable is the direct
+// regression for the finding: when another handler holds a fresh
+// publish claim, this handler must NOT return a clean 2xx — doing so
+// would tell Stripe the delivery succeeded and orphan the publish
+// if the claim-holder later fails. Instead we surface a retryable
+// error so Stripe redelivers after the claim TTL expires.
+func TestHandlePaymentSuccess_ClaimHeldReturnsRetryable(t *testing.T) {
+	orderID := uuid.New()
+	payoutID := uuid.New()
+	sellerID := uuid.New()
+	piID := "pi_test"
+
+	// Pre-stamp a fresh claim to simulate another in-flight handler.
+	freshClaim := time.Now()
+	orders := &recordingOrderStore{
+		orderByID: map[uuid.UUID]*domain.Order{
+			orderID: {
+				ID:               orderID,
+				SellerID:         sellerID,
+				Status:           domain.StatusPaid, // already paid on earlier attempt
+				TotalAmount:      1000,
+				Currency:         "JPY",
+				PaidEventClaimAt: &freshClaim,
+			},
+		},
+		ordersByPI: map[string][]domain.Order{
+			piID: {{
+				ID:               orderID,
+				SellerID:         sellerID,
+				Status:           domain.StatusPaid,
+				PaidEventClaimAt: &freshClaim,
+			}},
+		},
+	}
+	payouts := &recordingPayoutStore{
+		byOrder: map[uuid.UUID]*domain.Payout{
+			orderID: {ID: payoutID, OrderID: orderID, SellerID: sellerID, Status: domain.PayoutStatusCompleted, Amount: 900, Currency: "JPY"},
+		},
+	}
+	stripe := &recordingStripe{}
+	svc := NewOrderService(
+		orders, stubCommissionStore{}, payouts,
+		stripe, &recordingPublisher{}, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 500,
+	)
+
+	err := svc.HandlePaymentSuccess(context.Background(), piID)
+	if err == nil {
+		t.Fatal("expected retryable error when claim is held by another handler")
+	}
+	// The publish-marking flag must NOT have been set by this
+	// handler — that would race with the actual claim-holder.
+	if orders.orderByID[orderID].PaidEventPublishedAt != nil {
+		t.Error("paid_event_published_at should not be stamped when claim is held elsewhere")
+	}
+	if orders.markPublishedCalls != 0 {
+		t.Errorf("MarkPaidEventPublished was called %d times; claim loser must not mark", orders.markPublishedCalls)
+	}
+}
+
+// TestHandlePaymentSuccess_ClaimAlreadyPublishedSkipsCleanly covers
+// the other non-acquired branch: when the row is already fully
+// published (a prior attempt completed every step including publish),
+// the retry must return cleanly (2xx) so Stripe stops redelivering.
+func TestHandlePaymentSuccess_ClaimAlreadyPublishedSkipsCleanly(t *testing.T) {
+	orderID := uuid.New()
+	payoutID := uuid.New()
+	sellerID := uuid.New()
+	piID := "pi_test"
+
+	pastPublished := time.Now().Add(-time.Minute)
+	orders := &recordingOrderStore{
+		orderByID: map[uuid.UUID]*domain.Order{
+			orderID: {
+				ID:                   orderID,
+				SellerID:             sellerID,
+				Status:               domain.StatusPaid,
+				TotalAmount:          1000,
+				Currency:             "JPY",
+				PaidEventPublishedAt: &pastPublished,
+			},
+		},
+		ordersByPI: map[string][]domain.Order{
+			piID: {{
+				ID:                   orderID,
+				SellerID:             sellerID,
+				Status:               domain.StatusPaid,
+				PaidEventPublishedAt: &pastPublished,
+			}},
+		},
+	}
+	payouts := &recordingPayoutStore{
+		byOrder: map[uuid.UUID]*domain.Payout{
+			orderID: {ID: payoutID, OrderID: orderID, SellerID: sellerID, Status: domain.PayoutStatusCompleted, Amount: 900, Currency: "JPY"},
+		},
+	}
+	svc := NewOrderService(
+		orders, stubCommissionStore{}, payouts,
+		&recordingStripe{}, &recordingPublisher{}, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 500,
+	)
+
+	err := svc.HandlePaymentSuccess(context.Background(), piID)
+	if err != nil {
+		t.Fatalf("already-published retry should succeed cleanly, got %v", err)
 	}
 }
 
