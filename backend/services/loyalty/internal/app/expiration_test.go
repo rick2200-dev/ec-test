@@ -338,3 +338,63 @@ func TestAwardEarn_SkipsExpiresAtWhenDisabled(t *testing.T) {
 		t.Errorf("ExpiresAt = %s, want nil when earnExpiration=0", row.ExpiresAt)
 	}
 }
+
+// TestExpirePoints_FullyConsumedWritesMarker is the regression guard
+// for the "no-op buyer starves the reaper" hazard. An earn that is
+// both expired AND already fully consumed by an earlier redeem must
+// still produce a zero-amount expire row so the candidate query
+// stops returning the buyer forever after. Without the marker the
+// reaper would pick this buyer up on every tick within the LIMIT
+// and block real expirations behind them.
+func TestExpirePoints_FullyConsumedWritesMarker(t *testing.T) {
+	svc, accounts, transactions, clk := newExpirationFixture(t)
+	accounts.acct = &domain.Account{
+		BuyerAuth0ID:     "auth0|buyer",
+		Balance:          0, // fully consumed: 500 earned, 500 redeemed
+		LifetimeEarned:   500,
+		LifetimeRedeemed: 500,
+		Version:          1,
+	}
+	earn := seedEarn(transactions, "auth0|buyer", 500,
+		clk.now.Add(-400*24*time.Hour),
+		clk.now.Add(-1*24*time.Hour), // expired yesterday
+		"order-A")
+	seedRedeem(transactions, "auth0|buyer", 500,
+		clk.now.Add(-200*24*time.Hour), uuid.New())
+
+	_, err := svc.ExpirePoints(context.Background())
+	if err != nil {
+		t.Fatalf("ExpirePoints() error = %v", err)
+	}
+	// A marker expire row must exist keyed on the earn id.
+	var marker *domain.Transaction
+	for _, row := range transactions.inserts {
+		if row.Type == domain.TransactionTypeExpire && row.SourceID == earn.ID.String() {
+			marker = row
+			break
+		}
+	}
+	if marker == nil {
+		t.Fatal("no marker expire row written for fully-consumed expired earn")
+	}
+	if marker.Amount != 0 {
+		t.Errorf("marker.Amount = %d, want 0 (no points left to expire, marker only)", marker.Amount)
+	}
+	if accounts.acct.Balance != 0 {
+		t.Errorf("balance mutated: got %d, want 0", accounts.acct.Balance)
+	}
+
+	// Second pass: the candidate query must not return this buyer
+	// anymore because the marker satisfies the anti-join.
+	insertsBefore := len(transactions.inserts)
+	n2, err := svc.ExpirePoints(context.Background())
+	if err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+	if n2 != 0 {
+		t.Errorf("second pass wrote %d rows, want 0 (buyer must be filtered out by marker)", n2)
+	}
+	if len(transactions.inserts) != insertsBefore {
+		t.Errorf("second pass appended rows: before=%d after=%d", insertsBefore, len(transactions.inserts))
+	}
+}

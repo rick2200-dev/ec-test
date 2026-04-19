@@ -808,14 +808,21 @@ func (s *Service) publishExpired(ctx context.Context, buyerAuth0ID string, total
 // balance after applying every subsequent consumption on the buyer's
 // ledger. It's rebuilt from scratch on every ExpirePoints pass — the
 // ledger is authoritative, these structs are transient.
+//
+// HasPriorExpire captures whether the ledger already contains an
+// expire row keyed on this earn's id. When true the reaper must not
+// write another one (the UNIQUE constraint would reject it anyway,
+// but we skip pre-emptively to keep the "no-op marker" path cheap).
+// When false AND the bucket is past its expires_at, we write a row
+// even if Remaining hit zero via FIFO consumption — otherwise the
+// candidate query picks the buyer up on every tick forever.
 type earnBucket struct {
-	EarnTxnID uuid.UUID
-	EarnedAt  time.Time
-	ExpiresAt *time.Time
-	// Original is the earn amount before any consumption; remaining
-	// starts equal and is decremented by the walk.
-	Original  int64
-	Remaining int64
+	EarnTxnID      uuid.UUID
+	EarnedAt       time.Time
+	ExpiresAt      *time.Time
+	Original       int64
+	Remaining      int64
+	HasPriorExpire bool
 }
 
 // ExpirePoints is the expiration reaper entrypoint. It scans for
@@ -900,16 +907,26 @@ func (s *Service) expirePointsForBuyer(ctx context.Context, buyerAuth0ID string,
 			if b.ExpiresAt == nil || !b.ExpiresAt.Before(now) {
 				continue
 			}
-			if b.Remaining <= 0 {
+			if b.HasPriorExpire {
+				// Already marked in a previous pass; leaving it alone
+				// is what makes the candidate query stop returning
+				// this buyer.
 				continue
 			}
+			// Write a row for every unmarked expired bucket, even
+			// when Remaining is zero because FIFO consumption drained
+			// it first. The zero-amount marker is what tells the
+			// candidate query's anti-join that this earn has been
+			// processed — without it the buyer would come back on
+			// every reaper tick forever and starve real work from
+			// the batched LIMIT.
 			expireAmount := b.Remaining
 			runningBalance -= expireAmount
 			row := &domain.Transaction{
 				ID:           uuid.New(),
 				BuyerAuth0ID: buyerAuth0ID,
 				Type:         domain.TransactionTypeExpire,
-				Amount:       -expireAmount,
+				Amount:       -expireAmount, // zero when the earn was already fully consumed
 				BalanceAfter: runningBalance,
 				SourceType:   domain.SourceTypeExpirationJob,
 				SourceID:     b.EarnTxnID.String(),
@@ -917,10 +934,9 @@ func (s *Service) expirePointsForBuyer(ctx context.Context, buyerAuth0ID string,
 			}
 			if err := s.transactions.Insert(ctx, row); err != nil {
 				if errors.Is(err, port.ErrDuplicateIdempotencyKey) {
-					// Another pass already retired this bucket. Walk
-					// already accounts for that via earlier expire
-					// rows, so hitting this means a concurrent
-					// reaper wrote the same row — harmless, rewind.
+					// Concurrent reaper beat us to this bucket. The
+					// other writer's delta already shrank the
+					// balance, so we rewind our own accounting.
 					runningBalance += expireAmount
 					continue
 				}
@@ -930,6 +946,9 @@ func (s *Service) expirePointsForBuyer(ctx context.Context, buyerAuth0ID string,
 			totalExpired += expireAmount
 		}
 		if totalExpired == 0 {
+			// writtenBuckets may still be > 0 (marker rows) — they
+			// don't require an account delta but do consume the
+			// buyer's candidate slot, which is the whole point.
 			return nil
 		}
 		if err := s.accounts.ApplyDelta(ctx, buyerAuth0ID, port.AccountDelta{
@@ -998,14 +1017,16 @@ func rebuildEarnBuckets(txns []domain.Transaction) []earnBucket {
 			// impact (accounted for in the invariant check).
 		case domain.TransactionTypeExpire:
 			// source_id on expire rows is the earn txn id's string
-			// form; recover the bucket index and subtract the expired
-			// amount so a re-run can see what's already gone.
+			// form; recover the bucket index, subtract the expired
+			// amount, and flag hasPriorExpire so we don't write a
+			// duplicate marker on this pass.
 			if earnID, err := uuid.Parse(tx.SourceID); err == nil {
 				if i, ok := idxByEarnID[earnID]; ok {
 					buckets[i].Remaining -= -tx.Amount
 					if buckets[i].Remaining < 0 {
 						buckets[i].Remaining = 0
 					}
+					buckets[i].HasPriorExpire = true
 				}
 			}
 		}

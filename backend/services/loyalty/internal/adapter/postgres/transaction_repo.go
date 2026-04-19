@@ -167,11 +167,15 @@ func (r *TransactionRepository) GetByIdempotency(ctx context.Context, sourceType
 }
 
 // ListByBuyerChronological returns every ledger row for a buyer in
-// ascending created_at order. Used by the expiration reaper to
-// replay the full ledger and compute per-earn-row remaining balance.
-// Intentionally unbounded: expiration walks are meant to be rare
-// (per-buyer, per-reaper-pass, only on buyers who have expired earns)
-// and the buyer_auth0_id + created_at index already exists.
+// true insertion order. Used by the expiration reaper to replay the
+// full ledger and compute per-earn-row remaining balance.
+//
+// Order is driven by ledger_seq (migration 004): created_at defaults
+// to NOW() which collides for rows written inside the same tx, and
+// the id fallback (UUID) is random. Both combined would break FIFO
+// accounting for any path that writes multiple ledger rows in one
+// transaction (today that includes CommitPointsReservation, which
+// emits both a redeem and an earn row).
 func (r *TransactionRepository) ListByBuyerChronological(ctx context.Context, buyerAuth0ID string) ([]domain.Transaction, error) {
 	var results []domain.Transaction
 	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
@@ -180,7 +184,7 @@ func (r *TransactionRepository) ListByBuyerChronological(ctx context.Context, bu
 			        source_type, source_id, reservation_id, expires_at, note, created_at
 			 FROM loyalty_svc.point_transactions
 			 WHERE buyer_auth0_id = $1
-			 ORDER BY created_at ASC, id ASC`,
+			 ORDER BY ledger_seq ASC`,
 			buyerAuth0ID,
 		)
 		if err != nil {
