@@ -42,26 +42,26 @@ const (
 // Reserve path increments to give pessimistic-ish concurrency without
 // holding a row lock for the duration of the checkout.
 type Coupon struct {
-	ID                  uuid.UUID     `json:"id"`
-	Code                string        `json:"code"`
-	IssuerType          IssuerType    `json:"issuer_type"`
-	IssuerID            *uuid.UUID    `json:"issuer_id,omitempty"`
-	DiscountType        DiscountType  `json:"discount_type"`
-	DiscountPercentBps  *int          `json:"discount_percent_bps,omitempty"`
-	DiscountAmount      *int64        `json:"discount_amount,omitempty"`
-	Currency            string        `json:"currency"`
-	MinOrderAmount      int64         `json:"min_order_amount"`
-	MaxDiscountAmount   *int64        `json:"max_discount_amount,omitempty"`
-	ValidFrom           time.Time     `json:"valid_from"`
-	ExpiresAt           *time.Time    `json:"expires_at,omitempty"`
-	UsageLimitTotal     *int          `json:"usage_limit_total,omitempty"`
-	UsageLimitPerUser   *int          `json:"usage_limit_per_user,omitempty"`
-	UsageCount          int           `json:"usage_count"`
-	Status              CouponStatus  `json:"status"`
-	Title               string        `json:"title"`
-	Description         string        `json:"description"`
-	CreatedAt           time.Time     `json:"created_at"`
-	UpdatedAt           time.Time     `json:"updated_at"`
+	ID                 uuid.UUID    `json:"id"`
+	Code               string       `json:"code"`
+	IssuerType         IssuerType   `json:"issuer_type"`
+	IssuerID           *uuid.UUID   `json:"issuer_id,omitempty"`
+	DiscountType       DiscountType `json:"discount_type"`
+	DiscountPercentBps *int         `json:"discount_percent_bps,omitempty"`
+	DiscountAmount     *int64       `json:"discount_amount,omitempty"`
+	Currency           string       `json:"currency"`
+	MinOrderAmount     int64        `json:"min_order_amount"`
+	MaxDiscountAmount  *int64       `json:"max_discount_amount,omitempty"`
+	ValidFrom          time.Time    `json:"valid_from"`
+	ExpiresAt          *time.Time   `json:"expires_at,omitempty"`
+	UsageLimitTotal    *int         `json:"usage_limit_total,omitempty"`
+	UsageLimitPerUser  *int         `json:"usage_limit_per_user,omitempty"`
+	UsageCount         int          `json:"usage_count"`
+	Status             CouponStatus `json:"status"`
+	Title              string       `json:"title"`
+	Description        string       `json:"description"`
+	CreatedAt          time.Time    `json:"created_at"`
+	UpdatedAt          time.Time    `json:"updated_at"`
 }
 
 // ReservationStatus is the coupon reservation lifecycle. See

@@ -46,7 +46,7 @@ func NewServices(cfg config.Config) *Services {
 		Recommend: NewServiceClient(cfg.RecommendServiceURL),
 		Cart:      NewServiceClient(cfg.CartServiceURL),
 		Inquiry:   NewServiceClient(cfg.InquiryServiceURL),
-		Review: NewServiceClient(cfg.ReviewServiceURL),
+		Review:    NewServiceClient(cfg.ReviewServiceURL),
 		// Subscription service gates every non-health route behind the
 		// shared X-Internal-Token secret. Attach it at client
 		// construction so every call from the gateway carries it — the

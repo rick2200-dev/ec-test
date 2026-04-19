@@ -813,10 +813,10 @@ func TestAdminForceCancel_CreatesAndApproves(t *testing.T) {
 		approveTxFn: func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
 			approvedInput = in
 			updated := &CancellationRequest{
-				ID:       in.RequestID,
-				OrderID:  in.OrderID,
-				Status:   StatusApproved,
-				Reason:   in.Reason,
+				ID:             in.RequestID,
+				OrderID:        in.OrderID,
+				Status:         StatusApproved,
+				Reason:         in.Reason,
 				StripeRefundID: stringPtr(in.StripeRefundID),
 			}
 			cancelled := order.Order

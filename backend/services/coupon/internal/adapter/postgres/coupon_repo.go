@@ -229,11 +229,11 @@ type scanFn func(dest ...any) error
 
 func scanCoupon(scan scanFn) (*domain.Coupon, error) {
 	var (
-		c               domain.Coupon
-		issuerType      string
-		discountType    string
-		status          string
-		title, desc     *string
+		c            domain.Coupon
+		issuerType   string
+		discountType string
+		status       string
+		title, desc  *string
 	)
 	err := scan(
 		&c.ID, &c.Code, &issuerType, &c.IssuerID, &discountType,

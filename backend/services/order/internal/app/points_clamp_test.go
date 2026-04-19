@@ -112,11 +112,10 @@ func (fakeCommissionStore) Create(ctx context.Context, r *domain.CommissionRule)
 	return nil
 }
 
-// fakePayoutStore records each batch's payout so tests can assert
-// commission / payout split against the expected post-discount math.
-type fakePayoutStore struct {
-	created []domain.Payout
-}
+// fakePayoutStore is a no-op store for checkout tests. Payout fields
+// are asserted directly via fakeOrderStore.insertedBatch[i].Payout
+// so no persistence capture is needed here.
+type fakePayoutStore struct{}
 
 func (f *fakePayoutStore) GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domain.Payout, error) {
 	return nil, nil

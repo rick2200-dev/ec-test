@@ -19,8 +19,7 @@ export default function AdminRefundsPage() {
   const [result, setResult] = useState<AdminRefundResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
-    !submitting && UUID_REGEX.test(orderId.trim()) && reason.trim().length > 0;
+  const canSubmit = !submitting && UUID_REGEX.test(orderId.trim()) && reason.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,16 +139,14 @@ export default function AdminRefundsPage() {
             type="submit"
             disabled={!canSubmit}
             className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
-              confirmArmed
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-accent hover:bg-accent-hover"
+              confirmArmed ? "bg-red-600 hover:bg-red-700" : "bg-accent hover:bg-accent-hover"
             }`}
           >
             {submitting
               ? t("buttons.submitting")
               : confirmArmed
-              ? t("buttons.confirm")
-              : t("buttons.submit")}
+                ? t("buttons.confirm")
+                : t("buttons.submit")}
           </button>
           {confirmArmed && !submitting && (
             <button

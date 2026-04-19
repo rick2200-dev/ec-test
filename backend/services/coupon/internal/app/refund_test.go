@@ -20,8 +20,8 @@ import (
 // on the transition to fully refunded.
 
 type fakeCouponStore struct {
-	coupons       map[uuid.UUID]*domain.Coupon
-	decrementLog  []uuid.UUID
+	coupons      map[uuid.UUID]*domain.Coupon
+	decrementLog []uuid.UUID
 }
 
 func (f *fakeCouponStore) Insert(ctx context.Context, c *domain.Coupon) error { return nil }

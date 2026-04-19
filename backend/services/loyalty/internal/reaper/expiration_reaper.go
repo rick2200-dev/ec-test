@@ -14,9 +14,9 @@ import (
 // expiration walks the full per-buyer ledger and runs on a slower
 // cadence than the 60-second reservation sweep.
 type ExpirationReaper struct {
-	svc          port.LoyaltyUseCase
-	interval     time.Duration
-	tickTimeout  time.Duration
+	svc         port.LoyaltyUseCase
+	interval    time.Duration
+	tickTimeout time.Duration
 }
 
 // NewExpirationReaper constructs the reaper. Zero/negative values for

@@ -179,8 +179,8 @@ func (s *Service) AwardEarn(ctx context.Context, buyerAuth0ID, orderID string, p
 	}
 
 	var (
-		created     *domain.Transaction
-		wasNewRow   bool
+		created   *domain.Transaction
+		wasNewRow bool
 	)
 	err := s.tx.RunTx(ctx, func(ctx context.Context) error {
 		// 1. Serialize on the account row. Concurrent earn / reserve
@@ -977,17 +977,17 @@ func (s *Service) expirePointsForBuyer(ctx context.Context, buyerAuth0ID string,
 //   - earn:                     creates a new bucket (Remaining = Amount).
 //   - redeem / reverse_earn:    negative Amount → FIFO-consume abs across buckets.
 //   - refund / adjust:          sign-dependent. Positive amounts are
-//                               platform-funded credits that do NOT
-//                               come from any earn — they're ignored
-//                               for bucket accounting (balance is still
-//                               correct because the invariant check
-//                               accounts for them). Negative amounts
-//                               FIFO-consume.
+//     platform-funded credits that do NOT
+//     come from any earn — they're ignored
+//     for bucket accounting (balance is still
+//     correct because the invariant check
+//     accounts for them). Negative amounts
+//     FIFO-consume.
 //   - expire:                   subtracts abs(Amount) from the bucket
-//                               whose id matches the expire row's
-//                               source_id. Falls back to no-op if the
-//                               bucket is missing (shouldn't happen;
-//                               guard against corrupt ledger).
+//     whose id matches the expire row's
+//     source_id. Falls back to no-op if the
+//     bucket is missing (shouldn't happen;
+//     guard against corrupt ledger).
 //
 // The walk is order-preserving: earn rows added to the slice in the
 // order they appear in the ledger, and FIFO consumption scans the

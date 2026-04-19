@@ -72,18 +72,18 @@ type LoyaltyUseCase interface {
 // the loyalty subscriber. Both amount fields may be zero — e.g. an
 // order that earned points but did not redeem, or vice versa.
 type CancelPointsInput struct {
-	BuyerAuth0ID         string
-	OrderID              string
-	PointDiscountAmount  int64 // the share of this order that was paid with points
-	PointsEarned         int64 // the earn credited on order.paid
+	BuyerAuth0ID        string
+	OrderID             string
+	PointDiscountAmount int64 // the share of this order that was paid with points
+	PointsEarned        int64 // the earn credited on order.paid
 }
 
 // CancelPointsResult reports whether each reversal actually wrote a
 // row (false = already compensated on a previous delivery).
 type CancelPointsResult struct {
-	Refunded     int64
-	Reversed     int64
-	NewBalance   int64
+	Refunded   int64
+	Reversed   int64
+	NewBalance int64
 }
 
 // CommitPointsResult is the return value of CommitPointsReservation.

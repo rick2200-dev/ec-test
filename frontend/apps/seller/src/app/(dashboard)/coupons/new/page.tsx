@@ -49,8 +49,7 @@ export default function NewSellerCouponPage() {
             ? maxDiscountAmount
             : undefined,
         usage_limit_total: typeof usageLimitTotal === "number" ? usageLimitTotal : undefined,
-        usage_limit_per_user:
-          typeof usageLimitPerUser === "number" ? usageLimitPerUser : undefined,
+        usage_limit_per_user: typeof usageLimitPerUser === "number" ? usageLimitPerUser : undefined,
         expires_at_unix: expiresAt
           ? Math.floor(new Date(`${expiresAt}T23:59:59`).getTime() / 1000)
           : undefined,

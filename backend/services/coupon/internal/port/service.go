@@ -71,22 +71,22 @@ type RefundResult struct {
 // system fields (id, usage_count, timestamps) are assigned by the
 // service.
 type CreateCouponInput struct {
-	Code                string
-	IssuerType          domain.IssuerType
-	IssuerID            *uuid.UUID
-	DiscountType        domain.DiscountType
-	DiscountPercentBps  *int
-	DiscountAmount      *int64
-	Currency            string
-	MinOrderAmount      int64
-	MaxDiscountAmount   *int64
-	ValidFromSet        bool
-	ValidFromUnix       int64 // epoch seconds, honored only when ValidFromSet
-	ExpiresAtUnix       *int64
-	UsageLimitTotal     *int
-	UsageLimitPerUser   *int
-	Title               string
-	Description         string
+	Code               string
+	IssuerType         domain.IssuerType
+	IssuerID           *uuid.UUID
+	DiscountType       domain.DiscountType
+	DiscountPercentBps *int
+	DiscountAmount     *int64
+	Currency           string
+	MinOrderAmount     int64
+	MaxDiscountAmount  *int64
+	ValidFromSet       bool
+	ValidFromUnix      int64 // epoch seconds, honored only when ValidFromSet
+	ExpiresAtUnix      *int64
+	UsageLimitTotal    *int
+	UsageLimitPerUser  *int
+	Title              string
+	Description        string
 }
 
 // ListCouponsFilter is the admin list query. IssuerType/IssuerID are
