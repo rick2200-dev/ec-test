@@ -289,6 +289,10 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 	//    record pre-discount subtotals in order.
 	batch := make([]domain.CheckoutBatchItem, 0, len(groupOrder))
 	subtotals := make([]int64, 0, len(groupOrder))
+	// commissionRateBps is kept parallel to batch so the seller-issued
+	// coupon branch can recompute commission/payout on the post-discount
+	// subtotal without a second commission lookup.
+	commissionRateBps := make([]int, 0, len(groupOrder))
 	var cartSubtotal int64
 	for _, sellerID := range groupOrder {
 		group := groups[sellerID]
@@ -312,13 +316,17 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		if err != nil {
 			return nil, apperrors.Internal("failed to get commission rule", err)
 		}
-		var commissionAmount int64
+		var (
+			commissionAmount int64
+			rateBps          int
+		)
 		if rule != nil {
-			// MVP: coupons are platform-issued → commission is computed
-			// on the pre-discount subtotal so the seller's revenue is
-			// unaffected by the discount. A future seller-issued coupon
-			// phase flips this to post-discount on a per-order basis.
-			commissionAmount = subtotal * int64(rule.RateBps) / 10000
+			rateBps = rule.RateBps
+			// Platform coupons are platform-funded, so commission +
+			// payout stay on the pre-discount subtotal. Seller-issued
+			// coupons get a recomputation after coupon shares are
+			// distributed (see the seller-coupon branch below).
+			commissionAmount = subtotal * int64(rateBps) / 10000
 		}
 
 		order := &domain.Order{
@@ -346,6 +354,7 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 			Payout: payout,
 		})
 		subtotals = append(subtotals, subtotal)
+		commissionRateBps = append(commissionRateBps, rateBps)
 		cartSubtotal += subtotal
 	}
 
@@ -426,8 +435,35 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 	if pointReservation != nil {
 		pointDiscount = pointReservation.Amount
 	}
-	couponShares := domain.DistributeDiscount(couponDiscount, subtotals)
-	pointShares := domain.DistributeDiscount(pointDiscount, subtotals)
+	// Seller-issued coupons (ApplicableSellerID != nil) must land only
+	// on the issuing seller's order(s). Cart-wide platform coupons fall
+	// back to proportional distribution across everyone.
+	isSellerCoupon := couponReservation != nil && couponReservation.ApplicableSellerID != nil
+	var couponShares []int64
+	if isSellerCoupon {
+		sellerIDs := make([]uuid.UUID, len(batch))
+		for i, item := range batch {
+			sellerIDs[i] = item.Order.SellerID
+		}
+		couponShares = domain.DistributeSellerDiscount(couponDiscount, sellerIDs, subtotals, *couponReservation.ApplicableSellerID)
+	} else {
+		couponShares = domain.DistributeDiscount(couponDiscount, subtotals)
+	}
+	// Points distribute over post-coupon residual subtotals, not the
+	// original subtotals. If we used the original, a seller coupon
+	// that drove one order's residual to near-zero would still receive
+	// a proportional point share — the order would clamp to 0 but the
+	// reservation would still be burned, silently over-spending the
+	// buyer's points. DistributeDiscount already caps each share at
+	// its input, so clamping residuals here is enough.
+	residuals := make([]int64, len(subtotals))
+	for i := range subtotals {
+		residuals[i] = subtotals[i] - couponShares[i]
+		if residuals[i] < 0 {
+			residuals[i] = 0
+		}
+	}
+	pointShares := domain.DistributeDiscount(pointDiscount, residuals)
 
 	// 3d. Apply shares to each order + compute per-order total. Stamp
 	// the reservation IDs on the first (anchor) order only, which
@@ -442,6 +478,21 @@ func (s *OrderService) CreateCheckout(ctx context.Context, input domain.Checkout
 		}
 		batch[i].Order.TotalAmount = orderTotal
 		cartTotal += orderTotal
+
+		// Seller-issued coupons are seller-funded: the seller's payout
+		// shrinks by the coupon share, and commission is recomputed on
+		// the post-discount subtotal so the platform doesn't claim fee
+		// on revenue the seller didn't earn. Platform coupons + points
+		// are platform-funded and don't touch the seller's payout.
+		if isSellerCoupon && couponShares[i] > 0 {
+			effectiveSubtotal := batch[i].Order.SubtotalAmount - couponShares[i]
+			if effectiveSubtotal < 0 {
+				effectiveSubtotal = 0
+			}
+			newCommission := effectiveSubtotal * int64(commissionRateBps[i]) / 10000
+			batch[i].Order.CommissionAmount = newCommission
+			batch[i].Payout.Amount = effectiveSubtotal - newCommission
+		}
 	}
 	// Stamp coupon identifiers on EVERY order that actually received
 	// a discount share. Originally only the anchor order (batch[0])

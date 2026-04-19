@@ -29,11 +29,13 @@ func (r *ReservationRepository) Insert(ctx context.Context, res *domain.CouponRe
 			`INSERT INTO coupon_svc.coupon_reservations
 			   (id, coupon_id, buyer_auth0_id, order_candidate_id,
 			    stripe_payment_intent_id, discount_amount, currency,
+			    applicable_seller_id,
 			    status, expires_at)
-			 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+			 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 			 RETURNING created_at`,
 			res.ID, res.CouponID, res.BuyerAuth0ID, res.OrderCandidateID,
 			res.StripePaymentIntentID, res.DiscountAmount, res.Currency,
+			res.ApplicableSellerID,
 			string(res.Status), res.ExpiresAt,
 		).Scan(&res.CreatedAt)
 	})
@@ -49,12 +51,14 @@ func (r *ReservationRepository) GetByID(ctx context.Context, id uuid.UUID) (*dom
 		err := tx.QueryRow(ctx,
 			`SELECT id, coupon_id, buyer_auth0_id, order_candidate_id,
 			        stripe_payment_intent_id, discount_amount, currency,
+			        applicable_seller_id,
 			        status, expires_at, created_at, committed_at, released_at
 			 FROM coupon_svc.coupon_reservations WHERE id = $1`,
 			id,
 		).Scan(
 			&res.ID, &res.CouponID, &res.BuyerAuth0ID, &res.OrderCandidateID,
 			&res.StripePaymentIntentID, &res.DiscountAmount, &res.Currency,
+			&res.ApplicableSellerID,
 			&status, &res.ExpiresAt, &res.CreatedAt, &res.CommittedAt, &res.ReleasedAt,
 		)
 		if errors.Is(err, pgx.ErrNoRows) {

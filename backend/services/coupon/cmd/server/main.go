@@ -85,6 +85,7 @@ func main() {
 
 	adminHandler := handler.NewAdminHandler(svc)
 	buyerHandler := handler.NewBuyerHandler(svc)
+	sellerHandler := handler.NewSellerHandler(svc)
 	internalHandler := handler.NewInternalHandler(svc)
 	healthHandler := handler.NewHealthHandler(pool)
 
@@ -105,6 +106,7 @@ func main() {
 		gr.Use(pkgmiddleware.RequireInternalToken(cfg.InternalToken))
 		gr.Mount("/admin/coupons", adminHandler.Routes())
 		gr.Mount("/buyer/coupons", buyerHandler.Routes())
+		gr.Mount("/seller/coupons", sellerHandler.Routes())
 		gr.Mount("/internal", internalHandler.Routes())
 	})
 

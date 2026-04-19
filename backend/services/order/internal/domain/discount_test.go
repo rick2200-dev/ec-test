@@ -2,6 +2,8 @@ package domain
 
 import (
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // TestDistributeDiscount_Basic pins the proportional-split math that
@@ -78,4 +80,60 @@ func TestDistributeDiscount_Basic(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDistributeSellerDiscount pins the seller-scoped routing: only
+// orders for the target seller receive a share; cross-seller orders
+// in the same cart stay at zero. Regression guard for the High bug
+// where seller coupons were leaking into other sellers' subtotals
+// via the platform-wide DistributeDiscount code path.
+func TestDistributeSellerDiscount(t *testing.T) {
+	sellerA := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	sellerB := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+
+	t.Run("seller coupon lands only on issuing seller's order", func(t *testing.T) {
+		got := DistributeSellerDiscount(
+			200,
+			[]uuid.UUID{sellerA, sellerB},
+			[]int64{1000, 1000},
+			sellerA,
+		)
+		want := []int64{200, 0}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("index %d: got %d, want %d (full got=%v)", i, got[i], want[i], got)
+			}
+		}
+	})
+
+	t.Run("multiple orders for same seller split proportionally", func(t *testing.T) {
+		got := DistributeSellerDiscount(
+			300,
+			[]uuid.UUID{sellerA, sellerB, sellerA},
+			[]int64{1000, 500, 2000},
+			sellerA,
+		)
+		// 1000 + 2000 = 3000 matched subtotal. 300 * 1000/3000 = 100,
+		// 300 * 2000/3000 = 200. Remainder 0. Seller B gets nothing.
+		want := []int64{100, 0, 200}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("index %d: got %d, want %d (full got=%v)", i, got[i], want[i], got)
+			}
+		}
+	})
+
+	t.Run("no matching seller yields all zeros", func(t *testing.T) {
+		got := DistributeSellerDiscount(
+			200,
+			[]uuid.UUID{sellerB, sellerB},
+			[]int64{1000, 1000},
+			sellerA,
+		)
+		for i, v := range got {
+			if v != 0 {
+				t.Errorf("index %d: expected 0, got %d", i, v)
+			}
+		}
+	})
 }

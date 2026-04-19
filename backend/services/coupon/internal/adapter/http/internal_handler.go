@@ -74,13 +74,20 @@ func (h *InternalHandler) Reserve(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, mapError(err))
 		return
 	}
+	issuerType := domain.IssuerTypePlatform
+	applicableSellerID := ""
+	if reservation.ApplicableSellerID != nil {
+		issuerType = domain.IssuerTypeSeller
+		applicableSellerID = reservation.ApplicableSellerID.String()
+	}
 	httputil.JSON(w, http.StatusOK, reserveResponse{
-		ReservationID:  reservation.ID.String(),
-		CouponID:       reservation.CouponID.String(),
-		IssuerType:     string(domain.IssuerTypePlatform), // MVP
-		DiscountAmount: reservation.DiscountAmount,
-		Currency:       reservation.Currency,
-		ExpiresAt:      reservation.ExpiresAt,
+		ReservationID:      reservation.ID.String(),
+		CouponID:           reservation.CouponID.String(),
+		IssuerType:         string(issuerType),
+		ApplicableSellerID: applicableSellerID,
+		DiscountAmount:     reservation.DiscountAmount,
+		Currency:           reservation.Currency,
+		ExpiresAt:          reservation.ExpiresAt,
 	})
 }
 

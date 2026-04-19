@@ -26,6 +26,7 @@ const navItemDefs: NavItemDef[] = [
   { href: "/reviews", labelKey: "sidebar.reviews", icon: "mail" },
   { href: "/notifications", labelKey: "sidebar.notifications", icon: "bell" },
   { href: "/sales", labelKey: "sidebar.sales", icon: "trending-up" },
+  { href: "/coupons", labelKey: "sidebar.coupons", icon: "credit-card" },
   { href: "/subscription", labelKey: "sidebar.subscription", icon: "credit-card" },
   // API Tokens lives under /settings so a future settings landing page
   // can add sibling routes without reshuffling the nav.

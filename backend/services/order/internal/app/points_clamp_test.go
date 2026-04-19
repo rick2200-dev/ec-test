@@ -93,10 +93,17 @@ func (fakeSKULookup) BatchGetSKUProductIDs(ctx context.Context, ids []uuid.UUID)
 
 // fakeCommissionStore / fakePayoutStore / fakeOrderStore are trimmed-
 // down stubs that just accept writes and return zero values for reads.
-type fakeCommissionStore struct{}
+// The ruleByBps knob lets tests pin a rate without wiring the full
+// (tenant, category, seller) resolution path.
+type fakeCommissionStore struct {
+	ruleBps int
+}
 
-func (fakeCommissionStore) GetApplicableRule(ctx context.Context, sellerID uuid.UUID, categoryID *uuid.UUID) (*domain.CommissionRule, error) {
-	return nil, nil
+func (f fakeCommissionStore) GetApplicableRule(ctx context.Context, sellerID uuid.UUID, categoryID *uuid.UUID) (*domain.CommissionRule, error) {
+	if f.ruleBps == 0 {
+		return nil, nil
+	}
+	return &domain.CommissionRule{RateBps: f.ruleBps}, nil
 }
 func (fakeCommissionStore) List(ctx context.Context, limit, offset int) ([]domain.CommissionRule, int, error) {
 	return nil, 0, nil
@@ -105,23 +112,28 @@ func (fakeCommissionStore) Create(ctx context.Context, r *domain.CommissionRule)
 	return nil
 }
 
-type fakePayoutStore struct{}
+// fakePayoutStore records each batch's payout so tests can assert
+// commission / payout split against the expected post-discount math.
+type fakePayoutStore struct {
+	created []domain.Payout
+}
 
-func (fakePayoutStore) GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domain.Payout, error) {
+func (f *fakePayoutStore) GetByOrderID(ctx context.Context, orderID uuid.UUID) (*domain.Payout, error) {
 	return nil, nil
 }
-func (fakePayoutStore) UpdateStatus(ctx context.Context, payoutID uuid.UUID, status string, stripeTransferID *string) error {
+func (f *fakePayoutStore) UpdateStatus(ctx context.Context, payoutID uuid.UUID, status string, stripeTransferID *string) error {
 	return nil
 }
-func (fakePayoutStore) ListBySeller(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
+func (f *fakePayoutStore) ListBySeller(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]domain.Payout, int, error) {
 	return nil, 0, nil
 }
-func (fakePayoutStore) Reverse(ctx context.Context, payoutID uuid.UUID, stripeReversalID string) error {
+func (f *fakePayoutStore) Reverse(ctx context.Context, payoutID uuid.UUID, stripeReversalID string) error {
 	return nil
 }
 
 type fakeOrderStore struct {
 	insertedOrders []*domain.Order
+	insertedBatch  []domain.CheckoutBatchItem
 }
 
 func (f *fakeOrderStore) Create(ctx context.Context, order *domain.Order, lines []domain.OrderLine) error {
@@ -131,6 +143,7 @@ func (f *fakeOrderStore) CreateCheckoutBatch(ctx context.Context, items []domain
 	for _, item := range items {
 		item.Order.ID = uuid.New()
 		f.insertedOrders = append(f.insertedOrders, item.Order)
+		f.insertedBatch = append(f.insertedBatch, item)
 	}
 	return nil
 }
@@ -201,7 +214,7 @@ func TestCreateCheckout_ClampsPointsToApplicableSubtotal(t *testing.T) {
 	orderStore := &fakeOrderStore{}
 	stripe := &fakeStripe{}
 	svc := NewOrderService(
-		orderStore, fakeCommissionStore{}, fakePayoutStore{},
+		orderStore, fakeCommissionStore{}, &fakePayoutStore{},
 		stripe, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{},
 		0, // no shipping fee so cartSubtotal == lineTotal
 	).WithPointReserver(points, true)
@@ -252,7 +265,7 @@ func TestCreateCheckout_PointsWithCouponClampsAgainstRemainder(t *testing.T) {
 	points := &fakePointReserver{}
 	orderStore := &fakeOrderStore{}
 	svc := NewOrderService(
-		orderStore, fakeCommissionStore{}, fakePayoutStore{},
+		orderStore, fakeCommissionStore{}, &fakePayoutStore{},
 		&fakeStripe{}, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 0,
 	).
 		WithCouponReserver(coupon, true).
@@ -283,7 +296,7 @@ func TestCreateCheckout_PointsWithCouponClampsAgainstRemainder(t *testing.T) {
 func TestCreateCheckout_PointsWithinSubtotalPassesThrough(t *testing.T) {
 	points := &fakePointReserver{}
 	svc := NewOrderService(
-		&fakeOrderStore{}, fakeCommissionStore{}, fakePayoutStore{},
+		&fakeOrderStore{}, fakeCommissionStore{}, &fakePayoutStore{},
 		&fakeStripe{}, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 0,
 	).WithPointReserver(points, true)
 
@@ -301,5 +314,223 @@ func TestCreateCheckout_PointsWithinSubtotalPassesThrough(t *testing.T) {
 	}
 	if points.reservedAmount != 1500 {
 		t.Errorf("reserved amount = %d, want 1500 (no clamp)", points.reservedAmount)
+	}
+}
+
+// TestCreateCheckout_SellerCouponAdjustsCommissionAndPayout pins the
+// seller-funded-coupon accounting. Seller A issues a 200 yen coupon on
+// a 1000 yen order with a 10% commission rule: the buyer pays 800, the
+// platform takes commission on the *post-discount* revenue, and the
+// seller's payout shrinks to match. Prior to this fix, commission +
+// payout were frozen on pre-discount subtotal so the seller got
+// overpaid by the coupon amount.
+func TestCreateCheckout_SellerCouponAdjustsCommissionAndPayout(t *testing.T) {
+	sellerA := uuid.New()
+	coupon := &fakeCouponReserver{
+		reservation: &port.CouponReservation{
+			ReservationID:      uuid.New(),
+			CouponID:           uuid.New(),
+			IssuerType:         "seller",
+			ApplicableSellerID: &sellerA,
+			DiscountAmount:     200,
+			Currency:           "jpy",
+		},
+	}
+	orderStore := &fakeOrderStore{}
+	payoutStore := &fakePayoutStore{}
+	svc := NewOrderService(
+		orderStore, fakeCommissionStore{ruleBps: 1000}, payoutStore,
+		&fakeStripe{}, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 0,
+	).WithCouponReserver(coupon, true)
+
+	_, err := svc.CreateCheckout(context.Background(), domain.CheckoutInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Currency:     "jpy",
+		Lines: []domain.CheckoutLineInput{{
+			SKUID: uuid.New(), SellerID: sellerA, Quantity: 1, UnitPrice: 1000,
+		}},
+		ShippingAddress: json.RawMessage(`{}`),
+		CouponCode:      "SHOPA10",
+	})
+	if err != nil {
+		t.Fatalf("CreateCheckout() error = %v", err)
+	}
+	if len(orderStore.insertedBatch) != 1 {
+		t.Fatalf("expected 1 batch item, got %d", len(orderStore.insertedBatch))
+	}
+	bi := orderStore.insertedBatch[0]
+	// effective_subtotal = 1000 - 200 = 800. commission = 800*0.10 = 80.
+	// payout = 800 - 80 = 720.
+	if bi.Order.CouponDiscountAmount != 200 {
+		t.Errorf("CouponDiscountAmount = %d, want 200", bi.Order.CouponDiscountAmount)
+	}
+	if bi.Order.CommissionAmount != 80 {
+		t.Errorf("CommissionAmount = %d, want 80 (10%% of post-discount 800)", bi.Order.CommissionAmount)
+	}
+	if bi.Payout.Amount != 720 {
+		t.Errorf("Payout.Amount = %d, want 720 (800 - 80 commission)", bi.Payout.Amount)
+	}
+}
+
+// TestCreateCheckout_SellerCouponDoesntAffectOtherSeller asserts that
+// seller A's coupon leaves seller B's commission + payout intact — the
+// discount is seller A's cost, not seller B's.
+func TestCreateCheckout_SellerCouponDoesntAffectOtherSeller(t *testing.T) {
+	sellerA := uuid.New()
+	sellerB := uuid.New()
+	coupon := &fakeCouponReserver{
+		reservation: &port.CouponReservation{
+			ReservationID:      uuid.New(),
+			CouponID:           uuid.New(),
+			IssuerType:         "seller",
+			ApplicableSellerID: &sellerA,
+			DiscountAmount:     300,
+			Currency:           "jpy",
+		},
+	}
+	orderStore := &fakeOrderStore{}
+	svc := NewOrderService(
+		orderStore, fakeCommissionStore{ruleBps: 1000}, &fakePayoutStore{},
+		&fakeStripe{}, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 0,
+	).WithCouponReserver(coupon, true)
+
+	_, err := svc.CreateCheckout(context.Background(), domain.CheckoutInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Currency:     "jpy",
+		Lines: []domain.CheckoutLineInput{
+			{SKUID: uuid.New(), SellerID: sellerA, Quantity: 1, UnitPrice: 1000},
+			{SKUID: uuid.New(), SellerID: sellerB, Quantity: 1, UnitPrice: 2000},
+		},
+		ShippingAddress: json.RawMessage(`{}`),
+		CouponCode:      "SHOPA300",
+	})
+	if err != nil {
+		t.Fatalf("CreateCheckout() error = %v", err)
+	}
+	if len(orderStore.insertedBatch) != 2 {
+		t.Fatalf("expected 2 batch items, got %d", len(orderStore.insertedBatch))
+	}
+	var aBatch, bBatch domain.CheckoutBatchItem
+	for _, bi := range orderStore.insertedBatch {
+		switch bi.Order.SellerID {
+		case sellerA:
+			aBatch = bi
+		case sellerB:
+			bBatch = bi
+		}
+	}
+	// Seller A: effective 700, commission 70, payout 630.
+	if aBatch.Order.CouponDiscountAmount != 300 {
+		t.Errorf("seller A coupon = %d, want 300", aBatch.Order.CouponDiscountAmount)
+	}
+	if aBatch.Order.CommissionAmount != 70 {
+		t.Errorf("seller A commission = %d, want 70 (10%% of 700)", aBatch.Order.CommissionAmount)
+	}
+	if aBatch.Payout.Amount != 630 {
+		t.Errorf("seller A payout = %d, want 630", aBatch.Payout.Amount)
+	}
+	// Seller B: no coupon touched its subtotal, so pre-discount math stands.
+	if bBatch.Order.CouponDiscountAmount != 0 {
+		t.Errorf("seller B coupon = %d, want 0 (different seller's coupon must not leak)", bBatch.Order.CouponDiscountAmount)
+	}
+	if bBatch.Order.CommissionAmount != 200 {
+		t.Errorf("seller B commission = %d, want 200 (10%% of 2000)", bBatch.Order.CommissionAmount)
+	}
+	if bBatch.Payout.Amount != 1800 {
+		t.Errorf("seller B payout = %d, want 1800", bBatch.Payout.Amount)
+	}
+}
+
+// TestCreateCheckout_PlatformCouponDoesntTouchPayout confirms the
+// platform-funded fallback: platform coupons drain from the platform,
+// not the seller, so payout + commission stay on pre-discount subtotal.
+func TestCreateCheckout_PlatformCouponDoesntTouchPayout(t *testing.T) {
+	coupon := &fakeCouponReserver{
+		reservation: &port.CouponReservation{
+			ReservationID:  uuid.New(),
+			CouponID:       uuid.New(),
+			IssuerType:     "platform",
+			DiscountAmount: 200,
+			Currency:       "jpy",
+		},
+	}
+	orderStore := &fakeOrderStore{}
+	svc := NewOrderService(
+		orderStore, fakeCommissionStore{ruleBps: 1000}, &fakePayoutStore{},
+		&fakeStripe{}, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 0,
+	).WithCouponReserver(coupon, true)
+
+	_, err := svc.CreateCheckout(context.Background(), domain.CheckoutInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Currency:     "jpy",
+		Lines: []domain.CheckoutLineInput{{
+			SKUID: uuid.New(), SellerID: uuid.New(), Quantity: 1, UnitPrice: 1000,
+		}},
+		ShippingAddress: json.RawMessage(`{}`),
+		CouponCode:      "PLATFORM200",
+	})
+	if err != nil {
+		t.Fatalf("CreateCheckout() error = %v", err)
+	}
+	bi := orderStore.insertedBatch[0]
+	if bi.Order.CommissionAmount != 100 {
+		t.Errorf("CommissionAmount = %d, want 100 (platform coupon must not shrink commission)", bi.Order.CommissionAmount)
+	}
+	if bi.Payout.Amount != 900 {
+		t.Errorf("Payout.Amount = %d, want 900 (platform coupon: seller paid on pre-discount)", bi.Payout.Amount)
+	}
+}
+
+// TestCreateCheckout_SellerCouponPointsClampToResidual pins the Medium
+// issue: when a seller coupon has already absorbed most of an order's
+// subtotal, subsequent point shares must fit inside the remaining
+// per-order residual, not the original subtotal. Otherwise the buyer's
+// points get burned against a clamped-to-zero order total.
+func TestCreateCheckout_SellerCouponPointsClampToResidual(t *testing.T) {
+	sellerA := uuid.New()
+	coupon := &fakeCouponReserver{
+		reservation: &port.CouponReservation{
+			ReservationID:      uuid.New(),
+			CouponID:           uuid.New(),
+			IssuerType:         "seller",
+			ApplicableSellerID: &sellerA,
+			DiscountAmount:     800, // absorbs most of the 1000-yen subtotal
+			Currency:           "jpy",
+		},
+	}
+	points := &fakePointReserver{}
+	orderStore := &fakeOrderStore{}
+	svc := NewOrderService(
+		orderStore, fakeCommissionStore{}, &fakePayoutStore{},
+		&fakeStripe{}, nil, fakeBuyerSub{}, fakeSellerLookup{}, fakeSKULookup{}, 0,
+	).
+		WithCouponReserver(coupon, true).
+		WithPointReserver(points, true)
+
+	_, err := svc.CreateCheckout(context.Background(), domain.CheckoutInput{
+		BuyerAuth0ID: "auth0|buyer",
+		Currency:     "jpy",
+		Lines: []domain.CheckoutLineInput{{
+			SKUID: uuid.New(), SellerID: sellerA, Quantity: 1, UnitPrice: 1000,
+		}},
+		ShippingAddress: json.RawMessage(`{}`),
+		CouponCode:      "SHOPA800",
+		PointsToRedeem:  500,
+	})
+	if err != nil {
+		t.Fatalf("CreateCheckout() error = %v", err)
+	}
+	// Cart-wide clamp keeps points reservation at cart_subtotal - coupon
+	// = 1000 - 800 = 200. Buyer asked for 500 but only 200 should be
+	// reserved.
+	if points.reservedAmount != 200 {
+		t.Errorf("reserved points = %d, want 200 (1000 subtotal - 800 coupon)", points.reservedAmount)
+	}
+	bi := orderStore.insertedBatch[0]
+	if bi.Order.PointDiscountAmount != 200 {
+		t.Errorf("PointDiscountAmount = %d, want 200 (must fit in residual)", bi.Order.PointDiscountAmount)
+	}
+	if bi.Order.PointDiscountAmount > bi.Order.SubtotalAmount-bi.Order.CouponDiscountAmount {
+		t.Errorf("points %d exceeds residual %d — buyer would over-spend", bi.Order.PointDiscountAmount, bi.Order.SubtotalAmount-bi.Order.CouponDiscountAmount)
 	}
 }

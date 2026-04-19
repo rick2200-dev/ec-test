@@ -33,7 +33,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 	r.Use(gwmw.CORS(cfg.AllowedOrigins))
 
 	// --- Health endpoints (no auth required) ---
-	health := NewHealthHandler()
+	health := NewHealthHandler(svc)
 	r.Get("/healthz", health.Liveness)
 	r.Get("/readyz", health.Readiness)
 
@@ -157,6 +157,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 		seller := NewSellerHandler(svc)
 		sellerTeam := NewSellerTeamHandler(svc, rbacLoader)
 		sellerAPITokens := NewSellerAPITokenHandler(svc, apiTokenLoader, cfg.APITokenPrefix)
+		coupon := NewCouponHandler(svc)
 		api.Route("/seller", func(sr chi.Router) {
 			sr.Use(apitoken.OrJWT(jwtMW, apiTokenLoader, cfg.APITokenPrefix))
 			sr.Use(pkgmw.RequireRole("seller"))
@@ -258,13 +259,27 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 					tr.Get("/{id}", sellerAPITokens.Get)
 					tr.Delete("/{id}", sellerAPITokens.Revoke)
 				})
+
+				// Seller-issued coupon management. Gated to team members
+				// because writes can immediately affect pricing on that
+				// seller's products. The coupon service enforces that
+				// each row's issuer_id matches the caller's X-Seller-ID,
+				// so a seller can never probe or mutate a sibling's
+				// coupons.
+				ui.Route("/coupons", func(cr chi.Router) {
+					cr.Use(pkgauthz.RequireSellerRole(rbacLoader, pkgauthz.SellerRoleMember))
+					cr.Get("/", coupon.SellerList)
+					cr.Post("/", coupon.SellerCreate)
+					cr.Get("/{id}", coupon.SellerGet)
+					cr.Post("/{id}/revoke", coupon.SellerRevoke)
+					cr.Get("/{id}/stats", coupon.SellerStats)
+				})
 			})
 		})
 
 		// Admin routes (requires platform_admin role at the JWT level)
 		admin := NewAdminHandler(svc)
 		platformAdmin := NewPlatformAdminHandler(svc, rbacLoader)
-		coupon := NewCouponHandler(svc)
 		api.Route("/admin", func(ar chi.Router) {
 			ar.Use(jwtMW.VerifyJWT)
 			ar.Use(pkgmw.RequireRole("platform_admin"))

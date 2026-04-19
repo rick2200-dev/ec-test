@@ -122,8 +122,8 @@ func (s *Service) CreateCoupon(ctx context.Context, in port.CreateCouponInput) (
 }
 
 func (s *Service) ListCoupons(ctx context.Context, f port.ListCouponsFilter) ([]domain.Coupon, int, error) {
-	limit, offset := clampPage(f.Limit, f.Offset)
-	coupons, total, err := s.coupons.List(ctx, f.Status, limit, offset)
+	f.Limit, f.Offset = clampPage(f.Limit, f.Offset)
+	coupons, total, err := s.coupons.List(ctx, f)
 	if err != nil {
 		return nil, 0, apperrors.Internal("failed to list coupons", err)
 	}
@@ -260,19 +260,19 @@ func (s *Service) ReserveCoupon(ctx context.Context, code, buyerAuth0ID string, 
 		}
 
 		r := &domain.CouponReservation{
-			ID:             uuid.New(),
-			CouponID:       c.ID,
-			BuyerAuth0ID:   buyerAuth0ID,
-			DiscountAmount: discount,
-			Currency:       c.Currency,
-			Status:         domain.ReservationStatusPending,
-			ExpiresAt:      s.clock.Now().Add(s.reservationTTL),
+			ID:                 uuid.New(),
+			CouponID:           c.ID,
+			BuyerAuth0ID:       buyerAuth0ID,
+			DiscountAmount:     discount,
+			Currency:           c.Currency,
+			ApplicableSellerID: applicableSeller,
+			Status:             domain.ReservationStatusPending,
+			ExpiresAt:          s.clock.Now().Add(s.reservationTTL),
 		}
 		if err := s.reservations.Insert(ctx, r); err != nil {
 			return fmt.Errorf("insert reservation: %w", err)
 		}
 		reservation = r
-		_ = applicableSeller // applicable_seller is returned upstream via the response struct, not the reservation row (platform-only in MVP, so always empty).
 		return nil
 	})
 	if err != nil {
@@ -561,24 +561,40 @@ func (s *Service) resolveCoupon(ctx context.Context, code, buyerAuth0ID string, 
 		currency = "JPY"
 	}
 
-	var c *domain.Coupon
-	var err error
-	if lock {
-		// MVP is platform-only so issuer_id is NULL; future seller
-		// coupons would look up with the seller_id hint.
-		c, err = s.coupons.GetByCodeForUpdate(ctx, domain.IssuerTypePlatform, nil, code)
-	} else {
-		// Non-locking lookup: use List with a code filter? Simpler:
-		// reuse GetByCodeForUpdate — on preview there's no meaningful
-		// contention and the lock is released with the tx.
-		c, err = s.coupons.GetByCodeForUpdate(ctx, domain.IssuerTypePlatform, nil, code)
-	}
+	// Resolve the coupon across possible issuers: platform wins if a
+	// code collides with a seller-issued code. Seller fallback tries
+	// each seller in the cart in turn; the first hit applies to that
+	// seller's subtotal only. Lock is honored on whichever row we
+	// ultimately keep (GetByCodeForUpdate issues FOR UPDATE regardless
+	// — non-matching lookups release with the rollback on tx close).
+	var (
+		c                  *domain.Coupon
+		applicableSellerID *uuid.UUID
+		err                error
+	)
+	c, err = s.coupons.GetByCodeForUpdate(ctx, domain.IssuerTypePlatform, nil, code)
 	if err != nil {
 		return nil, nil, 0, apperrors.Internal("failed to load coupon", err)
 	}
 	if c == nil {
+		for i := range sellerSubtotals {
+			sellerID := sellerSubtotals[i].SellerID
+			candidate, err := s.coupons.GetByCodeForUpdate(ctx, domain.IssuerTypeSeller, &sellerID, code)
+			if err != nil {
+				return nil, nil, 0, apperrors.Internal("failed to load coupon", err)
+			}
+			if candidate != nil {
+				c = candidate
+				sellerIDCopy := sellerID
+				applicableSellerID = &sellerIDCopy
+				break
+			}
+		}
+	}
+	if c == nil {
 		return nil, nil, 0, domain.ErrCouponNotFound
 	}
+	_ = lock // FOR UPDATE is unconditional in the current repo; kept for future flag-driven read-only paths.
 	if c.Status == domain.CouponStatusRevoked {
 		return nil, nil, 0, domain.ErrCouponRevoked
 	}
@@ -593,10 +609,20 @@ func (s *Service) resolveCoupon(ctx context.Context, code, buyerAuth0ID string, 
 		return nil, nil, 0, domain.ErrCurrencyMismatch
 	}
 
-	// MVP: platform coupons apply to cart-wide subtotal.
+	// Platform coupons apply cart-wide; seller coupons apply only to
+	// the issuing seller's subtotal.
 	var applicableSubtotal int64
-	for _, s := range sellerSubtotals {
-		applicableSubtotal += s.Subtotal
+	if applicableSellerID != nil {
+		for _, ss := range sellerSubtotals {
+			if ss.SellerID == *applicableSellerID {
+				applicableSubtotal = ss.Subtotal
+				break
+			}
+		}
+	} else {
+		for _, ss := range sellerSubtotals {
+			applicableSubtotal += ss.Subtotal
+		}
 	}
 	if applicableSubtotal < c.MinOrderAmount {
 		return nil, nil, 0, domain.ErrMinOrderNotMet
@@ -613,7 +639,7 @@ func (s *Service) resolveCoupon(ctx context.Context, code, buyerAuth0ID string, 
 		}
 	}
 
-	return c, nil, applicableSubtotal, nil
+	return c, applicableSellerID, applicableSubtotal, nil
 }
 
 // mapDomainError preserves *AppError pass-through while tagging domain
@@ -656,9 +682,15 @@ func validateCreateInput(in port.CreateCouponInput) error {
 	if in.IssuerType == "" {
 		in.IssuerType = domain.IssuerTypePlatform
 	}
-	if in.IssuerType != domain.IssuerTypePlatform {
-		// MVP locks out seller-issued coupons; revisit when Phase 5 lands.
-		return apperrors.BadRequest("only platform-issued coupons are supported in MVP").WithCode("UNSUPPORTED_ISSUER")
+	switch in.IssuerType {
+	case domain.IssuerTypePlatform:
+		// platform coupons are issuer-id-less; ignore any passed value.
+	case domain.IssuerTypeSeller:
+		if in.IssuerID == nil {
+			return apperrors.BadRequest("issuer_id is required for seller coupons")
+		}
+	default:
+		return apperrors.BadRequest("issuer_type must be 'platform' or 'seller'")
 	}
 	switch in.DiscountType {
 	case domain.DiscountTypePercent:

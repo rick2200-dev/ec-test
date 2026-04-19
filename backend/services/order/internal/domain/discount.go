@@ -1,5 +1,7 @@
 package domain
 
+import "github.com/google/uuid"
+
 // DistributeDiscount splits a cart-wide discount across per-seller
 // subtotals proportionally, using integer-only math and flooring so
 // the total never exceeds `discount`. Any rounding remainder is
@@ -58,6 +60,45 @@ func DistributeDiscount(discount int64, subtotals []int64) []int64 {
 		if out[i] > s {
 			out[i] = s
 		}
+	}
+	return out
+}
+
+// DistributeSellerDiscount routes a seller-scoped discount to only the
+// orders whose seller matches targetSellerID. When several orders in
+// the batch belong to the target seller (a seller can occupy multiple
+// batch slots if the cart merges differently-priced SKUs from the same
+// seller), the discount is split across those slots proportionally to
+// their subtotals using the same floor+last-absorbs-remainder math as
+// DistributeDiscount. Non-matching slots get zero.
+//
+// sellerIDs and subtotals are 1:1 with the output slice — same length,
+// same indexing.
+//
+// Seller-issued coupons apply only to the issuing seller's subtotal,
+// so a cross-seller cart must not leak discount to other sellers'
+// orders (which would misattribute refunds on cancellation and
+// distort platform commission math).
+func DistributeSellerDiscount(discount int64, sellerIDs []uuid.UUID, subtotals []int64, targetSellerID uuid.UUID) []int64 {
+	if len(sellerIDs) != len(subtotals) {
+		// Caller bug — return all zeros rather than panicking in prod.
+		return make([]int64, len(subtotals))
+	}
+	// Build a reduced view containing only the matching seller's slots,
+	// run the proportional split on that, then splice the result back
+	// into the full output slice keyed by original index.
+	matchIndex := make([]int, 0, len(sellerIDs))
+	matchSubtotals := make([]int64, 0, len(sellerIDs))
+	for i, sid := range sellerIDs {
+		if sid == targetSellerID {
+			matchIndex = append(matchIndex, i)
+			matchSubtotals = append(matchSubtotals, subtotals[i])
+		}
+	}
+	matchedShares := DistributeDiscount(discount, matchSubtotals)
+	out := make([]int64, len(subtotals))
+	for k, idx := range matchIndex {
+		out[idx] = matchedShares[k]
 	}
 	return out
 }

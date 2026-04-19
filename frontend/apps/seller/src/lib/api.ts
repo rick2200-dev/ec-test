@@ -3,6 +3,10 @@ import type {
   CancellationRequest,
   CancellationRequestListResponse,
   CancellationRequestStatus,
+  Coupon,
+  CouponListResponse,
+  CouponStats,
+  CreateCouponRequest,
   Inquiry,
   InquiryListResponse,
   InquiryMessage,
@@ -237,4 +241,44 @@ export async function subscribeToPlan(input: {
     body: JSON.stringify(input),
   });
   return jsonOrThrow<SellerSubscription>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Coupons (seller-issued)
+// ---------------------------------------------------------------------------
+
+export async function listSellerCoupons(
+  params: { status?: string; limit?: number; offset?: number } = {}
+): Promise<CouponListResponse> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.offset != null) qs.set("offset", String(params.offset));
+  const res = await fetchAPI(`/api/v1/seller/coupons${qs.toString() ? `?${qs}` : ""}`);
+  return jsonOrThrow<CouponListResponse>(res);
+}
+
+export async function getSellerCoupon(id: string): Promise<Coupon> {
+  const res = await fetchAPI(`/api/v1/seller/coupons/${id}`);
+  return jsonOrThrow<Coupon>(res);
+}
+
+export async function createSellerCoupon(input: CreateCouponRequest): Promise<Coupon> {
+  const res = await fetchAPI(`/api/v1/seller/coupons`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<Coupon>(res);
+}
+
+export async function revokeSellerCoupon(id: string): Promise<Coupon> {
+  const res = await fetchAPI(`/api/v1/seller/coupons/${id}/revoke`, {
+    method: "POST",
+  });
+  return jsonOrThrow<Coupon>(res);
+}
+
+export async function getSellerCouponStats(id: string): Promise<CouponStats> {
+  const res = await fetchAPI(`/api/v1/seller/coupons/${id}/stats`);
+  return jsonOrThrow<CouponStats>(res);
 }

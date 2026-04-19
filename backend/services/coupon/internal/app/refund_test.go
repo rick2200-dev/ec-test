@@ -31,7 +31,7 @@ func (f *fakeCouponStore) GetByID(ctx context.Context, id uuid.UUID) (*domain.Co
 func (f *fakeCouponStore) GetByCodeForUpdate(ctx context.Context, issuerType domain.IssuerType, issuerID *uuid.UUID, code string) (*domain.Coupon, error) {
 	return nil, nil
 }
-func (f *fakeCouponStore) List(ctx context.Context, status string, limit, offset int) ([]domain.Coupon, int, error) {
+func (f *fakeCouponStore) List(ctx context.Context, filter port.ListCouponsFilter) ([]domain.Coupon, int, error) {
 	return nil, 0, nil
 }
 func (f *fakeCouponStore) IncrementUsageIfBelowLimit(ctx context.Context, id uuid.UUID) error {

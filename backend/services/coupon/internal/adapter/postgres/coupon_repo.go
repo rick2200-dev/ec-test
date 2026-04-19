@@ -83,7 +83,7 @@ func (r *CouponRepository) GetByCodeForUpdate(ctx context.Context, issuerType do
 	)
 }
 
-func (r *CouponRepository) List(ctx context.Context, status string, limit, offset int) ([]domain.Coupon, int, error) {
+func (r *CouponRepository) List(ctx context.Context, filter port.ListCouponsFilter) ([]domain.Coupon, int, error) {
 	var (
 		coupons []domain.Coupon
 		total   int
@@ -98,12 +98,34 @@ func (r *CouponRepository) List(ctx context.Context, status string, limit, offse
 		                   usage_limit_total, usage_limit_per_user, usage_count,
 		                   status, title, description, created_at, updated_at
 		            FROM coupon_svc.coupons`
+		where := ""
 		args := []any{}
-		if status != "" {
-			countSQL += ` WHERE status = $1`
-			listSQL += ` WHERE status = $1`
-			args = append(args, status)
+		if filter.Status != "" {
+			args = append(args, filter.Status)
+			if where == "" {
+				where = ` WHERE status = $` + itoa(len(args))
+			} else {
+				where += ` AND status = $` + itoa(len(args))
+			}
 		}
+		if filter.IssuerType != "" {
+			args = append(args, string(filter.IssuerType))
+			if where == "" {
+				where = ` WHERE issuer_type = $` + itoa(len(args))
+			} else {
+				where += ` AND issuer_type = $` + itoa(len(args))
+			}
+		}
+		if filter.IssuerID != nil {
+			args = append(args, *filter.IssuerID)
+			if where == "" {
+				where = ` WHERE issuer_id = $` + itoa(len(args))
+			} else {
+				where += ` AND issuer_id = $` + itoa(len(args))
+			}
+		}
+		countSQL += where
+		listSQL += where
 		if err := tx.QueryRow(ctx, countSQL, args...).Scan(&total); err != nil {
 			return fmt.Errorf("count coupons: %w", err)
 		}
@@ -111,7 +133,7 @@ func (r *CouponRepository) List(ctx context.Context, status string, limit, offse
 			return nil
 		}
 		listSQL += ` ORDER BY created_at DESC LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
-		args = append(args, limit, offset)
+		args = append(args, filter.Limit, filter.Offset)
 
 		rows, err := tx.Query(ctx, listSQL, args...)
 		if err != nil {

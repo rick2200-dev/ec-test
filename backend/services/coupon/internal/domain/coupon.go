@@ -78,6 +78,11 @@ const (
 // CouponReservation is the pending hold created by order-svc at
 // checkout. Committed on order.paid; released on checkout failure;
 // expired by the reaper after TTL.
+//
+// ApplicableSellerID is nil for platform (cart-wide) coupons and set
+// to the issuing seller's ID for seller-issued coupons. Frozen at
+// Reserve time so later admin edits to the coupon row don't reshape
+// the attribution that order-svc already baked into per-seller shares.
 type CouponReservation struct {
 	ID                    uuid.UUID         `json:"id"`
 	CouponID              uuid.UUID         `json:"coupon_id"`
@@ -86,6 +91,7 @@ type CouponReservation struct {
 	StripePaymentIntentID string            `json:"stripe_payment_intent_id,omitempty"`
 	DiscountAmount        int64             `json:"discount_amount"`
 	Currency              string            `json:"currency"`
+	ApplicableSellerID    *uuid.UUID        `json:"applicable_seller_id,omitempty"`
 	Status                ReservationStatus `json:"status"`
 	ExpiresAt             time.Time         `json:"expires_at"`
 	CreatedAt             time.Time         `json:"created_at"`

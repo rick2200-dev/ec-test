@@ -12,19 +12,23 @@ import (
 // alongside the HTTP clients and are wired from main.go after the gRPC
 // connections are established.
 type Services struct {
-	Auth      *ServiceClient
-	Catalog   *ServiceClient
-	Order     *ServiceClient
-	Inventory *ServiceClient
-	Search    *ServiceClient
-	Recommend *ServiceClient
-	Cart      *ServiceClient
-	Inquiry   *ServiceClient
+	Auth         *ServiceClient
+	Catalog      *ServiceClient
+	Order        *ServiceClient
+	Inventory    *ServiceClient
+	Search       *ServiceClient
+	Recommend    *ServiceClient
+	Cart         *ServiceClient
+	Inquiry      *ServiceClient
 	Review       *ServiceClient
 	Subscription *ServiceClient
 	Shipping     *ServiceClient
 	Coupon       *ServiceClient
 	Loyalty      *ServiceClient
+	// Notification is not proxied by any handler; the gateway only
+	// carries a client so the /readyz probe can ping it alongside the
+	// other downstreams. Treated as best-effort in readiness.
+	Notification *ServiceClient
 
 	// CatalogGRPC is used by the buyer read path (ListProducts, GetProduct).
 	// Other catalog routes still go through the HTTP Catalog client above.
@@ -61,5 +65,6 @@ func NewServices(cfg config.Config) *Services {
 			WithHeader("X-Internal-Token", cfg.CouponInternalToken),
 		Loyalty: NewServiceClient(cfg.LoyaltyServiceURL).
 			WithHeader("X-Internal-Token", cfg.LoyaltyInternalToken),
+		Notification: NewServiceClient(cfg.NotificationServiceURL),
 	}
 }

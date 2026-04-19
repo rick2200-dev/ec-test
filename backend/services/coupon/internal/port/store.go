@@ -20,7 +20,10 @@ type CouponStore interface {
 	// reservations of the last available seat.
 	GetByCodeForUpdate(ctx context.Context, issuerType domain.IssuerType, issuerID *uuid.UUID, code string) (*domain.Coupon, error)
 
-	List(ctx context.Context, status string, limit, offset int) ([]domain.Coupon, int, error)
+	// List returns a paginated view. issuerType / issuerID narrow the
+	// result set: pass a seller UUID to list that seller's coupons;
+	// leave both empty to list everything (admin view).
+	List(ctx context.Context, filter ListCouponsFilter) ([]domain.Coupon, int, error)
 
 	// IncrementUsageIfBelowLimit atomically bumps usage_count if it is
 	// still below usage_limit_total (or that limit is NULL). Returns

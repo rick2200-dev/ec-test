@@ -89,11 +89,16 @@ type CreateCouponInput struct {
 	Description         string
 }
 
-// ListCouponsFilter is the admin list query.
+// ListCouponsFilter is the admin list query. IssuerType/IssuerID are
+// optional; when both are empty the query returns all coupons (admin
+// view). Seller-scoped listings set IssuerType=seller and IssuerID to
+// the seller UUID so each seller only sees their own coupons.
 type ListCouponsFilter struct {
-	Status string
-	Limit  int
-	Offset int
+	Status     string
+	IssuerType domain.IssuerType
+	IssuerID   *uuid.UUID
+	Limit      int
+	Offset     int
 }
 
 // CouponStats is the admin dashboard summary per coupon.

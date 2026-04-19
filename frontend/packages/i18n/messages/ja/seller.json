@@ -15,6 +15,7 @@
     "reviews": "レビュー",
     "notifications": "通知",
     "sales": "売上・入金",
+    "coupons": "クーポン",
     "subscription": "プラン管理",
     "settings": "設定",
     "apiTokens": "APIトークン"
@@ -398,5 +399,47 @@
       "refundFailed": "Stripe 返金処理に失敗しました。運営にお問い合わせください",
       "transferReversalFailed": "送金取消処理に失敗しました。運営にお問い合わせください"
     }
+  },
+  "coupons": {
+    "title": "クーポン",
+    "description": "自店舗が発行するクーポンを作成・管理できます",
+    "createNew": "新規クーポン作成",
+    "loading": "読み込み中...",
+    "empty": "クーポンはまだ作成されていません",
+    "columns": {
+      "code": "コード",
+      "title": "タイトル",
+      "discount": "割引",
+      "minOrder": "最低注文額",
+      "usage": "利用回数",
+      "status": "状態"
+    },
+    "status": {
+      "active": "有効",
+      "revoked": "失効済み"
+    }
+  },
+  "newCoupon": {
+    "title": "新規クーポン作成",
+    "description": "クーポンコードと割引条件を入力してください。自店舗の商品にのみ適用されます。",
+    "code": "クーポンコード",
+    "couponTitle": "タイトル",
+    "couponDescription": "説明",
+    "minOrderAmount": "最低注文額（円）",
+    "expiresAt": "有効期限",
+    "usageLimitTotal": "総利用回数上限（空欄で無制限）",
+    "usageLimitPerUser": "ユーザーあたりの上限（空欄で無制限）",
+    "discount": {
+      "legend": "割引方式",
+      "percent": "パーセント",
+      "fixed": "定額",
+      "percentLabel": "割引率（%）",
+      "maxAmount": "最大割引額（空欄で上限なし）",
+      "fixedAmount": "割引額（円）"
+    },
+    "create": "作成する",
+    "creating": "作成中...",
+    "cancel": "キャンセル",
+    "errorGeneric": "クーポンの作成に失敗しました"
   }
 }

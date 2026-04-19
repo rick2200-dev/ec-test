@@ -102,3 +102,62 @@ func (h *CouponHandler) AdminStats(w http.ResponseWriter, r *http.Request) {
 	}
 	writeRaw(w, status, body)
 }
+
+// --- Seller ---
+//
+// The ServiceClient forwards X-Seller-ID (populated from the caller's
+// tenant context) automatically; the coupon service uses it to bind
+// every write to the authenticated seller and to scope list queries.
+
+func (h *CouponHandler) SellerCreate(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.coupon.Post(r.Context(), "/seller/coupons/", r.Body)
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+func (h *CouponHandler) SellerList(w http.ResponseWriter, r *http.Request) {
+	body, status, err := h.coupon.Get(r.Context(), "/seller/coupons/", r.URL.RawQuery)
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+func (h *CouponHandler) SellerGet(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	body, status, err := h.coupon.Get(r.Context(), "/seller/coupons/"+url.PathEscape(id), "")
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+func (h *CouponHandler) SellerRevoke(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	body, status, err := h.coupon.Post(r.Context(), "/seller/coupons/"+url.PathEscape(id)+"/revoke", r.Body)
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+func (h *CouponHandler) SellerStats(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	body, status, err := h.coupon.Get(r.Context(), "/seller/coupons/"+url.PathEscape(id)+"/stats", "")
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}

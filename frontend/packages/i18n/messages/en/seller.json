@@ -13,6 +13,7 @@
     "inquiries": "Inquiries",
     "notifications": "Notifications",
     "sales": "Sales & Payouts",
+    "coupons": "Coupons",
     "subscription": "Plan",
     "settings": "Settings",
     "apiTokens": "API Tokens"
@@ -396,5 +397,47 @@
       "refundFailed": "Stripe refund failed. Please contact support",
       "transferReversalFailed": "Transfer reversal failed. Please contact support"
     }
+  },
+  "coupons": {
+    "title": "Coupons",
+    "description": "Create and manage coupons for your own store",
+    "createNew": "New coupon",
+    "loading": "Loading...",
+    "empty": "No coupons yet",
+    "columns": {
+      "code": "Code",
+      "title": "Title",
+      "discount": "Discount",
+      "minOrder": "Min order",
+      "usage": "Usage",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked"
+    }
+  },
+  "newCoupon": {
+    "title": "Create coupon",
+    "description": "Enter the coupon code and discount rules. Applies to your own products only.",
+    "code": "Coupon code",
+    "couponTitle": "Title",
+    "couponDescription": "Description",
+    "minOrderAmount": "Min order amount (JPY)",
+    "expiresAt": "Expires at",
+    "usageLimitTotal": "Total usage limit (blank = unlimited)",
+    "usageLimitPerUser": "Per-user limit (blank = unlimited)",
+    "discount": {
+      "legend": "Discount type",
+      "percent": "Percent",
+      "fixed": "Fixed amount",
+      "percentLabel": "Percent (%)",
+      "maxAmount": "Max discount amount (blank = none)",
+      "fixedAmount": "Amount (JPY)"
+    },
+    "create": "Create",
+    "creating": "Creating...",
+    "cancel": "Cancel",
+    "errorGeneric": "Failed to create coupon"
   }
 }
