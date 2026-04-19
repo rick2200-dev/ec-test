@@ -57,6 +57,15 @@ type LoyaltyUseCase interface {
 	// A debit that would push spendable negative returns
 	// domain.ErrInsufficientPoints.
 	AdjustPoints(ctx context.Context, input AdjustPointsInput) (*AdjustPointsResult, error)
+
+	// ExpirePoints is the expiration reaper entrypoint. It scans for
+	// buyers with unprocessed expired earn rows, rebuilds per-buyer
+	// FIFO earn-bucket state by walking the chronological ledger, and
+	// writes one `expire` row per still-unconsumed expired bucket.
+	// Returns the total number of expire rows written this pass.
+	// Safe to re-run: each expire row is idempotent via
+	// (expiration_job, earn_txn_id, expire).
+	ExpirePoints(ctx context.Context) (int, error)
 }
 
 // CancelPointsInput is the payload extracted from OrderCancelled for

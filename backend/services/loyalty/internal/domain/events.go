@@ -7,6 +7,7 @@ const (
 	EventTypePointsRedeemed  = "points.redeemed"
 	EventTypePointsRefunded  = "points.refunded"
 	EventTypePointsAdjusted  = "points.adjusted"
+	EventTypePointsExpired   = "points.expired"
 )
 
 // TopicLoyaltyEvents is the GCP Pub/Sub topic name for all loyalty

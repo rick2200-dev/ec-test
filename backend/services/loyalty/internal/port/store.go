@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -85,4 +86,18 @@ type TransactionStore interface {
 	// the existing row so we can report "already committed" on replay
 	// instead of silently swallowing.
 	GetByIdempotency(ctx context.Context, sourceType domain.SourceType, sourceID string, txType domain.TransactionType) (*domain.Transaction, error)
+
+	// ListByBuyerChronological returns the buyer's full ledger in
+	// ascending created_at order. Used by the expiration reaper to
+	// rebuild FIFO earn-bucket state without pagination round-trips.
+	// Callers are expected to scope this to accounts they've locked;
+	// the method itself takes no lock.
+	ListByBuyerChronological(ctx context.Context, buyerAuth0ID string) ([]domain.Transaction, error)
+
+	// ListBuyersWithExpiredUnprocessedEarn returns up to `limit` distinct
+	// buyer_auth0_ids that have at least one earn row with expires_at
+	// already past AND no corresponding expire row written yet. Result
+	// order is not guaranteed. Callers walk each returned buyer inside
+	// their own transaction.
+	ListBuyersWithExpiredUnprocessedEarn(ctx context.Context, now time.Time, limit int) ([]string, error)
 }

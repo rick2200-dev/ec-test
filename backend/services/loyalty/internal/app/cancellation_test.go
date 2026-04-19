@@ -22,7 +22,7 @@ func TestApplyCancellation_RefundAndReverse(t *testing.T) {
 		},
 	}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	out, err := svc.ApplyCancellation(context.Background(), port.CancelPointsInput{
 		BuyerAuth0ID:        "auth0|buyer",
@@ -68,7 +68,7 @@ func TestApplyCancellation_IdempotentReplay(t *testing.T) {
 			idemKey(domain.SourceTypeOrderCancelled, "order-1", domain.TransactionTypeReverseEarn): {Amount: -100},
 		},
 	}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	out, err := svc.ApplyCancellation(context.Background(), port.CancelPointsInput{
 		BuyerAuth0ID:        "auth0|buyer",
@@ -102,7 +102,7 @@ func TestApplyCancellation_ReverseCapByBalance(t *testing.T) {
 		},
 	}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	out, err := svc.ApplyCancellation(context.Background(), port.CancelPointsInput{
 		BuyerAuth0ID: "auth0|buyer",
@@ -127,7 +127,7 @@ func TestApplyCancellation_ReverseCapByBalance(t *testing.T) {
 func TestApplyCancellation_NoOpWhenAmountsZero(t *testing.T) {
 	accounts := &fakeAccountStore{}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	out, err := svc.ApplyCancellation(context.Background(), port.CancelPointsInput{
 		BuyerAuth0ID: "auth0|buyer",

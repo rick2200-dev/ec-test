@@ -80,6 +80,7 @@ func main() {
 	transactionRepo := repository.NewTransactionRepository(pool)
 	reservationRepo := repository.NewReservationRepository(pool)
 
+	earnExpiration := time.Duration(cfg.PointExpirationDays) * 24 * time.Hour
 	svc := app.NewService(
 		accountRepo,
 		transactionRepo,
@@ -88,6 +89,8 @@ func main() {
 		publisher,
 		cfg.EarnRateBps,
 		time.Duration(cfg.ReservationTTLMinutes)*time.Minute,
+		earnExpiration,
+		cfg.PointExpirationBatchSize,
 	)
 
 	balanceHandler := handler.NewBalanceHandler(svc)
@@ -143,6 +146,18 @@ func main() {
 	defer reaperCancel()
 	rp := reaper.New(svc, 60*time.Second)
 	go rp.Run(reaperCtx)
+
+	// Start the points-expiration reaper, gated behind the kill
+	// switch so we can deploy the code dark and only enable it after
+	// the backfill has been verified in prod.
+	if cfg.PointExpirationEnabled {
+		expInterval := time.Duration(cfg.PointExpirationIntervalMinutes) * time.Minute
+		expTimeout := time.Duration(cfg.PointExpirationTickTimeoutSeconds) * time.Second
+		exp := reaper.NewExpirationReaper(svc, expInterval, expTimeout)
+		go exp.Run(reaperCtx)
+	} else {
+		slog.Info("loyalty points expiration disabled via POINT_EXPIRATION_ENABLED=false")
+	}
 
 	// Start the order.paid Pub/Sub subscriber as a background goroutine.
 	// Empty PubSubProjectID disables it (local dev without emulator).

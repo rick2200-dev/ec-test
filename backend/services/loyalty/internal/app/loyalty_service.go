@@ -28,7 +28,28 @@ type Service struct {
 
 	earnRateBps    int
 	reservationTTL time.Duration
+	// earnExpiration is the runway every newly-written earn row gets.
+	// Zero disables expiration stamping (earn rows will stay
+	// permanent — useful for tests and any deployment that wants
+	// the reaper off entirely).
+	earnExpiration time.Duration
+	// expirationBatchSize caps buyers processed per ExpirePoints tick
+	// to keep each pass bounded.
+	expirationBatchSize int
+	clock               Clock
 }
+
+// Clock lets tests inject a deterministic "now" for expiration math.
+// Production uses RealClock which reads time.Now().
+type Clock interface {
+	Now() time.Time
+}
+
+// RealClock is the default Clock for production wiring.
+type RealClock struct{}
+
+// Now returns the current wall time.
+func (RealClock) Now() time.Time { return time.Now() }
 
 // TxRunner is a thin port over pkg/database.TxRunner so the app layer
 // stays decoupled from pgx. It wraps a fn in a DB transaction, honoring
@@ -41,6 +62,14 @@ type TxRunner interface {
 // drop silently), which is safe for tests or local dev without Pub/Sub.
 // reservations may be nil only in tests that exercise the earn path in
 // isolation — production main.go always wires a non-nil store.
+//
+// earnExpiration is the runway stamped on each new earn's expires_at.
+// Zero or negative disables expiration stamping — earn rows stay
+// permanent, which also keeps the expiration reaper a no-op.
+//
+// expirationBatchSize caps buyers processed per ExpirePoints tick; zero
+// falls back to a 200-default so the tick can't run the whole table
+// unintentionally.
 func NewService(
 	accounts port.AccountStore,
 	transactions port.TransactionStore,
@@ -49,19 +78,43 @@ func NewService(
 	publisher pubsub.Publisher,
 	earnRateBps int,
 	reservationTTL time.Duration,
+	earnExpiration time.Duration,
+	expirationBatchSize int,
 ) *Service {
 	if reservationTTL <= 0 {
 		reservationTTL = 30 * time.Minute
 	}
-	return &Service{
-		accounts:       accounts,
-		transactions:   transactions,
-		reservations:   reservations,
-		tx:             tx,
-		publisher:      publisher,
-		earnRateBps:    earnRateBps,
-		reservationTTL: reservationTTL,
+	if expirationBatchSize <= 0 {
+		expirationBatchSize = 200
 	}
+	return &Service{
+		accounts:            accounts,
+		transactions:        transactions,
+		reservations:        reservations,
+		tx:                  tx,
+		publisher:           publisher,
+		earnRateBps:         earnRateBps,
+		reservationTTL:      reservationTTL,
+		earnExpiration:      earnExpiration,
+		expirationBatchSize: expirationBatchSize,
+		clock:               RealClock{},
+	}
+}
+
+// SetClock is a test hook for overriding the wall clock. Production
+// code uses the RealClock that NewService installs by default.
+func (s *Service) SetClock(c Clock) { s.clock = c }
+
+// expirationFor returns the *time.Time the next earn row should carry
+// in its expires_at column. Returns nil when the service was
+// constructed with earnExpiration <= 0 so earn rows stay permanent
+// (matches pre-expiration behavior).
+func (s *Service) expirationFor(now time.Time) *time.Time {
+	if s.earnExpiration <= 0 {
+		return nil
+	}
+	t := now.Add(s.earnExpiration)
+	return &t
 }
 
 // GetBalance returns the current account. Creates a zero-balance row if
@@ -173,6 +226,7 @@ func (s *Service) AwardEarn(ctx context.Context, buyerAuth0ID, orderID string, p
 			BalanceAfter: newBalance,
 			SourceType:   domain.SourceTypeOrderPaid,
 			SourceID:     orderID,
+			ExpiresAt:    s.expirationFor(s.clock.Now()),
 		}
 		if err := s.transactions.Insert(ctx, tx); err != nil {
 			if errors.Is(err, port.ErrDuplicateIdempotencyKey) {
@@ -370,6 +424,7 @@ func (s *Service) CommitPointsReservation(ctx context.Context, reservationID uui
 					BalanceAfter: earnBalanceAfter,
 					SourceType:   domain.SourceTypeOrderPaid,
 					SourceID:     orderID,
+					ExpiresAt:    s.expirationFor(s.clock.Now()),
 				}
 				if err := s.transactions.Insert(ctx, earnRow); err != nil {
 					return fmt.Errorf("insert earn row: %w", err)
@@ -728,4 +783,309 @@ func (s *Service) publishEarned(ctx context.Context, tx *domain.Transaction, ord
 		"earned_at":      tx.CreatedAt,
 	})
 	slog.Debug("points earned event published", "buyer", tx.BuyerAuth0ID, "order_id", orderID, "amount", tx.Amount)
+}
+
+// publishExpired emits PointsExpired once per buyer affected by an
+// ExpirePoints pass. Payload carries the aggregate amount — subscribers
+// (e.g. notification) should send a single "your points have expired"
+// message, not one per expired bucket.
+func (s *Service) publishExpired(ctx context.Context, buyerAuth0ID string, totalExpired int64, bucketCount int, newBalance int64) {
+	if s.publisher == nil {
+		return
+	}
+	pubsub.PublishEvent(ctx, s.publisher, domain.EventTypePointsExpired, domain.TopicLoyaltyEvents, map[string]any{
+		"buyer_auth0_id": buyerAuth0ID,
+		"amount":         totalExpired,
+		"bucket_count":   bucketCount,
+		"balance_after":  newBalance,
+		"expired_at":     s.clock.Now(),
+	})
+}
+
+// --- Points expiration (FIFO bucket walk) ---
+//
+// earnBucket is the in-memory replay of one `earn` row's remaining
+// balance after applying every subsequent consumption on the buyer's
+// ledger. It's rebuilt from scratch on every ExpirePoints pass — the
+// ledger is authoritative, these structs are transient.
+type earnBucket struct {
+	EarnTxnID uuid.UUID
+	EarnedAt  time.Time
+	ExpiresAt *time.Time
+	// Original is the earn amount before any consumption; remaining
+	// starts equal and is decremented by the walk.
+	Original  int64
+	Remaining int64
+}
+
+// ExpirePoints is the expiration reaper entrypoint. It scans for
+// buyers with unprocessed expired earn rows and, for each, rebuilds
+// per-earn-row remaining balance by walking the chronological ledger
+// and applying FIFO consumption for every negative transaction. Each
+// still-unconsumed expired earn produces one `expire` ledger row.
+//
+// FIFO-for-all-negatives is an intentional simplification: refund,
+// reverse_earn, and adjust-debit all consume from the oldest
+// non-empty bucket rather than being matched to the specific earn
+// they logically reverse. The existing reverse_earn path already
+// caps at the running balance (see ApplyCancellation), so targeted
+// matching was already lossy; pure FIFO trades one kind of drift for
+// a simpler walk with no schema additions.
+//
+// Safe to re-run: each expire row carries (expiration_job, earn_id,
+// expire) so the UNIQUE constraint on the ledger makes a second pass
+// a no-op for already-expired buckets.
+func (s *Service) ExpirePoints(ctx context.Context) (int, error) {
+	now := s.clock.Now()
+	buyers, err := s.transactions.ListBuyersWithExpiredUnprocessedEarn(ctx, now, s.expirationBatchSize)
+	if err != nil {
+		return 0, apperrors.Internal("failed to list expiration candidates", err)
+	}
+	if len(buyers) == 0 {
+		return 0, nil
+	}
+	var totalBuckets int
+	for _, buyer := range buyers {
+		n, err := s.expirePointsForBuyer(ctx, buyer, now)
+		if err != nil {
+			// Keep looping: a single bad buyer shouldn't halt the
+			// whole sweep. Warn with enough context for operators to
+			// isolate the offending ledger.
+			slog.Warn("expiration failed for buyer", "buyer", buyer, "error", err)
+			continue
+		}
+		totalBuckets += n
+	}
+	if totalBuckets > 0 {
+		slog.Info("loyalty points expiration pass complete",
+			"affected_buyers", len(buyers), "expired_buckets", totalBuckets)
+	}
+	return totalBuckets, nil
+}
+
+// expirePointsForBuyer runs one per-buyer transaction: lock the
+// account, replay the ledger, write expire rows, apply the balance
+// delta. Returns the number of expire rows written.
+func (s *Service) expirePointsForBuyer(ctx context.Context, buyerAuth0ID string, now time.Time) (int, error) {
+	var (
+		writtenBuckets int
+		totalExpired   int64
+		newBalance     int64
+	)
+	err := s.tx.RunTx(ctx, func(ctx context.Context) error {
+		acct, err := s.accounts.LockForUpdate(ctx, buyerAuth0ID)
+		if err != nil {
+			return fmt.Errorf("lock account: %w", err)
+		}
+		txns, err := s.transactions.ListByBuyerChronological(ctx, buyerAuth0ID)
+		if err != nil {
+			return fmt.Errorf("load history: %w", err)
+		}
+		buckets := rebuildEarnBuckets(txns)
+
+		// Consistency check: sum of remaining across all buckets PLUS
+		// the residual from platform-funded credits (positive refund /
+		// positive adjust that don't produce buckets) must equal the
+		// account balance we just locked. A mismatch means the walk
+		// misinterprets some row type; abort rather than writing
+		// corrupt expire rows.
+		if err := verifyBucketInvariant(buyerAuth0ID, buckets, txns, acct.Balance); err != nil {
+			return err
+		}
+
+		version := acct.Version
+		runningBalance := acct.Balance
+		for i := range buckets {
+			b := &buckets[i]
+			if b.ExpiresAt == nil || !b.ExpiresAt.Before(now) {
+				continue
+			}
+			if b.Remaining <= 0 {
+				continue
+			}
+			expireAmount := b.Remaining
+			runningBalance -= expireAmount
+			row := &domain.Transaction{
+				ID:           uuid.New(),
+				BuyerAuth0ID: buyerAuth0ID,
+				Type:         domain.TransactionTypeExpire,
+				Amount:       -expireAmount,
+				BalanceAfter: runningBalance,
+				SourceType:   domain.SourceTypeExpirationJob,
+				SourceID:     b.EarnTxnID.String(),
+				Note:         fmt.Sprintf("expired %d pts earned at %s", expireAmount, b.EarnedAt.Format(time.RFC3339)),
+			}
+			if err := s.transactions.Insert(ctx, row); err != nil {
+				if errors.Is(err, port.ErrDuplicateIdempotencyKey) {
+					// Another pass already retired this bucket. Walk
+					// already accounts for that via earlier expire
+					// rows, so hitting this means a concurrent
+					// reaper wrote the same row — harmless, rewind.
+					runningBalance += expireAmount
+					continue
+				}
+				return fmt.Errorf("insert expire row: %w", err)
+			}
+			writtenBuckets++
+			totalExpired += expireAmount
+		}
+		if totalExpired == 0 {
+			return nil
+		}
+		if err := s.accounts.ApplyDelta(ctx, buyerAuth0ID, port.AccountDelta{
+			BalanceDelta: -totalExpired,
+		}, version); err != nil {
+			return fmt.Errorf("apply expiration delta: %w", err)
+		}
+		newBalance = runningBalance
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	if totalExpired > 0 {
+		s.publishExpired(ctx, buyerAuth0ID, totalExpired, writtenBuckets, newBalance)
+		slog.Info("loyalty points expired for buyer",
+			"buyer", buyerAuth0ID, "amount", totalExpired,
+			"buckets", writtenBuckets, "new_balance", newBalance)
+	}
+	return writtenBuckets, nil
+}
+
+// rebuildEarnBuckets replays a chronological ledger into FIFO earn
+// buckets. Consumption semantics:
+//
+//   - earn:                     creates a new bucket (Remaining = Amount).
+//   - redeem / reverse_earn:    negative Amount → FIFO-consume abs across buckets.
+//   - refund / adjust:          sign-dependent. Positive amounts are
+//                               platform-funded credits that do NOT
+//                               come from any earn — they're ignored
+//                               for bucket accounting (balance is still
+//                               correct because the invariant check
+//                               accounts for them). Negative amounts
+//                               FIFO-consume.
+//   - expire:                   subtracts abs(Amount) from the bucket
+//                               whose id matches the expire row's
+//                               source_id. Falls back to no-op if the
+//                               bucket is missing (shouldn't happen;
+//                               guard against corrupt ledger).
+//
+// The walk is order-preserving: earn rows added to the slice in the
+// order they appear in the ledger, and FIFO consumption scans the
+// slice from head to tail, so the first-earned bucket is drained
+// first.
+func rebuildEarnBuckets(txns []domain.Transaction) []earnBucket {
+	buckets := make([]earnBucket, 0, len(txns))
+	idxByEarnID := map[uuid.UUID]int{}
+	for _, tx := range txns {
+		switch tx.Type {
+		case domain.TransactionTypeEarn:
+			buckets = append(buckets, earnBucket{
+				EarnTxnID: tx.ID,
+				EarnedAt:  tx.CreatedAt,
+				ExpiresAt: tx.ExpiresAt,
+				Original:  tx.Amount,
+				Remaining: tx.Amount,
+			})
+			idxByEarnID[tx.ID] = len(buckets) - 1
+		case domain.TransactionTypeRedeem, domain.TransactionTypeReverseEarn:
+			consumeFIFO(buckets, -tx.Amount)
+		case domain.TransactionTypeRefund, domain.TransactionTypeAdjust:
+			if tx.Amount < 0 {
+				consumeFIFO(buckets, -tx.Amount)
+			}
+			// positive refund/adjust: platform credit, no bucket
+			// impact (accounted for in the invariant check).
+		case domain.TransactionTypeExpire:
+			// source_id on expire rows is the earn txn id's string
+			// form; recover the bucket index and subtract the expired
+			// amount so a re-run can see what's already gone.
+			if earnID, err := uuid.Parse(tx.SourceID); err == nil {
+				if i, ok := idxByEarnID[earnID]; ok {
+					buckets[i].Remaining -= -tx.Amount
+					if buckets[i].Remaining < 0 {
+						buckets[i].Remaining = 0
+					}
+				}
+			}
+		}
+	}
+	return buckets
+}
+
+// consumeFIFO drains `amount` points across the buckets slice starting
+// from the oldest non-empty bucket. Updates buckets in place. Returns
+// any leftover that couldn't be absorbed — the caller doesn't care
+// about it today (the reverse_earn path already caps at balance on
+// insert), but returning it keeps the helper useful if future code
+// wants to detect under-consumption.
+func consumeFIFO(buckets []earnBucket, amount int64) int64 {
+	if amount <= 0 {
+		return 0
+	}
+	remaining := amount
+	for i := range buckets {
+		if buckets[i].Remaining <= 0 {
+			continue
+		}
+		take := buckets[i].Remaining
+		if take > remaining {
+			take = remaining
+		}
+		buckets[i].Remaining -= take
+		remaining -= take
+		if remaining == 0 {
+			return 0
+		}
+	}
+	return remaining
+}
+
+// verifyBucketInvariant sanity-checks the walk by re-deriving the
+// account balance from the ledger and comparing it to the locked
+// snapshot. Any discrepancy means rebuildEarnBuckets misinterprets
+// some row type; aborting keeps the expiration pass from writing
+// corrupt rows on top of already-wrong state.
+//
+// Balance decomposition:
+//
+//	acct.balance = sum(bucket.remaining)
+//	             + sum(positive refund / positive adjust amounts)
+//	             - sum(abs(negative refund / negative adjust) not
+//	               covered by buckets)
+//
+// The third term is always zero in current code (refund is always
+// non-negative and adjust never exceeds available balance), but we
+// keep the bookkeeping explicit so a future bug surfaces here instead
+// of silently over- or under-expiring.
+func verifyBucketInvariant(buyerAuth0ID string, buckets []earnBucket, txns []domain.Transaction, lockedBalance int64) error {
+	var bucketSum int64
+	for _, b := range buckets {
+		bucketSum += b.Remaining
+	}
+	var platformCredits int64
+	for _, tx := range txns {
+		if tx.Type != domain.TransactionTypeRefund && tx.Type != domain.TransactionTypeAdjust {
+			continue
+		}
+		if tx.Amount > 0 {
+			platformCredits += tx.Amount
+		}
+	}
+	// Everything negative has already been FIFO-consumed out of
+	// buckets, so the account balance should equal (bucket residuals)
+	// + (positive platform credits). See the doc comment above.
+	expected := bucketSum + platformCredits
+	if expected != lockedBalance {
+		slog.Warn("loyalty expiration invariant violated; skipping buyer",
+			"buyer", buyerAuth0ID,
+			"expected_balance", expected,
+			"actual_balance", lockedBalance,
+			"bucket_sum", bucketSum,
+			"platform_credits", platformCredits,
+			"bucket_count", len(buckets),
+		)
+		return fmt.Errorf("expiration invariant violated for %s: expected=%d actual=%d", buyerAuth0ID, expected, lockedBalance)
+	}
+	return nil
 }

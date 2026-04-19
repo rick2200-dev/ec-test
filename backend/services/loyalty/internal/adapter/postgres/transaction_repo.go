@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -163,6 +164,107 @@ func (r *TransactionRepository) GetByIdempotency(ctx context.Context, sourceType
 		t.Note = *note
 	}
 	return &t, nil
+}
+
+// ListByBuyerChronological returns every ledger row for a buyer in
+// ascending created_at order. Used by the expiration reaper to
+// replay the full ledger and compute per-earn-row remaining balance.
+// Intentionally unbounded: expiration walks are meant to be rare
+// (per-buyer, per-reaper-pass, only on buyers who have expired earns)
+// and the buyer_auth0_id + created_at index already exists.
+func (r *TransactionRepository) ListByBuyerChronological(ctx context.Context, buyerAuth0ID string) ([]domain.Transaction, error) {
+	var results []domain.Transaction
+	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx,
+			`SELECT id, buyer_auth0_id, type, amount, balance_after,
+			        source_type, source_id, reservation_id, expires_at, note, created_at
+			 FROM loyalty_svc.point_transactions
+			 WHERE buyer_auth0_id = $1
+			 ORDER BY created_at ASC, id ASC`,
+			buyerAuth0ID,
+		)
+		if err != nil {
+			return fmt.Errorf("query chronological: %w", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var (
+				t             domain.Transaction
+				typ, srcType  string
+				reservationID *string
+				note          *string
+			)
+			if err := rows.Scan(
+				&t.ID, &t.BuyerAuth0ID, &typ, &t.Amount, &t.BalanceAfter,
+				&srcType, &t.SourceID, &reservationID, &t.ExpiresAt, &note, &t.CreatedAt,
+			); err != nil {
+				return fmt.Errorf("scan transaction: %w", err)
+			}
+			t.Type = domain.TransactionType(typ)
+			t.SourceType = domain.SourceType(srcType)
+			if reservationID != nil {
+				parsed, parseErr := parseUUID(*reservationID)
+				if parseErr != nil {
+					return fmt.Errorf("parse reservation_id: %w", parseErr)
+				}
+				t.ReservationID = &parsed
+			}
+			if note != nil {
+				t.Note = *note
+			}
+			results = append(results, t)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// ListBuyersWithExpiredUnprocessedEarn returns up to `limit` distinct
+// buyer_auth0_ids that have at least one earn row where expires_at has
+// passed and no corresponding expire row has been written yet. LEFT
+// JOIN + IS NULL tends to plan better than NOT EXISTS here because the
+// partial index on expiring earns is small, and the planner can hash-
+// anti-join the expire rows by source_id.
+func (r *TransactionRepository) ListBuyersWithExpiredUnprocessedEarn(ctx context.Context, now time.Time, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	var buyers []string
+	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx,
+			`SELECT DISTINCT pt.buyer_auth0_id
+			 FROM loyalty_svc.point_transactions pt
+			 LEFT JOIN loyalty_svc.point_transactions ex
+			     ON ex.source_type = 'expiration_job'
+			    AND ex.source_id   = pt.id::text
+			    AND ex.type        = 'expire'
+			 WHERE pt.type        = 'earn'
+			   AND pt.expires_at IS NOT NULL
+			   AND pt.expires_at  < $1
+			   AND ex.id IS NULL
+			 LIMIT $2`,
+			now, limit,
+		)
+		if err != nil {
+			return fmt.Errorf("query expired earn buyers: %w", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var b string
+			if err := rows.Scan(&b); err != nil {
+				return fmt.Errorf("scan buyer: %w", err)
+			}
+			buyers = append(buyers, b)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	return buyers, nil
 }
 
 // isDuplicateIdempotencyKey recognizes the unique-violation on the

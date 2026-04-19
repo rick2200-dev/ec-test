@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -104,6 +105,63 @@ func (f *fakeTransactionStore) GetByIdempotency(ctx context.Context, sourceType 
 	return f.byIdem[idemKey(sourceType, sourceID, txType)], nil
 }
 
+// ListByBuyerChronological serves the expiration reaper. Returns the
+// in-memory inserts slice unfiltered; ordering mirrors insertion
+// order so tests that build ledgers in chronological sequence get
+// the same ascending view the pg adapter produces via ORDER BY
+// created_at ASC.
+func (f *fakeTransactionStore) ListByBuyerChronological(ctx context.Context, buyerAuth0ID string) ([]domain.Transaction, error) {
+	out := make([]domain.Transaction, 0, len(f.inserts))
+	for _, t := range f.inserts {
+		if t.BuyerAuth0ID == buyerAuth0ID {
+			out = append(out, *t)
+		}
+	}
+	return out, nil
+}
+
+// ListBuyersWithExpiredUnprocessedEarn is the reaper candidate query.
+// The in-memory fake walks inserts and returns distinct buyers with
+// at least one earn row where expires_at < now and no matching
+// (expiration_job, earn_id, expire) row.
+func (f *fakeTransactionStore) ListBuyersWithExpiredUnprocessedEarn(ctx context.Context, now time.Time, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	expiredEarnIDs := map[string]struct{}{}
+	for _, t := range f.inserts {
+		if t.Type != domain.TransactionTypeExpire {
+			continue
+		}
+		if t.SourceType != domain.SourceTypeExpirationJob {
+			continue
+		}
+		expiredEarnIDs[t.SourceID] = struct{}{}
+	}
+	seen := map[string]struct{}{}
+	out := []string{}
+	for _, t := range f.inserts {
+		if t.Type != domain.TransactionTypeEarn || t.ExpiresAt == nil {
+			continue
+		}
+		if !t.ExpiresAt.Before(now) {
+			continue
+		}
+		if _, done := expiredEarnIDs[t.ID.String()]; done {
+			continue
+		}
+		if _, ok := seen[t.BuyerAuth0ID]; ok {
+			continue
+		}
+		seen[t.BuyerAuth0ID] = struct{}{}
+		out = append(out, t.BuyerAuth0ID)
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
+}
+
 func idemKey(st domain.SourceType, sid string, tt domain.TransactionType) string {
 	return fmt.Sprintf("%s|%s|%s", st, sid, tt)
 }
@@ -125,7 +183,7 @@ func (nullTxRunner) RunTx(ctx context.Context, fn func(ctx context.Context) erro
 func TestAwardEarn_LockBeforeDelta(t *testing.T) {
 	accounts := &fakeAccountStore{}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	order := uuid.New().String()
 	_, err := svc.AwardEarn(context.Background(), "auth0|buyer", order, 10000, "JPY")
@@ -177,7 +235,7 @@ func TestAwardEarn_DuplicateReplayNoDoubleCredit(t *testing.T) {
 			idemKey(domain.SourceTypeOrderPaid, order, domain.TransactionTypeEarn): existing,
 		},
 	}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	got, err := svc.AwardEarn(context.Background(), "auth0|buyer", order, 10000, "JPY")
 	if err != nil {
@@ -215,7 +273,7 @@ func TestAwardEarn_RaceWinsAtInsert(t *testing.T) {
 			return port.ErrDuplicateIdempotencyKey
 		},
 	}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	_, err := svc.AwardEarn(context.Background(), "auth0|buyer", uuid.New().String(), 10000, "JPY")
 	if err == nil {
@@ -234,7 +292,7 @@ func TestAwardEarn_RaceWinsAtInsert(t *testing.T) {
 func TestAwardEarn_ZeroEarnIsNoOp(t *testing.T) {
 	accounts := &fakeAccountStore{}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	got, err := svc.AwardEarn(context.Background(), "auth0|buyer", uuid.New().String(), 99, "JPY")
 	if err != nil {
@@ -256,7 +314,7 @@ func TestAdjustPoints_Credit(t *testing.T) {
 		acct: &domain.Account{BuyerAuth0ID: "auth0|buyer", Balance: 500, Version: 3},
 	}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	result, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
 		BuyerAuth0ID: "auth0|buyer",
@@ -302,7 +360,7 @@ func TestAdjustPoints_Debit(t *testing.T) {
 		acct: &domain.Account{BuyerAuth0ID: "auth0|buyer", Balance: 500, Version: 1},
 	}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	result, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
 		BuyerAuth0ID: "auth0|buyer",
@@ -328,7 +386,7 @@ func TestAdjustPoints_InsufficientBalance(t *testing.T) {
 		acct: &domain.Account{BuyerAuth0ID: "auth0|buyer", Balance: 100, Version: 0},
 	}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	_, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
 		BuyerAuth0ID: "auth0|buyer",
@@ -351,7 +409,7 @@ func TestAdjustPoints_InsufficientBalance(t *testing.T) {
 func TestAdjustPoints_ZeroAmount(t *testing.T) {
 	accounts := &fakeAccountStore{}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	_, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
 		BuyerAuth0ID: "auth0|buyer",
@@ -368,7 +426,7 @@ func TestAdjustPoints_ZeroAmount(t *testing.T) {
 func TestAdjustPoints_MissingReason(t *testing.T) {
 	accounts := &fakeAccountStore{}
 	transactions := &fakeTransactionStore{}
-	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0)
+	svc := NewService(accounts, transactions, nil, nullTxRunner{}, nil, 100, 0, 0, 0)
 
 	_, err := svc.AdjustPoints(context.Background(), port.AdjustPointsInput{
 		BuyerAuth0ID: "auth0|buyer",
