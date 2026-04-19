@@ -7,19 +7,18 @@
     "title": "EC Marketplace",
     "version": "Platform Admin v0.1",
     "dashboard": "ダッシュボード",
-    "tenants": "テナント管理",
     "sellers": "セラー管理",
     "plans": "サブスクリプションプラン",
     "commissions": "手数料設定",
     "coupons": "クーポン管理",
     "loyalty": "ロイヤリティ",
+    "refunds": "返金処理",
     "analytics": "プラットフォーム分析",
     "settings": "システム設定"
   },
   "dashboard": {
     "title": "ダッシュボード",
     "description": "プラットフォーム全体の概要",
-    "totalTenants": "総テナント数",
     "totalSellers": "総セラー数",
     "monthlyTransaction": "今月の取引額",
     "monthlyCommission": "今月の手数料収入",
@@ -27,7 +26,6 @@
     "noPending": "承認待ちの申請はありません",
     "serviceHealth": "各サービスの稼働状況",
     "sellerName": "セラー名",
-    "tenant": "テナント",
     "applicationDate": "申請日",
     "status": "ステータス",
     "metricUnavailable": "集計 API 未実装"
@@ -40,7 +38,6 @@
     "approved": "承認済み",
     "suspended": "停止中",
     "sellerName": "セラー名",
-    "tenant": "テナント",
     "status": "ステータス",
     "commissionRate": "手数料率",
     "stripeConnection": "Stripe接続",
@@ -54,33 +51,6 @@
     "resume": "再開",
     "loading": "読み込み中...",
     "empty": "該当するセラーがいません。管理者認証が未設定の場合は空表示になります。"
-  },
-  "tenants": {
-    "title": "テナント管理",
-    "description": "プラットフォームのテナントを管理します",
-    "createNew": "新規テナント作成",
-    "tenantName": "テナント名",
-    "slug": "スラッグ",
-    "status": "ステータス",
-    "sellerCount": "セラー数",
-    "createdDate": "作成日",
-    "actions": "操作",
-    "edit": "編集",
-    "empty": "テナントが存在しません。認証設定が未完了の場合は空表示になります。"
-  },
-  "newTenant": {
-    "title": "新規テナント作成",
-    "description": "新しいテナントを作成します",
-    "tenantName": "テナント名",
-    "slug": "スラッグ",
-    "slugHint": "テナント名から自動生成されます",
-    "tenantDescription": "説明",
-    "descriptionPlaceholder": "テナントの説明を入力",
-    "create": "作成する",
-    "creating": "作成中...",
-    "cancel": "キャンセル",
-    "createdMessage": "テナントを作成しました",
-    "errorGeneric": "テナントの作成に失敗しました"
   },
   "commissions": {
     "title": "手数料設定",
@@ -301,5 +271,32 @@
     "title": "システム設定",
     "description": "プラットフォーム全体の設定を管理します",
     "empty": "現時点で構成可能な設定はありません。今後、ブランディングや既定手数料率などの設定がここに追加されます。"
+  },
+  "refunds": {
+    "title": "手動返金",
+    "description": "対象注文 ID を指定して、Stripe 返金と送金取消を一括で実行します。セラー承認フローを経由せず、管理者権限で強制的に処理します。",
+    "warning": "この操作は取り消せません。Stripe 返金 + 各セラーへの送金取消 + 注文ステータス更新が連動します。対象注文を確認してから実行してください。",
+    "fields": {
+      "orderId": "注文 ID",
+      "orderIdHint": "UUID 形式（例: 00000000-0000-0000-0000-000000000000）",
+      "reason": "返金理由",
+      "reasonHint": "監査ログと cancellation_requests.seller_comment に記録されます",
+      "reasonPlaceholder": "例: 配送事故による全額返金"
+    },
+    "buttons": {
+      "submit": "返金を実行",
+      "confirm": "本当に返金しますか?",
+      "submitting": "処理中...",
+      "cancel": "キャンセル"
+    },
+    "success": {
+      "title": "返金処理を受け付けました",
+      "requestId": "Request ID",
+      "orderId": "注文 ID",
+      "stripeRefund": "Stripe Refund ID"
+    },
+    "errors": {
+      "generic": "返金処理に失敗しました"
+    }
   }
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -97,14 +98,16 @@ func (s *fakeStripeClient) ReverseTransfer(transferID string, amount int64, idem
 // used by Service. The individual hook fields let each test supply its
 // own behavior for the one or two methods it actually exercises.
 type fakeRequestsStore struct {
-	createFn       func(ctx context.Context, req *CancellationRequest) error
-	getByIDFn      func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error)
-	listByStatusFn func(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error)
-	rejectFn       func(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error)
-	markFailedFn   func(ctx context.Context, requestID uuid.UUID, failureReason string) error
-	approveTxFn    func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
+	createFn           func(ctx context.Context, req *CancellationRequest) error
+	getByIDFn          func(ctx context.Context, requestID uuid.UUID) (*CancellationRequest, error)
+	getLatestByOrderFn func(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error)
+	listByStatusFn     func(ctx context.Context, sellerID uuid.UUID, status Status, limit, offset int) ([]CancellationRequest, int, error)
+	rejectFn           func(ctx context.Context, requestID, sellerID uuid.UUID, comment string) (*CancellationRequest, error)
+	markFailedFn       func(ctx context.Context, requestID uuid.UUID, failureReason string) error
+	approveTxFn        func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error)
 
 	// Call capture for assertions.
+	createCalls       int
 	markFailedCalls   int
 	lastFailedReason  string
 	approveTxInputs   []ApprovalTxInput
@@ -113,6 +116,7 @@ type fakeRequestsStore struct {
 }
 
 func (f *fakeRequestsStore) Create(ctx context.Context, req *CancellationRequest) error {
+	f.createCalls++
 	if f.createFn != nil {
 		return f.createFn(ctx, req)
 	}
@@ -132,6 +136,9 @@ func (f *fakeRequestsStore) GetByID(ctx context.Context, requestID uuid.UUID) (*
 }
 
 func (f *fakeRequestsStore) GetLatestByOrder(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error) {
+	if f.getLatestByOrderFn != nil {
+		return f.getLatestByOrderFn(ctx, orderID)
+	}
 	return nil, nil
 }
 
@@ -783,3 +790,121 @@ func TestListByStatus_PropagatesSellerIDToStore(t *testing.T) {
 		t.Errorf("store received seller id %s, want %s", store.lastListSellerID, testSellerID)
 	}
 }
+
+// -----------------------------------------------------------------------------
+// AdminForceCancel
+// -----------------------------------------------------------------------------
+
+// TestAdminForceCancel_CreatesAndApproves covers the primary admin
+// flow: no pending request exists, so the admin path creates one
+// attributed to the admin, then runs the full Stripe refund +
+// ApproveTx + event pipeline. Pins the key assertion that
+// processed_by_seller_id carries the ORDER's seller id (so the
+// correct payout gets reversed) rather than the admin's auth0 id.
+func TestAdminForceCancel_CreatesAndApproves(t *testing.T) {
+	order := buildTestOrder(domain.StatusPaid)
+	stripe := &fakeStripeClient{refundResult: stripeResult{id: "re_admin"}}
+	var approvedInput ApprovalTxInput
+	store := &fakeRequestsStore{
+		// No existing request.
+		getLatestByOrderFn: func(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error) {
+			return nil, nil
+		},
+		approveTxFn: func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
+			approvedInput = in
+			updated := &CancellationRequest{
+				ID:       in.RequestID,
+				OrderID:  in.OrderID,
+				Status:   StatusApproved,
+				Reason:   in.Reason,
+				StripeRefundID: stringPtr(in.StripeRefundID),
+			}
+			cancelled := order.Order
+			cancelled.Status = domain.StatusCancelled
+			return updated, &cancelled, nil
+		},
+	}
+	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, stripe, nil)
+
+	result, err := svc.AdminForceCancel(context.Background(), order.ID, "auth0|admin-7", "goodwill refund after shipping delay")
+	if err != nil {
+		t.Fatalf("AdminForceCancel() error = %v", err)
+	}
+	if result.Status != StatusApproved {
+		t.Errorf("status = %q, want approved", result.Status)
+	}
+	if store.createCalls != 1 {
+		t.Errorf("Create calls = %d, want 1 (admin creates the request)", store.createCalls)
+	}
+	if approvedInput.SellerID != order.SellerID {
+		t.Errorf("SellerID passed to ApproveTx = %s, want order seller %s (admin path must reverse the SELLER's payout, not impersonate the admin id)",
+			approvedInput.SellerID, order.SellerID)
+	}
+	// The [admin:<id>] prefix is our audit hook in lieu of a schema column.
+	wantPrefix := "[admin:auth0|admin-7]"
+	if !strings.HasPrefix(approvedInput.Comment, wantPrefix) {
+		t.Errorf("comment = %q, want prefix %q", approvedInput.Comment, wantPrefix)
+	}
+}
+
+// TestAdminForceCancel_ReusesExistingPendingRequest verifies the
+// admin path folds an open buyer-initiated request into its approval
+// rather than racing to create a duplicate — the partial unique
+// index would reject that anyway, but catching it here keeps the
+// happy-path admin click from surfacing a confusing error when
+// there's a legitimate pending request already.
+func TestAdminForceCancel_ReusesExistingPendingRequest(t *testing.T) {
+	order := buildTestOrder(domain.StatusPaid)
+	existing := &CancellationRequest{
+		ID:                 uuid.MustParse("99999999-9999-9999-9999-999999999999"),
+		OrderID:            order.ID,
+		RequestedByAuth0ID: "auth0|buyer",
+		Reason:             "I changed my mind",
+		Status:             StatusPending,
+	}
+	var approvedInput ApprovalTxInput
+	store := &fakeRequestsStore{
+		getLatestByOrderFn: func(ctx context.Context, orderID uuid.UUID) (*CancellationRequest, error) {
+			return existing, nil
+		},
+		approveTxFn: func(ctx context.Context, in ApprovalTxInput) (*CancellationRequest, *domain.Order, error) {
+			approvedInput = in
+			updated := *existing
+			updated.Status = StatusApproved
+			cancelled := order.Order
+			cancelled.Status = domain.StatusCancelled
+			return &updated, &cancelled, nil
+		},
+	}
+	stripe := &fakeStripeClient{refundResult: stripeResult{id: "re_admin"}}
+	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, stripe, nil)
+
+	_, err := svc.AdminForceCancel(context.Background(), order.ID, "auth0|admin-7", "override seller inaction")
+	if err != nil {
+		t.Fatalf("AdminForceCancel() error = %v", err)
+	}
+	if store.createCalls != 0 {
+		t.Errorf("Create calls = %d, want 0 when a pending buyer request already exists", store.createCalls)
+	}
+	if approvedInput.RequestID != existing.ID {
+		t.Errorf("approved existing.ID mismatch: got %s, want %s", approvedInput.RequestID, existing.ID)
+	}
+}
+
+// TestAdminForceCancel_RejectsNonCancellableOrder guards against
+// running a refund against an order that's already shipped/delivered
+// — admin should see a clean conflict instead of hitting Stripe.
+func TestAdminForceCancel_RejectsNonCancellableOrder(t *testing.T) {
+	order := buildTestOrder(domain.StatusShipped)
+	stripe := &fakeStripeClient{}
+	store := &fakeRequestsStore{}
+	svc := NewService(&fakeOrderReader{order: order}, &fakePayoutReader{}, store, stripe, nil)
+
+	_, err := svc.AdminForceCancel(context.Background(), order.ID, "auth0|admin-7", "too late")
+	assertAppErrorCode(t, err, 409, CodeOrderNotCancellable)
+	if len(stripe.calls) != 0 {
+		t.Errorf("Stripe should not have been called, got %+v", stripe.calls)
+	}
+}
+
+func stringPtr(s string) *string { return &s }

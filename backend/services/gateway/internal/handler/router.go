@@ -335,6 +335,11 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 			// Commission-rule catalog lives in order-svc.
 			ar.Get("/commissions", admin.ListCommissions)
 			ar.Post("/commissions", admin.CreateCommission)
+
+			// Force refund — admin bypasses the seller-approval step
+			// and triggers Stripe refund + transfer reversal + status
+			// update directly. Used for customer-service interventions.
+			ar.Post("/orders/{id}/refund", admin.RefundOrder)
 		})
 	})
 

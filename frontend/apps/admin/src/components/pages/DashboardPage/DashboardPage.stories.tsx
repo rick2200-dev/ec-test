@@ -12,58 +12,47 @@ type Story = StoryObj<typeof AdminDashboardPagePresenter>;
 
 const sampleArgs = {
   heading: {
-    title: "プラットフォーム管理",
-    description: "テナントとセラーの状況を確認できます",
+    title: "Dashboard",
+    description: "Platform overview",
   },
   statsCards: [
-    { id: "sellers", title: "総セラー数", value: "248", subtitle: "前月比 +18" },
+    { id: "sellers", title: "Total Sellers", value: "248", subtitle: "+18 MoM" },
     {
       id: "transactions",
-      title: "月間取引額",
+      title: "Monthly Transaction Volume",
       value: "¥18,400,000",
-      subtitle: "前月比 +15.2%",
+      subtitle: "+15.2% MoM",
     },
     {
       id: "commission",
-      title: "月間手数料収入",
+      title: "Monthly Commission Revenue",
       value: "¥920,000",
-      subtitle: "前月比 +15.2%",
+      subtitle: "+15.2% MoM",
     },
   ],
   pendingSection: {
-    title: "セラー申請",
+    title: "Pending Seller Applications",
     viewAllHref: "/sellers",
-    viewAllLabel: "すべて表示",
-    emptyLabel: "承認待ちはありません",
+    viewAllLabel: "View all",
+    emptyLabel: "No pending applications",
     columnLabels: {
-      sellerName: "セラー名",
-      applicationDate: "申請日",
-      status: "ステータス",
+      sellerName: "Seller Name",
+      applicationDate: "Application Date",
+      status: "Status",
     },
     rows: [
       {
         id: "s1",
         name: "Kyoto Crafts",
         createdAtLabel: "2025-04-08",
-        badge: { tone: "warning" as const, label: "承認待ち" },
+        badge: { tone: "warning" as const, label: "Pending" },
       },
       {
         id: "s2",
         name: "Hokkaido Foods",
         createdAtLabel: "2025-04-09",
-        badge: { tone: "warning" as const, label: "承認待ち" },
+        badge: { tone: "warning" as const, label: "Pending" },
       },
-    ],
-  },
-  serviceHealthSection: {
-    title: "サービス状態",
-    services: [
-      { name: "API Gateway", badge: { tone: "success" as const, label: "正常" } },
-      { name: "認証サービス", badge: { tone: "success" as const, label: "正常" } },
-      { name: "決済サービス", badge: { tone: "success" as const, label: "正常" } },
-      { name: "検索サービス", badge: { tone: "warning" as const, label: "低下" } },
-      { name: "通知サービス", badge: { tone: "success" as const, label: "正常" } },
-      { name: "画像処理", badge: { tone: "danger" as const, label: "停止" } },
     ],
   },
 };
@@ -72,16 +61,9 @@ export const Default: Story = {
   args: sampleArgs,
 };
 
-export const Healthy: Story = {
+export const Empty: Story = {
   args: {
     ...sampleArgs,
-    serviceHealthSection: {
-      ...sampleArgs.serviceHealthSection,
-      services: sampleArgs.serviceHealthSection.services.map((s) => ({
-        ...s,
-        badge: { tone: "success" as const, label: "正常" },
-      })),
-    },
     pendingSection: { ...sampleArgs.pendingSection, rows: [] },
   },
 };

@@ -230,3 +230,34 @@ export async function adjustAdminBuyerPoints(
   );
   return jsonOrThrow<AdjustPointsResponse>(res);
 }
+
+// ---------------------------------------------------------------------------
+// Refunds (admin force-cancel)
+// ---------------------------------------------------------------------------
+
+export interface AdminRefundResponse {
+  id: string;
+  order_id: string;
+  status: string;
+  reason: string;
+  seller_comment?: string | null;
+  stripe_refund_id?: string | null;
+  processed_at?: string | null;
+}
+
+/**
+ * Force-cancel an order on admin behalf. The backend orchestrates
+ * Stripe refund + per-seller transfer reversals + DB writes; any
+ * pre-existing pending buyer cancellation request is folded into
+ * the same approval so duplicates can't hang.
+ */
+export async function adminRefundOrder(
+  orderId: string,
+  reason: string
+): Promise<AdminRefundResponse> {
+  const res = await fetchAPI(`/api/v1/admin/orders/${encodeURIComponent(orderId)}/refund`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+  return jsonOrThrow<AdminRefundResponse>(res);
+}

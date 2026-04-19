@@ -171,3 +171,19 @@ func (h *AdminHandler) UpdateBuyerPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	writeRaw(w, status, body)
 }
+
+// RefundOrder force-cancels an order and refunds the buyer on admin
+// behalf — used when customer-service must intervene without waiting
+// for the seller to approve. Proxies to order-svc which orchestrates
+// the Stripe refund + transfer reversal + DB writes + event fan-out.
+// POST /admin/orders/{id}/refund
+func (h *AdminHandler) RefundOrder(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	body, status, err := h.order.Post(r.Context(), "/admin/orders/"+url.PathEscape(id)+"/refund", r.Body)
+	if err != nil {
+		slog.Error("proxy to order failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "order service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}

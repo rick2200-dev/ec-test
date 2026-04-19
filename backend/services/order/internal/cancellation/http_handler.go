@@ -63,6 +63,21 @@ func (h *HTTPHandler) SellerRoutes() chi.Router {
 	return r
 }
 
+// AdminRoutes returns the chi router for platform-admin cancellation
+// endpoints. Intended to be mounted under /admin/orders:
+//
+//	POST /admin/orders/{id}/refund   force-cancel + refund
+//
+// The admin auth0 id arrives as X-User-ID (set by the gateway from
+// the admin's JWT). Admin role check is enforced at the gateway
+// layer; this handler only verifies the internal token and the
+// presence of the X-User-ID header.
+func (h *HTTPHandler) AdminRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/{id}/refund", h.adminRefund)
+	return r
+}
+
 // --- Request / Response shapes ---
 
 type createRequestBody struct {
@@ -248,6 +263,40 @@ func (h *HTTPHandler) reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.JSON(w, http.StatusOK, updated)
+}
+
+// adminRefund handles POST /admin/orders/{id}/refund. The admin id is
+// taken from X-User-ID which the gateway populates from the JWT.
+func (h *HTTPHandler) adminRefund(w http.ResponseWriter, r *http.Request) {
+	orderID, ok := uuidParam(w, r, "id", "order id")
+	if !ok {
+		return
+	}
+	adminAuth0ID := r.Header.Get("X-User-ID")
+	if adminAuth0ID == "" {
+		httputil.Error(w, apperrors.Unauthorized("missing X-User-ID"))
+		return
+	}
+	var body adminRefundBody
+	if err := httputil.Decode(r, &body); err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	reason := strings.TrimSpace(body.Reason)
+	if reason == "" {
+		httputil.Error(w, apperrors.BadRequest("reason is required"))
+		return
+	}
+	updated, err := h.svc.AdminForceCancel(r.Context(), orderID, adminAuth0ID, reason)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	httputil.JSON(w, http.StatusOK, updated)
+}
+
+type adminRefundBody struct {
+	Reason string `json:"reason"`
 }
 
 // --- Small helpers ---

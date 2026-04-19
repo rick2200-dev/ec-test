@@ -279,41 +279,140 @@ func (s *Service) ApproveCancellation(ctx context.Context, requestID, sellerID u
 			WithCode(CodeOrderNotCancellable)
 	}
 
+	return s.finalizeApproval(ctx, req, order, sellerID, comment)
+}
+
+// AdminForceCancel runs a full cancellation approval on behalf of
+// platform admin — no seller authorization required. Used when
+// customer-service needs to refund an order without waiting for the
+// seller to approve (e.g. seller unresponsive, chargeback pre-empt,
+// goodwill refund). If a pending cancellation request already exists
+// for the order it's approved; otherwise a fresh one is created
+// attributed to the admin, then approved. Either way the Stripe
+// refund + per-payout transfer reversals + DB writes follow the same
+// path as seller-initiated approval.
+//
+// The audit trail lives in two places:
+//   - requested_by_auth0_id on the request row records who opened it
+//     (buyer when pre-existing, admin when created here).
+//   - seller_comment is prefixed with "[admin:<auth0_id>]" on the
+//     admin path so post-hoc audits can distinguish admin from seller
+//     approvals without a schema change.
+//
+// Errors:
+//   - NotFound if the order does not exist
+//   - Conflict + CodeOrderNotCancellable if the order is past its
+//     cancellable window or has no stripe PaymentIntent to refund
+//   - RefundFailed / TransferReversalFailed on Stripe rejection —
+//     the request is marked `failed` for operator reconciliation.
+func (s *Service) AdminForceCancel(ctx context.Context, orderID uuid.UUID, adminAuth0ID, reason string) (*CancellationRequest, error) {
+	if adminAuth0ID == "" {
+		return nil, apperrors.BadRequest("admin auth0 id is required")
+	}
+	if reason == "" {
+		return nil, apperrors.BadRequest("cancellation reason is required")
+	}
+
+	order, err := s.orders.GetByID(ctx, orderID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to load order", err)
+	}
+	if order == nil {
+		return nil, apperrors.NotFound("order not found")
+	}
+	if !order.CanBeCancelled() {
+		return nil, apperrors.Conflict("order cannot be cancelled in its current status").
+			WithCode(CodeOrderNotCancellable)
+	}
+	if order.StripePaymentIntentID == nil || *order.StripePaymentIntentID == "" {
+		return nil, apperrors.Conflict("order has no stripe payment intent to refund").
+			WithCode(CodeOrderNotCancellable)
+	}
+
+	// Resolve the cancellation request: reuse an open pending one
+	// (buyer raised it, admin is resolving on seller's behalf) or
+	// create a fresh admin-attributed one.
+	req, err := s.requests.GetLatestByOrder(ctx, orderID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to load cancellation request", err)
+	}
+	if req == nil || req.Status != StatusPending {
+		req = &CancellationRequest{
+			OrderID:            orderID,
+			RequestedByAuth0ID: adminAuth0ID,
+			Reason:             reason,
+		}
+		if createErr := s.requests.Create(ctx, req); createErr != nil {
+			if errors.Is(createErr, ErrPendingRequestExists) {
+				// Lost the race to a concurrent writer that opened a
+				// pending request after our GetLatestByOrder read.
+				// Fetch what they wrote and keep going — approving
+				// it is still the caller's intent.
+				refreshed, refreshErr := s.requests.GetLatestByOrder(ctx, orderID)
+				if refreshErr != nil || refreshed == nil {
+					return nil, apperrors.Internal("failed to reload cancellation request after race", refreshErr)
+				}
+				req = refreshed
+			} else {
+				return nil, apperrors.Internal("failed to create cancellation request", createErr)
+			}
+		} else {
+			// Emit the `requested` event so downstream consumers
+			// (notification, audit log) see the admin's open.
+			publishRequested(ctx, s.pub, req, &order.Order)
+		}
+	}
+
+	return s.finalizeApproval(ctx, req, order, order.SellerID,
+		fmt.Sprintf("[admin:%s] %s", adminAuth0ID, reason))
+}
+
+// finalizeApproval is the shared Stripe + DB commit + event path
+// used by both ApproveCancellation (seller-initiated) and
+// AdminForceCancel (admin-initiated). Callers are expected to have
+// validated the order is cancellable, the payment intent exists, and
+// the request is in a state that can be approved.
+//
+// processingSellerID is the seller whose payout gets reversed +
+// recorded on processed_by_seller_id. It is the order's SellerID in
+// both call sites; named explicitly so future callers that need to
+// differ can do so cleanly.
+func (s *Service) finalizeApproval(
+	ctx context.Context,
+	req *CancellationRequest,
+	order *domain.OrderWithLines,
+	processingSellerID uuid.UUID,
+	comment string,
+) (*CancellationRequest, error) {
 	payouts, err := s.payouts.ListByOrderID(ctx, order.ID)
 	if err != nil {
 		return nil, apperrors.Internal("failed to load payouts", err)
 	}
 
-	// Phase 2 — Stripe refund (deterministic idempotency key).
-	refundKey := fmt.Sprintf("cancellation:%s:refund", requestID)
+	refundKey := fmt.Sprintf("cancellation:%s:refund", req.ID)
 	refundID, err := s.stripe.CreateRefund(*order.StripePaymentIntentID, order.TotalAmount, refundKey)
 	if err != nil {
 		failureReason := fmt.Sprintf("stripe refund failed: %v", err)
-		if markErr := s.requests.MarkFailed(ctx, requestID, failureReason); markErr != nil {
+		if markErr := s.requests.MarkFailed(ctx, req.ID, failureReason); markErr != nil {
 			slog.Error("failed to mark cancellation request as failed after refund failure",
-				"error", markErr, "request_id", requestID)
+				"error", markErr, "request_id", req.ID)
 		}
 		return nil, apperrors.New(502, "stripe refund failed", err).
 			WithCode(CodeRefundFailed)
 	}
 
-	// Phase 2 (cont) — per-payout transfer reversals.
 	var reversed []ReversedPayout
 	for _, p := range payouts {
-		// Skip payouts that are not yet completed (webhook race) or
-		// that have no transfer to reverse. The refund still covers
-		// the buyer-facing money; operators can reconcile Stripe
-		// side if a transfer later succeeds.
 		if p.Status != domain.PayoutStatusCompleted || p.StripeTransferID == nil || *p.StripeTransferID == "" {
 			continue
 		}
-		reverseKey := fmt.Sprintf("cancellation:%s:reverse:%s", requestID, p.ID)
+		reverseKey := fmt.Sprintf("cancellation:%s:reverse:%s", req.ID, p.ID)
 		reversalID, rerr := s.stripe.ReverseTransfer(*p.StripeTransferID, p.Amount, reverseKey)
 		if rerr != nil {
 			failureReason := fmt.Sprintf("stripe transfer reversal failed for payout %s: %v", p.ID, rerr)
-			if markErr := s.requests.MarkFailed(ctx, requestID, failureReason); markErr != nil {
+			if markErr := s.requests.MarkFailed(ctx, req.ID, failureReason); markErr != nil {
 				slog.Error("failed to mark cancellation request as failed after reversal failure",
-					"error", markErr, "request_id", requestID)
+					"error", markErr, "request_id", req.ID)
 			}
 			return nil, apperrors.New(502, "stripe transfer reversal failed", rerr).
 				WithCode(CodeTransferReversalFailed)
@@ -324,11 +423,10 @@ func (s *Service) ApproveCancellation(ctx context.Context, requestID, sellerID u
 		})
 	}
 
-	// Phase 3 — write phase (single transaction).
 	in := ApprovalTxInput{
-		RequestID:         requestID,
+		RequestID:         req.ID,
 		OrderID:           order.ID,
-		SellerID:          sellerID,
+		SellerID:          processingSellerID,
 		Comment:           comment,
 		Reason:            req.Reason,
 		StripeRefundID:    refundID,
@@ -343,13 +441,10 @@ func (s *Service) ApproveCancellation(ctx context.Context, requestID, sellerID u
 				WithCode(CodeCancellationRequestAlreadyProcessed)
 		}
 		if errors.Is(err, ErrOrderStatusChanged) {
-			// The buyer-cancel / seller-ship race lost at commit
-			// time. Stripe has already refunded so the request must
-			// be moved to `failed` for manual reconciliation.
 			failureReason := "order status changed between approval read and write; stripe refund and reversals must be reconciled manually"
-			if markErr := s.requests.MarkFailed(ctx, requestID, failureReason); markErr != nil {
+			if markErr := s.requests.MarkFailed(ctx, req.ID, failureReason); markErr != nil {
 				slog.Error("failed to mark cancellation request as failed after status race",
-					"error", markErr, "request_id", requestID)
+					"error", markErr, "request_id", req.ID)
 			}
 			return nil, apperrors.Conflict("order status changed before approval could commit").
 				WithCode(CodeOrderNotCancellable)
@@ -357,10 +452,8 @@ func (s *Service) ApproveCancellation(ctx context.Context, requestID, sellerID u
 		return nil, apperrors.Internal("failed to commit approval", err)
 	}
 
-	// Phase 4 — downstream events.
 	publishApproved(ctx, s.pub, updatedReq, updatedOrder, order.TotalAmount)
 	publishOrderCancelled(ctx, s.pub, updatedReq, updatedOrder, order.Lines)
-
 	return updatedReq, nil
 }
 

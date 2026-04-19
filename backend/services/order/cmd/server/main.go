@@ -196,6 +196,9 @@ func main() {
 	// Seller-facing cancellation endpoints at their own top-level prefix.
 	r.Mount("/cancellation-requests", cancellationHandler.SellerRoutes())
 
+	// Platform-admin cancellation endpoints (force-refund).
+	r.Mount("/admin/orders", cancellationHandler.AdminRoutes())
+
 	// Commission endpoints (tenant-scoped)
 	r.Mount("/commissions", commissionHandler.Routes())
 

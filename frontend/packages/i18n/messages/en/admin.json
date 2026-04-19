@@ -12,6 +12,7 @@
     "sellers": "Sellers",
     "plans": "Subscription Plans",
     "commissions": "Commissions",
+    "refunds": "Refunds",
     "analytics": "Analytics",
     "settings": "System Settings"
   },
@@ -272,5 +273,32 @@
     "title": "System Settings",
     "description": "Configure platform-wide settings",
     "empty": "No settings are configurable yet. Branding, default commission rate, and other controls will land here as they are introduced."
+  },
+  "refunds": {
+    "title": "Manual refund",
+    "description": "Force-cancel an order and trigger the Stripe refund + per-seller transfer reversal without waiting for seller approval.",
+    "warning": "This cannot be undone. The Stripe refund, per-seller transfer reversals, and order status update all run as a single approval. Double-check the order before submitting.",
+    "fields": {
+      "orderId": "Order ID",
+      "orderIdHint": "UUID format (e.g. 00000000-0000-0000-0000-000000000000)",
+      "reason": "Refund reason",
+      "reasonHint": "Recorded on the cancellation request and in the audit log.",
+      "reasonPlaceholder": "e.g. Lost in shipping, full refund on buyer's behalf"
+    },
+    "buttons": {
+      "submit": "Issue refund",
+      "confirm": "Click again to confirm",
+      "submitting": "Processing...",
+      "cancel": "Cancel"
+    },
+    "success": {
+      "title": "Refund submitted",
+      "requestId": "Request ID",
+      "orderId": "Order ID",
+      "stripeRefund": "Stripe Refund ID"
+    },
+    "errors": {
+      "generic": "Refund failed"
+    }
   }
 }

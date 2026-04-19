@@ -17,12 +17,12 @@ interface NavItemDef {
 
 const navItemDefs: NavItemDef[] = [
   { href: "/", labelKey: "sidebar.dashboard", icon: "grid" },
-  { href: "/tenants", labelKey: "sidebar.tenants", icon: "building" },
   { href: "/sellers", labelKey: "sidebar.sellers", icon: "users" },
   { href: "/plans", labelKey: "sidebar.plans", icon: "credit-card" },
   { href: "/commissions", labelKey: "sidebar.commissions", icon: "percent" },
   { href: "/coupons", labelKey: "sidebar.coupons", icon: "percent" },
   { href: "/loyalty", labelKey: "sidebar.loyalty", icon: "credit-card" },
+  { href: "/refunds", labelKey: "sidebar.refunds", icon: "credit-card" },
   { href: "/analytics", labelKey: "sidebar.analytics", icon: "chart" },
   { href: "/settings", labelKey: "sidebar.settings", icon: "settings" },
 ];
