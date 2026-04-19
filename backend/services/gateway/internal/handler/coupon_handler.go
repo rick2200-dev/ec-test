@@ -92,6 +92,17 @@ func (h *CouponHandler) AdminRevoke(w http.ResponseWriter, r *http.Request) {
 	writeRaw(w, status, body)
 }
 
+func (h *CouponHandler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	body, status, err := h.coupon.Put(r.Context(), "/admin/coupons/"+url.PathEscape(id), r.Body)
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
 func (h *CouponHandler) AdminStats(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	body, status, err := h.coupon.Get(r.Context(), "/admin/coupons/"+url.PathEscape(id)+"/stats", "")
@@ -143,6 +154,17 @@ func (h *CouponHandler) SellerGet(w http.ResponseWriter, r *http.Request) {
 func (h *CouponHandler) SellerRevoke(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	body, status, err := h.coupon.Post(r.Context(), "/seller/coupons/"+url.PathEscape(id)+"/revoke", r.Body)
+	if err != nil {
+		slog.Error("proxy to coupon failed", "error", err)
+		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})
+		return
+	}
+	writeRaw(w, status, body)
+}
+
+func (h *CouponHandler) SellerUpdate(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	body, status, err := h.coupon.Put(r.Context(), "/seller/coupons/"+url.PathEscape(id), r.Body)
 	if err != nil {
 		slog.Error("proxy to coupon failed", "error", err)
 		httputil.JSON(w, http.StatusBadGateway, map[string]string{"error": "coupon service unavailable"})

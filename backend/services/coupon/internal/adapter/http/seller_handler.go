@@ -32,9 +32,35 @@ func (h *SellerHandler) Routes() chi.Router {
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
 	r.Get("/{id}", h.Get)
+	r.Put("/{id}", h.Update)
 	r.Post("/{id}/revoke", h.Revoke)
 	r.Get("/{id}/stats", h.Stats)
 	return r
+}
+
+func (h *SellerHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputil.Error(w, apperrors.BadRequest("id is not a valid UUID"))
+		return
+	}
+	// Same ownership guard as Get / Revoke — prevents seller A from
+	// editing seller B's coupons even if they guess the UUID.
+	if _, err := h.loadOwned(r, id); err != nil {
+		httputil.Error(w, mapError(err))
+		return
+	}
+	var req updateCouponRequest
+	if err := httputil.Decode(r, &req); err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	updated, err := h.svc.UpdateCoupon(r.Context(), id, req.toInput())
+	if err != nil {
+		httputil.Error(w, mapError(err))
+		return
+	}
+	httputil.JSON(w, http.StatusOK, updated)
 }
 
 func (h *SellerHandler) sellerID(r *http.Request) (uuid.UUID, error) {

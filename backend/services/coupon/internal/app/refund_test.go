@@ -47,6 +47,9 @@ func (f *fakeCouponStore) DecrementUsage(ctx context.Context, id uuid.UUID) erro
 func (f *fakeCouponStore) SetStatus(ctx context.Context, id uuid.UUID, status domain.CouponStatus) error {
 	return nil
 }
+func (f *fakeCouponStore) Update(ctx context.Context, id uuid.UUID, patch port.CouponPatch) (*domain.Coupon, error) {
+	return nil, nil
+}
 
 type fakeRedemptionStore struct {
 	redemption     *domain.CouponRedemption

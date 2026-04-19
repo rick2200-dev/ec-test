@@ -35,12 +35,22 @@ export default async function CouponDetailPage({ params }: RouteProps) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <Link href="/coupons" className="text-sm text-accent hover:text-accent-hover">
-          &larr; {t("backToList")}
-        </Link>
-        <h2 className="mt-2 text-2xl font-bold text-text-primary">{coupon.title}</h2>
-        <p className="mt-1 font-mono text-sm text-text-secondary">{coupon.code}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href="/coupons" className="text-sm text-accent hover:text-accent-hover">
+            &larr; {t("backToList")}
+          </Link>
+          <h2 className="mt-2 text-2xl font-bold text-text-primary">{coupon.title}</h2>
+          <p className="mt-1 font-mono text-sm text-text-secondary">{coupon.code}</p>
+        </div>
+        {coupon.status === "active" && (
+          <Link
+            href={`/coupons/${coupon.id}/edit`}
+            className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
+          >
+            {t("edit")}
+          </Link>
+        )}
       </div>
 
       <section className="rounded-lg border border-border bg-white p-6 shadow-sm">

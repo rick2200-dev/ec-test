@@ -73,19 +73,20 @@ export default function SellerCouponsPage() {
               <th className="px-4 py-3">{t("columns.minOrder")}</th>
               <th className="px-4 py-3">{t("columns.usage")}</th>
               <th className="px-4 py-3">{t("columns.status")}</th>
+              <th className="px-4 py-3 text-right">{t("columns.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {coupons === null && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-text-secondary">
+                <td colSpan={7} className="px-4 py-10 text-center text-text-secondary">
                   {t("loading")}
                 </td>
               </tr>
             )}
             {coupons?.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-text-secondary">
+                <td colSpan={7} className="px-4 py-10 text-center text-text-secondary">
                   {t("empty")}
                 </td>
               </tr>
@@ -117,6 +118,16 @@ export default function SellerCouponsPage() {
                     >
                       {isRevoked ? t("status.revoked") : t("status.active")}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {!isRevoked && (
+                      <Link
+                        href={`/coupons/${c.id}/edit`}
+                        className="text-sm font-medium text-accent hover:text-accent-hover"
+                      >
+                        {t("actions.edit")}
+                      </Link>
+                    )}
                   </td>
                 </tr>
               );

@@ -141,6 +141,65 @@ func (s *Service) GetCoupon(ctx context.Context, id uuid.UUID) (*domain.Coupon, 
 	return c, nil
 }
 
+// UpdateCoupon applies the editable-field patch to an existing
+// coupon. Revoked coupons are still editable (operators may want to
+// tidy up their title or description post-hoc), but callers who want
+// that blocked should gate on Status at the handler layer.
+func (s *Service) UpdateCoupon(ctx context.Context, id uuid.UUID, in port.UpdateCouponInput) (*domain.Coupon, error) {
+	if strings.TrimSpace(in.Title) == "" {
+		return nil, apperrors.BadRequest("title is required")
+	}
+	if in.MinOrderAmount < 0 {
+		return nil, apperrors.BadRequest("min_order_amount must be non-negative")
+	}
+	if in.MaxDiscountAmount != nil && *in.MaxDiscountAmount < 0 {
+		return nil, apperrors.BadRequest("max_discount_amount must be non-negative")
+	}
+	if in.UsageLimitTotal != nil && *in.UsageLimitTotal <= 0 {
+		return nil, apperrors.BadRequest("usage_limit_total must be positive when set")
+	}
+	if in.UsageLimitPerUser != nil && *in.UsageLimitPerUser <= 0 {
+		return nil, apperrors.BadRequest("usage_limit_per_user must be positive when set")
+	}
+
+	existing, err := s.coupons.GetByID(ctx, id)
+	if err != nil {
+		return nil, apperrors.Internal("failed to load coupon", err)
+	}
+	if existing == nil {
+		return nil, domain.ErrCouponNotFound
+	}
+
+	patch := port.CouponPatch{
+		Title:             in.Title,
+		Description:       in.Description,
+		MinOrderAmount:    in.MinOrderAmount,
+		MaxDiscountAmount: in.MaxDiscountAmount,
+		UsageLimitTotal:   in.UsageLimitTotal,
+		UsageLimitPerUser: in.UsageLimitPerUser,
+	}
+	if in.ExpiresAtUnix != nil {
+		t := time.Unix(*in.ExpiresAtUnix, 0).UTC()
+		patch.ExpiresAt = &t
+	}
+	// A `max_discount_amount` that only applies to percent coupons
+	// makes no sense on a fixed-amount row — silently drop it rather
+	// than reject, matching the create-time shape-guard.
+	if existing.DiscountType == domain.DiscountTypeFixedAmount {
+		patch.MaxDiscountAmount = nil
+	}
+
+	updated, err := s.coupons.Update(ctx, id, patch)
+	if err != nil {
+		return nil, apperrors.Internal("failed to update coupon", err)
+	}
+	if updated == nil {
+		return nil, domain.ErrCouponNotFound
+	}
+	slog.Info("coupon updated", "id", updated.ID, "code", updated.Code)
+	return updated, nil
+}
+
 func (s *Service) RevokeCoupon(ctx context.Context, id uuid.UUID) (*domain.Coupon, error) {
 	c, err := s.coupons.GetByID(ctx, id)
 	if err != nil {

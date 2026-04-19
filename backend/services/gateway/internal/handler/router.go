@@ -271,6 +271,7 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 					cr.Get("/", coupon.SellerList)
 					cr.Post("/", coupon.SellerCreate)
 					cr.Get("/{id}", coupon.SellerGet)
+					cr.Put("/{id}", coupon.SellerUpdate)
 					cr.Post("/{id}/revoke", coupon.SellerRevoke)
 					cr.Get("/{id}/stats", coupon.SellerStats)
 				})
@@ -316,11 +317,12 @@ func NewRouter(ctx context.Context, cfg config.Config, svc *proxy.Services, redi
 				adr.Get("/audit", platformAdmin.ListAudit)
 			})
 
-			// Coupon administration (platform coupons only in MVP).
+			// Coupon administration.
 			ar.Route("/coupons", func(cr chi.Router) {
 				cr.Post("/", coupon.AdminCreate)
 				cr.Get("/", coupon.AdminList)
 				cr.Get("/{id}", coupon.AdminGet)
+				cr.Put("/{id}", coupon.AdminUpdate)
 				cr.Post("/{id}/revoke", coupon.AdminRevoke)
 				cr.Get("/{id}/stats", coupon.AdminStats)
 			})

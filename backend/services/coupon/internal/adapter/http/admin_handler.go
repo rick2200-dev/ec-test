@@ -30,9 +30,51 @@ func (h *AdminHandler) Routes() chi.Router {
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
 	r.Get("/{id}", h.Get)
+	r.Put("/{id}", h.Update)
 	r.Post("/{id}/revoke", h.Revoke)
 	r.Get("/{id}/stats", h.Stats)
 	return r
+}
+
+type updateCouponRequest struct {
+	Title             string `json:"title"`
+	Description       string `json:"description"`
+	MinOrderAmount    int64  `json:"min_order_amount"`
+	MaxDiscountAmount *int64 `json:"max_discount_amount,omitempty"`
+	ExpiresAtUnix     *int64 `json:"expires_at_unix,omitempty"`
+	UsageLimitTotal   *int   `json:"usage_limit_total,omitempty"`
+	UsageLimitPerUser *int   `json:"usage_limit_per_user,omitempty"`
+}
+
+func (r updateCouponRequest) toInput() port.UpdateCouponInput {
+	return port.UpdateCouponInput{
+		Title:             r.Title,
+		Description:       r.Description,
+		MinOrderAmount:    r.MinOrderAmount,
+		MaxDiscountAmount: r.MaxDiscountAmount,
+		ExpiresAtUnix:     r.ExpiresAtUnix,
+		UsageLimitTotal:   r.UsageLimitTotal,
+		UsageLimitPerUser: r.UsageLimitPerUser,
+	}
+}
+
+func (h *AdminHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputil.Error(w, apperrors.BadRequest("id is not a valid UUID"))
+		return
+	}
+	var req updateCouponRequest
+	if err := httputil.Decode(r, &req); err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	updated, err := h.svc.UpdateCoupon(r.Context(), id, req.toInput())
+	if err != nil {
+		httputil.Error(w, mapError(err))
+		return
+	}
+	httputil.JSON(w, http.StatusOK, updated)
 }
 
 type createCouponRequest struct {

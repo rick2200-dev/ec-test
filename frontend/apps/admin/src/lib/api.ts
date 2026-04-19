@@ -179,6 +179,31 @@ export async function createAdminCoupon(input: CreateCouponRequest): Promise<Cou
   return jsonOrThrow<Coupon>(res);
 }
 
+/**
+ * Editable subset of a coupon. Every call must send the full payload
+ * (PUT semantics) — nullable pointers cleared by sending null, set by
+ * sending a value. Immutable fields (code, discount type/amount,
+ * currency, valid_from) are omitted because the backend rejects
+ * changes to them.
+ */
+export interface UpdateCouponInput {
+  title: string;
+  description: string;
+  min_order_amount: number;
+  max_discount_amount: number | null;
+  expires_at_unix: number | null;
+  usage_limit_total: number | null;
+  usage_limit_per_user: number | null;
+}
+
+export async function updateAdminCoupon(id: string, input: UpdateCouponInput): Promise<Coupon> {
+  const res = await fetchAPI(`/api/v1/admin/coupons/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<Coupon>(res);
+}
+
 export async function revokeAdminCoupon(id: string): Promise<Coupon> {
   const res = await fetchAPI(`/api/v1/admin/coupons/${id}/revoke`, {
     method: "POST",

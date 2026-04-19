@@ -2,6 +2,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -38,6 +39,26 @@ type CouponStore interface {
 
 	// SetStatus updates status + updated_at. Used by RevokeCoupon.
 	SetStatus(ctx context.Context, id uuid.UUID, status domain.CouponStatus) error
+
+	// Update applies the editable-field subset of a coupon row. The
+	// columns that identify the deal (code, issuer, discount type +
+	// amount, currency, valid_from) are not touched; nil pointers
+	// clear their nullable columns. Returns the updated row.
+	Update(ctx context.Context, id uuid.UUID, patch CouponPatch) (*domain.Coupon, error)
+}
+
+// CouponPatch is the repo-level view of an update: every writable
+// column, with nil representing "clear" on nullable columns and the
+// zero value on non-nullable columns meaning "set to zero". The app
+// layer is responsible for validating before calling.
+type CouponPatch struct {
+	Title             string
+	Description       string
+	MinOrderAmount    int64
+	MaxDiscountAmount *int64
+	ExpiresAt         *time.Time
+	UsageLimitTotal   *int
+	UsageLimitPerUser *int
 }
 
 // ReservationStore abstracts coupon_reservations.

@@ -16,6 +16,15 @@ type CouponUseCase interface {
 	// --- Admin ---
 
 	CreateCoupon(ctx context.Context, input CreateCouponInput) (*domain.Coupon, error)
+
+	// UpdateCoupon edits an existing coupon. Only the fields the admin
+	// form owns (title, description, min_order, max_discount, expiry,
+	// usage limits) are writable; code / issuer / discount_type /
+	// discount_amount / currency / valid_from are all intentionally
+	// immutable so a mutation can't retroactively change the deal a
+	// buyer saw when they redeemed.
+	UpdateCoupon(ctx context.Context, id uuid.UUID, input UpdateCouponInput) (*domain.Coupon, error)
+
 	ListCoupons(ctx context.Context, filter ListCouponsFilter) ([]domain.Coupon, int, error)
 	GetCoupon(ctx context.Context, id uuid.UUID) (*domain.Coupon, error)
 	RevokeCoupon(ctx context.Context, id uuid.UUID) (*domain.Coupon, error)
@@ -87,6 +96,28 @@ type CreateCouponInput struct {
 	UsageLimitPerUser  *int
 	Title              string
 	Description        string
+}
+
+// UpdateCouponInput is the PUT payload for UpdateCoupon. Every field
+// is sent on every call — pointer-typed fields (MaxDiscountAmount,
+// ExpiresAtUnix, UsageLimitTotal, UsageLimitPerUser) use nil to
+// represent "unset / unlimited" since those slots are nullable in
+// the DB. Non-pointer fields (Title, Description, MinOrderAmount)
+// are always overwritten with whatever the request sends.
+//
+// Fields deliberately absent from this struct because they must not
+// change after creation: Code, IssuerType, IssuerID, DiscountType,
+// DiscountPercentBps, DiscountAmount, Currency, ValidFrom. Mutating
+// any of these retroactively rewrites a deal that buyers may have
+// already redeemed.
+type UpdateCouponInput struct {
+	Title             string
+	Description       string
+	MinOrderAmount    int64
+	MaxDiscountAmount *int64
+	ExpiresAtUnix     *int64
+	UsageLimitTotal   *int
+	UsageLimitPerUser *int
 }
 
 // ListCouponsFilter is the admin list query. IssuerType/IssuerID are

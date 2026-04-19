@@ -189,6 +189,52 @@ func (r *CouponRepository) DecrementUsage(ctx context.Context, id uuid.UUID) err
 	})
 }
 
+// Update writes the editable-field subset and returns the fresh row.
+// The static columns (code, issuer, discount_type, discount_amount,
+// currency, valid_from) are intentionally not in the SET list — a
+// mutation must not retroactively change the deal buyers saw.
+func (r *CouponRepository) Update(ctx context.Context, id uuid.UUID, patch port.CouponPatch) (*domain.Coupon, error) {
+	var updated *domain.Coupon
+	err := database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
+		row := tx.QueryRow(ctx,
+			`UPDATE coupon_svc.coupons
+			    SET title                = $2,
+			        description          = $3,
+			        min_order_amount     = $4,
+			        max_discount_amount  = $5,
+			        expires_at           = $6,
+			        usage_limit_total    = $7,
+			        usage_limit_per_user = $8,
+			        updated_at           = NOW()
+			  WHERE id = $1
+			 RETURNING id, code, issuer_type, issuer_id, discount_type,
+			           discount_percent_bps, discount_amount, currency,
+			           min_order_amount, max_discount_amount,
+			           valid_from, expires_at,
+			           usage_limit_total, usage_limit_per_user, usage_count,
+			           status, title, description, created_at, updated_at`,
+			id,
+			patch.Title, patch.Description,
+			patch.MinOrderAmount, patch.MaxDiscountAmount,
+			patch.ExpiresAt,
+			patch.UsageLimitTotal, patch.UsageLimitPerUser,
+		)
+		c, err := scanCoupon(row.Scan)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("update coupon: %w", err)
+		}
+		updated = c
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
 func (r *CouponRepository) SetStatus(ctx context.Context, id uuid.UUID, status domain.CouponStatus) error {
 	return database.TxOrPool(ctx, r.pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx,

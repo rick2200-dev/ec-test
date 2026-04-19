@@ -271,6 +271,32 @@ export async function createSellerCoupon(input: CreateCouponRequest): Promise<Co
   return jsonOrThrow<Coupon>(res);
 }
 
+/**
+ * Editable subset of a seller's own coupon. Server-side guards
+ * ensure a seller can only edit their own rows; this client mirrors
+ * the admin PUT shape exactly so the backend handler can be shared.
+ */
+export interface UpdateSellerCouponInput {
+  title: string;
+  description: string;
+  min_order_amount: number;
+  max_discount_amount: number | null;
+  expires_at_unix: number | null;
+  usage_limit_total: number | null;
+  usage_limit_per_user: number | null;
+}
+
+export async function updateSellerCoupon(
+  id: string,
+  input: UpdateSellerCouponInput
+): Promise<Coupon> {
+  const res = await fetchAPI(`/api/v1/seller/coupons/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<Coupon>(res);
+}
+
 export async function revokeSellerCoupon(id: string): Promise<Coupon> {
   const res = await fetchAPI(`/api/v1/seller/coupons/${id}/revoke`, {
     method: "POST",

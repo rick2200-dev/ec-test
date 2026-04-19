@@ -188,6 +188,7 @@
   "couponDetail": {
     "backToList": "一覧に戻る",
     "overview": "概要",
+    "edit": "編集",
     "status": "ステータス",
     "active": "有効",
     "revoked": "失効済み",
@@ -211,6 +212,27 @@
     "revoking": "失効処理中...",
     "confirmRevoke": "このクーポンを失効させますか?",
     "revokeFailed": "クーポンの失効に失敗しました"
+  },
+  "editCoupon": {
+    "title": "クーポンを編集",
+    "backToDetail": "詳細に戻る",
+    "backToList": "一覧に戻る",
+    "loading": "読み込み中...",
+    "immutableNote": "コード・割引方式・割引額・通貨・開始日は編集できません（発行済みクーポンの整合性保護のため）。変更するには新規に発行してください。",
+    "fields": {
+      "title": "タイトル",
+      "description": "説明",
+      "minOrderAmount": "最低注文額（円）",
+      "maxDiscountAmount": "最大割引額（空欄でなし）",
+      "expiresAt": "有効期限",
+      "usageLimitTotal": "総利用回数上限",
+      "usageLimitPerUser": "ユーザーあたり上限",
+      "clearHint": "空欄で無制限 / 期限なし"
+    },
+    "save": "保存",
+    "saving": "保存中...",
+    "cancel": "キャンセル",
+    "errorGeneric": "クーポンの更新に失敗しました"
   },
   "loyalty": {
     "title": "ロイヤリティポイント管理",

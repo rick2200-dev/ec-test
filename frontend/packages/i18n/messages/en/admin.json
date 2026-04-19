@@ -190,6 +190,7 @@
   "couponDetail": {
     "backToList": "Back to list",
     "overview": "Overview",
+    "edit": "Edit",
     "status": "Status",
     "active": "Active",
     "revoked": "Revoked",
@@ -213,6 +214,27 @@
     "revoking": "Revoking...",
     "confirmRevoke": "Revoke this coupon?",
     "revokeFailed": "Failed to revoke coupon"
+  },
+  "editCoupon": {
+    "title": "Edit coupon",
+    "backToDetail": "Back to detail",
+    "backToList": "Back to list",
+    "loading": "Loading...",
+    "immutableNote": "Code, discount type/amount, currency, and valid-from cannot be edited (they guard the deal buyers already saw). Issue a new coupon instead if any of those need to change.",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "minOrderAmount": "Min order amount (JPY)",
+      "maxDiscountAmount": "Max discount amount (blank = none)",
+      "expiresAt": "Expires at",
+      "usageLimitTotal": "Total usage limit",
+      "usageLimitPerUser": "Per-user limit",
+      "clearHint": "Blank = unlimited / no expiry"
+    },
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "errorGeneric": "Failed to update coupon"
   },
   "loyalty": {
     "title": "Loyalty points admin",
