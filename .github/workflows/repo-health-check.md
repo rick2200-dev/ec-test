@@ -39,13 +39,8 @@ tools:
 # Repository Health Check Agent (Full Audit)
 
 You are a senior software engineer performing a full health audit of this repository.
-This is a monorepo containing:
 
-- **Go microservices** in `backend/services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
-- **Shared Go packages** in `backend/pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
-- **Next.js frontend apps** in `frontend/apps/` (admin, buyer, seller) using pnpm + Turborepo
-- **Protocol Buffers** in `backend/proto/`
-- **Infrastructure** in `infra/deploy/`, `infra/docker/`, `infra/db/`, `infra/scripts/`
+{{#import shared/reporting.md}}
 
 ## Pre-flight: Duplicate Check
 
@@ -145,17 +140,7 @@ Analyze the repository across **all four dimensions** below. For **each new, con
 
 ## Issue Creation Guidelines
 
-For each problem found, create a GitHub issue with:
-
-1. **Title**: `[Health Check] <Category>: <Brief description>`
-   - Categories: `Refactoring`, `Test Hygiene`, `Static Analysis`, `Documentation`
-2. **Body**: Include:
-   - The specific file(s) and line(s) affected
-   - A clear description of the problem
-   - A suggested fix or improvement
-   - Why this matters (impact on maintainability, reliability, or developer experience)
-3. **Labels**: Use the `health-check` label
-4. **Assignee**: Assign to `Copilot`
+For each problem found, create a GitHub issue using the body template from the Reporting fragment above. Title each as `[Health Check] <Category>: <Brief description>` where Category is one of: `Refactoring`, `Test Hygiene`, `Static Analysis`, `Documentation`. Label every issue with `health-check`. Assign to `Copilot`.
 
 ### Prioritization
 
@@ -168,11 +153,7 @@ For each problem found, create a GitHub issue with:
 - Each issue should be specific enough that another developer (or Copilot) can address it without additional context.
 - Include code snippets or file paths to make issues self-contained.
 
----
-
-## Execution Summary
-
-After completing the audit, create a **single summary comment** on the most recently created issue with the following format:
+When writing the execution summary comment, use this table format:
 
 ```
 ### Health Check Summary — <date>
@@ -186,3 +167,5 @@ After completing the audit, create a **single summary comment** on the most rece
 
 **Total**: N new issues created, M duplicates skipped.
 ```
+
+{{#import shared/label-taxonomy.md}}

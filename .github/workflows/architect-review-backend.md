@@ -11,27 +11,12 @@ timeout-minutes: 30
 permissions:
   contents: read
   issues: read
-safe-outputs:
-  create-issue:
-    max: 3
-    title-prefix: "[Architecture] Backend: "
-    labels: ["architecture"]
-  add-labels:
-    max: 3
-  add-comment:
-    max: 3
+imports:
+  - uses: shared/architect-review-base.md
+    with:
+      title-prefix: "[Architecture] Backend: "
 tools:
-  github:
-    toolsets: [repos, issues]
   bash:
-    - grep
-    - find
-    - wc
-    - cat
-    - head
-    - tail
-    - sort
-    - uniq
     - go
 ---
 
@@ -41,16 +26,12 @@ You are a **senior software architect** performing a deep review of the backend 
 
 **This is NOT a code-style or small-refactoring review.** Do not report linting issues, naming conventions, formatting, or functions that are slightly too long. Focus exclusively on **structural, system-level concerns** that affect the backend's ability to scale and evolve.
 
-## Repository Context
+{{#import shared/reporting.md}}
 
-This is a multi-tenant marketplace EC platform:
+Additional backend-specific context:
 
-- **8 Go microservices** in `backend/services/` — gateway (:8080), auth (:8081), catalog (:8082), inventory (:8083), order (:8084), search (:8085), recommend (:8086), notification (:8087)
-- **Shared Go packages** in `backend/pkg/` — database, tenant, middleware, errors, httputil, pagination, pubsub
-- **gRPC** for inter-service communication (`backend/proto/`, `backend/gen/`)
-- **PostgreSQL RLS** for multi-tenant data isolation
-
-Architecture decisions: API Gateway pattern (BFF), gRPC for inter-service calls, REST for external clients.
+- Architecture decisions: API Gateway pattern (BFF), gRPC for inter-service calls, REST for external clients.
+- Gateway may still proxy some services over HTTP (`internal/proxy/`) while others use gRPC (`internal/grpcclient/`) — identify the gap.
 
 ## Pre-flight: Duplicate & Trend Check
 
@@ -82,14 +63,7 @@ Steps:
 
 Steps:
 
-1. Read each package directory under `backend/pkg/`:
-   - `database/` — DB connection pool, RLS configuration
-   - `tenant/` — Tenant context management
-   - `middleware/` — HTTP middleware
-   - `errors/` — Application error types
-   - `httputil/` — HTTP utilities
-   - `pagination/` — Pagination helpers
-   - `pubsub/` — Pub/Sub client wrapper
+1. Enumerate each package directory under `backend/pkg/` (use `ls backend/pkg/`, do not trust any hardcoded list — the set grows over time).
 2. Classify each: **cross-cutting** (correct) vs. **domain-specific** (wrong).
 3. For each package, check its imports — flag any that import from `backend/services/`.
 4. Check for god-packages: any single `.go` file exceeding ~500 lines, or a package with too many unrelated responsibilities.
@@ -108,37 +82,7 @@ Steps:
 
 ## Issue Creation Guidelines
 
-Create **at most 3 issues**, focusing on the most architecturally significant findings.
-
-For each issue:
-
-1. **Title**: `[Architecture] Backend: <Brief description>`
-2. **Body**:
-
-```markdown
-## Summary
-
-{1-2 sentence description of the architectural concern}
-
-## Findings
-
-{Specific files, line numbers, and evidence — include code snippets where helpful}
-
-## Impact
-
-{Why this matters — what breaks or degrades if left unaddressed}
-
-## Recommendation
-
-{Concrete, actionable steps achievable within a sprint}
-
-## Trend
-
-{New issue, recurring, or improving? Reference prior architecture review issues if found.}
-```
-
-3. **Labels**: `architecture`
-4. **Assignee**: Assign to `Copilot`
+Create **at most 3 issues**, focusing on the most architecturally significant findings. Use the issue body template from the Reporting fragment above. Label every issue with `architecture`. Assign to `Copilot`.
 
 ### Prioritization
 
@@ -154,25 +98,4 @@ Only create issues for Critical and Architectural Debt findings.
 - Each recommendation must be **achievable within a sprint**
 - Respect service autonomy — don't flag valid design differences
 
----
-
-## Execution Summary
-
-After completing both analysis areas, create a summary comment on the most recently created issue:
-
-```
-### Backend Architecture Review — <date>
-
-| Area | Status | Findings |
-|------|--------|----------|
-| Service Boundaries | OK / WARN / CRITICAL | {brief} |
-| Shared Packages | OK / WARN / CRITICAL | {brief} |
-
-**Issues created**: N new, M duplicates skipped
-**Trend**: {direction since last review}
-
-### Improvement Opportunities (no issue created)
-- {list of non-critical observations}
-```
-
-If no issues were found, still create a summary as a comment on the most recent open `architecture` issue.
+{{#import shared/label-taxonomy.md}}

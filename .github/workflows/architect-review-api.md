@@ -11,27 +11,12 @@ timeout-minutes: 30
 permissions:
   contents: read
   issues: read
-safe-outputs:
-  create-issue:
-    max: 3
-    title-prefix: "[Architecture] API: "
-    labels: ["architecture"]
-  add-labels:
-    max: 3
-  add-comment:
-    max: 3
+imports:
+  - uses: shared/architect-review-base.md
+    with:
+      title-prefix: "[Architecture] API: "
 tools:
-  github:
-    toolsets: [repos, issues]
   bash:
-    - grep
-    - find
-    - wc
-    - cat
-    - head
-    - tail
-    - sort
-    - uniq
     - go
 ---
 
@@ -41,18 +26,13 @@ You are a **senior software architect** performing a deep review of the API desi
 
 **This is NOT a code-style or small-refactoring review.** Focus exclusively on **structural concerns** in API definitions and asynchronous communication patterns.
 
-## Repository Context
+{{#import shared/reporting.md}}
 
-This is a multi-tenant marketplace EC platform:
+Additional API-specific context:
 
-- **8 Go microservices** in `backend/services/` — gateway (:8080), auth (:8081), catalog (:8082), inventory (:8083), order (:8084), search (:8085), recommend (:8086), notification (:8087)
-- **Protocol Buffers** in `backend/proto/` — per-service definitions, shared types in `common/v1/`
-- **Generated gRPC stubs** in `backend/gen/go/`
-- **Gateway gRPC clients** in `backend/services/gateway/internal/grpcclient/`
-- **Gateway HTTP handlers** in `backend/services/gateway/internal/handler/`
-- **Cloud Pub/Sub** for async events — publishers and subscribers distributed across services
-
-Communication patterns: REST/JSON (external → gateway), gRPC (gateway → services), Pub/Sub (async events).
+- Communication patterns: REST/JSON (external → gateway), gRPC (gateway → services), Pub/Sub (async events).
+- Per-service `.proto` files in `backend/proto/<service>/v1/`, shared types in `backend/proto/common/v1/`.
+- `go_package` option should follow `github.com/Riku-KANO/ec-test/gen/go/{service}/v1;{service}v1`.
 
 ## Pre-flight: Duplicate & Trend Check
 
@@ -69,7 +49,7 @@ Steps:
    - Verify each RPC uses its own unique `{RPC}Request` and `{RPC}Response` messages (no reuse across RPCs)
    - Verify common types (`Money`, `Pagination`) are imported from `common/v1/common.proto`
    - Check naming: snake_case for fields, UPPER_SNAKE_CASE for enum values with type prefix
-   - Check that `go_package` option follows the pattern `github.com/Riku-KANO/ec-test/gen/go/{service}/v1;{service}v1`
+   - Check that `go_package` option follows the pattern documented in the context section
 2. Compare REST routes in gateway handlers (`backend/services/gateway/internal/handler/*.go`) with gRPC client wrappers (`backend/services/gateway/internal/grpcclient/*.go`):
    - Flag REST routes that still use HTTP proxy (`internal/proxy/`) instead of gRPC
    - Flag gRPC methods defined in protos but not yet called from the gateway
@@ -94,12 +74,7 @@ Steps:
    - `backend/services/*/internal/service/*.go`
    - `backend/services/*/internal/handler/*.go`
    - `backend/pkg/pubsub/`
-2. Find all Pub/Sub subscribers:
-   - `backend/services/*/internal/subscriber/*.go`
-   - `backend/services/notification/internal/subscriber/`
-   - `backend/services/notification/internal/pubsub/`
-   - `backend/services/search/internal/subscriber/`
-   - `backend/services/recommend/internal/subscriber/`
+2. Find all Pub/Sub subscribers, typically under `backend/services/*/internal/subscriber/` or `internal/pubsub/`. Enumerate all services dynamically — do not rely on a hardcoded list.
 3. Map the complete event flow: which service publishes what topic → who subscribes. Create a mental model of the event graph.
 4. Check for:
    - **Circular event chains**: A publishes → B subscribes and publishes → A subscribes (hidden feedback loop)
@@ -121,37 +96,7 @@ Steps:
 
 ## Issue Creation Guidelines
 
-Create **at most 3 issues**, focusing on the most architecturally significant findings.
-
-For each issue:
-
-1. **Title**: `[Architecture] API: <Brief description>`
-2. **Body**:
-
-```markdown
-## Summary
-
-{1-2 sentence description of the architectural concern}
-
-## Findings
-
-{Specific files, line numbers, and evidence — include code snippets or event flow diagrams where helpful}
-
-## Impact
-
-{Why this matters — what breaks or degrades if left unaddressed}
-
-## Recommendation
-
-{Concrete, actionable steps achievable within a sprint}
-
-## Trend
-
-{New issue, recurring, or improving? Reference prior architecture review issues if found.}
-```
-
-3. **Labels**: `architecture`
-4. **Assignee**: Assign to `Copilot`
+Create **at most 3 issues**, focusing on the most architecturally significant findings. Use the issue body template from the Reporting fragment above. For event flow issues, include the full chain (publisher → topic → subscriber). Label every issue with `architecture`. Assign to `Copilot`.
 
 ### Prioritization
 
@@ -167,27 +112,6 @@ Only create issues for Critical and Architectural Debt findings.
 - Each recommendation must be **achievable within a sprint**
 - For event flow issues, include the full chain (publisher → topic → subscriber)
 
----
+When writing the execution summary, include an **Event Flow Map** bullet list (`{service} → {topic} → {subscriber(s)}`) before the "Issues created" line.
 
-## Execution Summary
-
-After completing both analysis areas, create a summary comment on the most recently created issue:
-
-```
-### API & Events Architecture Review — <date>
-
-| Area | Status | Findings |
-|------|--------|----------|
-| API & Proto Consistency | OK / WARN / CRITICAL | {brief} |
-| Event-Driven Architecture | OK / WARN / CRITICAL | {brief} |
-
-**Event Flow Map**:
-- {service} → {topic} → {subscriber(s)}
-- ...
-
-**Issues created**: N new, M duplicates skipped
-**Trend**: {direction since last review}
-
-### Improvement Opportunities (no issue created)
-- {list of non-critical observations}
-```
+{{#import shared/label-taxonomy.md}}

@@ -43,16 +43,7 @@ You are a **senior software architect with a site-reliability perspective** perf
 
 Your output is a single **GitHub Discussion** (not an Issue) — this is meant to be a discussion starter for the team, not a bug report.
 
-## Repository Context
-
-Multi-tenant marketplace EC platform:
-
-- **11 Go microservices** in `backend/services/` — auth, cart, catalog, gateway, inquiry, inventory, notification, order, recommend, review, search
-- **Shared Go packages** in `backend/pkg/` — authz, database, errors, httputil, middleware, pagination, pubsub, redis, tenant
-- **gRPC** for inter-service communication (`backend/proto/`, `backend/gen/`)
-- **PostgreSQL with RLS** for multi-tenant data isolation
-- **Frontend**: Next.js apps in `frontend/apps/` + shared packages in `frontend/packages/`
-- **Infrastructure**: Kubernetes (Kustomize + ArgoCD) in `infra/deploy/`, Docker Compose in `infra/docker/`, DB migrations in `infra/db/migrations/`
+{{#import shared/reporting.md}}
 
 ## Pre-flight: Duplicate & Trend Check
 
@@ -66,7 +57,7 @@ Multi-tenant marketplace EC platform:
 
 **Goal:** Evaluate whether the Postgres schema supports long-term evolution, data integrity, and multi-tenant safety.
 
-**Inputs:** `infra/db/migrations/*.sql` (17+ files), `backend/services/*/internal/**/*.go` (query sites), `backend/pkg/database/`.
+**Inputs:** `infra/db/migrations/*.sql`, `backend/services/*/internal/**/*.go` (query sites), `backend/pkg/database/`.
 
 Steps:
 
@@ -74,7 +65,7 @@ Steps:
 2. For every table defined in the migrations, check:
    - Is `tenant_id` present and indexed?
    - Does it have RLS enabled (`ENABLE ROW LEVEL SECURITY`) and a policy, OR is it intentionally a global table?
-   - `000015_force_rls.up.sql` enabled FORCE RLS — are all tables added _after_ that migration (e.g., `purchase_history`, `seller_api_tokens`, `order_cancellation_requests`, `reviews`) consistently covered?
+   - `000015_force_rls.up.sql` enabled FORCE RLS — are all tables added _after_ that migration consistently covered?
 3. Look for index coverage gaps: columns appearing in frequent `WHERE`/`JOIN` clauses (grep service code) without indexes in the schema.
 4. Detect destructive migrations without safe rollback paths (e.g., `DROP COLUMN`, `DROP TABLE` in `.up.sql` with no way to restore data from `.down.sql`).
 5. Detect N+1 risk patterns in service code: loops over result sets that call another query per row (grep for `for _, ... := range` followed by `.Query(` or `.Get(`).
@@ -121,14 +112,14 @@ Steps:
 
 Steps:
 
-1. Examine the current 11 services for **bounded-context coherence**. Particular attention to overlapping responsibilities:
-   - `order` vs. `cart` vs. `purchase_history` (in `inventory`? `order`?) — where does "what a buyer bought" live and why?
+1. Examine the current services (enumerate via `ls backend/services/`) for **bounded-context coherence**. Particular attention to overlapping responsibilities:
+   - `order` vs. `cart` vs. `purchase_history` — where does "what a buyer bought" live and why?
    - `inventory` vs. `catalog` — stock vs. product definition — are the boundaries clean?
    - `recommend` vs. `search` — ranking responsibility overlap?
 2. Review `backend/pkg/` for signs of drift: packages gaining service-specific concerns (e.g., types named after domain entities), `.go` files over ~500 lines, or packages with >10 public symbols of mixed purpose.
 3. Sample `git log --since="3 months ago" --name-only` (bash `git` is not available, use repos toolset commit history) to see whether new features typically touch ≥ 3 services. Frequent multi-service churn indicates leaky boundaries.
 4. Inspect the proto surface (`backend/proto/`): are RPCs CRUD-over-the-wire, or do they express domain operations? CRUD RPCs tend to push business logic into callers and leak internal models.
-5. For a hypothetical "add a new service" exercise (pick one plausible next service — e.g., `shipping` or `returns`): enumerate the files that would need to change (gateway proxy/router, authz policies, proto, k8s overlays, docker-compose, migrations). Is that number reasonable, or is the ceremony excessive?
+5. For a hypothetical "add a new service" exercise (pick one plausible next service — e.g., `returns`): enumerate the files that would need to change (gateway proxy/router, authz policies, proto, k8s overlays, docker-compose, migrations). Is that number reasonable, or is the ceremony excessive?
 
 **Red flags:**
 
@@ -265,3 +256,5 @@ After creating the Discussion, add a single comment to the most recent open issu
 ```
 
 If nothing material has changed since the last review, still create the Discussion but mark each area `OK` with an explicit note that the state is unchanged — continuity matters for a longitudinal record.
+
+{{#import shared/label-taxonomy.md}}

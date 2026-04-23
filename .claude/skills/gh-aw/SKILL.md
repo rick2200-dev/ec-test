@@ -228,6 +228,95 @@ tools:
     - pnpm
 ```
 
+### Imports (shared fragments)
+
+Workflows can share frontmatter and/or body across callers via the `imports:` feature. Live in `.github/workflows/shared/`.
+
+**Two syntaxes — combinable in the same caller:**
+
+```yaml
+# Frontmatter — imports another file's frontmatter (merged by the compiler) and can pass parameters
+imports:
+  - uses: shared/architect-review-base.md
+    with:
+      title-prefix: "[Architecture] Backend: "
+```
+
+```markdown
+<!-- Body — inlines the shared file's body text at this location -->
+
+{{#import shared/reporting.md}}
+```
+
+**Merge semantics (critical):**
+
+| Field              | Merge behavior                                                        |
+| ------------------ | --------------------------------------------------------------------- |
+| `permissions:`     | Validation only — NOT merged. Main caller must declare them itself.   |
+| `safe-outputs:`    | Each type defined once. Main caller OVERRIDES imports.                |
+| `tools.bash`       | Deep-merge; lists concatenate and dedupe.                             |
+| `tools.github`     | Deep-merge; toolset lists dedupe.                                     |
+| `env:`             | Main takes precedence. Duplicate keys across imports fail compilation. |
+
+**Consequence for callers:** if you want the base's `safe-outputs` to apply, do NOT redeclare `safe-outputs` in the caller. Add only extra `tools.bash` entries (e.g. `go`, `node`) — the common ones in the base merge in.
+
+**Single-import constraint:** a file can appear at most once in an import graph. Identical imports dedupe silently; importing the same file with different `with:` values fails at compile time.
+
+### Import schema (parameterized shared fragments)
+
+A shared fragment declares its parameter contract via `import-schema:`. The compiler validates caller inputs and substitutes values throughout the fragment's frontmatter AND body before processing.
+
+```yaml
+---
+# shared/my-base.md — has no `on:` trigger; only callable via imports
+import-schema:
+  title-prefix:
+    type: string
+    required: true
+    description: "Issue title prefix"
+  max-issues:
+    type: number
+    default: 5
+  mode:
+    type: choice
+    options: [strict, lenient]
+    required: true
+
+safe-outputs:
+  create-issue:
+    max: ${{ github.aw.import-inputs.max-issues }}
+    title-prefix: "${{ github.aw.import-inputs.title-prefix }}"
+---
+
+Run in ${{ github.aw.import-inputs.mode }} mode.
+```
+
+**Supported types:** `string`, `number`, `boolean`, `choice` (with `options:`), `array` (with `items.type:`), `object` (with nested `properties:`).
+
+**Referencing inputs:** `${{ github.aw.import-inputs.<key> }}` in frontmatter values (gets substituted before YAML parse) and in body text. Dotted paths for nested object fields.
+
+**Callers supply values via `with:`:**
+
+```yaml
+imports:
+  - uses: shared/my-base.md
+    with:
+      title-prefix: "[Foo] "
+      max-issues: 10
+      mode: strict
+```
+
+### Existing shared fragments in this repo
+
+| File                                 | Shape             | Purpose                                                          |
+| ------------------------------------ | ----------------- | ---------------------------------------------------------------- |
+| `shared/architect-review-base.md`    | Frontmatter-only  | Chassis for the four `architect-review-*` weekly workflows       |
+| `shared/health-check-base.md`        | Frontmatter-only  | Chassis for the four `health-check-*` weekly workflows           |
+| `shared/reporting.md`                | Body-only         | Repo-context block (service list), issue body template, summary  |
+| `shared/label-taxonomy.md`           | Body-only         | Canonical list of repo labels and which workflows set which      |
+
+`reporting.md` is the single source of truth for the monorepo's service and app list — update it when services are added/removed and every workflow picks up the change on its next compile.
+
 ### Execution Hooks
 
 ```yaml
@@ -316,15 +405,18 @@ Check `.github/workflows/*.md` for overlapping concerns. This monorepo already h
 | Workflow                          | Schedule                 | Focus                                      |
 | --------------------------------- | ------------------------ | ------------------------------------------ |
 | `health-check-refactoring.md`     | Weekly Monday            | Naming, long functions, code clarity       |
-| `health-check-testing.md`         | Weekly (other day)       | Test hygiene, coverage, flaky tests        |
-| `health-check-static-analysis.md` | Weekly (other day)       | Linting, deprecated APIs, dead code        |
-| `health-check-documentation.md`   | Weekly (other day)       | README, comments, rationale docs           |
+| `health-check-testing.md`         | Weekly Wednesday         | Test hygiene, coverage, flaky tests        |
+| `health-check-static-analysis.md` | Weekly Friday            | Linting, deprecated APIs, dead code        |
+| `health-check-documentation.md`   | Weekly Sunday            | README, comments, rationale docs           |
 | `repo-health-check.md`            | Manual only              | Full audit across all 4 health-check areas |
 | `architect-review.md`             | Manual only              | Full architecture review (all 8 areas)     |
 | `architect-review-backend.md`     | Weekly Monday 9am JST    | Service boundaries, shared packages        |
 | `architect-review-api.md`         | Weekly Tuesday 9am JST   | API/Proto consistency, event-driven        |
 | `architect-review-security.md`    | Weekly Wednesday 9am JST | Multi-tenant isolation, dependencies       |
 | `architect-review-platform.md`    | Weekly Thursday 9am JST  | Frontend architecture, infrastructure      |
+| `architect-review-longevity.md`   | Weekly Friday 9am JST    | DB, scalability, extensibility, ops (Discussion) |
+| `issue-triage.md`                 | Weekly Friday 10am JST   | Open-issue classification, close/label/defer |
+| `daily-architecture-diagram.md`   | Daily 8am JST            | Mermaid architecture diagram; no-op on unchanged days |
 
 Ensure the new workflow doesn't duplicate existing concerns.
 

@@ -11,27 +11,12 @@ timeout-minutes: 30
 permissions:
   contents: read
   issues: read
-safe-outputs:
-  create-issue:
-    max: 3
-    title-prefix: "[Architecture] Security: "
-    labels: ["architecture"]
-  add-labels:
-    max: 3
-  add-comment:
-    max: 3
+imports:
+  - uses: shared/architect-review-base.md
+    with:
+      title-prefix: "[Architecture] Security: "
 tools:
-  github:
-    toolsets: [repos, issues]
   bash:
-    - grep
-    - find
-    - wc
-    - cat
-    - head
-    - tail
-    - sort
-    - uniq
     - go
     - node
 ---
@@ -42,18 +27,12 @@ You are a **senior software architect** performing a deep review of multi-tenant
 
 **This is NOT a code-style or small-refactoring review.** Focus exclusively on **security architecture** (tenant data isolation) and **dependency consistency** that affect system integrity.
 
-## Repository Context
+{{#import shared/reporting.md}}
 
-This is a multi-tenant marketplace EC platform:
+Additional security-specific context:
 
-- **8 Go microservices** in `backend/services/` — gateway (:8080), auth (:8081), catalog (:8082), inventory (:8083), order (:8084), search (:8085), recommend (:8086), notification (:8087)
-- **Shared Go packages** in `backend/pkg/` — database (RLS config), tenant (context management), middleware, errors
-- **PostgreSQL with RLS** (Row-Level Security) for multi-tenant data isolation
-- **Go Workspaces** (`go.work`) managing multiple modules
-- **3 Next.js apps** in `frontend/apps/` with pnpm + Turborepo
-- **DB migrations** in `infra/db/migrations/`
-
-Multi-tenancy design: Tenant ID resolved at gateway, propagated via context to services, enforced at DB level via RLS policies.
+- Multi-tenancy design: tenant ID resolved at gateway, propagated via context to services, enforced at the DB level via RLS policies. RLS was forced on all tenant-scoped tables in migration `000015_force_rls.up.sql`.
+- Go Workspaces (`go.work`) manage multiple backend modules; each service has its own `go.mod`.
 
 ## Pre-flight: Duplicate & Trend Check
 
@@ -70,7 +49,7 @@ Steps:
 
 1. Read `backend/pkg/database/` to understand how the RLS tenant context is established. Identify the function(s) that set `app.current_tenant` on the database connection.
 2. Read `backend/pkg/tenant/` to understand how tenant context is extracted from requests and propagated.
-3. For each service that accesses PostgreSQL (`auth`, `catalog`, `inventory`, `order`):
+3. For every service that accesses PostgreSQL (enumerate via `ls backend/services/` + grep for repository/database imports — do NOT rely on a hardcoded service list):
    - Read the repository layer (`internal/repository/*.go`)
    - Verify every DB query goes through the established RLS-aware patterns
    - Flag any raw SQL queries or direct `db.Query`/`db.Exec` calls that don't set tenant context
@@ -79,6 +58,7 @@ Steps:
    - For each `CREATE TABLE` that contains a `tenant_id` column, verify there is a corresponding RLS policy
    - Check for tables that should have `tenant_id` but don't
    - Verify RLS policies use `current_setting('app.current_tenant')` correctly
+   - Every tenant-scoped table added after migration `000015_force_rls.up.sql` must be explicitly covered
 5. Check the gateway middleware chain:
    - Read `backend/services/gateway/internal/middleware/` and `internal/handler/router.go`
    - Verify tenant resolution middleware runs before any request forwarding
@@ -125,41 +105,13 @@ Steps:
 
 ## Issue Creation Guidelines
 
-Create **at most 3 issues**, focusing on the most architecturally significant findings.
+Create **at most 3 issues**, focusing on the most architecturally significant findings. Use the issue body template from the Reporting fragment above, but add a **Severity** line between Summary and Findings:
 
-For each issue:
+- `CRITICAL` for tenant isolation issues
+- `HIGH` for dependency inconsistencies in security-sensitive packages
+- `MEDIUM` for general dependency drift
 
-1. **Title**: `[Architecture] Security: <Brief description>`
-2. **Body**:
-
-```markdown
-## Summary
-
-{1-2 sentence description of the concern}
-
-## Severity
-
-{CRITICAL for tenant isolation issues, HIGH for dependency inconsistencies in security-sensitive packages, MEDIUM for general dependency drift}
-
-## Findings
-
-{Specific files, line numbers, and evidence — for tenant isolation issues, include the code path that is vulnerable}
-
-## Impact
-
-{What could go wrong — be specific about data exposure risk for tenant isolation issues}
-
-## Recommendation
-
-{Concrete, actionable steps achievable within a sprint}
-
-## Trend
-
-{New issue, recurring, or improving? Reference prior architecture review issues if found.}
-```
-
-3. **Labels**: `architecture`
-4. **Assignee**: Assign to `Copilot`
+Label every issue with `architecture`. Assign to `Copilot`.
 
 ### Prioritization
 
@@ -175,31 +127,9 @@ Only create issues for Critical and Architectural Debt findings. **Always create
 - For tenant isolation issues, describe the **exact code path** that bypasses isolation
 - Each recommendation must be **achievable within a sprint**
 
----
+When writing the execution summary, include these before the "Issues created" line:
 
-## Execution Summary
+- **Tenant Isolation Coverage**: tables with RLS (N/M total tenant-scoped tables); services with verified isolation (N/M)
+- **Dependency Versions**: Go modules consistent (yes/no + details); frontend deps consistent (yes/no + details)
 
-After completing both analysis areas, create a summary comment on the most recently created issue:
-
-```
-### Security & Dependencies Architecture Review — <date>
-
-| Area | Status | Findings |
-|------|--------|----------|
-| Multi-Tenant Isolation | OK / WARN / CRITICAL | {brief} |
-| Dependency Health | OK / WARN / CRITICAL | {brief} |
-
-**Tenant Isolation Coverage**:
-- Tables with RLS: N / M total tenant-scoped tables
-- Services with verified isolation: N / M
-
-**Dependency Versions**:
-- Go modules consistent: yes/no ({details})
-- Frontend deps consistent: yes/no ({details})
-
-**Issues created**: N new, M duplicates skipped
-**Trend**: {direction since last review}
-
-### Improvement Opportunities (no issue created)
-- {list of non-critical observations}
-```
+{{#import shared/label-taxonomy.md}}

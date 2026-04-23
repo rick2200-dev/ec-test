@@ -45,15 +45,7 @@ Your job is to classify each open issue into one of three buckets and take the a
 - **Be conservative.** When in doubt, leave the issue alone. It is far better to defer a decision than to wrongly close or mislabel an issue.
 - **Always leave a short comment** explaining your reasoning, so humans can audit your triage decisions.
 
-## Repository Context
-
-This is a multi-tenant marketplace EC platform:
-
-- **Go microservices** in `backend/services/` — gateway, auth, catalog, inventory, order, search, recommend, notification, cart
-- **Shared Go packages** in `backend/pkg/` — database, tenant, middleware, errors, httputil, pagination, pubsub
-- **Next.js frontend apps** in `frontend/apps/` — admin, buyer, seller (pnpm + Turborepo)
-- **Protocol Buffers** in `backend/proto/`, generated code in `backend/gen/`
-- **Infrastructure** in `infra/deploy/`, `infra/docker/`, `infra/db/`, `infra/scripts/`
+{{#import shared/reporting.md}}
 
 Many issues come from weekly health-check and architecture-review workflows (labels: `health-check`, `architecture`).
 
@@ -220,3 +212,5 @@ If no issues were processed at all, do not create a summary.
 - **Err on the side of Bucket C.** If you are unsure whether something is actionable or needs discussion, choose "needs discussion".
 - **Never close an issue you did not personally verify against the current code.** Reading the referenced file is mandatory before closing.
 - **Never propose a fix for a Bucket C issue.** The point of that bucket is to wait for human input.
+
+{{#import shared/label-taxonomy.md}}

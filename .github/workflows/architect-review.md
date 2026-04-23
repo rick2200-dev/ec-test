@@ -42,19 +42,11 @@ You are a **senior software architect** performing a deep architectural review o
 
 **This is NOT a code-style or small-refactoring review.** Do not report linting issues, naming conventions, formatting, or functions that are slightly too long. Those are handled by the separate Health Check workflows. Focus exclusively on **structural, system-level architectural concerns** that affect the platform's ability to scale, evolve, and remain maintainable over time.
 
-## Repository Context
+{{#import shared/reporting.md}}
 
-This is a multi-tenant marketplace EC platform with:
+Additional full-review context:
 
-- **8 Go microservices** in `backend/services/` — gateway (:8080), auth (:8081), catalog (:8082), inventory (:8083), order (:8084), search (:8085), recommend (:8086), notification (:8087)
-- **Shared Go packages** in `backend/pkg/` — database, tenant, middleware, errors, httputil, pagination, pubsub
-- **3 Next.js apps** in `frontend/apps/` — buyer (:3000), seller (:3001), admin (:3002) with Turborepo + pnpm
-- **gRPC (Protocol Buffers)** in `backend/proto/` for internal service communication
-- **PostgreSQL RLS** for multi-tenant data isolation
-- **Cloud Pub/Sub** for async event-driven communication
-- **Kubernetes (Kustomize + ArgoCD)** deployment in `infra/deploy/`
-
-Key architectural decisions: API Gateway pattern (BFF), gRPC for inter-service calls, REST for external clients, Auth0 for identity, Stripe Connect for payments, Vertex AI Search for product search.
+- Architecture decisions: API Gateway pattern (BFF), gRPC for inter-service calls, REST for external clients, Auth0 for identity, Stripe Connect for payments, Vertex AI Search for product search.
 
 ## Pre-flight: Duplicate & Trend Check
 
@@ -138,7 +130,7 @@ Execute **all areas** sequentially. For each area, read relevant source files an
 
 **Goal:** Evaluate cross-app consistency and reuse.
 
-- Assess whether the 3 apps (buyer, seller, admin) share components appropriately or have significant duplication.
+- Assess whether the deployable frontend apps (enumerate via `ls frontend/apps/`, excluding `storybook`) share components appropriately or have significant duplication.
 - Review shared packages under `frontend/packages/` for completeness.
 - Check for shared API client patterns or data fetching strategies.
 - Look for duplicated components that should be in a shared package.
@@ -160,43 +152,7 @@ Execute **all areas** sequentially. For each area, read relevant source files an
 
 ## Issue Creation Guidelines
 
-Create **at most 3 issues**, focusing on the most architecturally significant findings.
-
-For each issue:
-
-1. **Title**: `[Architecture Review] <Area>: <Brief description>`
-2. **Body** must include:
-
-```markdown
-## Summary
-
-{1-2 sentence description of the architectural concern}
-
-## Findings
-
-{Specific files, line numbers, and evidence}
-
-## Impact
-
-{Why this matters — what breaks or degrades if left unaddressed}
-
-## Recommendation
-
-{Concrete, actionable steps achievable within a sprint}
-
-## Metrics
-
-| Metric            | Current | Expected |
-| ----------------- | ------- | -------- |
-| {relevant metric} | {value} | {target} |
-
-## Trend
-
-{Is this a new issue, recurring, or improving? Reference prior architecture review issues if found.}
-```
-
-3. **Labels**: `architecture`
-4. **Assignee**: Assign to `Copilot`
+Create **at most 3 issues**, focusing on the most architecturally significant findings. Use the issue body template from the Reporting fragment above, and add a `## Metrics` section showing any quantitative measurement (e.g. `Sync chain depth | 4 | ≤3`). Title each as `[Architecture Review] <Area>: <Brief description>`. Label every issue with `architecture`. Assign to `Copilot`.
 
 ### Prioritization Rules
 
@@ -212,29 +168,6 @@ Only create issues for Critical and Architectural Debt findings. Mention Improve
 - Each recommendation must be **achievable within a sprint** — no multi-month rewrites.
 - Respect service autonomy — don't flag valid design differences between services.
 
----
+When writing the execution summary, include one row per area (Service Boundaries, Shared Packages, API & Proto, Multi-Tenant Isolation, Event-Driven, Dependencies, Frontend Architecture, Infrastructure), each with OK/WARN/CRITICAL status.
 
-## Execution Summary
-
-After completing all 8 analysis areas, create a summary comment on the most recently created issue:
-
-```
-### Architecture Review Summary — <date>
-
-| Area | Status | Findings |
-|------|--------|----------|
-| Service Boundaries | OK / WARN / CRITICAL | {brief} |
-| Shared Packages | OK / WARN / CRITICAL | {brief} |
-| API & Proto | OK / WARN / CRITICAL | {brief} |
-| Multi-Tenant Isolation | OK / WARN / CRITICAL | {brief} |
-| Event-Driven | OK / WARN / CRITICAL | {brief} |
-| Dependencies | OK / WARN / CRITICAL | {brief} |
-| Frontend Architecture | OK / WARN / CRITICAL | {brief} |
-| Infrastructure | OK / WARN / CRITICAL | {brief} |
-
-**Issues created**: N new, M duplicates skipped
-**Trend**: {overall direction since last review}
-
-### Improvement Opportunities (no issue created)
-- {list of non-critical observations}
-```
+{{#import shared/label-taxonomy.md}}

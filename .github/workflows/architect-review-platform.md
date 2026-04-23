@@ -11,27 +11,12 @@ timeout-minutes: 30
 permissions:
   contents: read
   issues: read
-safe-outputs:
-  create-issue:
-    max: 3
-    title-prefix: "[Architecture] Platform: "
-    labels: ["architecture"]
-  add-labels:
-    max: 3
-  add-comment:
-    max: 3
+imports:
+  - uses: shared/architect-review-base.md
+    with:
+      title-prefix: "[Architecture] Platform: "
 tools:
-  github:
-    toolsets: [repos, issues]
   bash:
-    - grep
-    - find
-    - wc
-    - cat
-    - head
-    - tail
-    - sort
-    - uniq
     - node
     - pnpm
 ---
@@ -42,18 +27,12 @@ You are a **senior software architect** performing a deep review of the frontend
 
 **This is NOT a code-style or small-refactoring review.** Focus exclusively on **structural concerns** in frontend architecture and deployment infrastructure that affect platform-wide maintainability.
 
-## Repository Context
+{{#import shared/reporting.md}}
 
-This is a multi-tenant marketplace EC platform:
+Additional platform-specific context:
 
-- **3 Next.js apps** in `frontend/apps/` — buyer (:3000), seller (:3001), admin (:3002)
-- **Shared frontend packages** in `frontend/packages/` — eslint-config, tsconfig, vitest-config, i18n
-- **Turborepo** for build orchestration (`turbo.json`)
-- **pnpm** workspaces (`pnpm-workspace.yaml`)
-- **Kubernetes manifests** in `infra/deploy/` — base + overlays (dev, staging, prod) with Kustomize
-- **ArgoCD applications** in `infra/deploy/argocd/`
-- **Docker Compose** in `infra/docker/` for local development
-- **DB migrations** in `infra/db/migrations/`
+- Turborepo orchestrates the frontend build pipeline (`turbo.json`); pnpm manages workspaces (`pnpm-workspace.yaml`).
+- ArgoCD Applications live in `infra/deploy/argocd/`; Kustomize overlays under `infra/deploy/overlays/` for dev/staging/prod.
 
 ## Pre-flight: Duplicate & Trend Check
 
@@ -71,13 +50,13 @@ Steps:
    - Cache inputs/outputs are properly configured
    - All necessary tasks are defined (lint, typecheck, build, test)
 2. Read `pnpm-workspace.yaml` and root `package.json` to understand workspace configuration.
-3. Compare the structure of each app (`frontend/apps/buyer/`, `frontend/apps/seller/`, `frontend/apps/admin/`):
+3. Enumerate deployable apps via `ls frontend/apps/` (exclude `storybook` — it is dev tooling, not a deployable app). Compare structure across all deployable apps:
    - Compare `src/` directory structures across apps
    - Identify components that exist in multiple apps with similar functionality (duplication candidates)
    - Check for shared API client patterns or data fetching strategies
    - Compare how each app handles authentication, routing, and error boundaries
-4. Review shared packages under `frontend/packages/`:
-   - `i18n/` — Check if all 3 apps use it consistently, verify message file coverage (ja/en)
+4. Review shared packages under `frontend/packages/` (enumerate via `ls frontend/packages/`):
+   - `i18n/` — Check if all deployable apps use it consistently, verify message file coverage (ja/en)
    - `tsconfig/` — Verify all apps extend the shared config
    - `eslint-config/` — Verify all apps use the shared config
    - `vitest-config/` — Verify test configuration is shared
@@ -107,7 +86,7 @@ Steps:
    - Proper labels and selectors
    - Service and Deployment are both defined
 2. Compare overlays in `infra/deploy/overlays/` (dev, staging, prod):
-   - Verify all 8 backend services + 3 frontend apps have entries in each overlay
+   - Verify every backend service under `backend/services/` and every deployable frontend app have entries in each overlay (enumerate at runtime; do not assume a specific count)
    - Check for environment-specific configuration that should exist but is missing
    - Verify resource scaling makes sense (dev < staging < prod)
 3. Read `infra/deploy/argocd/` to verify ArgoCD Application resources:
@@ -135,37 +114,7 @@ Steps:
 
 ## Issue Creation Guidelines
 
-Create **at most 3 issues**, focusing on the most architecturally significant findings.
-
-For each issue:
-
-1. **Title**: `[Architecture] Platform: <Brief description>`
-2. **Body**:
-
-```markdown
-## Summary
-
-{1-2 sentence description of the concern}
-
-## Findings
-
-{Specific files and evidence — for frontend duplication, show the similar code in each app}
-
-## Impact
-
-{Why this matters for platform maintainability}
-
-## Recommendation
-
-{Concrete, actionable steps achievable within a sprint}
-
-## Trend
-
-{New issue, recurring, or improving? Reference prior architecture review issues if found.}
-```
-
-3. **Labels**: `architecture`
-4. **Assignee**: Assign to `Copilot`
+Create **at most 3 issues**, focusing on the most architecturally significant findings. Use the issue body template from the Reporting fragment above. For duplication findings, show the **concrete code** that's duplicated across apps. Label every issue with `architecture`. Assign to `Copilot`.
 
 ### Prioritization
 
@@ -182,33 +131,9 @@ Only create issues for Critical and Architectural Debt findings.
 - Each recommendation must be **achievable within a sprint**
 - Respect intentional differences — buyer/seller/admin apps serve different users and may legitimately differ
 
----
+When writing the execution summary, include these before the "Issues created" line:
 
-## Execution Summary
+- **Frontend Reuse**: packages used by all apps (N/M); potential shared components identified (N); i18n coverage per language
+- **Infrastructure Coverage**: services in all overlays (N/M); services with health probes (N/M); migrations with rollback (N/M)
 
-After completing both analysis areas, create a summary comment on the most recently created issue:
-
-```
-### Platform Architecture Review — <date>
-
-| Area | Status | Findings |
-|------|--------|----------|
-| Frontend Architecture | OK / WARN / CRITICAL | {brief} |
-| Infrastructure | OK / WARN / CRITICAL | {brief} |
-
-**Frontend Reuse**:
-- Shared packages used by all apps: N / M
-- Potential shared components identified: N
-- i18n coverage: ja (N keys), en (N keys)
-
-**Infrastructure Coverage**:
-- Services in all overlays: N / M
-- Services with health probes: N / M
-- Migrations with rollback: N / M
-
-**Issues created**: N new, M duplicates skipped
-**Trend**: {direction since last review}
-
-### Improvement Opportunities (no issue created)
-- {list of non-critical observations}
-```
+{{#import shared/label-taxonomy.md}}

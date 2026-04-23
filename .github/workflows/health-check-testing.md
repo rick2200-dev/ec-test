@@ -11,27 +11,12 @@ timeout-minutes: 20
 permissions:
   contents: read
   issues: read
-safe-outputs:
-  create-issue:
-    max: 5
-    title-prefix: "[Health Check] Test Hygiene: "
-    labels: ["health-check"]
-  add-labels:
-    max: 5
-  add-comment:
-    max: 3
+imports:
+  - uses: shared/health-check-base.md
+    with:
+      title-prefix: "[Health Check] Test Hygiene: "
 tools:
-  github:
-    toolsets: [repos, issues]
   bash:
-    - grep
-    - find
-    - wc
-    - cat
-    - head
-    - tail
-    - sort
-    - uniq
     - go
     - node
     - pnpm
@@ -40,13 +25,8 @@ tools:
 # Test Hygiene Health Check
 
 You are a senior software engineer performing a **test-hygiene-focused** health audit of this repository.
-This is a monorepo containing:
 
-- **Go microservices** in `backend/services/` (gateway, auth, catalog, inventory, order, search, recommend, notification)
-- **Shared Go packages** in `backend/pkg/` (database, errors, httputil, middleware, pagination, pubsub, tenant)
-- **Next.js frontend apps** in `frontend/apps/` (admin, buyer, seller) using pnpm + Turborepo
-- **Protocol Buffers** in `backend/proto/`
-- **Infrastructure** in `infra/deploy/`, `infra/docker/`, `infra/db/`, `infra/scripts/`
+{{#import shared/reporting.md}}
 
 ## Pre-flight: Duplicate Check
 
@@ -86,16 +66,7 @@ If an open issue already covers the same problem (same file and same category), 
 
 ## Issue Creation Guidelines
 
-For each problem found, create a GitHub issue with:
-
-1. **Title**: `[Health Check] Test Hygiene: <Brief description>`
-2. **Body**: Include:
-   - The specific file(s) and line(s) affected
-   - A clear description of the problem
-   - A suggested fix or improvement
-   - Why this matters (impact on maintainability, reliability, or developer experience)
-3. **Labels**: Use the `health-check` label
-4. **Assignee**: Assign to `Copilot`
+For each problem found, create a GitHub issue using the body template from the Reporting fragment above. Title each as `[Health Check] Test Hygiene: <Brief description>`. Label every issue with `health-check`. Assign to `Copilot`.
 
 ### Prioritization
 
@@ -108,11 +79,7 @@ For each problem found, create a GitHub issue with:
 - Each issue should be specific enough that another developer (or Copilot) can address it without additional context.
 - Include code snippets or file paths to make issues self-contained.
 
----
-
-## Execution Summary
-
-After completing the audit, create a **single summary comment** on the most recently created issue:
+When writing the execution summary comment, use this compact format:
 
 ```
 ### Test Hygiene Audit Summary — <date>
@@ -121,3 +88,5 @@ After completing the audit, create a **single summary comment** on the most rece
 - Issues created: Y
 - Duplicates skipped: Z
 ```
+
+{{#import shared/label-taxonomy.md}}
