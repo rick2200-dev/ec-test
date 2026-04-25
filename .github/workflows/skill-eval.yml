@@ -69,7 +69,7 @@ jobs:
       MEAN_THRESHOLD: "1.5"
       # Copilot CLI auth — must be a PAT from a Copilot-licensed account
       # (the default github-actions[bot] GITHUB_TOKEN does NOT have Copilot)
-      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
     steps:
       # ----------------------------------------------------------------------
@@ -96,7 +96,7 @@ jobs:
               gh pr comment "$PR_NUMBER" \
                 --body "⚠️ \`/skill-eval\` requires write access to this repo. Your permission level: \`$PERM\`. The workflow will not run." \
                 || true
-              # Hard fail the job so subsequent steps (checkout / Copilot CLI w/ COPILOT_PAT) do NOT run.
+              # Hard fail the job so subsequent steps (checkout / Copilot CLI w/ COPILOT_GITHUB_TOKEN) do NOT run.
               # exit 0 here would leave the gate ineffective — the job would continue past this step.
               exit 1
               ;;
@@ -196,7 +196,7 @@ jobs:
       #    leave the guard ineffective: subsequent steps would still run, the
       #    fork's HEAD ref would be checked out at trusted scope, and the
       #    Copilot CLI calls would receive both the fork code AND the
-      #    COPILOT_PAT secret. That is the exact scenario this guard exists
+      #    COPILOT_GITHUB_TOKEN secret. That is the exact scenario this guard exists
       #    to prevent.
       # ----------------------------------------------------------------------
       - name: Fork PR guard
@@ -256,22 +256,22 @@ jobs:
       # 5b. Verify Copilot auth token is available.
       #     The default Actions-injected GITHUB_TOKEN belongs to github-actions[bot]
       #     which has NO Copilot subscription, so we require a user PAT
-      #     stored as a repo secret named COPILOT_PAT (fine-grained, from a
+      #     stored as a repo secret named COPILOT_GITHUB_TOKEN (fine-grained, from a
       #     Copilot-licensed account).
       #     See: https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/run-cli-programmatically
       # ----------------------------------------------------------------------
       - name: Verify Copilot auth secret is set
         if: steps.inputs.outputs.skip != 'true'
         env:
-          COPILOT_PAT: ${{ secrets.COPILOT_PAT }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.inputs.outputs.pr_number }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -z "${COPILOT_PAT:-}" ]; then
-            MSG="⚠️ Skill validation cannot run: repository secret \`COPILOT_PAT\` is not set. \
+          if [ -z "${COPILOT_GITHUB_TOKEN:-}" ]; then
+            MSG="⚠️ Skill validation cannot run: repository secret \`COPILOT_GITHUB_TOKEN\` is not set. \
             Create a fine-grained PAT from a GitHub account with an active Copilot subscription \
-            and store it as the repo secret \`COPILOT_PAT\`. \
+            and store it as the repo secret \`COPILOT_GITHUB_TOKEN\`. \
             See https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/run-cli-programmatically"
             if [ -n "$PR_NUMBER" ]; then
               gh pr comment "$PR_NUMBER" --body "$MSG" || true
