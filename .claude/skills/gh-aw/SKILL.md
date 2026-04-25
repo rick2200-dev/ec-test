@@ -343,7 +343,9 @@ jobs:
 ```yaml
 run-name: "Custom run name"
 runs-on: ubuntu-latest # ubuntu-latest, ubuntu-24.04, ubuntu-24.04-arm
-max-turns: 20 # AI chat iterations (Claude-specific)
+# NOTE: `max-turns:` is NOT a valid top-level frontmatter key; compile fails.
+# It is Claude-engine-specific and must be nested under `engine:` if used at all.
+# For `engine: copilot` it is unsupported — omit it and rely on `timeout-minutes:` to bound runtime.
 checkout:
   fetch-depth: 0 # Or checkout: false
 if: github.event_name == 'push' # Conditional execution
@@ -418,6 +420,8 @@ Check `.github/workflows/*.md` for overlapping concerns. This monorepo already h
 | `issue-triage.md`                 | Weekly Friday 10am JST   | Open-issue classification, close/label/defer |
 | `daily-architecture-diagram.md`   | Daily 8am JST            | Mermaid architecture diagram; no-op on unchanged days |
 
+Skill validation (`skill-eval.yml`) is **not** a gh-aw workflow — it's a plain GitHub Actions YAML that calls the GitHub Copilot CLI directly. See `.github/workflows/skill-eval.yml` for that flow; it deliberately sits outside the gh-aw ecosystem because the agent-only / read-only / safe-outputs constraints did not fit the on-demand fan-out pattern needed there.
+
 Ensure the new workflow doesn't duplicate existing concerns.
 
 ### Step 5: Hand Off to User for Compilation
@@ -466,3 +470,75 @@ gh aw health                     # Display health metrics
 - Secrets in `env:` are visible to the AI model — use `secrets:` field instead
 - Network: strict mode blocks wildcard domains
 - `.lock.yml` files are auto-generated — never edit them manually
+
+## Triggers and permissions — gotchas
+
+### Slash commands (PR comment-driven)
+
+`on.slash_command:` accepts either a **string shorthand** or an **object** form. Both are officially supported (do NOT mistake `on.command:` — that one is wrong).
+
+**String shorthand** (works when you only need the command name):
+
+```yaml
+on:
+  slash_command: "skill-eval"
+```
+
+**Object form** (when you need extra settings like restricting to PR-comment-only):
+
+```yaml
+on:
+  slash_command:
+    name: skill-eval
+    events: [pull_request_comment]    # restrict to PR comments only (skip plain issue comments)
+  roles: [admin, maintainer, write]   # who can invoke
+  reaction: "eyes"
+  status-comment: true
+```
+
+To read the triggering comment's body in your workflow, use the auto-injected sanitized text rather than the raw GitHub event payload — gh-aw runs basic injection-prevention sanitization:
+
+```bash
+COMMENT_TEXT="${{ steps.sanitized.outputs.text }}"
+SKILL_NAME=$(echo "$COMMENT_TEXT" | grep -oE '/skill-eval[[:space:]]+[^[:space:]]+' | head -1 | awk '{print $2}')
+```
+
+The local SKILL above predates this trigger; refer to upstream `gh-aw` docs (`reference/command-triggers/`) for current syntax. `gh aw compile --validate` will catch wrong keys.
+
+### GitHub Models (`gh models run` / `gh models eval`)
+
+- There is **no `models` permission scope** in `permissions:`. Writing `permissions: { models: read }` will fail compilation.
+- GitHub Models access is gated at the **repo / org admin level** — Settings → Models → enable. If it's disabled, every `gh models run` call in your bash steps will fail.
+- `gh models run` does not have a verified `--json` structured-output flag. Treat its stdout as free-form text and parse defensively.
+- `gh models eval` evaluators score each `testData` row independently — there is no native pairwise (X vs Y) compare. For blind A/B, build the pairwise prompt yourself with `gh models run`.
+
+### Copilot engine model selection
+
+Two ways to set the Copilot agent's model. Per the official `engines/` and `environment-variables/` reference, **`engine.model:` (frontmatter) takes precedence over the repo variable**:
+
+1. **Frontmatter `engine.model:` (highest priority, per-workflow):**
+
+   ```yaml
+   engine:
+     id: copilot
+     model: claude-sonnet-4.6
+   ```
+
+2. **Repo variable `GH_AW_MODEL_AGENT_COPILOT` (default, applies when `engine.model:` is absent):**
+
+   ```
+   Settings → Variables → New repository variable → Name: GH_AW_MODEL_AGENT_COPILOT → Value: claude-sonnet-4.6
+   ```
+
+3. **Compiler fallback (when neither is set):** `claude-sonnet-4.6`.
+
+At runtime gh-aw injects the resolved model into the agent's environment as `$COPILOT_MODEL`, which bash steps can read.
+
+For symmetric multi-workflow setups (e.g. an orchestrator and its sub-workflows that should all use the same model), you can either:
+  - leave `engine.model:` unset in all of them and set the repo variable once, OR
+  - set `engine.model:` to the same value in each frontmatter (more explicit, immune to a missing repo variable).
+
+### Fork PRs
+
+- `roles:` filters who can *trigger* the workflow but does not control whether *fork-contributed code* gets evaluated. If your workflow checks out PR head SHA and feeds the diff to an LLM, fork PRs may exfiltrate fork code into a third-party model.
+- For workflows that read PR content, defensively check `gh pr view "$PR_NUMBER" --json isCrossRepository` and exit early if `true`. Apply the same guard to BOTH slash-command and `workflow_dispatch + pr_number` paths so dispatch isn't a bypass.

@@ -1,0 +1,594 @@
+name: Skill Validation
+
+# Plain GitHub Actions workflow (NOT a gh-aw .md). All inference happens via
+# the GitHub Copilot CLI invoked from bash steps.
+#
+# Triggers:
+#   - workflow_dispatch (Actions tab → Run workflow): pick a skill from the
+#     dropdown OR fill custom_skill_name; optionally provide a PR number to
+#     post the verdict to.
+#   - issue_comment with body starting "/skill-eval <skill-name>" on a PR:
+#     evaluates the named skill against the PR's head SHA and posts the
+#     verdict back to the same PR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: "Pick a known skill (or '(custom)' + fill custom_skill_name)"
+        required: true
+        type: choice
+        options:
+          - architect-review
+          - ec-backend-impl
+          - gh-aw
+          - grpc-integration
+          - "(custom)"
+      custom_skill_name:
+        description: "Skill name (used when skill='(custom)')"
+        required: false
+        type: string
+      pr_number:
+        description: "PR number to post results to (optional)"
+        required: false
+        type: string
+      ref:
+        description: "Git ref / SHA to evaluate (default: branch tip)"
+        required: false
+        type: string
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write          # `gh pr comment` uses the issue-comments API
+
+concurrency:
+  group: skill-eval-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  skill-eval:
+    # Fire on dispatch, OR on a PR comment that starts with /skill-eval
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request != null &&
+        startsWith(github.event.comment.body, '/skill-eval')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      MODEL: claude-sonnet-4.6
+      N_TESTS: "3"
+      MAX_TOKENS_IMPL: "2048"
+      MAX_TOKENS_JUDGE: "1024"
+      MEAN_THRESHOLD: "1.5"
+      # Copilot CLI auth — must be a PAT from a Copilot-licensed account
+      # (the default github-actions[bot] GITHUB_TOKEN does NOT have Copilot)
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+
+    steps:
+      # ----------------------------------------------------------------------
+      # 1. Permission gate (slash-command path only).
+      #    workflow_dispatch is already gated by repo-level settings.
+      # ----------------------------------------------------------------------
+      - name: Permission gate (commenter must have write access)
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.event.comment.user.login }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          PERM=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" -q .permission 2>/dev/null || echo "none")
+          case "$PERM" in
+            admin|maintain|write)
+              echo "actor=$ACTOR permission=$PERM (allowed)"
+              ;;
+            *)
+              echo "actor=$ACTOR permission=$PERM — refusing /skill-eval invocation"
+              # Reply BEFORE exiting non-zero so the user sees the reason
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ \`/skill-eval\` requires write access to this repo. Your permission level: \`$PERM\`. The workflow will not run." \
+                || true
+              # Hard fail the job so subsequent steps (checkout / Copilot CLI w/ COPILOT_PAT) do NOT run.
+              # exit 0 here would leave the gate ineffective — the job would continue past this step.
+              exit 1
+              ;;
+          esac
+
+      # ----------------------------------------------------------------------
+      # 2. Resolve trusted inputs from the event payload.
+      #    SKILL_NAME / PR_NUMBER / REF are derived ONLY from the event —
+      #    never from agent-controlled artifact data.
+      # ----------------------------------------------------------------------
+      - name: Resolve inputs
+        id: inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER_INPUT: ${{ github.event.inputs.pr_number }}
+          PR_NUMBER_FROM_COMMENT: ${{ github.event.issue.number }}
+          REF_INPUT: ${{ github.event.inputs.ref }}
+          SKILL_INPUT: ${{ github.event.inputs.skill }}
+          CUSTOM_SKILL_INPUT: ${{ github.event.inputs.custom_skill_name }}
+          # COMMENT_BODY via env (data, not script-interpolation)
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          SKILL_NAME=""
+          PR_NUMBER=""
+          REF=""
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$SKILL_INPUT" = "(custom)" ]; then
+              SKILL_NAME="$CUSTOM_SKILL_INPUT"
+            else
+              SKILL_NAME="$SKILL_INPUT"
+            fi
+            PR_NUMBER="$PR_NUMBER_INPUT"
+            REF="$REF_INPUT"
+          else
+            # issue_comment slash command
+            PR_NUMBER="$PR_NUMBER_FROM_COMMENT"
+            SKILL_NAME=$(
+              printf '%s' "$COMMENT_BODY" \
+                | grep -oE '/skill-eval[[:space:]]+[^[:space:]]+' \
+                | head -1 \
+                | awk '{print $2}'
+            )
+          fi
+
+          # Validate skill name format strictly (also defends against path traversal)
+          if [ -z "$SKILL_NAME" ] || ! printf '%s' "$SKILL_NAME" | grep -qE '^[a-zA-Z0-9._-]+$'; then
+            echo "Invalid or missing skill name."
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr comment "$PR_NUMBER" --body "Usage: \`/skill-eval <skill-name>\`. Skill name must match \`^[a-zA-Z0-9._-]+\$\`."
+            fi
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "$SKILL_NAME" in
+            *..*|/*|*/*)
+              echo "Skill name contains traversal characters. Refusing."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          # Validate PR number format if present
+          if [ -n "$PR_NUMBER" ] && ! printf '%s' "$PR_NUMBER" | grep -qE '^[0-9]+$'; then
+            echo "Invalid PR number format."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Resolve REF for slash-command path: PR head SHA, looked up here
+          # (trusted source — never from artifact)
+          if [ -z "$REF" ] && [ -n "$PR_NUMBER" ]; then
+            REF=$(gh pr view "$PR_NUMBER" --json headRefOid -q .headRefOid)
+          fi
+          if [ -z "$REF" ]; then
+            REF=$(gh api "repos/$REPO" -q .default_branch)
+          fi
+          if ! printf '%s' "$REF" | grep -qE '^[0-9a-fA-F]{7,40}$|^[a-zA-Z0-9._/-]+$'; then
+            echo "Invalid ref format: $REF"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "skill_name=$SKILL_NAME"
+            echo "pr_number=$PR_NUMBER"
+            echo "ref=$REF"
+            echo "skip=false"
+          } >> "$GITHUB_OUTPUT"
+
+      # ----------------------------------------------------------------------
+      # 3. Fork-PR guard — never send fork-contributed code to the model
+      #    MUST hard-fail (exit 1) when a fork PR is detected. exit 0 would
+      #    leave the guard ineffective: subsequent steps would still run, the
+      #    fork's HEAD ref would be checked out at trusted scope, and the
+      #    Copilot CLI calls would receive both the fork code AND the
+      #    COPILOT_PAT secret. That is the exact scenario this guard exists
+      #    to prevent.
+      # ----------------------------------------------------------------------
+      - name: Fork PR guard
+        if: steps.inputs.outputs.skip != 'true' && steps.inputs.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.inputs.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          IS_FORK=$(gh pr view "$PR_NUMBER" --json isCrossRepository -q .isCrossRepository)
+          if [ "$IS_FORK" = "true" ]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ Skill validation does not run on fork PRs (fork-contributed code must not be sent to the model with the repo's Copilot PAT in scope). Please rebase your changes onto a branch in the base repository, or ask a maintainer to." \
+              || true
+            # Hard fail: exit 0 here would let checkout + Copilot CLI run on fork code.
+            exit 1
+          fi
+
+      # ----------------------------------------------------------------------
+      # 4. Checkout at the trusted ref (only after fork guard)
+      # ----------------------------------------------------------------------
+      - name: Checkout at trusted ref
+        if: steps.inputs.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.inputs.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        if: steps.inputs.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ----------------------------------------------------------------------
+      # 5. Install Copilot CLI on the runner
+      #    Reference: https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli
+      #    npm package: @github/copilot (requires Node.js 22+)
+      # ----------------------------------------------------------------------
+      - name: Setup Node.js (required by Copilot CLI)
+        if: steps.inputs.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install GitHub Copilot CLI
+        if: steps.inputs.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v copilot >/dev/null 2>&1; then
+            npm install -g @github/copilot
+          fi
+          copilot --version || true
+          chmod +x .github/scripts/skill-eval/call_copilot.sh
+
+      # ----------------------------------------------------------------------
+      # 5b. Verify Copilot auth token is available.
+      #     The default Actions-injected GITHUB_TOKEN belongs to github-actions[bot]
+      #     which has NO Copilot subscription, so we require a user PAT
+      #     stored as a repo secret named COPILOT_PAT (fine-grained, from a
+      #     Copilot-licensed account).
+      #     See: https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/run-cli-programmatically
+      # ----------------------------------------------------------------------
+      - name: Verify Copilot auth secret is set
+        if: steps.inputs.outputs.skip != 'true'
+        env:
+          COPILOT_PAT: ${{ secrets.COPILOT_PAT }}
+          PR_NUMBER: ${{ steps.inputs.outputs.pr_number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "${COPILOT_PAT:-}" ]; then
+            MSG="⚠️ Skill validation cannot run: repository secret \`COPILOT_PAT\` is not set. \
+            Create a fine-grained PAT from a GitHub account with an active Copilot subscription \
+            and store it as the repo secret \`COPILOT_PAT\`. \
+            See https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/run-cli-programmatically"
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr comment "$PR_NUMBER" --body "$MSG" || true
+            fi
+            echo "$MSG" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      # ----------------------------------------------------------------------
+      # 6. Validate skill exists and build normalized prompts
+      # ----------------------------------------------------------------------
+      - name: Validate skill and build prompts
+        if: steps.inputs.outputs.skip != 'true'
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SKILL_NAME: ${{ steps.inputs.outputs.skill_name }}
+          PR_NUMBER: ${{ steps.inputs.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          SKILL_PATH=".claude/skills/${SKILL_NAME}/SKILL.md"
+          if [ ! -f "$SKILL_PATH" ]; then
+            AVAILABLE=$(ls .claude/skills/ 2>/dev/null | sort | tr '\n' ' ')
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr comment "$PR_NUMBER" --body "Skill not found: \`$SKILL_NAME\`. Available: $AVAILABLE"
+            fi
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          WORKDIR="/tmp/skill-eval/${SKILL_NAME}"
+          mkdir -p "$WORKDIR/users" "$WORKDIR/outputs" "$WORKDIR/judges" "$WORKDIR/iso"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          FULL_SHA=$(git rev-parse HEAD)
+
+          python3 .github/scripts/skill-eval/build_prompts.py \
+            --skill-path "$SKILL_PATH" \
+            --skill-name "$SKILL_NAME" \
+            --model "$MODEL" \
+            --max-tokens-impl "$MAX_TOKENS_IMPL" \
+            --short-sha "$SHORT_SHA" \
+            --outdir "$WORKDIR"
+
+          # meta.json — trust-sensitive values come from THIS step (event-derived
+          # ref/skill_name and the SHA we resolved). Nothing here is from the LLM.
+          cat > "$WORKDIR/meta.json" <<EOF
+          {
+            "skill_name": "$SKILL_NAME",
+            "skill_sha": "$FULL_SHA",
+            "skill_short_sha": "$SHORT_SHA",
+            "model": "$MODEL",
+            "n_tests": $N_TESTS,
+            "max_tokens_impl": $MAX_TOKENS_IMPL,
+            "max_tokens_judge": $MAX_TOKENS_JUDGE,
+            "mean_threshold": $MEAN_THRESHOLD,
+            "pr_number": "$PR_NUMBER",
+            "execution_order": [],
+            "timestamps": {"start": "$(date -u +%FT%TZ)", "end": null},
+            "verdict": null
+          }
+          EOF
+
+          {
+            echo "workdir=$WORKDIR"
+            echo "short_sha=$SHORT_SHA"
+            echo "full_sha=$FULL_SHA"
+            echo "skip=false"
+          } >> "$GITHUB_OUTPUT"
+
+      # ----------------------------------------------------------------------
+      # 7. Generate 3 anti-bias scenarios via Copilot CLI
+      # ----------------------------------------------------------------------
+      - name: Generate scenarios
+        if: steps.inputs.outputs.skip != 'true' && steps.build.outputs.skip != 'true'
+        env:
+          WORKDIR: ${{ steps.build.outputs.workdir }}
+          SKILL_NAME: ${{ steps.inputs.outputs.skill_name }}
+        run: |
+          set -euo pipefail
+
+          # Build orchestrator system prompt + user prompt
+          cat > "$WORKDIR/orch_system.txt" <<'EOF'
+          You are the Skill Validation Orchestrator. Your single job is to design 3 anti-bias test scenarios for evaluating whether a Claude Code skill helps or hurts the model's responses to realistic developer tasks. You output ONLY a valid JSON array — no prose, no code fences.
+
+          Output schema (an array of exactly 3 objects):
+          [
+            {"id": "1", "user_prompt": "...", "scenario_kind": "in-scope"},
+            {"id": "2", "user_prompt": "...", "scenario_kind": "edge"},
+            {"id": "3", "user_prompt": "...", "scenario_kind": "out-of-scope"}
+          ]
+
+          Constraints (you MUST follow all):
+          1. Each scenario reads like a realistic developer task in this Go microservice EC monorepo (services in backend/services/<name>/, frontend/apps/{admin,buyer,seller,storybook}, etc.). No invented services, no toy projects.
+          2. Do NOT use skill-specific vocabulary in user_prompt. Plain natural language only.
+          3. Composition (one of each):
+             - in-scope: a task where the skill clearly should help.
+             - edge: adjacent to the skill's domain.
+             - out-of-scope: unrelated to the skill, to detect over-fire.
+          4. At least one scenario must test a failure / misdirection mode.
+          EOF
+
+          # User prompt is the SKILL.md body (the orchestrator reads it but the
+          # generated user_prompt's themselves don't echo skill vocabulary).
+          {
+            echo "Skill name (for your eyes only): $SKILL_NAME"
+            echo ""
+            echo "--- BEGIN SKILL.md ---"
+            cat "$WORKDIR/system_prompts/skill_body_normalized.md"
+            echo "--- END SKILL.md ---"
+            echo ""
+            echo "Now produce the JSON array of 3 scenarios per the schema and constraints above. Output the array EXACTLY, starting with [ and ending with ]."
+          } > "$WORKDIR/orch_user.txt"
+
+          mkdir -p "$WORKDIR/iso/orch"
+          .github/scripts/skill-eval/call_copilot.sh \
+            --system "$WORKDIR/orch_system.txt" \
+            --user "$WORKDIR/orch_user.txt" \
+            --model "$MODEL" \
+            --max-tokens 4096 \
+            --workdir "$WORKDIR/iso/orch" \
+            --out "$WORKDIR/orch_raw.txt"
+
+          # Reuse parse_judge_output.py's array-extraction logic against the raw
+          # scenarios — it handles fences and surrounding prose.
+          python3 - <<'PY'
+          import os, json, sys, pathlib
+          sys.path.insert(0, ".github/scripts/skill-eval")
+          from parse_judge_output import extract_json_array
+          workdir = pathlib.Path(os.environ["WORKDIR"])
+          raw = (workdir / "orch_raw.txt").read_text()
+          arr = extract_json_array(raw)
+          if not isinstance(arr, list) or len(arr) != 3:
+              print(f"orchestrator did not return 3-element array; raw was:\n{raw[:500]}", file=sys.stderr)
+              sys.exit(1)
+          # minimal validation
+          for entry in arr:
+              if not isinstance(entry, dict): sys.exit(1)
+              if entry.get("scenario_kind") not in ("in-scope", "edge", "out-of-scope"): sys.exit(1)
+              if not isinstance(entry.get("user_prompt", ""), str): sys.exit(1)
+              if str(entry.get("id", "")) not in ("1", "2", "3"): sys.exit(1)
+          # normalize id to string
+          for entry in arr:
+              entry["id"] = str(entry["id"])
+          (workdir / "scenarios.json").write_text(json.dumps(arr, ensure_ascii=False, indent=2))
+          # write each user_prompt to users/test-<id>-user.txt
+          for entry in arr:
+              (workdir / f"users/test-{entry['id']}-user.txt").write_text(entry["user_prompt"])
+          PY
+
+      # ----------------------------------------------------------------------
+      # 8. Random X/Y assignment (unblind.json)
+      # ----------------------------------------------------------------------
+      - name: Random X/Y assignment
+        if: steps.inputs.outputs.skip != 'true' && steps.build.outputs.skip != 'true'
+        env:
+          WORKDIR: ${{ steps.build.outputs.workdir }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, json, secrets, pathlib
+          rng = secrets.SystemRandom()
+          unblind = {}
+          for sid in ("1", "2", "3"):
+              if rng.choice([True, False]):
+                  unblind[sid] = {"X": "with", "Y": "without"}
+              else:
+                  unblind[sid] = {"X": "without", "Y": "with"}
+          pathlib.Path(os.environ["WORKDIR"], "unblind.json").write_text(
+              json.dumps(unblind, indent=2)
+          )
+          PY
+
+      # ----------------------------------------------------------------------
+      # 9. Run 6 implementer calls (sequential — each in an isolated workdir
+      #    so the agentic CLI can't read the repo)
+      # ----------------------------------------------------------------------
+      - name: Run implementers
+        if: steps.inputs.outputs.skip != 'true' && steps.build.outputs.skip != 'true'
+        env:
+          WORKDIR: ${{ steps.build.outputs.workdir }}
+        run: |
+          set -euo pipefail
+          for id in 1 2 3; do
+            for variant in X Y; do
+              ARM=$(jq -r ".\"$id\".\"$variant\"" "$WORKDIR/unblind.json")
+              SYS_FILE="$WORKDIR/system_prompts/${ARM}_skill.txt"
+              USER_FILE="$WORKDIR/users/test-${id}-user.txt"
+              OUT_FILE="$WORKDIR/outputs/test-${id}-${variant}.txt"
+              ISO_DIR="$WORKDIR/iso/impl-${id}-${variant}"
+              mkdir -p "$ISO_DIR"
+
+              .github/scripts/skill-eval/call_copilot.sh \
+                --system "$SYS_FILE" \
+                --user "$USER_FILE" \
+                --model "$MODEL" \
+                --max-tokens "$MAX_TOKENS_IMPL" \
+                --workdir "$ISO_DIR" \
+                --out "$OUT_FILE"
+
+              if [ ! -s "$OUT_FILE" ]; then
+                echo "implementer test-${id}-${variant} produced empty output"
+                exit 1
+              fi
+            done
+          done
+
+      # ----------------------------------------------------------------------
+      # 10. Run 1 pairwise blind judge call
+      # ----------------------------------------------------------------------
+      - name: Run pairwise judge
+        if: steps.inputs.outputs.skip != 'true' && steps.build.outputs.skip != 'true'
+        env:
+          WORKDIR: ${{ steps.build.outputs.workdir }}
+        run: |
+          set -euo pipefail
+          # Build judge system prompt
+          cat > "$WORKDIR/judge_system.txt" <<'EOF'
+          You are an impartial pairwise judge. You will see THREE different tasks, each answered by two anonymous variants (X and Y). For each task INDEPENDENTLY, pick the better variant on the rubric below. If essentially equivalent, choose 'tie'. Output ONLY a valid JSON array, no prose, no code fences.
+
+          Rubric (apply all, independently per task):
+          1. Factual accuracy in this Go microservice monorepo (no fictional paths/names).
+          2. Workflow fidelity (does it follow plausible best-practice steps).
+          3. Format / structure clarity.
+          4. Helpfulness (would a developer accept this as-is).
+
+          Output schema (array of 3 objects, ordered by scenario id ascending):
+          [
+            {"scenario": "1", "winner": "X" | "Y" | "tie", "margin": 0 | 1 | 2, "reason_x": "...", "reason_y": "...", "rubric_notes": "..."},
+            {"scenario": "2", ...},
+            {"scenario": "3", ...}
+          ]
+
+          margin: 0 = tie, 1 = slight, 2 = clear.
+
+          ABSOLUTE RULES:
+          - The output must start with [ and end with ].
+          - Do NOT mention "skill", "with-skill", "without-skill" anywhere in your reasoning. The variants are anonymous.
+          - Score each scenario INDEPENDENTLY.
+          EOF
+
+          # Build judge user prompt: 3 (task, X, Y) tuples
+          python3 - <<'PY'
+          import os, json, pathlib
+          workdir = pathlib.Path(os.environ["WORKDIR"])
+          scenarios = json.loads((workdir / "scenarios.json").read_text())
+          parts = []
+          for entry in scenarios:
+              sid = str(entry["id"])
+              task = entry["user_prompt"].rstrip()
+              x = (workdir / f"outputs/test-{sid}-X.txt").read_text().rstrip()
+              y = (workdir / f"outputs/test-{sid}-Y.txt").read_text().rstrip()
+              parts.append(f"### Scenario {sid}\n\n[Task]\n{task}\n\n[Variant X]\n{x}\n\n[Variant Y]\n{y}\n")
+          (workdir / "judge_user.txt").write_text(
+              "\n---\n".join(parts) + "\n\nProduce the JSON array now."
+          )
+          PY
+
+          mkdir -p "$WORKDIR/iso/judge"
+          .github/scripts/skill-eval/call_copilot.sh \
+            --system "$WORKDIR/judge_system.txt" \
+            --user "$WORKDIR/judge_user.txt" \
+            --model "$MODEL" \
+            --max-tokens "$MAX_TOKENS_JUDGE" \
+            --workdir "$WORKDIR/iso/judge" \
+            --out "$WORKDIR/judges/raw_combined.txt"
+
+      # ----------------------------------------------------------------------
+      # 11. Parse judge output + score
+      # ----------------------------------------------------------------------
+      - name: Parse and score
+        if: steps.inputs.outputs.skip != 'true' && steps.build.outputs.skip != 'true'
+        env:
+          WORKDIR: ${{ steps.build.outputs.workdir }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/skill-eval/parse_judge_output.py \
+            --raw-file "$WORKDIR/judges/raw_combined.txt" \
+            --outdir "$WORKDIR/judges" \
+            --scenario-ids "1,2,3"
+
+          python3 .github/scripts/skill-eval/score.py \
+            --indir "$WORKDIR" \
+            --mean-threshold "$MEAN_THRESHOLD"
+
+          # Update meta.json end timestamp
+          python3 - <<'PY'
+          import os, json, datetime, pathlib
+          p = pathlib.Path(os.environ["WORKDIR"]) / "meta.json"
+          m = json.loads(p.read_text())
+          m["timestamps"]["end"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+          p.write_text(json.dumps(m, ensure_ascii=False, indent=2))
+          PY
+
+      # ----------------------------------------------------------------------
+      # 12. Emit results
+      # ----------------------------------------------------------------------
+      - name: Emit results
+        if: steps.inputs.outputs.skip != 'true' && steps.build.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKDIR: ${{ steps.build.outputs.workdir }}
+          PR_NUMBER: ${{ steps.inputs.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          cat "$WORKDIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr comment "$PR_NUMBER" --body-file "$WORKDIR/summary.md"
+          fi
+
+      # ----------------------------------------------------------------------
+      # 13. Upload artifact (always — diagnostics on failure too)
+      # ----------------------------------------------------------------------
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-eval-${{ github.run_id }}
+          path: /tmp/skill-eval/**
+          retention-days: 30
+          if-no-files-found: ignore
