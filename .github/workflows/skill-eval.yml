@@ -62,13 +62,21 @@ jobs:
     timeout-minutes: 30
 
     env:
-      # Copilot CLI model identifier — uses hyphen separators (NOT dots).
-      # Verify available models with `copilot /models` interactively.
-      # `claude-sonnet-4-5` is the current Copilot default and broadly available.
-      # Try `claude-sonnet-4-6` if your plan tier exposes it; `auto` lets the
-      # CLI pick the default. Keeping a fixed string is preferred for A/B
-      # reproducibility (don't let GitHub silently swap models between runs).
-      MODEL: claude-sonnet-4-5
+      # Copilot CLI --model accepts identifier strings, but the exact format
+      # is not pinned in public docs and varies across CLI versions and
+      # subscription tiers. We've observed both "claude-sonnet-4.6" (with
+      # dots) and "claude-sonnet-4-5" (with hyphens) get rejected with
+      # "not available" by CLI 1.0.36 on the hosted runner.
+      #
+      # `auto` is the only value the CLI docs explicitly guarantee to accept:
+      # it lets Copilot pick the best available model (currently Claude
+      # Sonnet 4.5 by default). All 8 calls in a single workflow run resolve
+      # to the same model, so the A/B comparison stays internally consistent.
+      #
+      # If you want to pin a specific model: run `copilot /models` interactively
+      # to see the exact identifier string your account exposes, then replace
+      # `auto` below with that string.
+      MODEL: auto
       N_TESTS: "3"
       MAX_TOKENS_IMPL: "2048"
       MAX_TOKENS_JUDGE: "1024"
