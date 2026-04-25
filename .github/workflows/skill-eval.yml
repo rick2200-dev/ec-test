@@ -62,7 +62,13 @@ jobs:
     timeout-minutes: 30
 
     env:
-      MODEL: claude-sonnet-4.6
+      # Copilot CLI model identifier — uses hyphen separators (NOT dots).
+      # Verify available models with `copilot /models` interactively.
+      # `claude-sonnet-4-5` is the current Copilot default and broadly available.
+      # Try `claude-sonnet-4-6` if your plan tier exposes it; `auto` lets the
+      # CLI pick the default. Keeping a fixed string is preferred for A/B
+      # reproducibility (don't let GitHub silently swap models between runs).
+      MODEL: claude-sonnet-4-5
       N_TESTS: "3"
       MAX_TOKENS_IMPL: "2048"
       MAX_TOKENS_JUDGE: "1024"
