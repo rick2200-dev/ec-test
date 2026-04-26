@@ -419,8 +419,10 @@ Check `.github/workflows/*.md` for overlapping concerns. This monorepo already h
 | `architect-review-longevity.md`   | Weekly Friday 9am JST    | DB, scalability, extensibility, ops (Discussion) |
 | `issue-triage.md`                 | Weekly Friday 10am JST   | Open-issue classification, close/label/defer |
 | `daily-architecture-diagram.md`   | Daily 8am JST            | Mermaid architecture diagram; no-op on unchanged days |
+| `skill-eval.md`                   | On-demand (`/skill-eval <name>` PR comment + workflow_dispatch) | Orchestrator: A/B validate `.claude/skills/<name>/SKILL.md` via blind pairwise judging — fans out to `skill-eval-arm.md` |
+| `skill-eval-arm.md`               | Triggered only by `skill-eval` orchestrator | Single-shot worker: runs one implementer arm OR the combined pairwise judge for 3 scenarios |
 
-Skill validation (`skill-eval.yml`) is **not** a gh-aw workflow — it's a plain GitHub Actions YAML that calls the GitHub Copilot CLI directly. See `.github/workflows/skill-eval.yml` for that flow; it deliberately sits outside the gh-aw ecosystem because the agent-only / read-only / safe-outputs constraints did not fit the on-demand fan-out pattern needed there.
+When adding a new skill under `.claude/skills/<name>/`, optionally update `inputs.skill.options:` in `skill-eval.md` to expose it in the dispatch dropdown. This is best-effort — `(custom)` + `custom_skill_name` and the slash-command's free-form argument both let you evaluate a skill without editing the workflow.
 
 Ensure the new workflow doesn't duplicate existing concerns.
 
