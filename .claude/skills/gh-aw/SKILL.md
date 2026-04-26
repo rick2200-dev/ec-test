@@ -516,29 +516,31 @@ The local SKILL above predates this trigger; refer to upstream `gh-aw` docs (`re
 
 ### Copilot engine model selection
 
-Two ways to set the Copilot agent's model. Per the official `engines/` and `environment-variables/` reference, **`engine.model:` (frontmatter) takes precedence over the repo variable**:
+Per the official `engines/` and `environment-variables/` reference, two layers control the model. Frontmatter takes precedence:
 
 1. **Frontmatter `engine.model:` (highest priority, per-workflow):**
 
    ```yaml
    engine:
      id: copilot
-     model: claude-sonnet-4.6
+     model: claude-sonnet-4.6   # Copilot identifier uses dots (4.6, not 4-6)
    ```
 
-2. **Repo variable `GH_AW_MODEL_AGENT_COPILOT` (default, applies when `engine.model:` is absent):**
+2. **Repo variable `GH_AW_MODEL_AGENT_COPILOT` (applies when frontmatter omits `engine.model:`):**
 
    ```
    Settings → Variables → New repository variable → Name: GH_AW_MODEL_AGENT_COPILOT → Value: claude-sonnet-4.6
    ```
 
-3. **Compiler fallback (when neither is set):** `claude-sonnet-4.6`.
+3. **Neither set:** the compiler emits `COPILOT_MODEL: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || '' }}` — an **empty string** at runtime — and the Copilot agent picks its own current default (Claude Sonnet 4.5 at time of writing). NOT `claude-sonnet-4.6` despite earlier docs implying otherwise; verify in your compiled `.lock.yml`.
 
-At runtime gh-aw injects the resolved model into the agent's environment as `$COPILOT_MODEL`, which bash steps can read.
+At runtime gh-aw exports `$COPILOT_MODEL` for diagnostic bash inspection.
 
-For symmetric multi-workflow setups (e.g. an orchestrator and its sub-workflows that should all use the same model), you can either:
-  - leave `engine.model:` unset in all of them and set the repo variable once, OR
-  - set `engine.model:` to the same value in each frontmatter (more explicit, immune to a missing repo variable).
+**Identifier format gotcha**: Copilot CLI / agent rejects hyphen-separated forms (`claude-sonnet-4-6`) with `Model not available`. Use the dot-separated form (`claude-sonnet-4.6`). The Claude engine (Anthropic API) uses the opposite — see line 191 above for hyphen-separated `engine: id: claude` example.
+
+**Tier gating**: `claude-sonnet-4.6` may show `not available` even on Copilot Pro+. See https://github.com/orgs/community/discussions/192198. Fall back to `claude-sonnet-4.5` if so.
+
+**Symmetric multi-workflow setups** (e.g. orchestrator + sub-workflows that must use the same model for valid A/B): set `engine.model:` to the same value in EACH frontmatter — explicit, immune to a missing repo variable, easier to audit.
 
 ### Fork PRs
 

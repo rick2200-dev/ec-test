@@ -409,7 +409,7 @@ You MUST NOT modify any file in the repository. You only run helper scripts and 
 
 | name | value |
 |---|---|
-| `MODEL` | Read at runtime from `$COPILOT_MODEL` (gh-aw injects from `vars.GH_AW_MODEL_AGENT_COPILOT`; empty default — Copilot picks default Sonnet 4.5). The dispatch job and all sub-workflows pick up the same value automatically. |
+| `MODEL` | Pinned in frontmatter as `engine.model: claude-sonnet-4.6`. Both this orchestrator and `skill-eval-arm.md` (sub-workflow) declare the same model so the A/B comparison is internally consistent. To switch models, edit `engine.model` in BOTH files and recompile. `$COPILOT_MODEL` is also exported by gh-aw at runtime — bash steps can echo it for diagnostics. |
 | `N_TESTS` | 3 |
 | `MEAN_THRESHOLD` | 1.5 (used downstream by `score.py`) |
 | `WORKDIR` | `/tmp/skill-eval/<SKILL_NAME>/` |
@@ -489,7 +489,7 @@ mkdir -p "$WORKDIR/users"
 ## Step 5: Build normalized system prompts + replay metadata
 
 ```bash
-MODEL="${COPILOT_MODEL:-claude-sonnet-4.5}"
+MODEL="${COPILOT_MODEL:-claude-sonnet-4.6}"   # Mirrors engine.model in frontmatter; bash fallback for diagnostics only.
 python3 .github/scripts/skill-eval/build_prompts.py \
   --skill-path "$SKILL_PATH" \
   --skill-name "$SKILL_NAME" \
