@@ -63,15 +63,18 @@ jobs:
 
     env:
       # Copilot CLI model identifier uses DOTS (NOT hyphens).
-      # The Anthropic API uses hyphens (e.g. claude-sonnet-4-5) but Copilot CLI
-      # advertises its model strings with dots, matching the display name.
-      # Confirmed advertised values (per github/copilot-cli issues #2099, #2597):
+      # Anthropic API uses hyphens (claude-sonnet-4-5) but Copilot CLI uses
+      # dots matching the display name. Advertised choices (issues #2099/#2597):
       #   claude-sonnet-4.5, claude-sonnet-4, claude-haiku-4.5,
       #   gpt-5, gpt-5.1, gpt-5.1-codex-mini, gpt-5.1-codex
-      # Run `copilot /models` interactively to confirm what your account
-      # exposes. claude-sonnet-4.6 may report "not available" on some Pro+
-      # accounts (rolling rollout); 4.5 is broadly available.
-      MODEL: claude-sonnet-4.5
+      # NOTE: in this repo's account both claude-sonnet-4.6 and claude-sonnet-4.5
+      # returned "Model not available" — Anthropic models are gated per tier
+      # (see community/discussions/189999, github/copilot-cli/issues/2099).
+      # claude-sonnet-4 (no decimal) has the broadest rollout. If this also
+      # fails, fall back to gpt-5 (always-on for Copilot subs) or auto.
+      # Run `copilot /models` interactively to see exactly what your account
+      # exposes.
+      MODEL: claude-sonnet-4
       N_TESTS: "3"
       MAX_TOKENS_IMPL: "2048"
       MAX_TOKENS_JUDGE: "1024"
