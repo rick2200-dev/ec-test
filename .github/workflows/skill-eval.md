@@ -46,6 +46,11 @@ safe-outputs:
   report-failure-as-issue: false
 engine:
   id: copilot
+  model: claude-sonnet-4.6   # Pin model. If your tier doesn't expose 4.6 ("not available" error),
+                             # fall back to claude-sonnet-4.5 (broadly available default).
+                             # `vars.GH_AW_MODEL_AGENT_COPILOT` would otherwise apply if set;
+                             # docs (https://github.github.com/gh-aw/reference/engines/) treat
+                             # frontmatter `model:` as the per-workflow override.
 runtimes:
   python:
     version: "3.12"

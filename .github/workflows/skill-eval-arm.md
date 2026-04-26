@@ -58,6 +58,9 @@ permissions:
   actions: read
 engine:
   id: copilot
+  model: claude-sonnet-4.6   # Must match orchestrator (skill-eval.md) for A/B symmetry.
+                             # If your tier doesn't expose 4.6, fall back to claude-sonnet-4.5
+                             # in BOTH files together so all 8 sub-runs use the same model.
 checkout: false   # ISOLATION: do NOT mount the repository. The implementer/judge agents
                   # must not be able to read `.claude/skills/<other>/SKILL.md` or any
                   # other repo file — that would let the "without-skill" arm leak in
