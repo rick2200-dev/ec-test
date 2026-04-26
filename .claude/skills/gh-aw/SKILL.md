@@ -419,10 +419,8 @@ Check `.github/workflows/*.md` for overlapping concerns. This monorepo already h
 | `architect-review-longevity.md`   | Weekly Friday 9am JST    | DB, scalability, extensibility, ops (Discussion) |
 | `issue-triage.md`                 | Weekly Friday 10am JST   | Open-issue classification, close/label/defer |
 | `daily-architecture-diagram.md`   | Daily 8am JST            | Mermaid architecture diagram; no-op on unchanged days |
-| `skill-eval.md`                   | On-demand (`/skill-eval <name>` PR comment + workflow_dispatch) | Orchestrator: A/B validate `.claude/skills/<name>/SKILL.md` via blind pairwise judging — fans out to `skill-eval-arm.md` |
-| `skill-eval-arm.md`               | Triggered only by `skill-eval` orchestrator | Single-shot worker: runs one implementer arm OR the combined pairwise judge for 3 scenarios |
 
-When adding a new skill under `.claude/skills/<name>/`, optionally update `inputs.skill.options:` in `skill-eval.md` to expose it in the dispatch dropdown. This is best-effort — `(custom)` + `custom_skill_name` and the slash-command's free-form argument both let you evaluate a skill without editing the workflow.
+Skill validation (`skill-eval.yml`) is **not** a gh-aw workflow — it's a plain GitHub Actions YAML that calls the GitHub Copilot CLI directly. See `.github/workflows/skill-eval.yml` for that flow; it deliberately sits outside the gh-aw ecosystem because the agent-only / read-only / safe-outputs constraints did not fit the on-demand fan-out pattern needed there.
 
 Ensure the new workflow doesn't duplicate existing concerns.
 
@@ -516,31 +514,29 @@ The local SKILL above predates this trigger; refer to upstream `gh-aw` docs (`re
 
 ### Copilot engine model selection
 
-Per the official `engines/` and `environment-variables/` reference, two layers control the model. Frontmatter takes precedence:
+Two ways to set the Copilot agent's model. Per the official `engines/` and `environment-variables/` reference, **`engine.model:` (frontmatter) takes precedence over the repo variable**:
 
 1. **Frontmatter `engine.model:` (highest priority, per-workflow):**
 
    ```yaml
    engine:
      id: copilot
-     model: claude-sonnet-4.6   # Copilot identifier uses dots (4.6, not 4-6)
+     model: claude-sonnet-4.6
    ```
 
-2. **Repo variable `GH_AW_MODEL_AGENT_COPILOT` (applies when frontmatter omits `engine.model:`):**
+2. **Repo variable `GH_AW_MODEL_AGENT_COPILOT` (default, applies when `engine.model:` is absent):**
 
    ```
    Settings → Variables → New repository variable → Name: GH_AW_MODEL_AGENT_COPILOT → Value: claude-sonnet-4.6
    ```
 
-3. **Neither set:** the compiler emits `COPILOT_MODEL: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || '' }}` — an **empty string** at runtime — and the Copilot agent picks its own current default (Claude Sonnet 4.5 at time of writing). NOT `claude-sonnet-4.6` despite earlier docs implying otherwise; verify in your compiled `.lock.yml`.
+3. **Compiler fallback (when neither is set):** `claude-sonnet-4.6`.
 
-At runtime gh-aw exports `$COPILOT_MODEL` for diagnostic bash inspection.
+At runtime gh-aw injects the resolved model into the agent's environment as `$COPILOT_MODEL`, which bash steps can read.
 
-**Identifier format gotcha**: Copilot CLI / agent rejects hyphen-separated forms (`claude-sonnet-4-6`) with `Model not available`. Use the dot-separated form (`claude-sonnet-4.6`). The Claude engine (Anthropic API) uses the opposite — see line 191 above for hyphen-separated `engine: id: claude` example.
-
-**Tier gating**: `claude-sonnet-4.6` may show `not available` even on Copilot Pro+. See https://github.com/orgs/community/discussions/192198. Fall back to `claude-sonnet-4.5` if so.
-
-**Symmetric multi-workflow setups** (e.g. orchestrator + sub-workflows that must use the same model for valid A/B): set `engine.model:` to the same value in EACH frontmatter — explicit, immune to a missing repo variable, easier to audit.
+For symmetric multi-workflow setups (e.g. an orchestrator and its sub-workflows that should all use the same model), you can either:
+  - leave `engine.model:` unset in all of them and set the repo variable once, OR
+  - set `engine.model:` to the same value in each frontmatter (more explicit, immune to a missing repo variable).
 
 ### Fork PRs
 
