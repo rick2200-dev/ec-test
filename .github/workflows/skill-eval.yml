@@ -74,7 +74,7 @@ jobs:
       # fails, fall back to gpt-5 (always-on for Copilot subs) or auto.
       # Run `copilot /models` interactively to see exactly what your account
       # exposes.
-      MODEL: claude-sonnet-4
+      MODEL: gpt-5
       N_TESTS: "3"
       MAX_TOKENS_IMPL: "2048"
       MAX_TOKENS_JUDGE: "1024"
