@@ -80,6 +80,23 @@ if [ -z "$AGENT" ]; then
   SYSTEM_ABS=$(realpath "$SYSTEM_FILE")
 fi
 
+# Copilot CLI discovers agent files relative to its CWD (it looks for
+# `.github/agents/<name>.agent.md` under CWD). We cd into $WORKDIR for
+# isolation, so we must replicate the agent file there. Done while the
+# shell is still at the caller's CWD (= the repo root when invoked from
+# the workflow or from the repo locally).
+if [ -n "$AGENT" ]; then
+  CALLER_CWD=$(pwd)
+  AGENT_SRC="$CALLER_CWD/.github/agents/${AGENT}.agent.md"
+  if [ ! -f "$AGENT_SRC" ]; then
+    echo "agent file not found: $AGENT_SRC" >&2
+    echo "(call_copilot.sh expects to be invoked from the repo root)" >&2
+    exit 1
+  fi
+  mkdir -p "$WORKDIR/.github/agents"
+  cp "$AGENT_SRC" "$WORKDIR/.github/agents/${AGENT}.agent.md"
+fi
+
 cd "$WORKDIR"
 
 # ============================================================================
