@@ -7,9 +7,17 @@
 # if your version differs.
 #
 # Inputs (named flags):
-#   --system <file>       path to a file holding the system prompt
-#   --user <file>         path to a file holding the user prompt
-#   --model <id>          model id (e.g. claude-sonnet-4.6)
+#   --agent <name>        EITHER: name of a `.github/agents/<name>.agent.md`
+#                         file. When set, the agent body acts as the system
+#                         prompt; --system is ignored. Mutually exclusive in
+#                         intent with --system, but if both are passed the
+#                         agent wins and a warning is emitted on stderr.
+#   --system <file>       OR: legacy path to a file holding the system prompt.
+#                         Combined with --user into a single -p body since
+#                         Copilot CLI has no --system-prompt flag. Kept for
+#                         backward compatibility during the agent migration.
+#   --user <file>         path to a file holding the user prompt (required)
+#   --model <id>          model id (e.g. claude-sonnet-4.6 or "auto")
 #   --max-tokens <n>      max output tokens (best-effort; pass-through)
 #   --out <file>          path to write the assistant response (verbatim stdout)
 #   --workdir <dir>       working directory the CLI is invoked from (isolation
@@ -28,6 +36,7 @@
 
 set -euo pipefail
 
+AGENT=""
 SYSTEM_FILE=""
 USER_FILE=""
 MODEL=""
@@ -37,6 +46,7 @@ WORKDIR=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --agent)      AGENT="$2";       shift 2 ;;
     --system)     SYSTEM_FILE="$2"; shift 2 ;;
     --user)       USER_FILE="$2";   shift 2 ;;
     --model)      MODEL="$2";       shift 2 ;;
@@ -47,18 +57,28 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-[ -s "$SYSTEM_FILE" ] || { echo "system file empty or missing: $SYSTEM_FILE" >&2; exit 1; }
 [ -s "$USER_FILE"   ] || { echo "user file empty or missing: $USER_FILE"   >&2; exit 1; }
 [ -n "$MODEL"       ] || { echo "--model is required" >&2; exit 1; }
 [ -n "$OUT"         ] || { echo "--out is required"   >&2; exit 1; }
 [ -n "$WORKDIR"     ] || { echo "--workdir is required (isolation)" >&2; exit 1; }
 
+if [ -n "$AGENT" ]; then
+  if [ -n "$SYSTEM_FILE" ]; then
+    echo "warn: both --agent and --system provided; --agent wins, --system ignored" >&2
+  fi
+else
+  [ -s "$SYSTEM_FILE" ] || { echo "either --agent or --system is required (--system file empty or missing: $SYSTEM_FILE)" >&2; exit 1; }
+fi
+
 mkdir -p "$WORKDIR" "$(dirname "$OUT")"
 
 # Resolve to absolute paths BEFORE we cd into the isolation workdir
-SYSTEM_ABS=$(realpath "$SYSTEM_FILE")
 USER_ABS=$(realpath "$USER_FILE")
 OUT_ABS=$(realpath -m "$OUT")
+SYSTEM_ABS=""
+if [ -z "$AGENT" ]; then
+  SYSTEM_ABS=$(realpath "$SYSTEM_FILE")
+fi
 
 cd "$WORKDIR"
 
@@ -99,7 +119,6 @@ cd "$WORKDIR"
 #   default Actions-injected GITHUB_TOKEN (github-actions[bot]) does NOT have
 #   Copilot, so the workflow passes a user PAT via COPILOT_GITHUB_TOKEN.
 
-SYSTEM_PROMPT=$(cat "$SYSTEM_ABS")
 USER_PROMPT=$(cat "$USER_ABS")
 
 if ! command -v copilot >/dev/null 2>&1; then
@@ -107,21 +126,39 @@ if ! command -v copilot >/dev/null 2>&1; then
   exit 1
 fi
 
-# Combine system + user into a single prompt (no --system-prompt flag exists)
-COMBINED_PROMPT=$(printf '## Operating Context\n%s\n\n## Task\n%s\n' "$SYSTEM_PROMPT" "$USER_PROMPT")
-
-# Single hand-off point. The order of flags matters: -p must come last and
-# its value is the entire combined prompt.
-copilot \
-  --model "$MODEL" \
-  --allow-tool 'read' \
-  --deny-tool 'shell, write, edit, web_fetch, web_search' \
-  --no-ask-user \
-  --add-dir "$WORKDIR" \
-  -s \
-  -p "$COMBINED_PROMPT" \
-  > "$OUT_ABS" \
-  2> "${OUT_ABS}.stderr"
+# Belt-and-suspenders tool restrictions: even if the agent file's `tools:`
+# field widens scope, these CLI flags still apply and act as the runtime floor.
+if [ -n "$AGENT" ]; then
+  # Agent mode — the agent body acts as the system prompt. We pass only the
+  # user prompt via -p. Copilot CLI auto-discovers .github/agents/<name>.agent.md
+  # and ~/.copilot/agents/<name>.agent.md.
+  copilot \
+    --agent "$AGENT" \
+    --model "$MODEL" \
+    --allow-tool 'read' \
+    --deny-tool 'shell, write, edit, web_fetch, web_search' \
+    --no-ask-user \
+    --add-dir "$WORKDIR" \
+    -s \
+    -p "$USER_PROMPT" \
+    > "$OUT_ABS" \
+    2> "${OUT_ABS}.stderr"
+else
+  # Legacy mode — combine system + user into a single -p body since
+  # Copilot CLI has no --system-prompt flag.
+  SYSTEM_PROMPT=$(cat "$SYSTEM_ABS")
+  COMBINED_PROMPT=$(printf '## Operating Context\n%s\n\n## Task\n%s\n' "$SYSTEM_PROMPT" "$USER_PROMPT")
+  copilot \
+    --model "$MODEL" \
+    --allow-tool 'read' \
+    --deny-tool 'shell, write, edit, web_fetch, web_search' \
+    --no-ask-user \
+    --add-dir "$WORKDIR" \
+    -s \
+    -p "$COMBINED_PROMPT" \
+    > "$OUT_ABS" \
+    2> "${OUT_ABS}.stderr"
+fi
 
 # ============================================================================
 
@@ -141,13 +178,18 @@ fi
 # `actual_input_tokens` / `actual_output_tokens` to the JSON. score.py prefers
 # actual_* over estimated_* when present.
 # ============================================================================
-SYSTEM_CHARS=$(wc -c < "$SYSTEM_ABS" | tr -d ' ')
+if [ -n "$AGENT" ]; then
+  SYSTEM_CHARS=0
+else
+  SYSTEM_CHARS=$(wc -c < "$SYSTEM_ABS" | tr -d ' ')
+fi
 USER_CHARS=$(wc -c < "$USER_ABS" | tr -d ' ')
 OUTPUT_CHARS=$(wc -c < "$OUT_ABS" | tr -d ' ')
 INPUT_CHARS=$((SYSTEM_CHARS + USER_CHARS))
 
 cat > "${OUT_ABS}.tokens.json" <<EOF
 {
+  "agent": "$AGENT",
   "model": "$MODEL",
   "system_chars": $SYSTEM_CHARS,
   "user_chars": $USER_CHARS,

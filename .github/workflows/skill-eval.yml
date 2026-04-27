@@ -63,18 +63,19 @@ jobs:
 
     env:
       # Copilot CLI model identifier uses DOTS (NOT hyphens).
-      # Anthropic API uses hyphens (claude-sonnet-4-5) but Copilot CLI uses
+      # Anthropic API uses hyphens (claude-sonnet-4-6) but Copilot CLI uses
       # dots matching the display name. Advertised choices (issues #2099/#2597):
-      #   claude-sonnet-4.5, claude-sonnet-4, claude-haiku-4.5,
+      #   claude-sonnet-4.6, claude-sonnet-4.5, claude-sonnet-4, claude-haiku-4.5,
       #   gpt-5, gpt-5.1, gpt-5.1-codex-mini, gpt-5.1-codex
-      # NOTE: in this repo's account both claude-sonnet-4.6 and claude-sonnet-4.5
-      # returned "Model not available" — Anthropic models are gated per tier
-      # (see community/discussions/189999, github/copilot-cli/issues/2099).
-      # claude-sonnet-4 (no decimal) has the broadest rollout. If this also
-      # fails, fall back to gpt-5 (always-on for Copilot subs) or auto.
-      # Run `copilot /models` interactively to see exactly what your account
-      # exposes.
-      MODEL: auto
+      # Pinned to claude-sonnet-4.6 by user direction. NOTE: this account has
+      # historically seen "Model not available" on gated Anthropic models
+      # (community/discussions/189999, github/copilot-cli/issues/2099). The
+      # `model:` field in each .github/agents/skill-eval-*.agent.md is also
+      # pinned to claude-sonnet-4.6 so local CLI invocations get the same model.
+      # If 4.6 returns "Model not available", fall back order is:
+      #   claude-sonnet-4.5 → claude-sonnet-4 → gpt-5 → auto
+      # Run `copilot /models` interactively to confirm what your account exposes.
+      MODEL: claude-sonnet-4.6
       N_TESTS: "3"
       MAX_TOKENS_IMPL: "2048"
       MAX_TOKENS_JUDGE: "1024"
@@ -364,29 +365,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Build orchestrator system prompt + user prompt
-          cat > "$WORKDIR/orch_system.txt" <<'EOF'
-          You are the Skill Validation Orchestrator. Your single job is to design 3 anti-bias test scenarios for evaluating whether a Claude Code skill helps or hurts the model's responses to realistic developer tasks. You output ONLY a valid JSON array — no prose, no code fences.
-
-          Output schema (an array of exactly 3 objects):
-          [
-            {"id": "1", "user_prompt": "...", "scenario_kind": "in-scope"},
-            {"id": "2", "user_prompt": "...", "scenario_kind": "edge"},
-            {"id": "3", "user_prompt": "...", "scenario_kind": "out-of-scope"}
-          ]
-
-          Constraints (you MUST follow all):
-          1. Each scenario reads like a realistic developer task in this Go microservice EC monorepo (services in backend/services/<name>/, frontend/apps/{admin,buyer,seller,storybook}, etc.). No invented services, no toy projects.
-          2. Do NOT use skill-specific vocabulary in user_prompt. Plain natural language only.
-          3. Composition (one of each):
-             - in-scope: a task where the skill clearly should help.
-             - edge: adjacent to the skill's domain.
-             - out-of-scope: unrelated to the skill, to detect over-fire.
-          4. At least one scenario must test a failure / misdirection mode.
-          EOF
-
-          # User prompt is the SKILL.md body (the orchestrator reads it but the
-          # generated user_prompt's themselves don't echo skill vocabulary).
+          # System prompt (role, schema, constraints, prompt-injection guard)
+          # is in .github/agents/skill-eval-orchestrator.agent.md and selected
+          # via `--agent skill-eval-orchestrator`. We pass only the user prompt
+          # (skill name + delimited SKILL.md body) below.
           {
             echo "Skill name (for your eyes only): $SKILL_NAME"
             echo ""
@@ -394,12 +376,12 @@ jobs:
             cat "$WORKDIR/system_prompts/skill_body_normalized.md"
             echo "--- END SKILL.md ---"
             echo ""
-            echo "Now produce the JSON array of 3 scenarios per the schema and constraints above. Output the array EXACTLY, starting with [ and ending with ]."
+            echo "Now produce the JSON array of 3 scenarios per the schema and constraints in the agent body. Output the array EXACTLY, starting with [ and ending with ]."
           } > "$WORKDIR/orch_user.txt"
 
           mkdir -p "$WORKDIR/iso/orch"
           .github/scripts/skill-eval/call_copilot.sh \
-            --system "$WORKDIR/orch_system.txt" \
+            --agent skill-eval-orchestrator \
             --user "$WORKDIR/orch_user.txt" \
             --model "$MODEL" \
             --max-tokens 4096 \
@@ -466,18 +448,30 @@ jobs:
           WORKDIR: ${{ steps.build.outputs.workdir }}
         run: |
           set -euo pipefail
+          # System prompt (role, REPO_CONTEXT, mode contract) lives in
+          # .github/agents/skill-eval-implementer.agent.md. Per call we
+          # concatenate the per-arm prefix (with_skill / without_skill) with
+          # the per-scenario task into a single user prompt.
           for id in 1 2 3; do
             for variant in X Y; do
               ARM=$(jq -r ".\"$id\".\"$variant\"" "$WORKDIR/unblind.json")
-              SYS_FILE="$WORKDIR/system_prompts/${ARM}_skill.txt"
-              USER_FILE="$WORKDIR/users/test-${id}-user.txt"
+              PREFIX_FILE="$WORKDIR/system_prompts/${ARM}_skill_user_prefix.txt"
+              TASK_FILE="$WORKDIR/users/test-${id}-user.txt"
+              COMBINED_USER="$WORKDIR/users/test-${id}-${variant}-combined.txt"
               OUT_FILE="$WORKDIR/outputs/test-${id}-${variant}.txt"
               ISO_DIR="$WORKDIR/iso/impl-${id}-${variant}"
               mkdir -p "$ISO_DIR"
 
+              {
+                cat "$PREFIX_FILE"
+                printf '\n## Developer Task\n\n'
+                cat "$TASK_FILE"
+                printf '\n'
+              } > "$COMBINED_USER"
+
               .github/scripts/skill-eval/call_copilot.sh \
-                --system "$SYS_FILE" \
-                --user "$USER_FILE" \
+                --agent skill-eval-implementer \
+                --user "$COMBINED_USER" \
                 --model "$MODEL" \
                 --max-tokens "$MAX_TOKENS_IMPL" \
                 --workdir "$ISO_DIR" \
@@ -499,32 +493,9 @@ jobs:
           WORKDIR: ${{ steps.build.outputs.workdir }}
         run: |
           set -euo pipefail
-          # Build judge system prompt
-          cat > "$WORKDIR/judge_system.txt" <<'EOF'
-          You are an impartial pairwise judge. You will see THREE different tasks, each answered by two anonymous variants (X and Y). For each task INDEPENDENTLY, pick the better variant on the rubric below. If essentially equivalent, choose 'tie'. Output ONLY a valid JSON array, no prose, no code fences.
-
-          Rubric (apply all, independently per task):
-          1. Factual accuracy in this Go microservice monorepo (no fictional paths/names).
-          2. Workflow fidelity (does it follow plausible best-practice steps).
-          3. Format / structure clarity.
-          4. Helpfulness (would a developer accept this as-is).
-
-          Output schema (array of 3 objects, ordered by scenario id ascending):
-          [
-            {"scenario": "1", "winner": "X" | "Y" | "tie", "margin": 0 | 1 | 2, "reason_x": "...", "reason_y": "...", "rubric_notes": "..."},
-            {"scenario": "2", ...},
-            {"scenario": "3", ...}
-          ]
-
-          margin: 0 = tie, 1 = slight, 2 = clear.
-
-          ABSOLUTE RULES:
-          - The output must start with [ and end with ].
-          - Do NOT mention "skill", "with-skill", "without-skill" anywhere in your reasoning. The variants are anonymous.
-          - Score each scenario INDEPENDENTLY.
-          EOF
-
-          # Build judge user prompt: 3 (task, X, Y) tuples
+          # System prompt (role, rubric, schema, absolute rules) lives in
+          # .github/agents/skill-eval-judge.agent.md. Below we just build the
+          # per-call user prompt with the 3 (task, X, Y) tuples.
           python3 - <<'PY'
           import os, json, pathlib
           workdir = pathlib.Path(os.environ["WORKDIR"])
@@ -543,7 +514,7 @@ jobs:
 
           mkdir -p "$WORKDIR/iso/judge"
           .github/scripts/skill-eval/call_copilot.sh \
-            --system "$WORKDIR/judge_system.txt" \
+            --agent skill-eval-judge \
             --user "$WORKDIR/judge_user.txt" \
             --model "$MODEL" \
             --max-tokens "$MAX_TOKENS_JUDGE" \

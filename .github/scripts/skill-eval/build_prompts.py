@@ -9,12 +9,21 @@ Inputs:
   --outdir <output dir, e.g. /tmp/skill-eval/<skill>/>
 
 Outputs (created under --outdir):
-  system_prompts/skill_body_normalized.md  (SKILL.md without YAML frontmatter)
-  system_prompts/references_concat.md      (references/*.md concatenated, empty if none)
-  system_prompts/with_skill.txt            (REPO_CONTEXT + skill body + references)
-  system_prompts/without_skill.txt         (REPO_CONTEXT + "no skill loaded" stub)
-  replay/prompt.yml                        (GitHub Models replay metadata)
-  replay/README.md                         (explains replay/prompt.yml semantics)
+  system_prompts/skill_body_normalized.md      (SKILL.md without YAML frontmatter)
+  system_prompts/references_concat.md          (references/*.md concatenated, empty if none)
+  system_prompts/with_skill.txt                (legacy: REPO_CONTEXT + skill body + refs)
+  system_prompts/without_skill.txt             (legacy: REPO_CONTEXT + "no skill loaded" stub)
+  system_prompts/with_skill_user_prefix.txt    (agent-mode user-prompt prefix; NO REPO_CONTEXT)
+  system_prompts/without_skill_user_prefix.txt (agent-mode user-prompt prefix; NO REPO_CONTEXT)
+  replay/prompt.yml                            (GitHub Models replay metadata)
+  replay/README.md                             (explains replay/prompt.yml semantics)
+
+The `*_user_prefix.txt` outputs are designed for use with
+`.github/agents/skill-eval-implementer.agent.md` via
+`call_copilot.sh --agent skill-eval-implementer`. The legacy
+`with_skill.txt`/`without_skill.txt` files are kept for the
+`replay/prompt.yml` artifact (which expects a system_prompt slot) and for
+backward compatibility with `--system` mode.
 """
 from __future__ import annotations
 
@@ -24,6 +33,12 @@ import sys
 from pathlib import Path
 
 
+# Canonical copy of REPO_CONTEXT lives in:
+#   .github/agents/skill-eval-orchestrator.agent.md
+#   .github/agents/skill-eval-implementer.agent.md
+# (under the `## Operating Context` section of each).
+# This duplicate is kept ONLY for the legacy --system mode and for
+# replay/prompt.yml metadata. Edit the agent files first; mirror here.
 REPO_CONTEXT = """\
 This repository is a Go microservice EC marketplace monorepo (ec-test).
 - Backend services live under `backend/services/<name>/` (16 services: auth, cart, catalog, coupon, gateway, inquiry, inventory, loyalty, notification, order, recommend, review, search, shipping, subscription).
@@ -64,6 +79,7 @@ def concat_references(skill_dir: Path) -> str:
 
 
 def build_with_skill(skill_name: str, skill_body: str, references_concat: str) -> str:
+    """Legacy --system mode: REPO_CONTEXT + skill body + references."""
     chunks = [REPO_CONTEXT, "", f"## Loaded Skill: {skill_name}", "", skill_body.rstrip()]
     if references_concat.strip():
         chunks.extend(["", references_concat.rstrip()])
@@ -71,7 +87,33 @@ def build_with_skill(skill_name: str, skill_body: str, references_concat: str) -
 
 
 def build_without_skill() -> str:
+    """Legacy --system mode: REPO_CONTEXT + no-skill stub."""
     return f"{REPO_CONTEXT}\n\n## {WITHOUT_STUB}\n"
+
+
+def build_with_skill_user_prefix(
+    skill_name: str, skill_body: str, references_concat: str
+) -> str:
+    """Agent-mode user-prompt prefix when the implementer is in skill-loaded mode.
+
+    Does NOT include REPO_CONTEXT — that lives in the agent body
+    (.github/agents/skill-eval-implementer.agent.md). The implementer agent
+    detects this prefix by the `## Loaded Skill:` header (Mode A in the agent
+    body's contract).
+    """
+    chunks = [f"## Loaded Skill: {skill_name}", "", skill_body.rstrip()]
+    if references_concat.strip():
+        chunks.extend(["", references_concat.rstrip()])
+    return "\n".join(chunks) + "\n"
+
+
+def build_without_skill_user_prefix() -> str:
+    """Agent-mode user-prompt prefix when the implementer is in no-skill mode.
+
+    Detected by the implementer agent via the `## No skill is loaded ...`
+    header (Mode B in the agent body's contract).
+    """
+    return f"## {WITHOUT_STUB}\n"
 
 
 def build_replay_prompt_yml(
@@ -174,6 +216,13 @@ def main(argv: list[str]) -> int:
         build_with_skill(args.skill_name, skill_body, references_concat), encoding="utf-8"
     )
     (sys_prompts_dir / "without_skill.txt").write_text(build_without_skill(), encoding="utf-8")
+    (sys_prompts_dir / "with_skill_user_prefix.txt").write_text(
+        build_with_skill_user_prefix(args.skill_name, skill_body, references_concat),
+        encoding="utf-8",
+    )
+    (sys_prompts_dir / "without_skill_user_prefix.txt").write_text(
+        build_without_skill_user_prefix(), encoding="utf-8"
+    )
 
     (replay_dir / "prompt.yml").write_text(
         build_replay_prompt_yml(args.skill_name, args.short_sha, args.model, args.max_tokens_impl),
