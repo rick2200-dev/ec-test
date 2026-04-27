@@ -27,6 +27,32 @@ from pathlib import Path
 
 MEAN_THRESHOLD_DEFAULT = 1.5
 
+# Display label maps (Japanese). Internal identifiers (verdict strings,
+# scenario_kind values, winner_resolved values) are kept in English so
+# downstream consumers (meta.json, score.py exit prints, parse_judge_output.py)
+# do not break.
+VERDICT_DISPLAY = {
+    "passed": ("✅", "合格"),
+    "failed": ("❌", "不合格"),
+    "inconclusive": ("⚠", "判定不能"),
+}
+SCENARIO_KIND_JA = {
+    "in-scope": "領域内",
+    "edge": "境界",
+    "out-of-scope": "領域外",
+}
+WINNER_RESOLVED_JA = {
+    "with": "スキル有り",
+    "without": "スキル無し",
+    "tie": "引き分け",
+    "unknown": "不明",
+}
+PHASE_JA = {
+    "orchestrator": "シナリオ生成",
+    "implementer": "応答生成",
+    "judge": "判定",
+}
+
 
 def load_json(p: Path) -> dict | list:
     return json.loads(p.read_text(encoding="utf-8"))
@@ -103,48 +129,49 @@ def render_token_usage(usage: dict) -> list[str]:
     if totals["calls"] == 0:
         return []
     lines: list[str] = []
-    lines.append("### Token usage")
+    lines.append("### トークン使用量")
     lines.append("")
     if totals["has_actual"]:
-        header = "| Phase | Calls | Input chars | Output chars | Actual in tok | Actual out tok |"
-        sep    = "|---|---|---|---|---|---|"
+        header = "| フェーズ | 呼び出し回数 | 入力文字数 | 出力文字数 | 実測入力トークン | 実測出力トークン |"
     else:
-        header = "| Phase | Calls | Input chars | Output chars | Est. in tok | Est. out tok |"
-        sep    = "|---|---|---|---|---|---|"
+        header = "| フェーズ | 呼び出し回数 | 入力文字数 | 出力文字数 | 推定入力トークン | 推定出力トークン |"
+    sep = "|---|---|---|---|---|---|"
     lines.append(header)
     lines.append(sep)
     for phase in ("orchestrator", "implementer", "judge"):
         a = usage["phases"].get(phase, {})
         if not a or a.get("calls", 0) == 0:
             continue
+        phase_label = PHASE_JA.get(phase, phase)
         if totals["has_actual"]:
             lines.append(
-                f"| {phase} | {a['calls']} | {a['input_chars']:,} | {a['output_chars']:,} | "
+                f"| {phase_label} | {a['calls']} | {a['input_chars']:,} | {a['output_chars']:,} | "
                 f"{a['actual_input_tokens']:,} | {a['actual_output_tokens']:,} |"
             )
         else:
             lines.append(
-                f"| {phase} | {a['calls']} | {a['input_chars']:,} | {a['output_chars']:,} | "
+                f"| {phase_label} | {a['calls']} | {a['input_chars']:,} | {a['output_chars']:,} | "
                 f"{a['estimated_input_tokens']:,} | {a['estimated_output_tokens']:,} |"
             )
     if totals["has_actual"]:
         lines.append(
-            f"| **total** | **{totals['calls']}** | **{totals['input_chars']:,}** | "
+            f"| **合計** | **{totals['calls']}** | **{totals['input_chars']:,}** | "
             f"**{totals['output_chars']:,}** | **{totals['actual_input_tokens']:,}** | "
             f"**{totals['actual_output_tokens']:,}** |"
         )
     else:
         lines.append(
-            f"| **total** | **{totals['calls']}** | **{totals['input_chars']:,}** | "
+            f"| **合計** | **{totals['calls']}** | **{totals['input_chars']:,}** | "
             f"**{totals['output_chars']:,}** | **{totals['estimated_input_tokens']:,}** | "
             f"**{totals['estimated_output_tokens']:,}** |"
         )
     lines.append("")
     if not totals["has_actual"]:
         lines.append(
-            "_Token figures are estimates (4 chars/token). For exact accounting, "
-            "modify `call_copilot.sh` to capture the CLI's reported usage and add "
-            "`actual_input_tokens` / `actual_output_tokens` to each tokens.json sidecar._"
+            "_トークン数は推定値です（1 トークン ≒ 4 文字として算出）。"
+            "正確な数値が必要な場合は `call_copilot.sh` を修正して、"
+            "CLI が報告する使用量を取得し、各 `tokens.json` に "
+            "`actual_input_tokens` / `actual_output_tokens` を書き込んでください。_"
         )
     lines.append("")
     return lines
@@ -161,52 +188,52 @@ def render_summary(
     mean_threshold: float,
     token_usage: dict | None = None,
 ) -> str:
-    if verdict == "passed":
-        verdict_emoji = "✅"
-        verdict_label = "Passed"
-    elif verdict == "failed":
-        verdict_emoji = "❌"
-        verdict_label = "Failed"
-    else:
-        verdict_emoji = "⚠"
-        verdict_label = "Inconclusive"
+    verdict_emoji, verdict_label = VERDICT_DISPLAY.get(verdict, ("⚠", "判定不能"))
 
     lines: list[str] = []
-    lines.append(f"## {verdict_emoji} Skill Validation {verdict_label}: `{skill_name}`")
+    lines.append(f"## {verdict_emoji} Skill 検証: {verdict_label} — `{skill_name}`")
     lines.append("")
     lines.append(
-        f"**Skill SHA:** `{skill_short_sha}` | **Model:** `{model}` | "
-        f"**Mean signed margin:** {mean_signed:+.2f} (threshold {mean_threshold:+.2f}) | "
-        f"**Judge parse failures:** {judge_failures}"
+        f"**Skill SHA:** `{skill_short_sha}` ／ **モデル:** `{model}` ／ "
+        f"**平均符号付きマージン:** {mean_signed:+.2f}（しきい値 {mean_threshold:+.2f}）／ "
+        f"**Judge パース失敗数:** {judge_failures}"
     )
     lines.append("")
-    lines.append("| # | Kind | Winner | Margin | Notes |")
+    lines.append("### シナリオ別の結果")
+    lines.append("")
+    lines.append("| # | 種別 | 勝者 | 符号付きマージン | 講評 |")
     lines.append("|---|---|---|---|---|")
     for row in per_scenario:
-        winner_disp = row["winner_resolved"]
+        kind_label = SCENARIO_KIND_JA.get(row["scenario_kind"], row["scenario_kind"])
+        winner_label = WINNER_RESOLVED_JA.get(row["winner_resolved"], row["winner_resolved"])
         if row.get("judge_failed"):
-            winner_disp = f"{winner_disp} (judge_failed)"
+            winner_label = f"{winner_label}（判定失敗）"
         notes = row.get("rubric_notes", "")
         if len(notes) > 80:
             notes = notes[:77] + "..."
         lines.append(
-            f"| {row['id']} | {row['scenario_kind']} | {winner_disp} | "
+            f"| {row['id']} | {kind_label} | {winner_label} | "
             f"{row['signed_margin']:+d} | {notes} |"
         )
+    lines.append("")
+    lines.append(
+        "**符号付きマージン**: 正の値 = スキル有りが優勢、負の値 = スキル無しが優勢、"
+        "0 = 引き分け／判定失敗。絶対値が大きいほど差が明確。"
+    )
     lines.append("")
     if token_usage is not None:
         lines.extend(render_token_usage(token_usage))
     lines.append(
-        f"> ⚠️ **Note**: implementer と judge は同じモデル (`{model}`) を使っています。"
-        f"これはこのモデル上での **skill の相対効果** を測定するもので、"
-        f"絶対的な skill 品質ではありません。Claude Code 実環境(別モデル)では結果が異なる可能性があります。"
+        f"> ⚠️ **注意**: 応答生成（implementer）と判定（judge）は同じモデル (`{model}`) を使っています。"
+        f"これはこのモデル上での **スキルの相対効果** を測定するもので、"
+        f"スキルの絶対的な品質を保証するものではありません。Claude Code 実環境（別モデル）では結果が異なる可能性があります。"
     )
     lines.append("")
     lines.append(
-        "<details><summary>Verdict rules</summary>\n\n"
-        f"- **passed**: ≥2 with-win AND 0 without-win AND mean(signed) ≥ {mean_threshold}\n"
-        "- **failed**: ≥2 without-win\n"
-        "- **inconclusive**: otherwise (incl. ≥2 judge parse failures)\n"
+        "<details><summary>判定ルール</summary>\n\n"
+        f"- **合格 (passed)**: スキル有りの勝ちが 2 件以上 かつ スキル無しの勝ちが 0 件 かつ 平均符号付きマージン ≥ {mean_threshold}\n"
+        "- **不合格 (failed)**: スキル無しの勝ちが 2 件以上\n"
+        "- **判定不能 (inconclusive)**: 上記以外（Judge パース失敗が 2 件以上の場合も含む）\n"
         "</details>\n"
     )
     return "\n".join(lines)
