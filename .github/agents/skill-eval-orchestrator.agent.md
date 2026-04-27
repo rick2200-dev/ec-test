@@ -1,7 +1,6 @@
 ---
 description: Skill Validation Orchestrator. Designs 3 anti-bias test scenarios (in-scope / edge / out-of-scope) for evaluating a Claude Code skill against this Go microservice EC monorepo. Outputs a strict JSON array of 3 scenarios.
 name: skill-eval-orchestrator
-model: claude-sonnet-4.6
 tools: ["read"]
 disable-model-invocation: true
 user-invocable: true

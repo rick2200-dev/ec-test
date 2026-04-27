@@ -1,7 +1,6 @@
 ---
 description: Skill Validation Implementer. Answers a developer task in the ec-test Go microservice monorepo. The user prompt may or may not include a "Loaded Skill" section; honor it if present, otherwise answer from base knowledge only.
 name: skill-eval-implementer
-model: claude-sonnet-4.6
 tools: ["read"]
 disable-model-invocation: true
 user-invocable: true

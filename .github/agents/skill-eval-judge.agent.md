@@ -1,7 +1,6 @@
 ---
 description: Impartial pairwise judge for skill validation. Compares two anonymous variants (X vs Y) per scenario across 3 scenarios and emits a strict JSON array of verdicts. Never names "skill" / "with-skill" / "without-skill" in reasoning.
 name: skill-eval-judge
-model: claude-sonnet-4.6
 tools: ["read"]
 disable-model-invocation: true
 user-invocable: true

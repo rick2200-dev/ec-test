@@ -67,15 +67,15 @@ jobs:
       # dots matching the display name. Advertised choices (issues #2099/#2597):
       #   claude-sonnet-4.6, claude-sonnet-4.5, claude-sonnet-4, claude-haiku-4.5,
       #   gpt-5, gpt-5.1, gpt-5.1-codex-mini, gpt-5.1-codex
-      # Pinned to claude-sonnet-4.6 by user direction. NOTE: this account has
-      # historically seen "Model not available" on gated Anthropic models
-      # (community/discussions/189999, github/copilot-cli/issues/2099). The
-      # `model:` field in each .github/agents/skill-eval-*.agent.md is also
-      # pinned to claude-sonnet-4.6 so local CLI invocations get the same model.
-      # If 4.6 returns "Model not available", fall back order is:
-      #   claude-sonnet-4.5 → claude-sonnet-4 → gpt-5 → auto
-      # Run `copilot /models` interactively to confirm what your account exposes.
-      MODEL: claude-sonnet-4.6
+      # NOTE: this account has historically seen "Model not available" for gated
+      # Anthropic models (community/discussions/189999, github/copilot-cli/issues/2099).
+      # Verified by run 25003850294 stderr (claude-sonnet-4.6 → not available).
+      # Falling back to `auto` so the CLI picks an available model. Each agent
+      # file in .github/agents/skill-eval-*.agent.md intentionally has NO
+      # `model:` field so local `copilot --agent <name>` defaults to the
+      # account-default model and does not re-trigger the gated-model error.
+      # If a specific model becomes desirable, pin via this MODEL env var only.
+      MODEL: auto
       N_TESTS: "3"
       MAX_TOKENS_IMPL: "2048"
       MAX_TOKENS_JUDGE: "1024"
