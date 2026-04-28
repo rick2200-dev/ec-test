@@ -31,9 +31,16 @@ MEAN_THRESHOLD_DEFAULT = 1.5
 # scenario_kind values, winner_resolved values) are kept in English so
 # downstream consumers (meta.json, score.py exit prints, parse_judge_output.py)
 # do not break.
+#
+# revision 11: VRT semantics — arms compare base vs head ref of SKILL.md.
+#   - improved   = head version produces clearly better outputs
+#   - regressed  = head version produces clearly worse outputs
+#   - no-change  = no measurable difference (all-tie or near-tie)
+#   - inconclusive = judge failures or mixed results
 VERDICT_DISPLAY = {
-    "passed": ("✅", "合格"),
-    "failed": ("❌", "不合格"),
+    "improved": ("✅", "改善"),
+    "regressed": ("❌", "劣化"),
+    "no-change": ("➖", "変化なし"),
     "inconclusive": ("⚠", "判定不能"),
 }
 SCENARIO_KIND_JA = {
@@ -42,8 +49,8 @@ SCENARIO_KIND_JA = {
     "out-of-scope": "領域外",
 }
 WINNER_RESOLVED_JA = {
-    "with": "スキル有り",
-    "without": "スキル無し",
+    "head": "新版(HEAD)",
+    "base": "旧版(BASE)",
     "tie": "引き分け",
     "unknown": "不明",
 }
@@ -187,14 +194,25 @@ def render_summary(
     mean_signed: float,
     mean_threshold: float,
     token_usage: dict | None = None,
+    base_short_sha: str | None = None,
+    new_skill: bool = False,
 ) -> str:
     verdict_emoji, verdict_label = VERDICT_DISPLAY.get(verdict, ("⚠", "判定不能"))
 
     lines: list[str] = []
     lines.append(f"## {verdict_emoji} Skill 検証: {verdict_label} — `{skill_name}`")
     lines.append("")
+    if new_skill:
+        lines.append(
+            f"> ℹ️ **新規スキル**: BASE 側に `{skill_name}` が存在しないため、"
+            "BASE arm は「スキル無し」をベースラインとして比較しています。"
+            "verdict は「新規スキルの導入で改善／劣化したか」を表します。"
+        )
+        lines.append("")
+    base_label = f"`{base_short_sha}`" if base_short_sha else "（BASE 不明）"
     lines.append(
-        f"**Skill SHA:** `{skill_short_sha}` ／ **モデル:** `{model}` ／ "
+        f"**HEAD SHA:** `{skill_short_sha}` ／ **BASE SHA:** {base_label} ／ "
+        f"**モデル:** `{model}` ／ "
         f"**平均符号付きマージン:** {mean_signed:+.2f}（しきい値 {mean_threshold:+.2f}）／ "
         f"**Judge パース失敗数:** {judge_failures}"
     )
@@ -217,7 +235,7 @@ def render_summary(
         )
     lines.append("")
     lines.append(
-        "**符号付きマージン**: 正の値 = スキル有りが優勢、負の値 = スキル無しが優勢、"
+        "**符号付きマージン**: 正の値 = 新版(HEAD)が優勢、負の値 = 旧版(BASE)が優勢、"
         "0 = 引き分け／判定失敗。絶対値が大きいほど差が明確。"
     )
     lines.append("")
@@ -231,8 +249,9 @@ def render_summary(
     lines.append("")
     lines.append(
         "<details><summary>判定ルール</summary>\n\n"
-        f"- **合格 (passed)**: スキル有りの勝ちが 2 件以上 かつ スキル無しの勝ちが 0 件 かつ 平均符号付きマージン ≥ {mean_threshold}\n"
-        "- **不合格 (failed)**: スキル無しの勝ちが 2 件以上\n"
+        f"- **改善 (improved)**: HEAD 勝ちが ⌈N/2⌉ 件以上 かつ BASE 勝ちが 0 件 かつ 平均符号付きマージン ≥ {mean_threshold}\n"
+        "- **劣化 (regressed)**: BASE 勝ちが ⌈N/2⌉ 件以上\n"
+        "- **変化なし (no-change)**: HEAD 勝ち・BASE 勝ちがいずれも 0 件（全件引き分け／顕著な差なし）\n"
         "- **判定不能 (inconclusive)**: 上記以外（Judge パース失敗が 2 件以上の場合も含む）\n"
         "</details>\n"
     )
@@ -266,8 +285,8 @@ def main(argv: list[str]) -> int:
 
     per_scenario: list[dict] = []
     judge_failures = 0
-    with_wins = 0
-    without_wins = 0
+    head_wins = 0
+    base_wins = 0
     signed_total = 0
 
     for scenario in scenarios:
@@ -294,13 +313,15 @@ def main(argv: list[str]) -> int:
             signed = 0
         else:
             mapped = scenario_unblind.get(winner)
-            if mapped == "with":
-                winner_resolved = "with"
-                with_wins += 1
+            # revision 11: arms are now `head` / `base`. Accept legacy
+            # `with` / `without` from older runs for graceful migration.
+            if mapped in ("head", "with"):
+                winner_resolved = "head"
+                head_wins += 1
                 signed = margin
-            elif mapped == "without":
-                winner_resolved = "without"
-                without_wins += 1
+            elif mapped in ("base", "without"):
+                winner_resolved = "base"
+                base_wins += 1
                 signed = -margin
             else:
                 # unblind missing — degrade safely
@@ -319,15 +340,19 @@ def main(argv: list[str]) -> int:
             "judge_failed": judge_failed,
         })
 
-    n = max(1, len(per_scenario))
-    mean_signed = signed_total / n
+    import math as _math
+    n = len(per_scenario)
+    mean_signed = signed_total / max(1, n)
+    half = _math.ceil(n / 2) if n > 0 else 1
 
-    if judge_failures >= 2:
+    if n == 0 or judge_failures >= max(2, half):
         verdict = "inconclusive"
-    elif with_wins >= 2 and without_wins == 0 and mean_signed >= args.mean_threshold:
-        verdict = "passed"
-    elif without_wins >= 2:
-        verdict = "failed"
+    elif head_wins >= half and base_wins == 0 and mean_signed >= args.mean_threshold:
+        verdict = "improved"
+    elif base_wins >= half:
+        verdict = "regressed"
+    elif head_wins == 0 and base_wins == 0:
+        verdict = "no-change"
     else:
         verdict = "inconclusive"
 
@@ -343,6 +368,8 @@ def main(argv: list[str]) -> int:
         mean_signed=mean_signed,
         mean_threshold=args.mean_threshold,
         token_usage=token_usage,
+        base_short_sha=meta.get("base_short_sha"),
+        new_skill=bool(meta.get("new_skill", False)),
     )
 
     (indir / "summary.md").write_text(summary_md, encoding="utf-8")
